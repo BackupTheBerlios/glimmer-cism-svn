@@ -43,11 +43,19 @@
 module erosion_types
   !*FD type definition for erosion calcluations
 
+  use glimmer_global, only : dp  
+
   type erosion_type
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
-     real :: hb_erosion_factor =   1.e-7                   !*FD constant of proportionality for erosion rate calcs
-     real,dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
-     real,dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion
+     integer :: ndt = 20                                   !*FD erosion time step (multiplier of main time step)
+     real :: dt                                            !*FD erosion time step
+     real :: hb_erosion_factor =   1.e-8                   !*FD constant of proportionality for erosion rate calcs
+     real :: density = 3000.                               !*FD density of hard bedrock (kg m$^{-3}$)
+     real(kind=dp),dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
+     real(kind=dp),dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion
+     real(kind=dp),dimension(:,:),pointer :: er_accu => null()      !*FD accumulated erosion during one erosion time step
+     real(kind=dp),dimension(:,:),pointer :: er_isos => null()      !*FD accumulated erosion for isostasy calcs
+     real(kind=dp),dimension(:,:),pointer :: er_load => null()      !*FD load due to erosion
   end type erosion_type
 
 contains
@@ -59,6 +67,9 @@ contains
 
     allocate(erosion%erosion_rate(numx,numy))
     allocate(erosion%erosion(numx,numy))
+    allocate(erosion%er_accu(numx,numy))
+    allocate(erosion%er_isos(numx,numy))
+    allocate(erosion%er_load(numx,numy))
   end subroutine er_allocate
     
   subroutine er_deallocate(erosion)
@@ -68,5 +79,8 @@ contains
 
     deallocate(erosion%erosion_rate)
     deallocate(erosion%erosion)
+    deallocate(erosion%er_accu)
+    deallocate(erosion%er_isos)
+    deallocate(erosion%er_load)
   end subroutine er_deallocate
 end module erosion_types

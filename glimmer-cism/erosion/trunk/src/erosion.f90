@@ -51,8 +51,7 @@ contains
     !*FD initialise erosion model
     use glide_types
     use glimmer_config
-    use paramets, only : acc0
-    use physcon, only : scyr
+    use paramets, only : len0
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(ConfigSection), pointer :: config !*FD structure holding sections of configuration file   
@@ -66,7 +65,8 @@ contains
     call erosion_io_createall(model)
 
     ! scale variables
-    erosion%hb_erosion_factor = erosion%hb_erosion_factor/(acc0*scyr)
+    erosion%hb_erosion_factor = erosion%hb_erosion_factor*len0
+    erosion%dt = erosion%ndt * model%numerics%dt
 
     ! allocate memory
     call er_allocate(erosion,model%general%ewn,model%general%nsn)
@@ -75,7 +75,9 @@ contains
 
   subroutine er_tstep(erosion,model)
     !*FD do the erosion
+    use isostasy
     use glide_types
+    use physcon, only : rhom
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(glide_global_type) :: model       !*FD model instance
@@ -86,18 +88,28 @@ contains
     call erosion_io_writeall(erosion,model)
 
     if (erosion%doerosion) then
-
-       ! calculate erosion rate
-       do ns=2,model%general%nsn-1
-          do ew=2,model%general%ewn-1
-             erosion%erosion_rate(ew,ns) = erosion%hb_erosion_factor * model%geometry%thck(ew,ns) &
-                  * sqrt( sum(model%velocity%ubas(ew-1:ew,ns-1:ns))**2 + sum(model%velocity%vbas(ew-1:ew,ns-1:ns))**2 )
+       if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%ndt)) then
+          ! calculate erosion rate
+          do ns=2,model%general%nsn-1
+             do ew=2,model%general%ewn-1
+                erosion%erosion_rate(ew,ns) = erosion%hb_erosion_factor * model%geometry%thck(ew,ns) &
+                     * sqrt( sum(model%velocity%ubas(ew-1:ew,ns-1:ns))**2 + sum(model%velocity%vbas(ew-1:ew,ns-1:ns))**2 )
+             end do
           end do
-       end do
-          
-       erosion%erosion = erosion%erosion - erosion%erosion_rate * model%numerics%dt
+          erosion%er_accu = - erosion%erosion_rate * erosion%dt
+          erosion%erosion = erosion%erosion + erosion%er_accu
+          erosion%er_isos = erosion%er_isos + erosion%er_accu
+          model%geometry%topg = model%geometry%topg + erosion%er_accu
+       end if
+    end if
 
-       model%geometry%topg = model%geometry%topg - erosion%erosion_rate * model%numerics%dt
+    ! update load if necessary
+    if (model%isos%new_load) then
+       model%isos%relx = model%isos%relx + erosion%er_isos
+       erosion%er_isos = erosion%er_isos * erosion%density/rhom
+       call isos_lithosphere(model,erosion%er_load,erosion%er_isos)
+       model%isos%relx = model%isos%relx - erosion%er_load
+       erosion%er_isos = 0.
     end if
 
   end subroutine er_tstep

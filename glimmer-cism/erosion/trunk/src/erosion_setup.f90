@@ -56,6 +56,7 @@ contains
     if (associated(section)) then
        erosion%doerosion = .True.
        call GetValue(section,'hb_erosion',erosion%hb_erosion_factor)
+       call GetValue(section,'ntime',erosion%ndt)
     end if
   end subroutine er_readconfig
 
@@ -71,6 +72,8 @@ contains
     if (erosion%doerosion) then
        call write_log('Erosion')
        call write_log('-------')
+       write(message,*) 'Updating erosion every ',erosion%ndt,' time steps'
+       call write_log(message)
        write(message,*) 'hard bedrock erosion constant : ',erosion%hb_erosion_factor
        call write_log(message)
        call write_log('')
