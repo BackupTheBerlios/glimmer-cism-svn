@@ -15,6 +15,15 @@ test-proj.o:	libfproj4.a
 clean:
 		rm -f *.o libfproj4.a test-proj
 
+ifdef GLIMMER_PREFIX
+install:	libfproj4.a
+		install -d $(GLIMMER_PREFIX)/lib
+		cp $^ $(GLIMMER_PREFIX)/lib
+		install -d $(GLIMMER_PREFIX)/mod
+		cp *.mod $(GLIMMER_PREFIX)/mod
+		install -d $(GLIMMER_PREFIX)/include
+		cp *.inc $(GLIMMER_PREFIX)/include
+endif
 
 f90_proj4.tar.gz:	ChangeLog COPYING README cfortran.doc cfortran.h fort-proj.c proj4.f90 proj4.inc test-proj.f90
 		tar -cvf - $^ | gzip > $@
