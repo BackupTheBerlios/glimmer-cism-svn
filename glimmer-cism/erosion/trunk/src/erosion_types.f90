@@ -49,7 +49,7 @@ module erosion_types
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
      integer :: ndt = 20                                   !*FD erosion time step (multiplier of main time step)
      real :: dt                                            !*FD erosion time step
-     real :: hb_erosion_factor =   1.e-8                   !*FD constant of proportionality for erosion rate calcs
+     real :: hb_erosion_factor =   1.e-10                  !*FD constant of proportionality for erosion rate calcs
      real :: density = 3000.                               !*FD density of hard bedrock (kg m$^{-3}$)
      real(kind=dp),dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
      real(kind=dp),dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion

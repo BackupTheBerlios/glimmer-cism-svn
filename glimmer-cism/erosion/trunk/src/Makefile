@@ -12,18 +12,23 @@ LD_FLAGS =
 
 AUTOGEN = erosion_io.f90
 EROSION = erosion.o erosion_types.o erosion_setup.o erosion_io.o
+PROGS = simple_erosion eis_erosion
+
+all:		liberosion.a $(PROGS)
 
 liberosion.a:	$(EROSION)
 		ar rcv $@ $^
 		if [ "$(RANLIB)" != "" ] ; then $(RANLIB) $@ ; fi
 
+eis_erosion:	eis_erosion.o liberosion.a
+		$(FC) -o $@ $^ $(LD_FLAGS) -lclimate $(GLIMMER_LIBRARIES)
 
 simple_erosion:	simple_erosion.o liberosion.a
-		f95 -o $@ $^ $(LD_FLAGS) $(GLIMMER_LIBRARIES) -lclimate 
+		$(FC) -o $@ $^ $(LD_FLAGS) -lclimate $(GLIMMER_LIBRARIES) 
 
 # implicit rule, telling the make system how to build an object file from a .f90 file
 .f90.o:
-		f95 -fpp $(FFLAGS) $(GLIMMER_FFLAGS) -c $< -o $@
+		$(FC) -fpp $(FFLAGS) $(GLIMMER_FFLAGS) -c $< -o $@
 
 erosion_io.f90:	erosion_vars.def
 		generate_ncvars.py $< $(GLIMMER_PREFIX)/share/glimmer/ncdf_template.f90.in
