@@ -6,14 +6,14 @@ GLIMMER_FFLAGS = -I$(GLIMMER_PREFIX)/mod -I$(GNU)/include
 # setup linker flags: tell the linker where to look for libraries and which libraries to link
 GLIMMER_LIBRARIES = -L$(GNU)/lib -L$(GLIMMER_PREFIX)/lib -lglide -lglimmer -lslap -lnetcdf
 # extra compiler flags, e.g. for setting debug or profiler flags
-FFLAGS = -C -std95 -traceback
+FFLAGS = -C -std95 -traceback -g
 # extra linker flags
-LD_FLAGS =
+LD_FLAGS =-C -std95 -traceback -g
 
 AUTOGEN = erosion_io.f90
 EROSION = erosion.o erosion_types.o erosion_setup.o erosion_io.o
 PROGS = simple_erosion eis_erosion
-TESTS = test_rk4 test_geometry test_advect
+TESTS = test_rk4 test_geometry test_advect test_integrate2d
 
 all:		liberosion.a $(PROGS)
 
@@ -26,6 +26,9 @@ eis_erosion:	eis_erosion.o liberosion.a
 
 simple_erosion:	simple_erosion.o liberosion.a
 		$(FC) -o $@ $^ $(LD_FLAGS) -lclimate $(GLIMMER_LIBRARIES) 
+
+test_integrate2d:	test_integrate2d.o erosion_integrate2d.o sparse.o geometry.o glimmer_coordinates.o
+		$(FC) -o $@ $^ $(LD_FLAGS)
 
 test_geometry:	test_geometry.o geometry.o
 		$(FC) -o $@ $^ $(LD_FLAGS)
