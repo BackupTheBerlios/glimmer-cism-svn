@@ -1,0 +1,31 @@
+\begin{document}
+
+\frontmatter
+\title{GLIMMER {\glimmerver} Documentation}
+\author{Magnus Hagdorn\thanks{Magnus.Hagdorn@ed.ac.uk}, Ian
+  Rutt\thanks{I.C.Rutt@bristol.ac.uk} and Tony Payne\thanks{A.J.Payne@bristol.ac.uk}}
+\maketitle
+\tableofcontents
+
+\mainmatter
+\chapter{User Guide}
+\newcommand{\dir}{ug}
+\input{\dir/ug.tex}
+
+\chapter{Numerics}
+\renewcommand{\dir}{num}
+\input{\dir/num.tex}
+
+\chapter{Developer Guide}
+\renewcommand{\dir}{dg}
+\input{\dir/dg.tex}
+
+\appendix
+\renewcommand{\dir}{ug}
+\chapter{netCDF Variables}
+\input{\dir/varlist.tex}
+\chapter{The GLIMMER API}
+\input{\dir/glum_api.tex}
+\input{\dir/glide_api.tex}
+\input{\dir/glint_api.tex}
+\end{document}
