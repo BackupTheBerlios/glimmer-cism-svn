@@ -7,7 +7,7 @@ Burkhard Burow  burow@desy.de                 1990 - 2001.
 Supports: Alpha and VAX VMS, Alpha OSF, DECstation and VAX Ultrix, IBM RS/6000, 
           Silicon Graphics, Sun, CRAY, Apollo, HP9000, LynxOS, Convex, Absoft,
           f2c, g77, NAG f90, PowerStation Fortran with Visual C++, NEC SX-4,
-          Portland Group.
+          Portland Group, Intel ifort.
 
 C and C++ are generally equivalent as far as cfortran.h is concerned.
 Unless explicitly noted otherwise, mention of C implicitly includes C++.

@@ -81,8 +81,12 @@ only C calling FORTRAN subroutines will work using K&R style.*/
 
 /* VAX/VMS does not let us \-split long #if lines. */ 
 /* Split #if into 2 because some HP-UX can't handle long #if */
-#if !(defined(NAGf90Fortran)||defined(f2cFortran)||defined(hpuxFortran)||defined(apolloFortran)||defined(sunFortran)||defined(IBMR2Fortran)||defined(CRAYFortran))
-#if !(defined(mipsFortran)||defined(DECFortran)||defined(vmsFortran)||defined(CONVEXFortran)||defined(PowerStationFortran)||defined(AbsoftUNIXFortran)||defined(AbsoftProFortran)||defined(SXFortran))
+#if !(defined(NAGf90Fortran)||defined(f2cFortran)||defined(hpuxFortran))
+#if !(defined(apolloFortran)||defined(sunFortran)||defined(IBMR2Fortran))
+#if !(defined(CRAYFortran)||defined(mipsFortran)||defined(DECFortran))
+#if !(defined(vmsFortran)||defined(CONVEXFortran)||defined(PowerStationFortran))
+#if !(defined(AbsoftUNIXFortran)||defined(AbsoftProFortran)||defined(SXFortran))
+#if !(defined(IFORT))
 /* If no Fortran compiler is given, we choose one for the machines we know.   */
 #if defined(lynx) || defined(VAXUltrix)
 #define f2cFortran    /* Lynx:      Only support f2c at the moment.
@@ -123,12 +127,23 @@ only C calling FORTRAN subroutines will work using K&R style.*/
 #if   defined(VISUAL_CPLUSPLUS)
 #define     PowerStationFortran
 #endif
+#if      defined(__IFORT)
+#define            IFORT
+#endif
+#endif /* ...Fortran */
+#endif /* ...Fortran */
+#endif /* ...Fortran */
+#endif /* ...Fortran */
 #endif /* ...Fortran */
 #endif /* ...Fortran */
 
 /* Split #if into 2 because some HP-UX can't handle long #if */
-#if !(defined(NAGf90Fortran)||defined(f2cFortran)||defined(hpuxFortran)||defined(apolloFortran)||defined(sunFortran)||defined(IBMR2Fortran)||defined(CRAYFortran))
-#if !(defined(mipsFortran)||defined(DECFortran)||defined(vmsFortran)||defined(CONVEXFortran)||defined(PowerStationFortran)||defined(AbsoftUNIXFortran)||defined(AbsoftProFortran)||defined(SXFortran))
+#if !(defined(NAGf90Fortran)||defined(f2cFortran)||defined(hpuxFortran))
+#if !(defined(apolloFortran)||defined(sunFortran)||defined(IBMR2Fortran))
+#if !(defined(CRAYFortran)||defined(mipsFortran)||defined(DECFortran))
+#if !(defined(vmsFortran)||defined(CONVEXFortran)||defined(PowerStationFortran))
+#if !(defined(AbsoftUNIXFortran)||defined(AbsoftProFortran)||defined(SXFortran))
+#if !(defined(IFORT))
 /* If your compiler barfs on ' #error', replace # with the trigraph for #     */
  #error "cfortran.h:  Can't find your environment among:\
     - MIPS cc and f77 2.0. (e.g. Silicon Graphics, DECstations, ...)     \
@@ -151,8 +166,13 @@ only C calling FORTRAN subroutines will work using K&R style.*/
     - NAG f90: Use #define NAGf90Fortran, or cc -DNAGf90Fortran          \
     - Absoft UNIX F77: Use #define AbsoftUNIXFortran or cc -DAbsoftUNIXFortran \
     - Absoft Pro Fortran: Use #define AbsoftProFortran \
-    - Portland Group Fortran: Use #define pgiFortran"
+    - Portland Group Fortran: Use #define pgiFortran \
+    - Intel Fortran: Use #define IFORT"
 /* Compiler must throw us out at this point! */
+#endif
+#endif
+#endif
+#endif
 #endif
 #endif
 
@@ -164,7 +184,7 @@ only C calling FORTRAN subroutines will work using K&R style.*/
 
 /* Throughout cfortran.h we use: UN = Uppercase Name.  LN = Lowercase Name.   */
 
-#if defined(f2cFortran) || defined(NAGf90Fortran) || defined(DECFortran) || defined(mipsFortran) || defined(apolloFortran) || defined(sunFortran) || defined(CONVEXFortran) || defined(SXFortran) || defined(extname)
+#if defined(f2cFortran) || defined(NAGf90Fortran) || defined(DECFortran) || defined(mipsFortran) || defined(apolloFortran) || defined(sunFortran) || defined(CONVEXFortran) || defined(SXFortran) || defined(extname) || defined(IFORT)
 #define CFC_(UN,LN)            _(LN,_)      /* Lowercase FORTRAN symbols.     */
 #define orig_fcallsc(UN,LN)    CFC_(UN,LN)
 #else 
@@ -343,7 +363,7 @@ Apollo                                           : neg.   = TRUE, else FALSE.
 [DECFortran for Ultrix RISC is also called f77 but is the same as VAX/VMS.]   
 [MIPS f77 treats .eqv./.neqv. as .eq./.ne. and hence requires LOGICAL_STRICT.]*/
 
-#if defined(NAGf90Fortran) || defined(f2cFortran) || defined(mipsFortran) || defined(PowerStationFortran) || defined(hpuxFortran800) || defined(AbsoftUNIXFortran) || defined(AbsoftProFortran) || defined(SXFortran)
+#if defined(NAGf90Fortran) || defined(f2cFortran) || defined(mipsFortran) || defined(PowerStationFortran) || defined(hpuxFortran800) || defined(AbsoftUNIXFortran) || defined(AbsoftProFortran) || defined(SXFortran) || defined(IFORT)
 /* SX/PowerStationFortran have 0 and 1 defined, others are neither T nor F.   */
 /* hpuxFortran800 has 0 and 0x01000000 defined. Others are unknown.           */
 #define LOGICAL_STRICT      /* Other Fortran have .eqv./.neqv. == .eq./.ne.   */
