@@ -58,6 +58,11 @@ contains
        call GetValue(section,'hb_erosion',erosion%hb_erosion_factor)
        call GetValue(section,'ntime',erosion%ndt)
     end if
+    call GetSection(config,section,'Transport')
+    if (associated(section)) then
+       erosion%dotransport = .True.
+       call GetValue(section,'ndt',erosion%transport_ndt)
+    end if
   end subroutine er_readconfig
 
   subroutine er_printconfig(erosion)
@@ -75,6 +80,11 @@ contains
        write(message,*) 'Updating erosion every ',erosion%ndt,' time steps'
        call write_log(message)
        write(message,*) 'hard bedrock erosion constant : ',erosion%hb_erosion_factor
+       call write_log(message)
+       call write_log('')
+       call write_log('Sediment Transport')
+       call write_log('------------------')
+       write(message,*) 'Updating sediment distribution every ',erosion%transport_ndt,' time steps'
        call write_log(message)
        call write_log('')
     end if

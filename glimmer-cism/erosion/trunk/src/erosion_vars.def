@@ -29,3 +29,35 @@ long_name:     total hard bedrock erosion
 data:          data%erosion
 factor:        thk0
 coordinates:   lon lat
+load:          1
+hot:           1
+
+[seds1]
+dimensions:    time, y1, x1
+units:         meter
+long_name:     thickness of dirty basal ice layer
+data:          data%seds1
+factor:        1
+coordinates:   lon lat
+load:          1
+hot:           1
+
+[seds2]
+dimensions:    time, y1, x1
+units:         meter
+long_name:     thickness of deforming sediment layer
+data:          data%seds2
+factor:        1
+coordinates:   lon lat
+load:          1
+hot:           1
+
+[seds3]
+dimensions:    time, y1, x1
+units:         meter
+long_name:     thickness of non-deforming sediment layer
+data:          data%seds3
+factor:        1
+coordinates:   lon lat
+load:          1
+hot:           1

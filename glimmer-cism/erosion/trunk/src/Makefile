@@ -11,9 +11,9 @@ FFLAGS = -C -std95 -traceback -g
 LD_FLAGS =-C -std95 -traceback -g
 
 AUTOGEN = erosion_io.f90
-EROSION = erosion.o erosion_types.o erosion_setup.o erosion_io.o
+EROSION = erosion.o erosion_types.o erosion_setup.o erosion_io.o erosion_advect.o erosion_integrate2d.o erosion_transport.o  geometry.o glimmer_coordinates.o runge_kutta.o sparse.o
 PROGS = simple_erosion eis_erosion
-TESTS = test_rk4 test_geometry test_advect test_integrate2d
+TESTS = test_rk4 test_geometry test_advect test_integrate2d test_transport
 
 all:		liberosion.a $(PROGS)
 test:		$(TESTS)
@@ -27,6 +27,9 @@ eis_erosion:	eis_erosion.o liberosion.a
 
 simple_erosion:	simple_erosion.o liberosion.a
 		$(FC) -o $@ $^ $(LD_FLAGS) -lclimate $(GLIMMER_LIBRARIES) 
+
+test_transport:	test_transport.o liberosion.a
+		$(FC) -o $@ $^ $(LD_FLAGS) $(GLIMMER_LIBRARIES)
 
 test_integrate2d:	test_integrate2d.o erosion_integrate2d.o sparse.o geometry.o glimmer_coordinates.o
 		$(FC) -o $@ $^ $(LD_FLAGS)

@@ -1,3 +1,12 @@
+2005-02-16 Magnus Hagdorn
+ * erosion_transport.f90: added transport module
+ * test_transport.f90: initial test prog for transport stuff	
+ * erosion.f90: initialise transport code during erosion init
+ * erosion_setup.f90: some transport params
+ * erosion_types.f90: added sediment transport variables to type
+ * erosion_vars.def: new sediment trans variables
+ * create_seds.py: new python prog for initialising sediment distribution
+
 2005-02-04 Magnus Hagdorn
  * changed Makefile to reflect recent changes of glimmer
  * changed precesion of reals to kind=dp (erosion_advect.f90, geometry.f90,

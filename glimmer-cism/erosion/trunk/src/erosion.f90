@@ -67,10 +67,16 @@ contains
     ! scale variables
     erosion%hb_erosion_factor = erosion%hb_erosion_factor*len0
     erosion%dt = erosion%ndt * model%numerics%dt
+    erosion%transport_dt = erosion%transport_ndt * erosion%transport_dt
 
     ! allocate memory
     call er_allocate(erosion,model%general%ewn,model%general%nsn)
     erosion%erosion = 0.
+
+    ! initialise transport
+    call init_transport(erosion%trans, model)
+    ! initialise sparse matrices
+    erosion%lag_seds1 = new_sparse_matrix(10000)
   end subroutine er_initialise
 
   subroutine er_tstep(erosion,model)

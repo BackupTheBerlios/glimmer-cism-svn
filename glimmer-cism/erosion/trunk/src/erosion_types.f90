@@ -44,6 +44,8 @@ module erosion_types
   !*FD type definition for erosion calcluations
 
   use glimmer_global, only : dp  
+  use erosion_transport
+  use sparse
 
   type erosion_type
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
@@ -51,11 +53,19 @@ module erosion_types
      real :: dt                                            !*FD erosion time step
      real :: hb_erosion_factor =   1.e-10                  !*FD constant of proportionality for erosion rate calcs
      real :: density = 3000.                               !*FD density of hard bedrock (kg m$^{-3}$)
+     logical :: dotransport = .False.                      !*FD set to true to move sediments about
+     integer :: transport_ndt = 20                         !*FD transport time step (multiplier of main time step)
+     real :: transport_dt                                  !*FD time step for recalculating sediment distribution
+     type(er_transport_type) :: trans                      !*FD type holding transport stuff
+     type(sparse_matrix) :: lag_seds1                      !*FD sparse matrix holding dirty ice layer
      real(kind=dp),dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
      real(kind=dp),dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion
      real(kind=dp),dimension(:,:),pointer :: er_accu => null()      !*FD accumulated erosion during one erosion time step
      real(kind=dp),dimension(:,:),pointer :: er_isos => null()      !*FD accumulated erosion for isostasy calcs
      real(kind=dp),dimension(:,:),pointer :: er_load => null()      !*FD load due to erosion
+     real(kind=dp),dimension(:,:),pointer :: seds1 => null()        !*FD thickness of dirty basal ice layer
+     real(kind=dp),dimension(:,:),pointer :: seds2 => null()        !*FD thickness of deforming sediment layer
+     real(kind=dp),dimension(:,:),pointer :: seds3 => null()        !*FD thickness of non-deforming sediment layer
   end type erosion_type
 
 contains
@@ -70,6 +80,9 @@ contains
     allocate(erosion%er_accu(numx,numy))
     allocate(erosion%er_isos(numx,numy))
     allocate(erosion%er_load(numx,numy))
+    allocate(erosion%seds1(numx,numy))
+    allocate(erosion%seds2(numx,numy))
+    allocate(erosion%seds3(numx,numy))
   end subroutine er_allocate
     
   subroutine er_deallocate(erosion)
@@ -82,5 +95,8 @@ contains
     deallocate(erosion%er_accu)
     deallocate(erosion%er_isos)
     deallocate(erosion%er_load)
+    deallocate(erosion%seds1)
+    deallocate(erosion%seds2)
+    deallocate(erosion%seds3)
   end subroutine er_deallocate
 end module erosion_types
