@@ -1,0 +1,49 @@
+2005-04-01 Magnus Hagdorn
+ * erosion_advect.f90: added optional parameter to multiply velos with a factor
+ * erosion_integrate2d.f90: some cosmetics
+ * erosion_setup.f90: added transport related options
+ * erosion_types.f90: added transport related variables
+ * erosion_transport.f90: calc_lagrange does not set velo field
+ * geometry.f90: replace .eq.0 with abs().le.tolerance
+ * test_transport.f90: time step is now double precision
+ * erosion.f90: hooked up transport
+ * .config files: fixed netCDF I/O statements, they were renamed to [CF ...]
+ * er-transport1.config: new test configuration for transport code
+	
+2005-02-16 Magnus Hagdorn
+ * erosion_transport.f90: added transport module
+ * test_transport.f90: initial test prog for transport stuff	
+ * erosion.f90: initialise transport code during erosion init
+ * erosion_setup.f90: some transport params
+ * erosion_types.f90: added sediment transport variables to type
+ * erosion_vars.def: new sediment trans variables
+ * create_seds.py: new python prog for initialising sediment distribution
+
+2005-02-04 Magnus Hagdorn
+ * changed Makefile to reflect recent changes of glimmer
+ * changed precesion of reals to kind=dp (erosion_advect.f90, geometry.f90,
+ glimmer_coordinates.f90, runge_kutta.f90, test_advect.f90,
+ test_integrate2d.f90, test_rk4.f90)
+
+2005-01-24 Magnus Hagdorn
+ * added 2d integration code
+
+2005-01-03 Magnus Hagdorn
+ * a bunch of stuff for transport code
+
+2004-12-19 Magnus Hagdorn
+ * added EIS driver
+ * changed bedrock erosion factor to something somewhat more
+   reasonable
+
+2004-12-18 Magnus Hagdorn
+ * added random topo
+
+2004-12-17 Magnus Hagdorn
+ * added tests and documentation
+ * erosion.f90: implemented isostatic adjustment and erosion update frequency
+ * erosion_setup.f90: get erosion update frequency
+ * erosion_types.f90: added variables for isostasy
+
+2004-12-16 Magnus Hagdorn
+ * first stab at simple erosion model
