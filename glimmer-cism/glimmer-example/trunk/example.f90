@@ -16,7 +16,8 @@ program example
   use glide                   ! main glide module
   use glimmer_log             ! module for logging messages
   use glimmer_config          ! module for handling configuration files
-  use paramets, only : len0   ! for the length scale
+  use paramets                ! for the scales
+  use physcon, only : scyr    ! number of seconds in a year
   implicit none
 
   ! some variables
@@ -43,14 +44,14 @@ program example
   
   ! read configuration
   call ConfigRead(fname,config)
-
+  
   ! initialise GLIDE
   call glide_initialise(model,config)
   ! fill dimension variables
   call glide_nc_fillall(model)
   ! get current time from start time
   time = model%numerics%tstart
-
+  
   ! setup some variables for BC
   ewct = real(model%general%ewn+1) / 2.0 ! the grid centre (x)
   nsct = real(model%general%nsn+1) / 2.0 ! and (y)
@@ -73,7 +74,10 @@ program example
      end do
      
      ! surface temperature
-     model%climate%artm(:,:) = -3.150  -1.e-2 * model%geometry%thck(:,:)
+     model%climate%artm(:,:) = -3.150  -1.e-2 * model%geometry%thck(:,:)* thk0
+
+     ! scale variables
+     model%climate%acab(:,:) = model%climate%acab(:,:) / (acc0 * scyr)
 
      ! calculate temperature and velocity distribution
      call glide_tstep_p1(model,time)
