@@ -10,6 +10,9 @@ BUILT_SOURCES = $(graphics)
 
 EXTRA_DIST = fenscan.data fenscan.prof eismint.prof
 
+MOSTLYCLEANFILES = $(graphics)
+CLEANFILES = $(BUILT_SOURCES)
+
 # Random Topography
 test1:
 	echo "Test 1"

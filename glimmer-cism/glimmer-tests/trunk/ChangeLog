@@ -1,4 +1,8 @@
 2005-03-11 Magnus Hagdorn
+ * Makefile.ams: tell automake which files to delete on
+   make clean and make mostlyclean
+
+2005-03-11 Magnus Hagdorn
  * configure.in: honour GLIMMER microversion, fix bug with 
    checking
 

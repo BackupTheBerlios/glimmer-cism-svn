@@ -7,6 +7,8 @@ BUILT_SOURCES = $(runs) $(graphics)
 
 EXTRA_DIST = l-10a.config  l-20a.config  l-5a.config  nl-10a.config  nl-20a.config  nl-5a.config l-30a.config  nl-30a.config move_data.sh
 
+MOSTLYCLEANFILES = $(graphics)
+CLEANFILES = $(BUILT_SOURCES)
 
 e2-comp.ps:	$(runs)
 	@GLIMMER_PREFIX@/bin/plotEISMINT2stats.py -e H $^ $@

@@ -5,6 +5,9 @@ BUILT_SOURCES = e1-fm.1.nc e1-fm.2.nc e1-fm.3.nc e1-mm.1.nc e1-mm.2.nc e1-mm.3.n
 
 EXTRA_DIST = e1-fm.1.config  e1-fm.2.config  e1-fm.3.config  e1-mm.1.config  e1-mm.2.config  e1-mm.3.config
 
+MOSTLYCLEANFILES = $(graphics)
+CLEANFILES = $(BUILT_SOURCES)
+
 include $(top_srcdir)/make.rules
 
 .nc.ps:

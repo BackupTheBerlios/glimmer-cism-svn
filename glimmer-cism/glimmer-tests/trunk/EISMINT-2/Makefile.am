@@ -5,6 +5,9 @@ BUILT_SOURCES = e2.a.nc e2.b.nc e2.c.nc e2.d.nc e2.f.nc e2.g.nc e2.h.nc e2.i.nc 
 
 EXTRA_DIST = e2.a.config  e2.b.config  e2.c.config  e2.d.config  e2.f.config  e2.g.config  e2.h.config  e2.i.config  e2.j.config  e2.k.config  e2.l.config mound.nc trough.nc
 
+MOSTLYCLEANFILES = $(graphics)
+CLEANFILES = $(BUILT_SOURCES)
+
 e2.b.nc:        e2.a.nc
 e2.c.nc:        e2.a.nc
 e2.d.nc:        e2.a.nc
