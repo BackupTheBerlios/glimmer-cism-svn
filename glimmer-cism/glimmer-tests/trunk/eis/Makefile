@@ -1,13 +1,7 @@
-SUBDIRS = EISMINT-1 EISMINT-2 eis
+runs:	fenscan.nc
+plots:
 
-subdirs:	$(SUBDIRS)
+.config.nc:
+	glide_launch.py $<
 
-$(SUBDIRS):
-		$(MAKE) -C $@
-
-clean:
-		for dir in $(SUBDIRS); do \
-		  $(MAKE) -C $$dir clean; \
-		done
-
-.PHONY:		clean subdirs $(SUBDIRS)
+.SUFFIXES:	.config .nc

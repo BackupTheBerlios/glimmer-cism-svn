@@ -22,7 +22,7 @@ test2a:
 test2b:
 	echo "Test 2b"
 	echo "Plotting EIS stats with reconstructed ice extent."
-	plotCFstats.py -p fenscan.prof --not_projected -f fenscan.data ../eis/fenscan.500a.nc fenscan.stat.ps
+	plotCFstats.py -p fenscan.prof --not_projected -f fenscan.data ../eis/fenscan.nc fenscan.stat.ps
 
 # EISmint plot
 test3:
@@ -41,18 +41,18 @@ test5:	test5a test5b
 test5a:
 	echo "Test 5a"
 	echo "Plotting ice surfaces at 6 times"
-	plotCFvar.py --width=7.5 -vis -cthk --land -t -100. -t -80. -t -60. -t -40. -t -20 -t 0 ../eis/fenscan.500a.nc fenscan.is.ps
+	plotCFvar.py --width=7.5 -vis -cthk --land -t -100. -t -80. -t -60. -t -40. -t -20 -t 0 ../eis/fenscan.nc fenscan.is.ps
 test5b:
 	echo "Test 5b"
 	echo "Plotting different variables"
-	plotCFvar.py --width=7.5 -vacab -vcony -vslc -vtopg -t-17. ../eis/fenscan.500a.nc fenscan.vars.ps
+	plotCFvar.py --width=7.5 -vacab -vcony -vslc -vtopg -t-17. ../eis/fenscan.nc fenscan.vars.ps
 
 # plotting profiles
 test6:	test6a test6b
 test6a:
 	echo "Test 6a"
 	echo "Plotting some profiles"
-	plotProfile.py --not_projected -p fenscan.prof -vis -vbtemp -vslc --pmt -t -20 ../eis/fenscan.500a.nc fenscan.profs.ps
+	plotProfile.py --not_projected -p fenscan.prof -vis -vbtemp -vslc --pmt -t -20 ../eis/fenscan.nc fenscan.profs.ps
 test6b:
 	echo "Test 6b"
 	echo "Plotting 2D temperature prof"
@@ -62,13 +62,13 @@ test6b:
 test7:
 	echo "Test 7"
 	echo "Plotting RSL curves"
-	plotRSL.py ../eis/fenscan.500a.nc fenscan.rsl.ps
+	plotRSL.py ../eis/fenscan.nc fenscan.rsl.ps
 
 # plotting EIS forcing
 test8:
 	echo "Test 8"
 	echo "Plotting EIS forcing"
-	plotEISvar.py --land -cthk -t -17. -vis --ela=../eis/mb.data --temp=../eis/s10.data --slc=../eis/specmap.data ../eis/fenscan.500a.nc fenscan.forcing.ps
+	plotEISvar.py --land -cthk -t -17. -vis --ela=../eis/mb.data --temp=../eis/s10.data --slc=../eis/specmap.data ../eis/fenscan.nc fenscan.forcing.ps
 
 clean:
 	rm -f *.ps ran_topo.nc

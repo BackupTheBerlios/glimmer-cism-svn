@@ -1,3 +1,6 @@
+2004-11-04 Magnus Hagdorn
+ * fixed Makefile and added target plots for EISMINT-[12]
+
 2004-11-02 Magnus Hagdorn
  * hooked up eis dir to Makefiles
 
