@@ -1,0 +1,18 @@
+2005-02-28 Magnus Hagdorn
+ * Makefile: quick hack to build a distribution tar-ball
+ * example.f90: check that all sections are used
+
+2005-02-28 Magnus Hagdorn
+ * change names of config sections
+
+2005-02-26 Magnus Hagdorn
+ * use glimmer-config for FCFLAGS and LIBS
+
+2005-02-16 Magnus Hagdorn
+ * use accessor functions 
+
+2005-02-03 Magnus Hagdorn
+ * fixed a bug where the mass balance and ice thickness were not scaled properly
+
+2005-02-03 Magnus Hagdorn
+ * initial version
