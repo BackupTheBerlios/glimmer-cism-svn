@@ -1,3 +1,6 @@
+2005-01-03 Magnus Hagdorn
+ * a bunch of stuff for transport code
+
 2004-12-19 Magnus Hagdorn
  * added EIS driver
  * changed bedrock erosion factor to something somewhat more

@@ -6,13 +6,14 @@ GLIMMER_FFLAGS = -I$(GLIMMER_PREFIX)/mod -I$(GNU)/include
 # setup linker flags: tell the linker where to look for libraries and which libraries to link
 GLIMMER_LIBRARIES = -L$(GNU)/lib -L$(GLIMMER_PREFIX)/lib -lglide -lglimmer -lslap -lnetcdf
 # extra compiler flags, e.g. for setting debug or profiler flags
-FFLAGS = 
+FFLAGS = -C -std95 -traceback
 # extra linker flags
 LD_FLAGS =
 
 AUTOGEN = erosion_io.f90
 EROSION = erosion.o erosion_types.o erosion_setup.o erosion_io.o
 PROGS = simple_erosion eis_erosion
+TESTS = test_rk4 test_geometry test_advect
 
 all:		liberosion.a $(PROGS)
 
@@ -25,6 +26,15 @@ eis_erosion:	eis_erosion.o liberosion.a
 
 simple_erosion:	simple_erosion.o liberosion.a
 		$(FC) -o $@ $^ $(LD_FLAGS) -lclimate $(GLIMMER_LIBRARIES) 
+
+test_geometry:	test_geometry.o geometry.o
+		$(FC) -o $@ $^ $(LD_FLAGS)
+
+test_rk4:	test_rk4.o runge_kutta.o
+		$(FC) -o $@ $^ $(LD_FLAGS)
+
+test_advect:	test_advect.o erosion_advect.o runge_kutta.o
+		$(FC) -o $@ $^ $(LD_FLAGS) -L$(GNU)/lib -lnetcdf
 
 # implicit rule, telling the make system how to build an object file from a .f90 file
 .f90.o:
