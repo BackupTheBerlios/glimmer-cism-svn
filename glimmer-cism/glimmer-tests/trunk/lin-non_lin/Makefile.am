@@ -21,5 +21,5 @@ e2-bvel.ps:	$(runs)
 	@GLIMMER_PREFIX@/bin/plotCFvar.py --width 5 -T -1 -cthk -vvel -l -1 $^ $@
 
 .config.nc:
-	@GLIMMER_PREFIX@/bin/glide_launch.py $<
+	@GLIMMER_PREFIX@/bin/glide_launch.py --prefix @GLIMMER_PREFIX@ $<
 	bash move_data.sh picard_info.data $*.piccard

@@ -1,4 +1,7 @@
 2005-03-05 Magnus Hagdorn
+ * fixed minor bugs in build system
+
+2005-03-05 Magnus Hagdorn
  * add some missing config files
  * tweak build system
 
