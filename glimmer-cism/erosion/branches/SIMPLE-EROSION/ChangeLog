@@ -1,3 +1,6 @@
+2005-03-08 Magnus Hagdorn
+ * use GNU autotools and friends
+
 2004-12-19 Magnus Hagdorn
  * added EIS driver
  * changed bedrock erosion factor to something somewhat more

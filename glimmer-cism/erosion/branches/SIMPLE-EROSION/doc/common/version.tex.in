@@ -1,0 +1,1 @@
+\newcommand{\erosionver}{@EROSION_MAJOR_VERSION@.@EROSION_MINOR_VERSION@}
