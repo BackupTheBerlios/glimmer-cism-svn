@@ -1,3 +1,6 @@
+2005-03-03 Magnus Hagdorn
+ * change build-system to autotools
+
 2005-02-28 Magnus Hagdorn
  * renamed io sections to include CF
 
