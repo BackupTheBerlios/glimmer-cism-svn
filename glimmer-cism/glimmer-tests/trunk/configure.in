@@ -96,5 +96,6 @@ lin-non_lin/Makefile \
 eis/Makefile \
 isos/Makefile \
 PyCF/Makefile \
+benchmarks/Makefile \
 ])
 AC_OUTPUT()
