@@ -87,4 +87,4 @@ eis/Makefile \
 isos/Makefile \
 PyCF/Makefile \
 ])
-AC_OUTPUT([make.rules])
+AC_OUTPUT()
