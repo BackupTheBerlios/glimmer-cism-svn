@@ -1,3 +1,6 @@
+2005-02-26 Magnus Hagdorn
+ * use glimmer-config for FCFLAGS and LIBS
+
 2005-02-16 Magnus Hagdorn
  * use accessor functions 
 
