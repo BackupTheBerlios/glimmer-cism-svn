@@ -1,3 +1,10 @@
+2004-12-01 Magnus Hagdorn
+ * changed ice thickness solver to linear and enforced upper
+   kinetic BC
+ * EISMINT-2/Makefile: added new plots comparing results with published ones
+ * eismint.prof: only from centre to right margin
+ * new set of tests for linear/non-linear solver
+
 2004-11-04 Magnus Hagdorn
  * fixed Makefile and added target plots for EISMINT-[12]
 
