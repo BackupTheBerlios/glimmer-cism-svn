@@ -1,3 +1,6 @@
+2005-02-28 Magnus Hagdorn
+ * renamed io sections to include CF
+
 2004-12-01 Magnus Hagdorn
  * changed ice thickness solver to linear and enforced upper
    kinetic BC
