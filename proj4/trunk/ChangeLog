@@ -1,3 +1,6 @@
+2004-06-10 Magnus Hagdorn
+ * added f90_proj4.tar.gz target
+
 2004-06-08 Magnus Hagdorn
  * applied a modified version of Carlie Coats' patch
    http://www.unidata.ucar.edu/content/software/netcdf/intel-f95-patch?unidata=b2187e2bb415beea14be3c189e3933d0

@@ -15,6 +15,10 @@ test-proj.o:	libfproj4.a
 clean:
 		rm -f *.o libfproj4.a test-proj
 
+
+f90_proj4.tar.gz:	ChangeLog COPYING README cfortran.doc cfortran.h fort-proj.c proj4.f90 proj4.inc test-proj.f90
+		tar -cvf - $^ | gzip > $@
+
 .f90.o:
 		$(F90) $(FFLAGS) -c $< -o $@
 
