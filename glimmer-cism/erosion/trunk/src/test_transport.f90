@@ -37,7 +37,7 @@ program testtransport
   er%seds1(36:40,15:20) = 5.
   write(*,*) 'total concentration ', sum(er%seds1)
   ! set up sparse matrix
-  call calc_lagrange(model, er%trans, real(model%numerics%tinc,kind=dp) , er%lag_seds1)
+  call calc_lagrange(model, er%trans, model%numerics%dt , er%lag_seds1)
   call print_sparse(er%lag_seds1,101)
   do while(time.le.model%numerics%tstart+10000.)
      model%numerics%time = time

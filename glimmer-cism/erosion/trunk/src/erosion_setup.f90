@@ -62,6 +62,10 @@ contains
     if (associated(section)) then
        erosion%dotransport = .True.
        call GetValue(section,'ndt',erosion%transport_ndt)
+       call GetValue(section,'deformable_velo',erosion%transport_fac)
+       call GetValue(section,'dirty_ice_thick',erosion%dirty_ice_max)
+       call GetValue(section,'soft_a',erosion%soft_a)
+       call GetValue(section,'soft_b',erosion%soft_b)
     end if
   end subroutine er_readconfig
 
@@ -85,6 +89,12 @@ contains
        call write_log('Sediment Transport')
        call write_log('------------------')
        write(message,*) 'Updating sediment distribution every ',erosion%transport_ndt,' time steps'
+       call write_log(message)
+       write(message,*) 'deformable sediment velo factor: ',erosion%transport_fac
+       write(message,*) 'max thickness of dirty basal ice layer: ',erosion%dirty_ice_max
+       write(message,*) 'deformable sediment param a: ',erosion%soft_a
+       call write_log(message)
+       write(message,*) 'deformable sediment param b: ',erosion%soft_b
        call write_log(message)
        call write_log('')
     end if

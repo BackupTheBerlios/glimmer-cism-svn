@@ -33,6 +33,7 @@ contains
     integer imin, inum, pow, jmin, jnum,  num
     real w
 
+
     ! find the bounding box
     node = coordsystem_get_node(coords,patch%poly(1))
     imin = node%pt(1)
@@ -52,7 +53,6 @@ contains
     jnum = jnum - jmin
 
     num = max(inum,jnum)
-
     if (num.eq.0) then ! trivial case shape is within single cell
        w = 0.5*abs(poly_area2(patch))/(coords%delta%pt(1)*coords%delta%pt(2))
        call addmat(coords,weight,n,node,w)
@@ -157,8 +157,6 @@ contains
        call addmat(coords,weight,n,node,val)
        call poly_delete(poly)
     end if
-          
-
   end subroutine divide_weight
 
   subroutine addmat(coords,weight,n,node,val)

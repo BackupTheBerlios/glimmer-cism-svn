@@ -1,3 +1,15 @@
+2005-04-01 Magnus Hagdorn
+ * erosion_advect.f90: added optional parameter to multiply velos with a factor
+ * erosion_integrate2d.f90: some cosmetics
+ * erosion_setup.f90: added transport related options
+ * erosion_types.f90: added transport related variables
+ * erosion_transport.f90: calc_lagrange does not set velo field
+ * geometry.f90: replace .eq.0 with abs().le.tolerance
+ * test_transport.f90: time step is now double precision
+ * erosion.f90: hooked up transport
+ * .config files: fixed netCDF I/O statements, they were renamed to [CF ...]
+ * er-transport1.config: new test configuration for transport code
+	
 2005-02-16 Magnus Hagdorn
  * erosion_transport.f90: added transport module
  * test_transport.f90: initial test prog for transport stuff	

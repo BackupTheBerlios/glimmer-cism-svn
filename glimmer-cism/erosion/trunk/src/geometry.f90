@@ -11,7 +11,7 @@ module geometry
   ! number of dimensions
   integer :: geom_unit = 6
   integer, parameter :: geom_dim = 2
-  real(kind=dp), parameter, private :: tolerance = 1e-6
+  real(kind=dp), parameter, private :: tolerance = 1e-7
 
   private :: advance,add_intersect
   ! point type
@@ -126,7 +126,7 @@ contains
     type(geom_point), intent(in) :: a,b,c
     logical left
 
-    left = (triangle_area2(a,b,c) .gt. 0)
+    left = (triangle_area2(a,b,c) .gt. 0.d0)
   end function left
   
   function lefton(a,b,c)
@@ -135,7 +135,7 @@ contains
     type(geom_point), intent(in) :: a,b,c
     logical lefton
 
-    lefton = (triangle_area2(a,b,c) .ge. 0)
+    lefton = (triangle_area2(a,b,c) .ge. 0.d0)
   end function lefton
    
   function collinear(a,b,c)
@@ -144,7 +144,7 @@ contains
     type(geom_point), intent(in) :: a,b,c
     logical collinear
 
-    collinear = (triangle_area2(a,b,c) .eq. 0)
+    collinear = (abs(triangle_area2(a,b,c)) .le. tolerance)
   end function collinear
   
   function intersectProp(a,b,c,d)

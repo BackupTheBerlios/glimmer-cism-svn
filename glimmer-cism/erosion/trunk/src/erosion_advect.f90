@@ -98,10 +98,20 @@ contains
          + p1*p2*uy(i(3),j(3)) + (1-p1)*p2*uy(i(4),j(4))    
   end subroutine interp_velos
   
-  subroutine set_velos(x,y)
+  subroutine set_velos(x,y,factor)
     implicit none
     real(kind=dp), dimension(:,:) :: x,y
-    ux = x
-    uy = y
+    real(kind=dp), optional :: factor
+    ! local variables
+    real(kind=dp) :: f
+
+    if (present(factor)) then
+       f = factor
+    else
+       f = 1.
+    end if
+
+    ux = f*x
+    uy = f*y
   end subroutine set_velos
 end module erosion_advect

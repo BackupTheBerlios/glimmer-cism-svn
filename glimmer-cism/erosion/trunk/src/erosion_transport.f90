@@ -75,8 +75,6 @@ contains
     type(geom_point) :: pt
     type(geom_ipoint) :: node
 
-    call set_velos(-model%velocity%ubas(:,:), &
-         -model%velocity%vbas(:,:))
     time = deltat
     lagrange%n = 0
     ! setup first triangle strip
@@ -173,7 +171,6 @@ contains
              call calc_weight(trans%coord, lagrange, trans%patch2, coordsystem_linearise2d(trans%coord,node))
           end if
        end do
-
        ! swap rows
        lower = mod(lower,2)+1
        upper = mod(upper,2)+1
