@@ -16,8 +16,6 @@ program example
   use glide                   ! main glide module
   use glimmer_log             ! module for logging messages
   use glimmer_config          ! module for handling configuration files
-  use paramets                ! for the scales
-  use physcon, only : scyr    ! number of seconds in a year
   implicit none
 
   ! some variables
@@ -35,6 +33,11 @@ program example
   integer ew,ns,ewct,nsct  ! loop variable and grid centre
   real grid, dist          ! node spacing and distance
 
+  ! local ice sheet variables
+  real, allocatable, dimension(:,:) :: ice_thickness
+  real, allocatable, dimension(:,:) :: mass_balance
+  real, allocatable, dimension(:,:) :: surface_temperature
+
   ! Ask for configuration file
   write(*,*) 'Enter name of GLIDE configuration file to be read'
   read(*,*) fname
@@ -50,12 +53,17 @@ program example
   ! fill dimension variables
   call glide_nc_fillall(model)
   ! get current time from start time
-  time = model%numerics%tstart
+  time = get_tstart(model)
   
+  ! allocate variables
+  allocate(ice_thickness(get_ewn(model),get_nsn(model)))
+  allocate(mass_balance(get_ewn(model),get_nsn(model)))
+  allocate(surface_temperature(get_ewn(model),get_nsn(model)))
+
   ! setup some variables for BC
-  ewct = real(model%general%ewn+1) / 2.0 ! the grid centre (x)
-  nsct = real(model%general%nsn+1) / 2.0 ! and (y)
-  grid = model%numerics%dew * len0       ! node-spacing
+  ewct = real(get_ewn(model)+1) / 2.0 ! the grid centre (x)
+  nsct = real(get_nsn(model)+1) / 2.0 ! and (y)
+  grid = get_dew(model)       ! node-spacing
 
   ! loop over times
   do while(time.le.model%numerics%tend)
@@ -68,16 +76,19 @@ program example
         do ew = 1,model%general%ewn
            ! calculate distance from centre
            dist = grid * sqrt((real(ew) - ewct)**2 + (real(ns) - nsct)**2)
-           ! set mass balance
-           model%climate%acab(ew,ns) = min(0.5, 1.05e-5 * (450.0e3 - dist))
+           ! calculate mass balance
+           mass_balance(ew,ns) = min(0.5, 1.05e-5 * (450.0e3 - dist))
         end do
      end do
+     ! and set it
+     call glide_set_acab(model,mass_balance)
      
-     ! surface temperature
-     model%climate%artm(:,:) = -3.150  -1.e-2 * model%geometry%thck(:,:)* thk0
-
-     ! scale variables
-     model%climate%acab(:,:) = model%climate%acab(:,:) / (acc0 * scyr)
+     ! get ice thickness for temperature calculations
+     call glide_get_thk(model,ice_thickness)
+     ! calculate surface temperature
+     surface_temperature = -3.150  -1.e-2 * ice_thickness
+     ! and set it
+     call glide_set_artm(model,surface_temperature)
 
      ! calculate temperature and velocity distribution
      call glide_tstep_p1(model,time)
@@ -86,7 +97,7 @@ program example
      ! calculate isostatic adjustment
      call glide_tstep_p3(model)
      ! increment time counter
-     time = time + model%numerics%tinc
+     time = time + get_tinc(model)
   end do
 
   ! finalise GLIDE
