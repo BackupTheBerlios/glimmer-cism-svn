@@ -1,3 +1,7 @@
+2005-03-11 Magnus Hagdorn
+ * configure.in: honour GLIMMER microversion, fix bug with 
+   checking
+
 2005-03-08 Magnus Hagdorn
  * added basal variables
 
