@@ -1,3 +1,6 @@
+2004-11-02 Magnus Hagdorn
+ * hooked up eis dir to Makefiles
+
 2004-10-22 Magnus Hagdorn
  * added test configuration for European run using eis_glide
  * added some more tests
