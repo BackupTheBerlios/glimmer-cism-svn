@@ -35,7 +35,7 @@ contains
   function coordsystem_new_real(ox, oy, dx, dy, sx, sy)
     ! create new coordinate system from individual variables
     implicit none
-    real, intent(in) :: ox, oy, dx, dy
+    real(kind=dp), intent(in) :: ox, oy, dx, dy
     integer, intent(in) :: sx, sy
     type(coordsystem) :: coordsystem_new_real
     

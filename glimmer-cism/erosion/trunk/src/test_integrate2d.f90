@@ -10,15 +10,15 @@ program testintegrate2d
   use glimmer_coordinates
   implicit none
   type(geom_poly) :: patch
-  real, parameter :: xsize = 200.
-  real, parameter :: ysize = 200.
-  real :: deltaxy
+  real(kind=dp), parameter :: xsize = 200.
+  real(kind=dp), parameter :: ysize = 200.
+  real(kind=dp) :: deltaxy
   integer :: numi,numj
   integer i,j
   type(sparse_matrix) :: weight
-  real, dimension(:,:), allocatable :: vec
-  real, dimension(:), allocatable ::res
-  real :: area
+  real(kind=dp), dimension(:,:), allocatable :: vec
+  real(kind=dp), dimension(:), allocatable ::res
+  real(kind=dp) :: area
   type(coordsystem) :: coords
 
   deltaxy = 10.
@@ -26,7 +26,7 @@ program testintegrate2d
   numi = int(xsize/deltaxy)+1
   numj = int(ysize/deltaxy)+1
 
-  coords = coordsystem_new(0.,0.,deltaxy,deltaxy,numi,numj)
+  coords = coordsystem_new(0.d0,0.d0,deltaxy,deltaxy,numi,numj)
 
   allocate(res(numi*numj))
   allocate(vec(numi,numj))
@@ -64,7 +64,7 @@ program testintegrate2d
      deltaxy = 2.**i
      numi = int(xsize/deltaxy) + 1
      numj = int(ysize/deltaxy) + 1
-     coords = coordsystem_new_real(0.,0.,deltaxy,deltaxy,numi,numj)
+     coords = coordsystem_new(0.d0,0.d0,deltaxy,deltaxy,numi,numj)
      area = 0.
      weight%n = 0
      call calc_weight(coords,weight, patch, 1)

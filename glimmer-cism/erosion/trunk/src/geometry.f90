@@ -69,7 +69,7 @@ contains
   subroutine poly_add_vert_s(poly,x,y)
     implicit none
     type(geom_poly) :: poly
-    real, intent(in) :: x,y
+    real(kind=sp), intent(in) :: x,y
 
     call poly_add_vert_d(poly,real(x,kind=dp),real(y,kind=dp))
   end subroutine poly_add_vert_s

@@ -1,3 +1,9 @@
+2005-02-04 Magnus Hagdorn
+ * changed Makefile to reflect recent changes of glimmer
+ * changed precesion of reals to kind=dp (erosion_advect.f90, geometry.f90,
+ glimmer_coordinates.f90, runge_kutta.f90, test_advect.f90,
+ test_integrate2d.f90, test_rk4.f90)
+
 2005-01-24 Magnus Hagdorn
  * added 2d integration code
 

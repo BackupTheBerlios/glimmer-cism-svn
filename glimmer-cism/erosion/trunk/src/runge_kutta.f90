@@ -5,15 +5,18 @@
 ! adopted from num rec (page 558)
 
 module rk4module
+  use glimmer_global, only : dp
+
   integer :: rkunit = 6           ! messages are written to this stream
 
   ! interface for function to be integrated
   interface 
      subroutine derivs(t,x,dxdt)
+       use glimmer_global, only : dp
        implicit none
-       real, intent(in) ::t
-       real, intent(in), dimension(:)  :: x
-       real, intent(out), dimension(:) :: dxdt
+       real(kind=dp), intent(in) ::t
+       real(kind=dp), intent(in), dimension(:)  :: x
+       real(kind=dp), intent(out), dimension(:) :: dxdt
      end subroutine derivs
   end interface
 
@@ -21,21 +24,21 @@ module rk4module
 contains
   subroutine odeint(x, t1, t2, eps, h1, hmin, nok, nbad, derivs)
     implicit none
-    real, intent(inout), dimension(:) :: x
-    real, intent(in) :: t1, t2
-    real, intent(in) :: eps
-    real, intent(in) :: h1, hmin
+    real(kind=dp), intent(inout), dimension(:) :: x
+    real(kind=dp), intent(in) :: t1, t2
+    real(kind=dp), intent(in) :: eps
+    real(kind=dp), intent(in) :: h1, hmin
     integer, intent(out) :: nok,nbad
     external derivs
 
     ! local variables
     integer :: i
-    real, dimension(size(x)) :: xscal, dxdt
-    real :: h, hdid, hnext,t
+    real(kind=dp), dimension(size(x)) :: xscal, dxdt
+    real(kind=dp) :: h, hdid, hnext,t
     
     ! parameters
     integer, parameter :: maxsteps=10000
-    real, parameter :: tiny=1.e-30
+    real(kind=dp), parameter :: tiny=1.e-30
 
     h = sign(h1,t2-t1)
     t = t1
@@ -70,27 +73,27 @@ contains
 
   subroutine rkqc(x, dxdt, t, htry, eps, xscal, hdid, hnext, derivs)
     implicit none
-    real, intent(inout), dimension(:) :: x, dxdt    ! variable vector x
-    real, intent(inout) :: t                        ! independant variable t
-    real, intent(in)    :: htry                     ! step size to be tried
-    real, intent(in)    :: eps                      ! required accuracy
-    real, intent(in), dimension(:)    :: xscal      ! vector against which the error is scaled
-    real, intent(out) :: hdid, hnext                ! the actual step size achieved and the estimated next step size
+    real(kind=dp), intent(inout), dimension(:) :: x, dxdt    ! variable vector x
+    real(kind=dp), intent(inout) :: t                        ! independant variable t
+    real(kind=dp), intent(in)    :: htry                     ! step size to be tried
+    real(kind=dp), intent(in)    :: eps                      ! required accuracy
+    real(kind=dp), intent(in), dimension(:)    :: xscal      ! vector against which the error is scaled
+    real(kind=dp), intent(out) :: hdid, hnext                ! the actual step size achieved and the estimated next step size
     external derivs
 
     ! local variables
     integer :: n
-    real, dimension(size(x)) ::  xtemp, xsav, dxsav
-    real :: tsav
-    real :: h, hh
-    real :: errmax
+    real(kind=dp), dimension(size(x)) ::  xtemp, xsav, dxsav
+    real(kind=dp) :: tsav
+    real(kind=dp) :: h, hh
+    real(kind=dp) :: errmax
     
     ! some parameters
-    real, parameter :: pgrow = -0.2
-    real, parameter :: pshrink = -0.25
-    real, parameter :: fcor = 1./15.
-    real, parameter :: safety = 0.9
-    real, parameter :: errcon = 6.e-4
+    real(kind=dp), parameter :: pgrow = -0.2
+    real(kind=dp), parameter :: pshrink = -0.25
+    real(kind=dp), parameter :: fcor = 1./15.
+    real(kind=dp), parameter :: safety = 0.9
+    real(kind=dp), parameter :: errcon = 6.e-4
 
     n = size(x)
     ! saving inital values
@@ -139,15 +142,15 @@ contains
 
   subroutine rk4(x, dxdt, t, h, xout, derivs)
     implicit none
-    real, intent(in), dimension(:) :: x, dxdt    ! variable vector x and derivatives
-    real, intent(in) :: t                        ! independant variable t
-    real, intent(in) :: h                        ! step size
-    real, intent(out), dimension(:) :: xout      ! results
+    real(kind=dp), intent(in), dimension(:) :: x, dxdt    ! variable vector x and derivatives
+    real(kind=dp), intent(in) :: t                        ! independant variable t
+    real(kind=dp), intent(in) :: h                        ! step size
+    real(kind=dp), intent(out), dimension(:) :: xout      ! results
     external derivs
     
     !local variables
-    real, dimension(size(x)) :: xtemp, dxtemp, dxm
-    real hh, h6, th
+    real(kind=dp), dimension(size(x)) :: xtemp, dxtemp, dxm
+    real(kind=dp) hh, h6, th
 
     hh=0.5*h
     h6=h/6.

@@ -2,7 +2,7 @@
 # Magnus Hagdorn, November 2004
 
 # setup compilation flags: tell the compiler where to look for f90 module files
-GLIMMER_FFLAGS = -I$(GLIMMER_PREFIX)/mod -I$(GNU)/include
+GLIMMER_FFLAGS = -I$(GLIMMER_PREFIX)/include -I$(GNU)/include
 # setup linker flags: tell the linker where to look for libraries and which libraries to link
 GLIMMER_LIBRARIES = -L$(GNU)/lib -L$(GLIMMER_PREFIX)/lib -lglide -lglimmer -lslap -lnetcdf
 # extra compiler flags, e.g. for setting debug or profiler flags
@@ -16,6 +16,7 @@ PROGS = simple_erosion eis_erosion
 TESTS = test_rk4 test_geometry test_advect test_integrate2d
 
 all:		liberosion.a $(PROGS)
+test:		$(TESTS)
 
 liberosion.a:	$(EROSION)
 		ar rcv $@ $^

@@ -5,21 +5,23 @@
 
 module erosion_advect
 
+  use glimmer_global, only : dp
+
   ! private data
-  real, private, dimension(:,:), allocatable :: ux, uy
+  real(kind=dp), private, dimension(:,:), allocatable :: ux, uy
   integer, private :: numx,numy
-  real, private :: x0, y0
-  real, private :: deltax,deltay
-  real, private :: deltax_r,deltay_r
-  real, private :: eps
+  real(kind=dp), private :: x0, y0
+  real(kind=dp), private :: deltax,deltay
+  real(kind=dp), private :: deltax_r,deltay_r
+  real(kind=dp), private :: eps
   
 contains
   subroutine er_advect2d_init(x0d,y0d,numxd,numyd,deltaxd,deltayd)
     !initialise advection
     implicit none
-    real, intent(in)    :: x0d,y0d         ! lower left corner of grid
+    real(kind=dp), intent(in)    :: x0d,y0d         ! lower left corner of grid
     integer, intent(in) :: numxd,numyd     ! number of nodes
-    real, intent(in)    :: deltaxd,deltayd ! node spacing
+    real(kind=dp), intent(in)    :: deltaxd,deltayd ! node spacing
 
     x0 = x0d
     y0 = y0d
@@ -38,14 +40,14 @@ contains
   subroutine er_advect2d(times, x0d, y0d, x, y)
     use rk4module
     implicit none
-    real, intent(in), dimension(:) :: times   ! array of times at which position should be saved
-    real, intent(in) :: x0d, y0d              ! initial conditions
-    real, intent(out), dimension(:) :: x, y   ! x component of location
+    real(kind=dp), intent(in), dimension(:) :: times   ! array of times at which position should be saved
+    real(kind=dp), intent(in) :: x0d, y0d              ! initial conditions
+    real(kind=dp), intent(out), dimension(:) :: x, y   ! x component of location
 
     ! local variables
     integer j
-    real t1,t2
-    real, dimension(2) :: xtemp
+    real(kind=dp) t1,t2
+    real(kind=dp), dimension(2) :: xtemp
     integer :: nok, nbad
 
     t1 = 0.
@@ -54,7 +56,7 @@ contains
     
     do j=1,size(times)
        t2 = times(j)
-       call odeint(xtemp,t1,t2,eps,10.,0.,nok,nbad,interp_velos)
+       call odeint(xtemp,t1,t2,eps,10.d0,0.d0,nok,nbad,interp_velos)
        x(j) = xtemp(1)
        y(j) = xtemp(2)
        
@@ -65,10 +67,10 @@ contains
 
   subroutine interp_velos(t, x, velo)
     implicit none
-    real, intent(in) :: t
-    real, intent(in), dimension(2) :: x
-    real, intent(out), dimension(2) :: velo
-    real :: p1, p2
+    real(kind=dp), intent(in) :: t
+    real(kind=dp), intent(in), dimension(2) :: x
+    real(kind=dp), intent(out), dimension(2) :: velo
+    real(kind=dp) :: p1, p2
 
     integer, dimension(4) :: i,j
 
@@ -98,7 +100,7 @@ contains
   
   subroutine set_velos(x,y)
     implicit none
-    real, dimension(:,:) :: x,y
+    real(kind=dp), dimension(:,:) :: x,y
     ux = x
     uy = y
   end subroutine set_velos

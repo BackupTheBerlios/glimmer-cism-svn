@@ -10,20 +10,20 @@ program testadvect
 
   character(len=30) filename
   integer timeslice
-  real x0,y0
+  real(kind=dp) x0,y0
 
   ! netCDF stuff
   integer status
   integer ncid,uxid,uyid,xid,yid,timeid,dimid
-  real, dimension(:,:), allocatable :: ux, uy
-  real, dimension(:), allocatable :: time,x,y
-  real :: deltax,deltay,deltat
+  real(kind=dp), dimension(:,:), allocatable :: ux, uy
+  real(kind=dp), dimension(:), allocatable :: time,x,y
+  real(kind=dp) :: deltax,deltay,deltat
   integer numx,numy,numt
 
   ! output
   integer numtimes,i,t
-  real, parameter :: dt = 100.
-  real, dimension(:), allocatable :: times, posx,posy
+  real(kind=dp), parameter :: dt = 100.
+  real(kind=dp), dimension(:), allocatable :: times, posx,posy
 
   ! set up
   write(*,*) 'Enter name of netCDF file containing velo field'
