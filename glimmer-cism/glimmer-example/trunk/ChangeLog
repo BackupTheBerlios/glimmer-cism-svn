@@ -1,3 +1,6 @@
+2005-02-28 Magnus Hagdorn
+ * change names of config sections
+
 2005-02-26 Magnus Hagdorn
  * use glimmer-config for FCFLAGS and LIBS
 
