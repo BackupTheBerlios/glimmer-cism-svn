@@ -1,3 +1,6 @@
+2005-04-04 Magnus Hagdorn
+ * merged in SIMPLE-EROSION branch
+	
 2005-04-01 Magnus Hagdorn
  * erosion_advect.f90: added optional parameter to multiply velos with a factor
  * erosion_integrate2d.f90: some cosmetics

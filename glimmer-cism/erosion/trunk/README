@@ -1,0 +1,7 @@
+Erosion README File:
+====================
+This is the Erosion, Sediment Transport/Deposition module for GLIMMER.
+GLIMMER is a 3D thermo-mechanical ice sheet model. Find out more about it
+from here: https://forge.nesc.ac.uk/projects/glimmer
+
+Check the INSTALLATION file for hints on how to install this module.
