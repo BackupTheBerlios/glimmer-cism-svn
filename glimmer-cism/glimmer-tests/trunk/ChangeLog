@@ -1,3 +1,6 @@
+2005-03-12 Magnus Hagdorn
+ * fixed minor bug
+
 2005-03-11 Magnus Hagdorn
  * Makefile.ams: tell automake which files to delete on
    make clean and make mostlyclean

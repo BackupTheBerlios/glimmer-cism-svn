@@ -20,7 +20,7 @@ e2-btemp.ps:	$(runs)
 	@GLIMMER_PREFIX@/bin/plotCFvar.py --width 5 -T -1 -cthk -vtemp -l -1 $^ $@
 
 e2-bvel.ps:	$(runs)
-	@GLIMMER_PREFIX@/bin/plotCFvar.py --width 5 -T -1 -cthk -vvel -l -1 $^ $@
+	@GLIMMER_PREFIX@/bin/plotCFvar.py --width 5 -T -1 -cthk -vbvel -l -1 $^ $@
 
 .config.nc:
 	@GLIMMER_PREFIX@/bin/glide_launch.py --prefix @GLIMMER_PREFIX@ $<
