@@ -18,3 +18,15 @@ example:	example.o
 
 
 .SUFFIXES:	.f90 .o
+
+
+# stuff below here is not too interesting. You might as well ignore it...
+# build a distribution
+DIST_FILES = ChangeLog example.config example.f90 Makefile README
+VERSION = 0.3
+DIST_NAME = glimmer-example-$(VERSION)
+dist::
+	mkdir $(DIST_NAME)
+	cp $(DIST_FILES) $(DIST_NAME)
+	tar cvzf $(DIST_NAME).tar.gz $(DIST_NAME)
+	rm -r $(DIST_NAME)

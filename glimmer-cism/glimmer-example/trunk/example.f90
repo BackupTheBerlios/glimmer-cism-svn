@@ -47,6 +47,7 @@ program example
   
   ! read configuration
   call ConfigRead(fname,config)
+  call CheckSections(config)
   
   ! initialise GLIDE
   call glide_initialise(model,config)
