@@ -1,0 +1,35 @@
+Changes in Version 0.5.1
+========================
+* Bugfix on snow-depth accumulation in GLINT
+* Enabled fractional-year netcdf writing of snow and
+  superimposed ice depth in GLINT
+* Changed glint_example to use correct NCEP precip forcing.
+  This entailed adding some interpolation, since the precip
+  and temp are no longer on the same global grid.
+
+Changes in Version 0.5.0
+========================
+* this is our first release!
+
+Changes in Version 0.3.0
+========================
+* added micro version
+
+Changes in Version 0.3
+======================
+* slight change in configuration file format, the following sections 
+  were renamed to
+  [default] -> [CF default]
+  [output]  -> [CF output]
+  [input]   -> [CF input]
+* model version is handled by configure.in script
+* we've got a glimmer-config script
+* renamed some files and fixed module name space
+* general glint clean-up
+* updated doc (a never-ending task)
+* model data can be accessed via accessor subroutines
+  these hide scaling at a performance penalty
+  
+Changes in Version 0.2
+======================
+* use autotools for generating Makefiles
