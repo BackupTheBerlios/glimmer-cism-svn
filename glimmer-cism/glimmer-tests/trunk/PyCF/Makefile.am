@@ -46,7 +46,7 @@ test5:	test5a test5b
 test5a:
 	echo "Test 5a"
 	echo "Plotting ice surfaces at 6 times"
-	@GLIMMER_PREFIX@/bin/plotCFvar.py --width=7.5 -vis -cthk --land -t -100. -t -80. -t -60. -t -40. -t -20 -t 0 ../eis/fenscan.nc fenscan.is.ps
+	@GLIMMER_PREFIX@/bin/plotCFvar.py --width=7.5 -vis -cthk --land -t -100. -t -80. -t -60. -t -40. -t -20 -t -1. ../eis/fenscan.nc fenscan.is.ps
 test5b:
 	echo "Test 5b"
 	echo "Plotting different variables"
