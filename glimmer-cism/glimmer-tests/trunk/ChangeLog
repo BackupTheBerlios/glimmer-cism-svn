@@ -1,3 +1,7 @@
+2004-10-22 Magnus Hagdorn
+ * added test configuration for European run using eis_glide
+ * added some more tests
+	
 2004-10-22 Magus Hagdorn
  * started PyCF testing framework
 
