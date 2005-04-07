@@ -1,3 +1,11 @@
+2005-04-07 Magnus Hagdorn
+ * eis_erosion.f90: default sediment thickness of 5m
+ * simple_erosion.f90: ditto
+ * erosion.f90: disable isostasy for now, fix some probs
+ * erosion_setup.f90: forgot to write some settings to log
+ * erosion_types.f90: make some vars double precision
+ * erosion_vars.def: change scaling, add seds2_max
+ 
 2005-04-04 Magnus Hagdorn
  * merged in SIMPLE-EROSION branch
 	

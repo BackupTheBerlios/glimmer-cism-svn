@@ -51,16 +51,16 @@ module erosion_types
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
      integer :: ndt = 5                                    !*FD erosion time step (multiplier of main time step)
      real(kind=dp) :: dt                                   !*FD erosion time step
-     real :: hb_erosion_factor =   1.e-10                  !*FD constant of proportionality for erosion rate calcs
+     real(kind=dp) :: hb_erosion_factor =   1.d-10         !*FD constant of proportionality for erosion rate calcs
      real :: density = 3000.                               !*FD density of hard bedrock (kg m$^{-3}$)
      ! sediment transport stuff
      logical :: dotransport = .False.                      !*FD set to true to move sediments about
      integer :: transport_ndt = 20                         !*FD transport time step (multiplier of main time step)
      real :: transport_dt                                  !*FD time step for recalculating sediment distribution
      real(kind=dp) :: transport_fac = 0.2                  !*FD multiplier for velos in deformable beds
-     real :: dirty_ice_max = 0.1                           !*FD maximum thickness of dirty basal ice layer
-     real :: soft_a = 1.e-5                                !*FD param A for max def thick calculations
-     real :: soft_b = 0.                                   !*FD param B for max def thick calculations
+     real(kind=dp) :: dirty_ice_max = 0.1                  !*FD maximum thickness of dirty basal ice layer
+     real(kind=dp) :: soft_a = 1.d-5                       !*FD param A for max def thick calculations
+     real(kind=dp) :: soft_b = 0.                          !*FD param B for max def thick calculations
      ! internal fields, etc
      type(er_transport_type) :: trans                      !*FD type holding transport stuff
      type(sparse_matrix) :: lag_seds1                      !*FD sparse matrix holding dirty ice layer

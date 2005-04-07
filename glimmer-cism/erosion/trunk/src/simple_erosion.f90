@@ -71,6 +71,9 @@ program simple_erosion
   call simple_initialise(climate,config)
   call glide_initialise(model,config)
   call er_initialise(er,config,model)
+
+  er%seds3 = 5.d0
+
   ! fill dimension variables
   call glide_nc_fillall(model)
   time = model%numerics%tstart

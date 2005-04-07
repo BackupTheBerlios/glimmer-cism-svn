@@ -91,7 +91,9 @@ contains
        write(message,*) 'Updating sediment distribution every ',erosion%transport_ndt,' time steps'
        call write_log(message)
        write(message,*) 'deformable sediment velo factor: ',erosion%transport_fac
+       call write_log(message)
        write(message,*) 'max thickness of dirty basal ice layer: ',erosion%dirty_ice_max
+       call write_log(message)
        write(message,*) 'deformable sediment param a: ',erosion%soft_a
        call write_log(message)
        write(message,*) 'deformable sediment param b: ',erosion%soft_b

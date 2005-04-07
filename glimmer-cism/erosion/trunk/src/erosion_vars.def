@@ -19,7 +19,7 @@ dimensions:    time, y1, x1
 units:         meter/year
 long_name:     hard bedrock erosion rate
 data:          data%erosion_rate
-factor:        acc0*scyr
+factor:        vel0/len0*scyr
 coordinates:   lon lat
 
 [erosion]
@@ -27,7 +27,7 @@ dimensions:    time, y1, x1
 units:         1
 long_name:     total hard bedrock erosion
 data:          data%erosion
-factor:        thk0
+factor:        1
 coordinates:   lon lat
 load:          1
 hot:           1
@@ -51,6 +51,14 @@ factor:        1
 coordinates:   lon lat
 load:          1
 hot:           1
+
+[seds2_max]
+dimensions:    time, y1, x1
+units:         meter
+long_name:     maximum thickness of deforming sediment layer
+data:          data%seds2_max
+factor:        1
+coordinates:   lon lat
 
 [seds3]
 dimensions:    time, y1, x1

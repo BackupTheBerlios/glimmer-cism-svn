@@ -77,6 +77,8 @@ program eis_erosion
   ! fill dimension variables
   call glide_nc_fillall(model)
 
+  er%seds3 = 5.d0
+
   time = model%numerics%tstart
   do while(time.le.model%numerics%tend)
      call eis_climate(climate,model,time)
