@@ -2,8 +2,12 @@
 # testing PyCF system
 # This should also give an idea what the programs can do.
 # We assume that the test suite has been run so these data files can be used.
+if HAVE_RSL_DB
+  rsl_runs = test7
+endif
+
 if BUILD_GRAPHICS
-  graphics = test1 test2 test3 test4 test5 test6 test7 test8
+  graphics = test1 test2 test3 test4 test5 test6 test8 $(rsl_runs)
 endif
 
 BUILT_SOURCES = $(graphics)
@@ -42,7 +46,7 @@ test3:
 test4:
 	echo "Test 4"
 	echo "Plotting ice thickness at two locations"
-	@GLIMMER_PREFIX@/bin/plotSpot.py -vthk -i15 15 -i 20 20 ../EISMINT-2/e2.h.nc e2.h.spot.ps
+	@GLIMMER_PREFIX@/bin/plotSpot.py -vthk --ij 15 15 --ij 20 20 ../EISMINT-2/e2.h.nc e2.h.spot.ps
 
 # plotting CF variables
 test5:	test5a test5b

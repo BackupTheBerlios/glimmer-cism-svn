@@ -9,7 +9,7 @@ MOSTLYCLEANFILES = $(graphics)
 CLEANFILES = $(BUILT_SOURCES)
 
 spots.ps:	isos.llfa.nc isos.llra.nc isos.elfa.nc isos.elra.nc
-	@GLIMMER_PREFIX@/bin/plotSpot.py -i 15 15 -i 15 22 -i 15 27 -vtopg $^ $@
+	@GLIMMER_PREFIX@/bin/plotSpot.py --ij 15 15 --ij 15 22 --ij 15 27 -vtopg $^ $@
 
 profile.ps:	isos.llfa.nc isos.llra.nc isos.elfa.nc isos.elra.nc
 	@GLIMMER_PREFIX@/bin/plotProfile.py -t 18  -v topg -p ../PyCF/eismint.prof $^ $@

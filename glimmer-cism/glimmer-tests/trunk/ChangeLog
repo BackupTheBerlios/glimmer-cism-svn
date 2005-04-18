@@ -1,3 +1,11 @@
+2005-04-18 Magnus Hagdorn
+ * configure.in: bump version to 0.4, make rsl plot dependent on
+   presence of rsl database
+ * PyCF/Makefile.am: make rsl plot dependent on presence of rsl
+   database, fix options of plotSpot.py
+ * isos/Makefile.am: fix options of plotSpot.py
+ * updated NEWS
+
 2005-03-14 Magnus Hagdorn
  * added benchmarks
 
