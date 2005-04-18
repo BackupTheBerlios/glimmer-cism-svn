@@ -1,0 +1,9 @@
+Changes in Version 0.4
+======================
+ * minor bug fixes
+ * RSL is only ploted if rsl data base is present
+
+Changes in Version 0.3
+======================
+ * we've got a version
+ * use autotools
