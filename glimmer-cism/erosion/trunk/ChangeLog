@@ -1,3 +1,7 @@
+2005-05-09 Magnus Hagdorn
+ * erosion.f90: read erosion varibles from netCDF during initialisation
+ * test_transport.f90: fix bugs
+
 2005-04-07 Magnus Hagdorn
  * eis_erosion.f90: default sediment thickness of 5m
  * simple_erosion.f90: ditto

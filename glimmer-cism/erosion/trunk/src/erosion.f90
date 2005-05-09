@@ -79,6 +79,10 @@ contains
     ! initialise sparse matrices
     erosion%lag_seds1 = new_sparse_matrix(10000)
     erosion%lag_seds2 = new_sparse_matrix(10000)
+
+    ! read variables
+    call erosion_io_readall(erosion,model)
+
   end subroutine er_initialise
 
   subroutine er_tstep(erosion,model)
