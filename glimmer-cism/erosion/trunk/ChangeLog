@@ -1,4 +1,9 @@
 2005-05-10 Magnus Hagdorn
+ * erosion_transport.f90 renamed to erosion_transport_fv.f90
+ * added erosion_transport_interp.f90 (which uses simple interpolation)
+ * Makefile.am: choice of finite volume/interpolation approach during compile time (currently hard-wired)
+
+2005-05-10 Magnus Hagdorn
  * erosion_advect.f90: use glimmer_interpolate2d to interpolate velos
  * glimmer_interpolate.f90: improve BC of bilinear interpolation routine
  
