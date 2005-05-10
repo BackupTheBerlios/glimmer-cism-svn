@@ -1,4 +1,8 @@
 2005-05-10 Magnus Hagdorn
+ * erosion_advect.f90: use glimmer_interpolate2d to interpolate velos
+ * glimmer_interpolate.f90: improve BC of bilinear interpolation routine
+ 
+2005-05-10 Magnus Hagdorn
  * sparse.f90: make reals double precision, change new_sparse_matrix to subroutine
  * erosion.f90: changed calls of new_sparse_matrix to subroutine
  * test_integrate2d.f90: ditto

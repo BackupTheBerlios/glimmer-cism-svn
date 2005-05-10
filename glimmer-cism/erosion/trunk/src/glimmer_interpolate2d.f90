@@ -86,6 +86,7 @@ contains
     real(kind=dp), dimension(4), intent(out) :: weights   !*FD array of weights
 
     type(geom_point) :: pnt
+    integer i
 
     ! check if point is inside coord-system
 #ifdef DEBUG
@@ -108,10 +109,31 @@ contains
 
     pnt%pt(:) = (point%pt(:)-coord%origin%pt(:)-(nodes(1)%pt(:)-1)*coord%delta%pt(:))*coord%delta_r%pt(:)
 
-    weights(1) = (1-pnt%pt(1))*(1-pnt%pt(2))
-    weights(2) = pnt%pt(1)*(1-pnt%pt(2))
-    weights(3) = pnt%pt(1)*pnt%pt(2)
-    weights(4) = (1-pnt%pt(1))*pnt%pt(2)
+    if (nodes(1)%pt(1).eq.coord%size%pt(1) .and. nodes(1)%pt(2).eq.coord%size%pt(2)) then
+       nodes(2:4)%pt(1) = 1
+       nodes(2:4)%pt(2) = 1
+       weights(1) = 1.d0
+       weights(2:4) = 0.d0
+    else if (nodes(1)%pt(1).eq.coord%size%pt(1)) then
+       nodes(2)%pt(:) = 1
+       nodes(3)%pt(:) = 1
+       weights(1) = (1-pnt%pt(2))
+       weights(2) = 0.d0
+       weights(3) = 0.d0
+       weights(4) = pnt%pt(2)
+    else if (nodes(1)%pt(2).eq.coord%size%pt(2)) then
+       nodes(3)%pt(:) = 1
+       nodes(4)%pt(:) = 1
+       weights(1) = (1-pnt%pt(1))
+       weights(2) = pnt%pt(1)
+       weights(3) = 0.d0
+       weights(4) = 0.d0
+    else
+       weights(1) = (1-pnt%pt(1))*(1-pnt%pt(2))
+       weights(2) = pnt%pt(1)*(1-pnt%pt(2))
+       weights(3) = pnt%pt(1)*pnt%pt(2)
+       weights(4) = (1-pnt%pt(1))*pnt%pt(2)
+    end if
   end subroutine glimmer_bilinear
 
 

@@ -6,13 +6,11 @@
 module erosion_advect
 
   use glimmer_global, only : dp
+  use glimmer_coordinates
 
   ! private data
   real(kind=dp), private, dimension(:,:), allocatable :: ux, uy
-  integer, private :: numx,numy
-  real(kind=dp), private :: x0, y0
-  real(kind=dp), private :: deltax,deltay
-  real(kind=dp), private :: deltax_r,deltay_r
+  type(coordsystem), private :: coords
   real(kind=dp), private :: eps
   
 contains
@@ -23,17 +21,11 @@ contains
     integer, intent(in) :: numxd,numyd     ! number of nodes
     real(kind=dp), intent(in)    :: deltaxd,deltayd ! node spacing
 
-    x0 = x0d
-    y0 = y0d
-    numx = numxd
-    numy = numyd
-    deltax = deltaxd
-    deltay = deltayd
-    deltax_r = 1./deltaxd
-    deltay_r = 1./deltayd
-    allocate(ux(numx,numy))
-    allocate(uy(numx,numy))
-    eps = 0.00001*min(deltax,deltay)
+    coords = coordsystem_new(x0d,y0d,deltaxd,deltayd,numxd,numyd)
+
+    allocate(ux(numxd,numyd))
+    allocate(uy(numxd,numyd))
+    eps = 0.00001*min(deltaxd,deltayd)
 
   end subroutine er_advect2d_init
 
@@ -66,36 +58,27 @@ contains
   end subroutine er_advect2d
 
   subroutine interp_velos(t, x, velo)
+    use glimmer_interpolate2d
     implicit none
     real(kind=dp), intent(in) :: t
     real(kind=dp), intent(in), dimension(2) :: x
     real(kind=dp), intent(out), dimension(2) :: velo
-    real(kind=dp) :: p1, p2
 
-    integer, dimension(4) :: i,j
+    ! local vars
+    type(geom_point) :: pnt
+    type(geom_ipoint), dimension(4) :: nodes
+    real(kind=dp), dimension(4) :: weights
 
-    i(1) = 1+floor((x(1)-x0)*deltax_r)
-    j(1) = 1+floor((x(2)-y0)*deltay_r)
-    i(2) = i(1) + 1
-    j(2) = j(1)
-    i(3) = i(1) + 1
-    j(3) = j(1) + 1
-    i(4) = i(1)
-    j(4) = j(1) + 1
+    integer k
     
-    i = min(i,numx)
-    i = max(i,1)
-    j = min(j,numy)
-    j = max(j,1)
-    
-    p1 = (x(1)-x0-(i(1)-1)*deltax)*deltax_r
-    p2 = (x(2)-y0-(j(1)-1)*deltay)*deltay_r
+    pnt%pt(:) = x(:)
+    call glimmer_bilinear(coords,pnt,nodes,weights)
 
-    velo(1) = (1-p1)*(1-p2)*ux(i(1),j(1)) + p1*(1-p2)*ux(i(2),j(2)) &
-         + p1*p2*ux(i(3),j(3)) + (1-p1)*p2*ux(i(4),j(4))
-
-    velo(2) = (1-p1)*(1-p2)*uy(i(1),j(1)) + p1*(1-p2)*uy(i(2),j(2)) &
-         + p1*p2*uy(i(3),j(3)) + (1-p1)*p2*uy(i(4),j(4))    
+    velo(:) = 0.d0
+    do k=1,4
+       velo(1) = velo(1) + weights(k)*ux(nodes(k)%pt(1),nodes(k)%pt(2))
+       velo(2) = velo(2) + weights(k)*uy(nodes(k)%pt(1),nodes(k)%pt(2))
+    end do
   end subroutine interp_velos
   
   subroutine set_velos(x,y,factor)
