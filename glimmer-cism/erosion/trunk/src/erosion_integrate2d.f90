@@ -31,7 +31,7 @@ contains
     type(geom_ipoint) :: node
     integer i
     integer imin, inum, pow, jmin, jnum,  num
-    real w
+    real(kind=dp) w
 
 
     ! find the bounding box
@@ -94,7 +94,7 @@ contains
     integer p
     logical inters
     integer i,j, i1,j1,next
-    real val
+    real(kind=dp) val
 
     ! set up current cell coords
     cell%n=4
@@ -128,7 +128,7 @@ contains
              do i = node%pt(1),node%pt(1)+2**pow-1
                 n2%pt(1) = i
                 n2%pt(2) = j
-                call addmat(coords,weight,n,n2,1.0)
+                call addmat(coords,weight,n,n2,1.d0)
              end do
           end do
           return   
@@ -168,7 +168,7 @@ contains
     type(sparse_matrix) :: weight
     integer, intent(in) :: n
     type(geom_ipoint), intent(in) :: node
-    real, intent(in) :: val
+    real(kind=dp), intent(in) :: val
 
     if (coordsystem_node_inside(coords,node) .and. abs(val).gt.ismintegrate2d_zero) then
        call add_to_matrix(weight,n,coordsystem_linearise2d(coords,node),val)

@@ -44,7 +44,7 @@ program testintegrate2d
   write(*,*) 'Size :', 0.5*real(poly_area2(patch))
 
 
-  weight = new_sparse_matrix(1000)
+  call new_sparse_matrix(1000,weight)
   call calc_weight(coords,weight, patch, 1)
 
   vec = 0

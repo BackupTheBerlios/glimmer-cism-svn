@@ -77,8 +77,8 @@ contains
     ! initialise transport
     call init_transport(erosion%trans, model)
     ! initialise sparse matrices
-    erosion%lag_seds1 = new_sparse_matrix(10000)
-    erosion%lag_seds2 = new_sparse_matrix(10000)
+    call new_sparse_matrix(10000,erosion%lag_seds1)
+    call new_sparse_matrix(10000,erosion%lag_seds2)
 
     ! read variables
     call erosion_io_readall(erosion,model)

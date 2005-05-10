@@ -1,6 +1,6 @@
 lib_LIBRARIES = liberosion.a
 bin_PROGRAMS  = simple_erosion eis_erosion
-check_PROGRAMS = test_rk4 test_geometry test_advect test_integrate2d test_transport
+check_PROGRAMS = test_rk4 test_geometry test_advect test_integrate2d test_transport test_interpolate2d
 
 variable_DATA = erosion_vars.def
 variabledir = $(datadir)/glimmer
@@ -25,6 +25,8 @@ test_transport_SOURCES = test_transport.f90
 test_transport_LDADD = liberosion.a -lclimate -lglide -lglimmer -lslap
 
 test_integrate2d_SOURCES = test_integrate2d.f90 erosion_integrate2d.f90 sparse.f90 geometry.f90 glimmer_coordinates.f90
+
+test_interpolate2d_SOURCES = test_interpolate2d.f90 sparse.f90 geometry.f90 glimmer_coordinates.f90 glimmer_interpolate2d.f90
 
 test_geometry_SOURCES = test_geometry.f90 geometry.f90
 

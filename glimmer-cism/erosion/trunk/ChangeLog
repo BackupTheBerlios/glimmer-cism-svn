@@ -1,3 +1,13 @@
+2005-05-10 Magnus Hagdorn
+ * sparse.f90: make reals double precision, change new_sparse_matrix to subroutine
+ * erosion.f90: changed calls of new_sparse_matrix to subroutine
+ * test_integrate2d.f90: ditto
+ * erosion_integrate2d.f90: make reals double precision
+ * glimmer_coordinates.f90: add reciprocal grid spacing
+ * glimmer_interpolate2d.f90: new 2d interpolation routines, so far only bilinear
+ * test_interpolate2d.f90: test program
+ * configure.in: require glimmer 0.5.2
+
 2005-05-09 Magnus Hagdorn
  * erosion.f90: read erosion varibles from netCDF during initialisation
  * test_transport.f90: fix bugs

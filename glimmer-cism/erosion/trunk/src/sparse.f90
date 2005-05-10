@@ -4,34 +4,36 @@
 ! sparse matrix operations
 
 module sparse
-
+  use glimmer_global
   ! sparse matrix type
   type sparse_matrix
      integer n
-     integer, dimension(:,:), pointer :: pos
-     real, dimension(:), pointer :: val
+     integer, dimension(:,:), pointer :: pos => NULL()
+     real(kind=dp), dimension(:), pointer :: val => NULL()
   end type sparse_matrix
 
   ! size of sparse matrix 
   integer, parameter, private :: chunksize=1000
 
 contains
-  function new_sparse_matrix(n)
+  subroutine new_sparse_matrix(n,mat)
     implicit none
-    type(sparse_matrix) :: new_sparse_matrix
     integer, intent(in) :: n
-
-    allocate(new_sparse_matrix%pos(2,n))
-    allocate(new_sparse_matrix%val(n))
-    new_sparse_matrix%n = 0
-  end function new_sparse_matrix
+    type(sparse_matrix) :: mat
+    
+    if (.not.associated(mat%pos)) then
+       allocate(mat%pos(2,n))
+       allocate(mat%val(n))
+    end if
+    mat%n = 0
+  end subroutine new_sparse_matrix
 
   subroutine grow_sparse_matrix(matrix)
     implicit none
     type(sparse_matrix) :: matrix
 
     integer, dimension(:,:), pointer :: newpos
-    real, dimension(:), pointer :: newval
+    real(kind=dp), dimension(:), pointer :: newval
     integer oldsize
 
     oldsize = size(matrix%val)
@@ -72,8 +74,8 @@ contains
   subroutine sparse_matrix_vec_prod(matrix, vec, res)
     implicit none
     type(sparse_matrix) :: matrix
-    real, intent(in), dimension(:) :: vec
-    real, intent(out), dimension(:) :: res
+    real(kind=dp), intent(in), dimension(:) :: vec
+    real(kind=dp), intent(out), dimension(:) :: res
 
     integer i
 
@@ -87,7 +89,7 @@ contains
     implicit none
     type(sparse_matrix) :: matrix
     integer, intent(in) :: i,j
-    real, intent(in) :: val
+    real(kind=dp), intent(in) :: val
 
     matrix%n =  matrix%n + 1
     matrix%pos(1,matrix%n) = i

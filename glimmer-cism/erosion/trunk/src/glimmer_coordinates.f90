@@ -13,6 +13,7 @@ module glimmer_coordinates
   type coordsystem
      type(geom_point) :: origin   ! origin of coordinate space
      type(geom_point) :: delta    ! stepsize in x and y direction
+     type(geom_point) :: delta_r  ! reciprocal stepsize in x and y direction
      type(geom_ipoint) :: size    ! extent in x and y direction
   end type coordsystem
   
@@ -27,9 +28,10 @@ contains
     implicit none
     type(coordsystem), intent(in) :: coord
     integer unit
-    write(unit,*) 'Origin ',coord%origin%pt
-    write(unit,*) 'Delta  ',coord%delta%pt
-    write(unit,*) 'Size   ',coord%size%pt
+    write(unit,*) 'Origin  ',coord%origin%pt
+    write(unit,*) 'Delta   ',coord%delta%pt
+    write(unit,*) '1/Delta ',coord%delta_r%pt
+    write(unit,*) 'Size    ',coord%size%pt
   end subroutine coordsystem_print
 
   function coordsystem_new_real(ox, oy, dx, dy, sx, sy)
@@ -45,6 +47,8 @@ contains
     ! deltas
     coordsystem_new_real%delta%pt(1) = dx
     coordsystem_new_real%delta%pt(2) = dy
+    coordsystem_new_real%delta_r%pt(1) = 1.d0/dx
+    coordsystem_new_real%delta_r%pt(2) = 1.d0/dy
     ! size
     coordsystem_new_real%size%pt(1) = sx
     coordsystem_new_real%size%pt(2) = sy
@@ -61,6 +65,7 @@ contains
     coordsystem_new_pt%origin = o
     ! deltas
     coordsystem_new_pt%delta = d
+    coordsystem_new_pt%delta_r%pt(:) = 1.d0/d%pt(:)
     ! size
     coordsystem_new_pt%size = s
   end function coordsystem_new_pt
