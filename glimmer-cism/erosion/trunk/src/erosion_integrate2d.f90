@@ -18,12 +18,12 @@ contains
   end subroutine init_integrate2d
 
   subroutine calc_weight(coords, weight, patch, n)
-    use sparse
+    use glimmer_sparse
     use geometry
     use glimmer_coordinates
     implicit none
     type(coordsystem), intent(in) :: coords
-    type(sparse_matrix) :: weight            ! sparse matrix
+    type(sparse_matrix_type) :: weight            ! sparse matrix
     type(geom_poly), intent(in) :: patch     ! the polygone over which will be integrated
     integer, intent(in) :: n                 ! cell number
 
@@ -77,11 +77,11 @@ contains
   end subroutine calc_weight
 
   recursive subroutine divide_weight(coords,weight,patch,node,pow,n)
-    use sparse
+    use glimmer_sparse
     use glimmer_coordinates
     implicit none
     type(coordsystem), intent(in) :: coords
-    type(sparse_matrix) :: weight            ! sparse matrix
+    type(sparse_matrix_type) :: weight            ! sparse matrix
     type(geom_poly), intent(in) :: patch     ! the polygone over which will be integrated
     type(geom_ipoint),intent(inout) :: node  ! cell coordinates
     integer, intent(in) :: pow               ! size of square (numi,numj = 2**pow)
@@ -162,16 +162,16 @@ contains
   subroutine addmat(coords,weight,n,node,val)
     ! adding val if i,j inside region, ignore otherwise
     use glimmer_coordinates
-    use sparse
+    use glimmer_sparse
     implicit none
     type(coordsystem), intent(in) :: coords
-    type(sparse_matrix) :: weight
+    type(sparse_matrix_type) :: weight
     integer, intent(in) :: n
     type(geom_ipoint), intent(in) :: node
     real(kind=dp), intent(in) :: val
 
     if (coordsystem_node_inside(coords,node) .and. abs(val).gt.ismintegrate2d_zero) then
-       call add_to_matrix(weight,n,coordsystem_linearise2d(coords,node),val)
+       call sparse_insert_val(weight,n,coordsystem_linearise2d(coords,node),val)
     end if
   end subroutine addmat
 

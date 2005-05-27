@@ -55,7 +55,7 @@ contains
   subroutine calc_lagrange(model, trans, deltat, lagrange)
     use glimmer_coordinates
     use erosion_advect
-    use sparse
+    use glimmer_sparse
     use erosion_integrate2d
     use glide_types
     implicit none
@@ -63,7 +63,7 @@ contains
     type(glide_global_type) :: model       ! model instance
     type(er_transport_type) :: trans       ! structure holding transport stuff
     real(kind=dp), intent(in) :: deltat       ! the time step
-    type(sparse_matrix) :: lagrange  ! sparse matrix containing the weights
+    type(sparse_matrix_type) :: lagrange  ! sparse matrix containing the weights
 
     ! local variables
     integer i,j
@@ -179,14 +179,14 @@ contains
 
   subroutine transport_scalar(model,trans,concentration,lagrange)
     ! transport scalar concentration using sparse matrix lagrange
-    use sparse
+    use glimmer_sparse
     use glide_types
     implicit none
     
     type(glide_global_type) :: model       ! model instance
     type(er_transport_type) :: trans       ! structure holding transport stuff
     real(kind=dp), dimension(:,:) :: concentration
-    type(sparse_matrix) :: lagrange
+    type(sparse_matrix_type) :: lagrange
 
     ! local variables
     integer :: i,j,k
@@ -200,22 +200,22 @@ contains
 
     ! normalise sparse matrix to 1 iff val > 1
     do k=1,lagrange%n
-       trans%lin_stuff2(lagrange%pos(2,k)) = trans%lin_stuff2(lagrange%pos(2,k))+lagrange%val(k)
+       trans%lin_stuff2(lagrange%row(k)) = trans%lin_stuff2(lagrange%row(k))+lagrange%val(k)
     end do
     ! we should propably do an allreduce as well. but hell!
     do k=1,lagrange%n
-       if (trans%lin_stuff2(lagrange%pos(2,k)).gt.1.) then
-          lagrange%val(k) = lagrange%val(k)/trans%lin_stuff2(lagrange%pos(2,k))
+       if (trans%lin_stuff2(lagrange%row(k)).gt.1.) then
+          lagrange%val(k) = lagrange%val(k)/trans%lin_stuff2(lagrange%row(k))
        end if
     end do
     trans%lin_stuff2 = 0.
 
     ! calculate new concentrations
     do k=1,lagrange%n
-       trans%lin_con(lagrange%pos(1,k)) = trans%lin_con(lagrange%pos(1,k)) + &
-            trans%lin_stuff(lagrange%pos(2,k))*lagrange%val(k)
-       trans%lin_stuff2(lagrange%pos(2,k)) = trans%lin_stuff2(lagrange%pos(2,k)) - &
-            trans%lin_stuff(lagrange%pos(2,k))*lagrange%val(k)
+       trans%lin_con(lagrange%col(k)) = trans%lin_con(lagrange%col(k)) + &
+            trans%lin_stuff(lagrange%row(k))*lagrange%val(k)
+       trans%lin_stuff2(lagrange%row(k)) = trans%lin_stuff2(lagrange%row(k)) - &
+            trans%lin_stuff(lagrange%row(k))*lagrange%val(k)
     end do    
 
     trans%lin_stuff2 = trans%lin_stuff2 + trans%lin_stuff

@@ -48,7 +48,7 @@ contains
   subroutine calc_lagrange(model, trans, deltat, lagrange)
     use glimmer_coordinates
     use erosion_advect
-    use sparse
+    use glimmer_sparse
     use glimmer_interpolate2d
     use glide_types
     implicit none
@@ -56,7 +56,7 @@ contains
     type(glide_global_type) :: model       ! model instance
     type(er_transport_type) :: trans       ! structure holding transport stuff
     real(kind=dp), intent(in) :: deltat       ! the time step
-    type(sparse_matrix) :: lagrange  ! sparse matrix containing the weights
+    type(sparse_matrix_type) :: lagrange  ! sparse matrix containing the weights
 
     ! local variables
     integer i,j
@@ -84,7 +84,7 @@ contains
 
   subroutine transport_scalar(model,trans,concentration,lagrange)
     ! transport scalar concentration using sparse matrix lagrange
-    use sparse
+    use glimmer_sparse
     use glimmer_interpolate2d
     use glide_types
     implicit none
@@ -92,7 +92,7 @@ contains
     type(glide_global_type) :: model       ! model instance
     type(er_transport_type) :: trans       ! structure holding transport stuff
     real(kind=dp), dimension(:,:) :: concentration
-    type(sparse_matrix) :: lagrange
+    type(sparse_matrix_type) :: lagrange
 
     ! local variables
     integer :: i,j,k

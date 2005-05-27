@@ -45,7 +45,7 @@ module erosion_types
 
   use glimmer_global, only : dp  
   use erosion_transport
-  use sparse
+  use glimmer_sparse
 
   type erosion_type
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
@@ -63,8 +63,8 @@ module erosion_types
      real(kind=dp) :: soft_b = 0.                          !*FD param B for max def thick calculations
      ! internal fields, etc
      type(er_transport_type) :: trans                      !*FD type holding transport stuff
-     type(sparse_matrix) :: lag_seds1                      !*FD sparse matrix holding dirty ice layer
-     type(sparse_matrix) :: lag_seds2                      !*FD sparse matrix holding deformable sediment layer
+     type(sparse_matrix_type) :: lag_seds1                 !*FD sparse matrix holding dirty ice layer
+     type(sparse_matrix_type) :: lag_seds2                 !*FD sparse matrix holding deformable sediment layer
      real(kind=dp),dimension(:,:),pointer :: temporary => null()    !*FD temporary array
      real(kind=dp),dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
      real(kind=dp),dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion

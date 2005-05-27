@@ -5,7 +5,7 @@
 
 program testintegrate2d
   use erosion_integrate2d
-  use sparse
+  use glimmer_sparse
   use geometry
   use glimmer_coordinates
   implicit none
@@ -15,7 +15,7 @@ program testintegrate2d
   real(kind=dp) :: deltaxy
   integer :: numi,numj
   integer i,j
-  type(sparse_matrix) :: weight
+  type(sparse_matrix_type) :: weight
   real(kind=dp), dimension(:,:), allocatable :: vec
   real(kind=dp), dimension(:), allocatable ::res
   real(kind=dp) :: area
@@ -49,7 +49,7 @@ program testintegrate2d
 
   vec = 0
   do i=1,weight%n
-     vec(mod(weight%pos(2,i),numi)+1,weight%pos(2,i)/numi+1) = weight%val(i)
+     vec(mod(weight%row(i),numi)+1,weight%row(i)/numi+1) = weight%val(i)
   end do
 
   !do j=1,numj

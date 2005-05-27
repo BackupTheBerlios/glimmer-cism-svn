@@ -5,12 +5,12 @@
 
 program test_interpolate
   use glimmer_coordinates
-  use sparse
+  use glimmer_sparse
   use glimmer_interpolate2d
   implicit none
 
   type(coordsystem) :: coords
-  type(sparse_matrix) :: interpolator
+  type(sparse_matrix_type) :: interpolator
   real(kind=dp) :: delta = 0.1
   integer i,j
   integer, parameter :: numx = 100

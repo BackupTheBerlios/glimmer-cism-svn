@@ -1,3 +1,15 @@
+2005-05-27 Magnus Hagdorn
+ * sparse.f90: removed (use the one provided by glimmer)
+ * Makefile.am: removed sparse.f90
+ * erosion_integrated2d.f90: changed to glimmer_sparse
+ * erosion_transport.f90: ditto
+ * erosion_transport_fv.f90: ditto
+ * erosion_transport_interp.f90: ditto
+ * erosion_types.f90: ditto
+ * glimmer_interpolate.f90: ditto
+ * test_integrate2d.f90: ditto
+ * test_interpolate2d.f90: ditto
+
 2005-05-10 Magnus Hagdorn
  * erosion_transport.f90 renamed to erosion_transport_fv.f90
  * added erosion_transport_interp.f90 (which uses simple interpolation)

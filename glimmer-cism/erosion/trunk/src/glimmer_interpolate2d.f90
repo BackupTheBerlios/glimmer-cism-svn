@@ -5,7 +5,7 @@
 
 module glimmer_interpolate2d
 
-  use sparse
+  use glimmer_sparse
 
 contains
 
@@ -13,7 +13,7 @@ contains
     use glimmer_coordinates
     implicit none
     !*FD interpolate data on infield (defined on inccord system) onto outfield using interpolator
-    type(sparse_matrix), intent(in) :: interpolator       !*FD sparse matrix containing interpolator
+    type(sparse_matrix_type), intent(in) :: interpolator       !*FD sparse matrix containing interpolator
     real(kind=dp), dimension(:,:), intent(in)  :: infield !*FD input data
     real(kind=dp), dimension(:,:), intent(out) :: outfield!*FD output field
 
@@ -44,7 +44,7 @@ contains
     !*FD initialise sparse matrix defining interpolation given by displacement field
     type(coordsystem), intent(in)             :: coord        !*FD coordinate system of the input field
     real(kind=dp), dimension(:,:), intent(in) :: dispx, dispy !*FD displacement field 
-    type(sparse_matrix)                       :: bilinear     !*FD sparse matrix containing interpolation
+    type(sparse_matrix_type)                  :: bilinear     !*FD sparse matrix containing interpolation
 
     ! local variables
     integer :: i,j, k, lini, numx,numy
@@ -68,7 +68,7 @@ contains
           point%pt(2)=dispy(i,j)
           call glimmer_bilinear(coord, point, nodes, weights)
           do k=1,4
-             call add_to_matrix(bilinear,lini,coordsystem_linearise2d(coord,nodes(k)),weights(k))
+             call sparse_insert_val(bilinear,lini,coordsystem_linearise2d(coord,nodes(k)),weights(k))
           end do
        end do
     end do
@@ -86,7 +86,6 @@ contains
     real(kind=dp), dimension(4), intent(out) :: weights   !*FD array of weights
 
     type(geom_point) :: pnt
-    integer i
 
     ! check if point is inside coord-system
 #ifdef DEBUG
