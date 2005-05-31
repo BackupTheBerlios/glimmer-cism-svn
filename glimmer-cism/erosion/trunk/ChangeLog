@@ -1,3 +1,16 @@
+2005-05-31 Magnus Hagdorn
+ * Makefile.am: use finite-volume approach by default
+ * erosion_integrate2d.f90: fixed a problem where patch was wrongly flagged
+   as being inside cell, although they are only adjacent. this code is still
+   very fragile.
+ * erosion_transport.f90: replaced with erosion_transport_fv.f90
+ * erosion_transport_fv.f90: removed normalisation since it is not needed,
+   changed effective zero to zero
+ * glimmer_interpolate.f90: added case when point is entirely outside region
+ * test_transport.f90: use tend in config file to determine the end of the run
+ * trans_velo.py: new program for setting up a velo field to be used with
+   test_transport.f90
+
 2005-05-27 Magnus Hagdorn
  * sparse.f90: removed (use the one provided by glimmer)
  * Makefile.am: removed sparse.f90

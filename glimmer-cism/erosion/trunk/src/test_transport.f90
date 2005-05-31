@@ -33,15 +33,13 @@ program testtransport
   ! fill dimension variables
   call glide_nc_fillall(model)
   time = model%numerics%tstart
-  ! set initial sediment distrib
-!  er%seds1(13:18,23:28) = 5.
-!  er%seds1(36:40,15:20) = 5.
+
   write(*,*) 'total concentration ', sum(er%seds1)
   ! set up sparse matrix
   call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
   call calc_lagrange(model, er%trans, model%numerics%dt , er%lag_seds1)
   call print_sparse(er%lag_seds1,101)
-  do while(time.le.model%numerics%tstart+100000.)
+  do while(time.le.model%numerics%tend)
      model%numerics%time = time
      call glide_io_writeall(model,model)
      call erosion_io_writeall(er,model)

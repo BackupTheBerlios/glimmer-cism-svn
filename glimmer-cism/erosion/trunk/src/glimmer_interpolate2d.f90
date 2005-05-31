@@ -97,6 +97,15 @@ contains
 
     nodes(1)%pt(:) = 1+floor((point%pt(:)-coord%origin%pt(:))*coord%delta_r%pt(:))
 
+    if (any(nodes(1)%pt(:).lt.1)) then
+       nodes(1)%pt(:) = 1
+       nodes(2)%pt(:) = 1
+       nodes(3)%pt(:) = 1
+       nodes(4)%pt(:) = 1
+       weights(:) = 0.d0
+       return
+    end if
+
     nodes(2)%pt(1) = nodes(1)%pt(1) + 1
     nodes(2)%pt(2) = nodes(1)%pt(2)
 

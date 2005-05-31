@@ -49,7 +49,7 @@ contains
     call er_advect2d_init(trans%half_xstep,trans%half_ystep, &
          model%general%ewn-1,model%general%nsn-1, &
          model%numerics%dew,model%numerics%dns)
-    ismintegrate2d_zero = 1e-5 ! effective zero
+    ismintegrate2d_zero = 0. ! effective zero
   end subroutine init_transport
 
   subroutine calc_lagrange(model, trans, deltat, lagrange)
@@ -197,18 +197,6 @@ contains
     trans%lin_stuff = pack(concentration,.true.)
     trans%lin_stuff2 = 0.
     trans%lin_con = 0.
-
-    ! normalise sparse matrix to 1 iff val > 1
-    do k=1,lagrange%n
-       trans%lin_stuff2(lagrange%row(k)) = trans%lin_stuff2(lagrange%row(k))+lagrange%val(k)
-    end do
-    ! we should propably do an allreduce as well. but hell!
-    do k=1,lagrange%n
-       if (trans%lin_stuff2(lagrange%row(k)).gt.1.) then
-          lagrange%val(k) = lagrange%val(k)/trans%lin_stuff2(lagrange%row(k))
-       end if
-    end do
-    trans%lin_stuff2 = 0.
 
     ! calculate new concentrations
     do k=1,lagrange%n

@@ -8,7 +8,7 @@ module erosion_integrate2d
 
 type(geom_poly), private :: cell
 private :: addmat
-real :: ismintegrate2d_zero = 0.0
+real(kind=dp) :: ismintegrate2d_zero = 0.0
 
 contains
   subroutine init_integrate2d
@@ -123,18 +123,18 @@ contains
 
     if (.not.inters) then ! patch does not intersect cell
        ! two possibilities
-       if (point_in_cpoly(cell%poly(1),patch)) then  ! cell is inside patch
-          do j = node%pt(2),node%pt(2)+2**pow-1
-             do i = node%pt(1),node%pt(1)+2**pow-1
-                n2%pt(1) = i
-                n2%pt(2) = j
-                call addmat(coords,weight,n,n2,1.d0)
-             end do
+       do j=1,4 ! loop over box coords
+          if (.not.point_in_cpoly(cell%poly(1),patch)) then  ! cell is outside patch
+             return
+          end if
+       end do
+       do j = node%pt(2),node%pt(2)+2**pow-1
+          do i = node%pt(1),node%pt(1)+2**pow-1
+             n2%pt(1) = i
+             n2%pt(2) = j
+             call addmat(coords,weight,n,n2,1.d0)
           end do
-          return   
-       else ! cell is outside patch
-          return
-       end if
+       end do
     end if
 
     ! shape intersects box

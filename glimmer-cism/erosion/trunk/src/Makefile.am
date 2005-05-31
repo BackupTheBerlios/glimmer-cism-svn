@@ -11,8 +11,8 @@ EXTRA_DIST = f90_dep.mak
 BUILT_SOURCES = erosion_io.f90
 CLEANFILES = $(BUILT_SOURCES) f90_dep.mak
 
-#LAGRANGIAN = erosion_integrate2d.f90 erosion_transport_fv.f90
-LAGRANGIAN = erosion_transport_interp.f90
+LAGRANGIAN = erosion_integrate2d.f90 erosion_transport_fv.f90
+#LAGRANGIAN = erosion_transport_interp.f90
 
 liberosion_a_SOURCES = erosion.f90 erosion_types.f90 erosion_setup.f90 erosion_io.f90 erosion_version.f90 \
                        erosion_advect.f90 geometry.f90 glimmer_coordinates.f90 runge_kutta.f90 \
