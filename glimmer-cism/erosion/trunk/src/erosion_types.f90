@@ -44,8 +44,22 @@ module erosion_types
   !*FD type definition for erosion calcluations
 
   use glimmer_global, only : dp  
-  use erosion_transport
   use glimmer_sparse
+  use geometry
+  use glimmer_coordinates
+
+  type er_transport_type
+     ! private data
+     real(kind=dp), dimension(:), pointer :: lin_stuff,lin_stuff2,lin_con
+     type(coordsystem) :: coord
+     real(kind=dp) :: half_xstep, half_ystep
+     ! for finite volume
+     type(geom_point), dimension(:,:), pointer :: patch_strip 
+     type(geom_poly) :: patch, patch1, patch2
+     ! for interpolation
+     real(kind=dp), dimension(:,:), pointer :: dispx => NULL() ! x-displacement field
+     real(kind=dp), dimension(:,:), pointer :: dispy => NULL() ! y-displacement field
+  end type er_transport_type
 
   type erosion_type
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
@@ -75,6 +89,10 @@ module erosion_types
      real(kind=dp),dimension(:,:),pointer :: seds2 => null()        !*FD thickness of deforming sediment layer
      real(kind=dp),dimension(:,:),pointer :: seds2_max => null()    !*FD maximum thickness of deforming sediment layer
      real(kind=dp),dimension(:,:),pointer :: seds3 => null()        !*FD thickness of non-deforming sediment layer
+     ! sediment grid
+     integer :: grid_magnifier = 2                         !*FD increase sediment grid resolution by this factor
+     integer :: ewn,nsn                                    !*FD number of nodes in x and y dir
+     real(kind=dp) :: dew,dns                              !*FD grid spacing
   end type erosion_type
 
 contains
@@ -90,10 +108,10 @@ contains
     allocate(erosion%er_accu(numx,numy))
     allocate(erosion%er_isos(numx,numy))
     allocate(erosion%er_load(numx,numy))
-    allocate(erosion%seds1(numx,numy))
-    allocate(erosion%seds2(numx,numy))
-    allocate(erosion%seds2_max(numx,numy))
-    allocate(erosion%seds3(numx,numy))
+    allocate(erosion%seds1(erosion%ewn, erosion%nsn))
+    allocate(erosion%seds2(erosion%ewn, erosion%nsn))
+    allocate(erosion%seds2_max(erosion%ewn, erosion%nsn))
+    allocate(erosion%seds3(erosion%ewn, erosion%nsn))
   end subroutine er_allocate
     
   subroutine er_deallocate(erosion)

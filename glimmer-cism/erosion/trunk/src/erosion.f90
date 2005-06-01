@@ -45,6 +45,9 @@ module erosion
   use erosion_types
   use erosion_setup
   use erosion_io
+  use erosion_advect
+  use erosion_nc_custom
+  use erosion_transport
 
 contains
   subroutine er_initialise(erosion,config,model)
@@ -61,8 +64,15 @@ contains
     call er_readconfig(erosion,config)
     ! print config
     call er_printconfig(erosion)
+
+    ! setup transport grid
+    erosion%ewn = model%general%ewn * erosion%grid_magnifier
+    erosion%nsn = model%general%nsn * erosion%grid_magnifier
+    erosion%dew = model%numerics%dew/real(erosion%grid_magnifier)
+    erosion%dns = model%numerics%dns/real(erosion%grid_magnifier)
+
     ! create erosion variables
-    call erosion_io_createall(model)
+    call erosion_io_createall(model,erosion)
 
     ! scale variables
     erosion%hb_erosion_factor = erosion%hb_erosion_factor*len0*thk0
@@ -75,7 +85,7 @@ contains
     erosion%erosion = 0.
 
     ! initialise transport
-    call init_transport(erosion%trans, model)
+    call init_transport(erosion%trans, model,erosion)
     ! initialise sparse matrices
     call new_sparse_matrix(10000,erosion%lag_seds1)
     call new_sparse_matrix(10000,erosion%lag_seds2)
@@ -92,6 +102,7 @@ contains
     use physcon, only : rhom
     use paramets, only : vel0
     use erosion_advect
+    use erosion_transport
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(glide_global_type) :: model       !*FD model instance
@@ -114,10 +125,10 @@ contains
           if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%transport_ndt)) then
              ! transport in ice base
              call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
-             call calc_lagrange(model, erosion%trans, erosion%dt, erosion%lag_seds1)
+             call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds1)
              ! transport in deformable sediment layer
              call set_velos(model%velocity%ubas,model%velocity%vbas,-erosion%transport_fac)
-             call calc_lagrange(model, erosion%trans, erosion%dt, erosion%lag_seds2)      
+             call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds2)      
           end if
        end if
 
@@ -127,9 +138,9 @@ contains
           ! move sediments
           !----------------------------------------------------------
           ! move sediments in basal ice layer
-          call transport_scalar(model,erosion%trans,erosion%seds1,erosion%lag_seds1)
+          call transport_scalar(erosion,erosion%trans,erosion%seds1,erosion%lag_seds1)
           ! move sediments in deformable sed layer
-          call transport_scalar(model,erosion%trans,erosion%seds2,erosion%lag_seds2)
+          call transport_scalar(erosion,erosion%trans,erosion%seds2,erosion%lag_seds2)
 
 
           !------------------------------------------------

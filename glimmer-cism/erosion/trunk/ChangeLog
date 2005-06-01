@@ -1,3 +1,16 @@
+2005-06-01 Magnus Hagdorn
+ * erosion_vars.def: new sediment dimensions xs, ys
+ * erosion_nc_custom.f90: filling erosion dim variables
+ * Makefile.am: hooked up erosion_nc_custom.f90
+ * erosion_setup.f90: added sediment grid factor, only print transport
+   variables if transport is enabled
+ * erosion_types.f90: moved transport type to here, added sediment grid,
+   allocate seds variables on sed grid
+ * erosion.f90: load erosion modules, initialise sed grid
+ * erosion_transport_fv.f90: removed transport type, use sediment grid
+ * erosion_transport_interp.f90: ditto
+ * test_transport.f90: calculate intial sediment distribution
+
 2005-05-31 Magnus Hagdorn
  * Makefile.am: use finite-volume approach by default
  * erosion_integrate2d.f90: fixed a problem where patch was wrongly flagged

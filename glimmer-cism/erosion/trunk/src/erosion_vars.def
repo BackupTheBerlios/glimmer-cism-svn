@@ -14,6 +14,20 @@ datatype: erosion_type
 # module where type is defined
 datamod:  erosion_types
 
+[xs]
+dimensions:    xs
+units:         meter
+long_name:     Cartisian x-coordinate, sediment grid
+standard_name: projection_x_coordinate
+dimlen:        data%ewn
+
+[ys]
+dimensions:    ys
+units:         meter
+long_name:     Cartisian y-coordinate, sediment grid
+standard_name: projection_y_coordinate
+dimlen:        data%nsn
+
 [erate]
 dimensions:    time, y1, x1
 units:         meter/year
@@ -33,27 +47,25 @@ load:          1
 hot:           1
 
 [seds1]
-dimensions:    time, y1, x1
+dimensions:    time, ys, xs
 units:         meter
 long_name:     thickness of dirty basal ice layer
 data:          data%seds1
 factor:        1
 coordinates:   lon lat
-load:          1
 hot:           1
 
 [seds2]
-dimensions:    time, y1, x1
+dimensions:    time, ys, xs
 units:         meter
 long_name:     thickness of deforming sediment layer
 data:          data%seds2
 factor:        1
-coordinates:   lon lat
 load:          1
 hot:           1
 
 [seds2_max]
-dimensions:    time, y1, x1
+dimensions:    time, ys, xs
 units:         meter
 long_name:     maximum thickness of deforming sediment layer
 data:          data%seds2_max
@@ -61,11 +73,10 @@ factor:        1
 coordinates:   lon lat
 
 [seds3]
-dimensions:    time, y1, x1
+dimensions:    time, ys, xs
 units:         meter
 long_name:     thickness of non-deforming sediment layer
 data:          data%seds3
 factor:        1
-coordinates:   lon lat
 load:          1
 hot:           1

@@ -61,6 +61,7 @@ contains
     call GetSection(config,section,'Transport')
     if (associated(section)) then
        erosion%dotransport = .True.
+       call GetValue(section,'grid_factor',erosion%grid_magnifier)
        call GetValue(section,'ndt',erosion%transport_ndt)
        call GetValue(section,'deformable_velo',erosion%transport_fac)
        call GetValue(section,'dirty_ice_thick',erosion%dirty_ice_max)
@@ -86,19 +87,23 @@ contains
        write(message,*) 'hard bedrock erosion constant : ',erosion%hb_erosion_factor
        call write_log(message)
        call write_log('')
-       call write_log('Sediment Transport')
-       call write_log('------------------')
-       write(message,*) 'Updating sediment distribution every ',erosion%transport_ndt,' time steps'
-       call write_log(message)
-       write(message,*) 'deformable sediment velo factor: ',erosion%transport_fac
-       call write_log(message)
-       write(message,*) 'max thickness of dirty basal ice layer: ',erosion%dirty_ice_max
-       call write_log(message)
-       write(message,*) 'deformable sediment param a: ',erosion%soft_a
-       call write_log(message)
-       write(message,*) 'deformable sediment param b: ',erosion%soft_b
-       call write_log(message)
-       call write_log('')
+       if (erosion%dotransport) then
+          call write_log('Sediment Transport')
+          call write_log('------------------')
+          write(message,*) 'Sediment grid resolution increased by : ',erosion%grid_magnifier
+          call write_log(message)
+          write(message,*) 'Updating sediment distribution every ',erosion%transport_ndt,' time steps'
+          call write_log(message)
+          write(message,*) 'deformable sediment velo factor: ',erosion%transport_fac
+          call write_log(message)
+          write(message,*) 'max thickness of dirty basal ice layer: ',erosion%dirty_ice_max
+          call write_log(message)
+          write(message,*) 'deformable sediment param a: ',erosion%soft_a
+          call write_log(message)
+          write(message,*) 'deformable sediment param b: ',erosion%soft_b
+          call write_log(message)
+          call write_log('')
+       end if
     end if
   end subroutine er_printconfig
 

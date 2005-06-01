@@ -10,29 +10,22 @@ module erosion_transport
 
   integer, parameter, private :: offset = 2
 
-  type er_transport_type
-     ! private data
-     real(kind=dp), dimension(:), pointer :: lin_stuff,lin_stuff2,lin_con
-     type(geom_point), dimension(:,:), pointer :: patch_strip 
-     type(geom_poly) :: patch, patch1, patch2
-     type(coordsystem) :: coord
-     real(kind=dp) :: half_xstep, half_ystep
-  end type er_transport_type
-
   real(kind=dp), private, parameter :: small = 1.d-7
 
 contains
-  subroutine init_transport(trans,model)
+  subroutine init_transport(trans,model,erosion)
+    use glide_types
     use erosion_advect
     use erosion_integrate2d
-    use glide_types
+    use erosion_types
     implicit none
     type(er_transport_type) :: trans       ! structure holding transport stuff
-    type(glide_global_type) :: model       ! model instance
+    type(erosion_type) :: erosion          !*FD structure holding erosion data
+    type(glide_global_type) :: model
 
-    allocate(trans%lin_stuff(model%general%ewn*model%general%nsn))
-    allocate(trans%lin_con(model%general%ewn*model%general%nsn))
-    allocate(trans%lin_stuff2(model%general%ewn*model%general%nsn))
+    allocate(trans%lin_stuff(erosion%ewn*erosion%nsn))
+    allocate(trans%lin_con(erosion%ewn*erosion%nsn))
+    allocate(trans%lin_stuff2(erosion%ewn*erosion%nsn))
     
     trans%patch = poly_new(4)
     trans%patch1 = poly_new(3)
@@ -40,27 +33,26 @@ contains
     trans%patch%n = 4
     trans%patch1%n = 3
     trans%patch2%n = 3
-    allocate(trans%patch_strip(model%general%ewn,2))
-    trans%coord = coordsystem_new(0.d0,0.d0,model%numerics%dew,model%numerics%dns, &
-         model%general%ewn,model%general%nsn)
+    allocate(trans%patch_strip(erosion%ewn,2))
+    trans%coord = coordsystem_new(0.d0,0.d0,erosion%dew,erosion%dns, erosion%ewn,erosion%nsn)
     call init_integrate2d
-    trans%half_xstep = 0.5*model%numerics%dew
-    trans%half_ystep = 0.5*model%numerics%dns
-    call er_advect2d_init(trans%half_xstep,trans%half_ystep, &
+    trans%half_xstep = 0.5*erosion%dew
+    trans%half_ystep = 0.5*erosion%dns
+    call er_advect2d_init(model%numerics%dew/2.,model%numerics%dns/2., &
          model%general%ewn-1,model%general%nsn-1, &
          model%numerics%dew,model%numerics%dns)
     ismintegrate2d_zero = 0. ! effective zero
   end subroutine init_transport
 
-  subroutine calc_lagrange(model, trans, deltat, lagrange)
+  subroutine calc_lagrange(erosion, trans, deltat, lagrange)
     use glimmer_coordinates
     use erosion_advect
     use glimmer_sparse
     use erosion_integrate2d
-    use glide_types
+    use erosion_types
     implicit none
 
-    type(glide_global_type) :: model       ! model instance
+    type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(er_transport_type) :: trans       ! structure holding transport stuff
     real(kind=dp), intent(in) :: deltat       ! the time step
     type(sparse_matrix_type) :: lagrange  ! sparse matrix containing the weights
@@ -89,15 +81,15 @@ contains
     trans%patch_strip(1,lower)%pt(1) = x(1)
     trans%patch_strip(1,lower)%pt(2) = y(1)
     ! fill the first row
-    do i=1+offset,model%general%ewn-offset
-       x0 = x0 + model%numerics%dew
+    do i=1+offset,erosion%ewn-offset
+       x0 = x0 + erosion%dew
        call er_advect2d(time,x0,y0,x,y)
        trans%patch_strip(i-offset+1,lower)%pt(1) = x(1)
        trans%patch_strip(i-offset+1,lower)%pt(2) = y(1)
     end do
 
     ! loop over rows
-    do j=1+offset,model%general%nsn-offset
+    do j=1+offset,erosion%nsn-offset
        ! fill in first element of upper strip
        node%pt(1) = 1+offset
        node%pt(2) = j
@@ -108,14 +100,14 @@ contains
        trans%patch_strip(1,upper)%pt(1) = x(1)
        trans%patch_strip(1,upper)%pt(2) = y(1)
        ! fill upper strip
-       do i=1+offset,model%general%ewn-offset
-          x0 = x0 + model%numerics%dew
+       do i=1+offset,erosion%ewn-offset
+          x0 = x0 + erosion%dew
           call er_advect2d(time,x0,y0,x,y)
           trans%patch_strip(i-offset+1,upper)%pt(1) = x(1)
           trans%patch_strip(i-offset+1,upper)%pt(2) = y(1)
        end do
        !calculate weights 
-       do i=1+offset,model%general%ewn-offset
+       do i=1+offset,erosion%ewn-offset
           trans%patch%poly(1) = trans%patch_strip(i-offset,lower)
           trans%patch%poly(2)%pt(:) = trans%patch_strip(i-offset+1,lower)%pt(:)-small
           trans%patch%poly(3)%pt(:) = trans%patch_strip(i-offset+1,upper)%pt(:)-small
@@ -177,13 +169,13 @@ contains
     end do
   end subroutine calc_lagrange
 
-  subroutine transport_scalar(model,trans,concentration,lagrange)
+  subroutine transport_scalar(erosion,trans,concentration,lagrange)
     ! transport scalar concentration using sparse matrix lagrange
     use glimmer_sparse
-    use glide_types
+    use erosion_types
     implicit none
     
-    type(glide_global_type) :: model       ! model instance
+    type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(er_transport_type) :: trans       ! structure holding transport stuff
     real(kind=dp), dimension(:,:) :: concentration
     type(sparse_matrix_type) :: lagrange
@@ -210,11 +202,11 @@ contains
 
     ! unpack data
     node1%pt(1)=1
-    node2%pt(1)=model%general%ewn
-    do j=1,model%general%nsn
+    node2%pt(1)=erosion%ewn
+    do j=1,erosion%nsn
        node1%pt(2)=j
        node2%pt(2)=j
-       concentration(1:model%general%ewn,j) = &
+       concentration(1:erosion%ewn,j) = &
             trans%lin_con(coordsystem_linearise2d(trans%coord,node1):coordsystem_linearise2d(trans%coord,node2)) &
             + trans%lin_stuff2(coordsystem_linearise2d(trans%coord,node1):coordsystem_linearise2d(trans%coord,node2))
     end do
