@@ -11,7 +11,6 @@ program testgeom
   logical res
 
   integer i,j, i1, j1
-  logical d1,d2
 
   polygon = poly_new(10)
   poly2 = poly_new(4)

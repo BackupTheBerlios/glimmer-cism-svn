@@ -68,8 +68,6 @@ module erosion_types
      real :: density = 3000.                               !*FD density of hard bedrock (kg m$^{-3}$)
      ! sediment transport stuff
      logical :: dotransport = .False.                      !*FD set to true to move sediments about
-     integer :: transport_ndt = 20                         !*FD transport time step (multiplier of main time step)
-     real :: transport_dt                                  !*FD time step for recalculating sediment distribution
      real(kind=dp) :: transport_fac = 0.2                  !*FD multiplier for velos in deformable beds
      real(kind=dp) :: dirty_ice_max = 0.1                  !*FD maximum thickness of dirty basal ice layer
      real(kind=dp) :: soft_a = 1.d-5                       !*FD param A for max def thick calculations
@@ -78,7 +76,6 @@ module erosion_types
      type(er_transport_type) :: trans                      !*FD type holding transport stuff
      type(sparse_matrix_type) :: lag_seds1                 !*FD sparse matrix holding dirty ice layer
      type(sparse_matrix_type) :: lag_seds2                 !*FD sparse matrix holding deformable sediment layer
-     real(kind=dp),dimension(:,:),pointer :: temporary => null()    !*FD temporary array
      real(kind=dp),dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
      real(kind=dp),dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion
      real(kind=dp),dimension(:,:),pointer :: er_accu => null()      !*FD accumulated erosion during one erosion time step
@@ -98,24 +95,23 @@ module erosion_types
   end type erosion_type
 
 contains
-  subroutine er_allocate(erosion,numx,numy)
+  subroutine er_allocate(erosion,model)
     !*FD allocate erosion data
+    use glide_types
     implicit none
     type(erosion_type) :: erosion     !*FD data structure holding erosion stuff
-    integer, intent(in) :: numx,numy  !*FD size of arrays
+    type(glide_global_type) :: model  !*FD model instance
 
-    allocate(erosion%temporary(numx,numy))
-    allocate(erosion%erosion_rate(numx-1,numy-1))
-    !allocate(erosion%erosion(numx,numy))
-    allocate(erosion%erosion(erosion%ewn, erosion%nsn))
-    allocate(erosion%er_accu(erosion%ewn, erosion%nsn))
-    allocate(erosion%er_isos(numx,numy))
-    allocate(erosion%er_load(numx,numy))
-    allocate(erosion%seds1(erosion%ewn, erosion%nsn))
-    allocate(erosion%seds2(erosion%ewn, erosion%nsn))
-    allocate(erosion%seds2_max(erosion%ewn, erosion%nsn))
-    allocate(erosion%seds2_max_v(numx-1,numy-1))
-    allocate(erosion%seds3(erosion%ewn, erosion%nsn))
+    call coordsystem_allocate(model%general%ice_grid,  erosion%er_isos)
+    call coordsystem_allocate(model%general%ice_grid,  erosion%er_load)
+    call coordsystem_allocate(model%general%velo_grid, erosion%erosion_rate)
+    call coordsystem_allocate(model%general%velo_grid, erosion%seds2_max_v)
+    call coordsystem_allocate(erosion%coord, erosion%erosion)
+    call coordsystem_allocate(erosion%coord, erosion%er_accu)
+    call coordsystem_allocate(erosion%coord, erosion%seds1)
+    call coordsystem_allocate(erosion%coord, erosion%seds2)
+    call coordsystem_allocate(erosion%coord, erosion%seds2_max)
+    call coordsystem_allocate(erosion%coord, erosion%seds3)
   end subroutine er_allocate
     
   subroutine er_deallocate(erosion)
@@ -123,7 +119,6 @@ contains
     implicit none
     type(erosion_type) :: erosion     !*FD data structure holding erosion stuff
 
-    deallocate(erosion%temporary)
     deallocate(erosion%erosion_rate)
     deallocate(erosion%erosion)
     deallocate(erosion%er_accu)

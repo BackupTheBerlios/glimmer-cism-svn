@@ -14,7 +14,7 @@ program testintegrate2d
   real(kind=dp), parameter :: ysize = 200.
   real(kind=dp) :: deltaxy
   integer :: numi,numj
-  integer i,j
+  integer i
   type(sparse_matrix_type) :: weight
   real(kind=dp), dimension(:,:), allocatable :: vec
   real(kind=dp), dimension(:), allocatable ::res
@@ -51,14 +51,6 @@ program testintegrate2d
   do i=1,weight%n
      vec(mod(weight%row(i),numi)+1,weight%row(i)/numi+1) = weight%val(i)
   end do
-
-  !do j=1,numj
-  !   do i=1,numi
-  !      !write(*,fmt='(F5.2)',advance='no') vec(i,j)
-  !      write(*,*) vec(i,j)
-  !   end do
-  !   write(*,*) ''
-  !end do
 
   do i=0,8
      deltaxy = 2.**i

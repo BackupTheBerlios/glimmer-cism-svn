@@ -1,4 +1,14 @@
 2005-06-06 Magnus Hagdorn
+ * erosion.f90: clean up
+ * erosion_transport_fv.f90: ditto
+ * test_geometry.f90: ditto
+ * test_integrate2d.f90: ditto
+ * glimmer_interpolate2d.f90: new routine to init bilinear transform between
+   two coord systems
+ * erosion_setup.f90: remove transport time step (not needed anymore)
+ * erosion_types.f90: ditto, use allocation routines from coord module 
+
+2005-06-06 Magnus Hagdorn
  * geometry.f90: replace .eq. and .ne. using tolerance
  * erosion_vars.def: change coord systems of erate (to velo grid) and erosion
    (to sed grid)

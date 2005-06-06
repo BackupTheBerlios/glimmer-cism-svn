@@ -62,10 +62,6 @@ contains
     type(ConfigSection), pointer :: config !*FD structure holding sections of configuration file   
     type(glide_global_type) :: model       !*FD model instance
 
-    ! local variables
-    real(kind=dp),dimension(:,:),allocatable :: dispx, dispy
-    integer ew,ns
-
     ! read config
     call er_readconfig(erosion,config)
     ! print config
@@ -84,11 +80,10 @@ contains
     ! scale variables
     erosion%hb_erosion_factor = erosion%hb_erosion_factor*len0*thk0
     erosion%dt = erosion%ndt * model%numerics%dt
-    erosion%transport_dt = erosion%transport_ndt * erosion%transport_dt
     erosion%soft_a = erosion%soft_a*thk0*thk0/len0
 
     ! allocate memory
-    call er_allocate(erosion,model%general%ewn,model%general%nsn)
+    call er_allocate(erosion,model)
     erosion%erosion = 0.
 
     ! initialise transport
@@ -101,20 +96,7 @@ contains
     call erosion_io_readall(erosion,model)
 
     ! setup interpolation between velo grid and sediment grid
-    if (erosion%grid_magnifier.gt.1) then
-       allocate(dispx(erosion%ewn,erosion%nsn))
-       allocate(dispy(erosion%ewn,erosion%nsn))
-       
-       do ns = 1,erosion%nsn
-          dispy(:,ns) = (ns-1)*erosion%dns
-       end do
-       do ew = 1,erosion%ewn
-          dispx(ew,:) = (ew-1)*erosion%dew
-       end do
-       
-       call glimmer_init_bilinear(model%general%velo_grid,dispx,dispy,erosion%velo_seds)
-       deallocate(dispx,dispy)
-    end if
+    call glimmer_init_bilinear(model%general%velo_grid, erosion%coord, erosion%velo_seds)
 
   end subroutine er_initialise
 
@@ -123,7 +105,6 @@ contains
     use isostasy
     use glide_types
     use physcon, only : rhom
-    use paramets, only : vel0
     use erosion_advect
     use erosion_transport
     use glimmer_interpolate2d
@@ -138,57 +119,13 @@ contains
 
     call erosion_io_writeall(erosion,model)
 
-
-
     if (erosion%doerosion) then
        
        if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%ndt)) then
-       !----------------------------------------------------------
-       ! set up sediment transport sparse matrix
-       !----------------------------------------------------------
-!       if (erosion%dotransport) then
-          ! update transport matrix
-!          if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%transport_ndt)) then
-             ! transport in ice base
-             call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
-             call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds1)
-             ! transport in deformable sediment layer
-             call set_velos(model%velocity%ubas,model%velocity%vbas,-erosion%transport_fac)
-             call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds2)      
-!          end if
-!       end if
-
-!       if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%ndt)) then
 
           !----------------------------------------------------------
-          ! move sediments
-          !----------------------------------------------------------
-          ! move sediments in basal ice layer
-          call transport_scalar(erosion,erosion%trans,erosion%seds1,erosion%lag_seds1)
-          ! move sediments in deformable sed layer
-          call transport_scalar(erosion,erosion%trans,erosion%seds2,erosion%lag_seds2)
-
-
-          !------------------------------------------------
-          ! sediment erosion
-          !------------------------------------------------       
-          ! add sediment to deformable soft bed from below
-          call  er_calc_dthick(erosion,model)
-          do ns=2,erosion%nsn-1
-             do ew=2,erosion%ewn-1
-                if (erosion%seds2(ew,ns) .lt. erosion%seds2_max(ew,ns)) then
-                   dummy = erosion%seds2_max(ew,ns) - erosion%seds2(ew,ns)
-                   if (dummy .gt. erosion%seds3(ew,ns)) then
-                      erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + erosion%seds3(ew,ns)
-                      erosion%seds3(ew,ns) = 0.
-                   else
-                      erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + dummy
-                      erosion%seds3(ew,ns) = erosion%seds3(ew,ns) - dummy
-                   end if
-                end if
-             end do
-          end do
           ! calculate erosion rate
+          !----------------------------------------------------------
           call er_calc_erate(erosion,model)
           ! interpolate
           if (erosion%grid_magnifier.gt.1) then
@@ -202,54 +139,102 @@ contains
           end if
           erosion%er_accu = erosion%er_accu * erosion%dt
 
-          do ns=2,erosion%nsn-1
-             do ew=2,erosion%ewn-1
-                ! initially all eroded material goes into basal dirty ice layer
-                erosion%seds1(ew,ns) = erosion%seds1(ew,ns) + erosion%er_accu(ew,ns)
-                dummy = erosion%seds2(ew,ns) + erosion%seds3(ew,ns)
-                ! erode from deformable bed
-                if (erosion%seds2(ew,ns) .ge. erosion%er_accu(ew,ns)) then
-                   ! deformable layer is thick enough
-                   erosion%seds2(ew,ns) = erosion%seds2(ew,ns) - erosion%er_accu(ew,ns)
-                else
-                   ! need to dig into stationary sediment layer
-                   erosion%seds3(ew,ns) = max(0.d0,erosion%seds3(ew,ns) + erosion%seds2(ew,ns) - erosion%er_accu(ew,ns))
-                   erosion%seds2(ew,ns) = 0.
-                end if
-                erosion%erosion(ew,ns) = erosion%erosion(ew,ns) -min(0.d0,dummy - erosion%er_accu(ew,ns))
-             end do
-          end do
 
-          !------------------------------------------------
-          ! sediment deposition
-          !------------------------------------------------
-          do ns=2,erosion%nsn-1
-             do ew=2,erosion%ewn-1
-                ! from dirty basal ice layer
-                if (erosion%seds1(ew,ns) .gt. erosion%dirty_ice_max) then
-                   erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + erosion%seds1(ew,ns) - erosion%dirty_ice_max
-                   erosion%seds1(ew,ns) = erosion%dirty_ice_max
-                end if
-                ! from deforming soft bed to non-deforming soft bed
-                if (erosion%seds2(ew,ns) .gt. erosion%seds2_max(ew,ns)) then
-                   erosion%seds3(ew,ns) = erosion%seds3(ew,ns) + erosion%seds2(ew,ns) - erosion%seds2_max(ew,ns)
-                   erosion%seds2(ew,ns) = erosion%seds2_max(ew,ns)
-                end if
-                ! depositing debris in basal layer when ice has retreated
-                node%pt(1) = ew
-                node%pt(2) = ns
-                node = coordsystem_get_node(model%general%ice_grid, coordsystem_get_coord(erosion%coord, node))
-                if (model%geometry%thck(node%pt(1),node%pt(2)).eq.0) then
-                   erosion%seds3(ew,ns) = erosion%seds3(ew,ns) + erosion%seds2(ew,ns) + erosion%seds1(ew,ns)
-                   erosion%seds2(ew,ns) = 0.
-                   erosion%seds1(ew,ns) = 0.
-                end if
-             end do
-          end do
+          if (erosion%dotransport) then
+             !----------------------------------------------------------
+             ! set up sediment transport sparse matrix
+             !----------------------------------------------------------
+             ! transport in ice base
+             call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
+             call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds1)
+             ! transport in deformable sediment layer
+             call set_velos(model%velocity%ubas,model%velocity%vbas,-erosion%transport_fac)
+             call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds2)      
 
-          !erosion%er_isos = erosion%er_isos + erosion%er_accu
-          !model%geometry%topg = model%geometry%topg + erosion%er_accu
+             !----------------------------------------------------------
+             ! move sediments
+             !----------------------------------------------------------
+             ! move sediments in basal ice layer
+             call transport_scalar(erosion,erosion%trans,erosion%seds1,erosion%lag_seds1)
+             ! move sediments in deformable sed layer
+             call transport_scalar(erosion,erosion%trans,erosion%seds2,erosion%lag_seds2)
+
+             !------------------------------------------------
+             ! sediment erosion
+             !------------------------------------------------       
+             ! add sediment to deformable soft bed from below
+             call  er_calc_dthick(erosion,model)
+             do ns=2,erosion%nsn-1
+                do ew=2,erosion%ewn-1
+                   if (erosion%seds2(ew,ns) .lt. erosion%seds2_max(ew,ns)) then
+                      dummy = erosion%seds2_max(ew,ns) - erosion%seds2(ew,ns)
+                      if (dummy .gt. erosion%seds3(ew,ns)) then
+                         erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + erosion%seds3(ew,ns)
+                         erosion%seds3(ew,ns) = 0.
+                      else
+                         erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + dummy
+                         erosion%seds3(ew,ns) = erosion%seds3(ew,ns) - dummy
+                      end if
+                   end if
+                end do
+             end do
+
+             do ns=2,erosion%nsn-1
+                do ew=2,erosion%ewn-1
+                   ! initially all eroded material goes into basal dirty ice layer
+                   erosion%seds1(ew,ns) = erosion%seds1(ew,ns) + erosion%er_accu(ew,ns)
+                   dummy = erosion%seds2(ew,ns) + erosion%seds3(ew,ns)
+                   ! erode from deformable bed
+                   if (erosion%seds2(ew,ns) .ge. erosion%er_accu(ew,ns)) then
+                      ! deformable layer is thick enough
+                      erosion%seds2(ew,ns) = erosion%seds2(ew,ns) - erosion%er_accu(ew,ns)
+                   else
+                      ! need to dig into stationary sediment layer
+                      erosion%seds3(ew,ns) = max(0.d0,erosion%seds3(ew,ns) + erosion%seds2(ew,ns) - erosion%er_accu(ew,ns))
+                      erosion%seds2(ew,ns) = 0.
+                   end if
+                   erosion%erosion(ew,ns) = erosion%erosion(ew,ns) -min(0.d0,dummy - erosion%er_accu(ew,ns))
+                end do
+             end do
+
+             !------------------------------------------------
+             ! sediment deposition
+             !------------------------------------------------
+             do ns=2,erosion%nsn-1
+                do ew=2,erosion%ewn-1
+                   ! from dirty basal ice layer
+                   if (erosion%seds1(ew,ns) .gt. erosion%dirty_ice_max) then
+                      erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + erosion%seds1(ew,ns) - erosion%dirty_ice_max
+                      erosion%seds1(ew,ns) = erosion%dirty_ice_max
+                   end if
+                   ! from deforming soft bed to non-deforming soft bed
+                   if (erosion%seds2(ew,ns) .gt. erosion%seds2_max(ew,ns)) then
+                      erosion%seds3(ew,ns) = erosion%seds3(ew,ns) + erosion%seds2(ew,ns) - erosion%seds2_max(ew,ns)
+                      erosion%seds2(ew,ns) = erosion%seds2_max(ew,ns)
+                   end if
+                   ! depositing debris in basal layer when ice has retreated
+                   node%pt(1) = ew
+                   node%pt(2) = ns
+                   node = coordsystem_get_node(model%general%ice_grid, coordsystem_get_coord(erosion%coord, node))
+                   if (model%geometry%thck(node%pt(1),node%pt(2)).eq.0) then
+                      erosion%seds3(ew,ns) = erosion%seds3(ew,ns) + erosion%seds2(ew,ns) + erosion%seds1(ew,ns)
+                      erosion%seds2(ew,ns) = 0.
+                      erosion%seds1(ew,ns) = 0.
+                   end if
+                end do
+             end do
+
+             !erosion%er_isos = erosion%er_isos + erosion%er_accu
+             !model%geometry%topg = model%geometry%topg + erosion%er_accu
+          end if
        end if
+    else
+       !------------------------------------------------
+       ! no sediment transport 
+       ! eroded sediments are lost instantly
+       !------------------------------------------------
+
+       erosion%erosion(:,:) = erosion%erosion(:,:) - erosion%er_accu(:,:)
     end if
 
 !!$    ! update load if necessary
@@ -282,7 +267,6 @@ contains
 
   subroutine er_calc_dthick(erosion,model)
     !*FD calculate thickness of deformable sediment bed
-    use glimmer_global, only: dp
     use glide_types
     use glide_velo
     use glimmer_interpolate2d
@@ -290,10 +274,7 @@ contains
     type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(glide_global_type) :: model       !*FD model instance
 
-    real(kind=dp) :: dummy
-
-    integer ew,ns, i, j, is, js
-    real(kind=dp) :: a,b
+    integer ew,ns
 
     ! calculate basal shear stresses
     call calc_basal_shear(model)

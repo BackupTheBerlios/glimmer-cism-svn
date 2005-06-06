@@ -58,7 +58,7 @@ contains
     integer lower,upper
     real(kind=dp) x0,y0
     real(kind=dp), dimension(1) ::  time,x,y
-    logical d1,d2, l
+    logical d1,d2
     type(coord_point) :: cross
     type(coord_point) :: pt
     type(coord_ipoint) :: node
@@ -177,9 +177,8 @@ contains
     type(sparse_matrix_type) :: lagrange
 
     ! local variables
-    integer :: i,j,k
+    integer :: j,k
     type(coord_ipoint) :: node1,node2
-    integer ierr
 
     ! linearise concentration
     trans%lin_stuff = pack(concentration,.true.)

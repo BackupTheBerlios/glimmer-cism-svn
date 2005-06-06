@@ -7,6 +7,10 @@ module glimmer_interpolate2d
 
   use glimmer_sparse
 
+  interface glimmer_init_bilinear
+     module procedure glimmer_init_bilinear_disp, glimmer_init_bilinear_coord
+  end interface
+
 contains
 
   subroutine glimmer_interpolate(interpolator, infield, outfield)
@@ -38,7 +42,7 @@ contains
     deallocate(linear_out)
   end subroutine glimmer_interpolate
 
-  subroutine glimmer_init_bilinear(coord, dispx, dispy, bilinear)
+  subroutine glimmer_init_bilinear_disp(coord, dispx, dispy, bilinear)
     use glimmer_coordinates
     implicit none
     !*FD initialise sparse matrix defining interpolation given by displacement field
@@ -73,8 +77,38 @@ contains
        end do
     end do
 
-  end subroutine glimmer_init_bilinear
+  end subroutine glimmer_init_bilinear_disp
 
+  subroutine glimmer_init_bilinear_coord(incoord, outcoord, bilinear)
+    use glimmer_coordinates
+    implicit none
+    !*FD initialise sparse matrix defining interpolation between two coordinate systems
+    type(coordsystem_type), intent(in) :: incoord      !*FD coordinate system of the input field
+    type(coordsystem_type), intent(in) :: outcoord     !*FD coordinate system of the output field
+    type(sparse_matrix_type)           :: bilinear     !*FD sparse matrix containing interpolation
+
+    ! local variables
+    integer :: i,j, k, lini
+    type(coord_point) :: point
+    type(coord_ipoint) :: this_node
+    type(coord_ipoint), dimension(4) :: nodes
+    real(kind=dp), dimension(4) :: weights
+
+    call new_sparse_matrix(outcoord%size%pt(1)*outcoord%size%pt(2)*4,bilinear)    
+
+    do j=1,outcoord%size%pt(2)
+       this_node%pt(2)=j
+       do i=1,outcoord%size%pt(1)
+          this_node%pt(1)=i
+          lini = coordsystem_linearise2d(outcoord,this_node)
+          point = coordsystem_get_coord(outcoord,this_node)
+          call glimmer_bilinear(incoord, point, nodes, weights)
+          do k=1,4
+             call sparse_insert_val(bilinear,lini,coordsystem_linearise2d(incoord,nodes(k)),weights(k))
+          end do
+       end do
+    end do
+  end subroutine glimmer_init_bilinear_coord
 
   subroutine glimmer_bilinear(coord, point, nodes, weights)
     use glimmer_coordinates
