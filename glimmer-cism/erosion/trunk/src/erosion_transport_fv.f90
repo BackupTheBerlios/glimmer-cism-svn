@@ -33,7 +33,6 @@ contains
     trans%patch1%n = 3
     trans%patch2%n = 3
     allocate(trans%patch_strip(erosion%ewn,2))
-    trans%coord = coordsystem_new(0.d0,0.d0,erosion%dew,erosion%dns, erosion%ewn,erosion%nsn)
     call init_integrate2d
     trans%half_xstep = 0.5*erosion%dew
     trans%half_ystep = 0.5*erosion%dns
@@ -71,7 +70,7 @@ contains
     upper = 2
     ! fill in first element
     node%pt(:) = 1+offset
-    pt = coordsystem_get_coord(trans%coord,node)
+    pt = coordsystem_get_coord(erosion%coord,node)
     x0 = pt%pt(1) - trans%half_xstep
     y0 = pt%pt(2) - trans%half_ystep
     call er_advect2d(time,x0,y0,x,y)
@@ -90,7 +89,7 @@ contains
        ! fill in first element of upper strip
        node%pt(1) = 1+offset
        node%pt(2) = j
-       pt = coordsystem_get_coord(trans%coord,node)
+       pt = coordsystem_get_coord(erosion%coord,node)
        x0 = pt%pt(1) - trans%half_xstep
        y0 = pt%pt(2) + trans%half_ystep
        call er_advect2d(time,x0,y0,x,y)
@@ -117,7 +116,7 @@ contains
              d2 = diagonal(2,4,trans%patch)
              ! checking that we have a nicely ordered polygon
              if (d1 .and. d2) then  ! convex patch
-                call calc_weight(trans%coord, lagrange, trans%patch, coordsystem_linearise2d(trans%coord,node))
+                call calc_weight(erosion%coord, lagrange, trans%patch, coordsystem_linearise2d(erosion%coord,node))
              else
                 if (d1) then
                    trans%patch1%poly(1) = trans%patch%poly(1)
@@ -136,8 +135,8 @@ contains
                    trans%patch2%poly(2) = trans%patch%poly(4)
                    trans%patch2%poly(3) = trans%patch%poly(1)
                 end if
-                call calc_weight(trans%coord, lagrange, trans%patch1, coordsystem_linearise2d(trans%coord,node))
-                call calc_weight(trans%coord, lagrange, trans%patch2, coordsystem_linearise2d(trans%coord,node))
+                call calc_weight(erosion%coord, lagrange, trans%patch1, coordsystem_linearise2d(erosion%coord,node))
+                call calc_weight(erosion%coord, lagrange, trans%patch2, coordsystem_linearise2d(erosion%coord,node))
              end if
           else
              if (intersection(trans%patch%poly(1),trans%patch%poly(2),trans%patch%poly(3),trans%patch%poly(4),cross)) then
@@ -156,8 +155,8 @@ contains
                 trans%patch2%poly(2) = trans%patch%poly(4)
                 trans%patch2%poly(3) = trans%patch%poly(3)
              end if
-             call calc_weight(trans%coord, lagrange, trans%patch1, coordsystem_linearise2d(trans%coord,node))
-             call calc_weight(trans%coord, lagrange, trans%patch2, coordsystem_linearise2d(trans%coord,node))
+             call calc_weight(erosion%coord, lagrange, trans%patch1, coordsystem_linearise2d(erosion%coord,node))
+             call calc_weight(erosion%coord, lagrange, trans%patch2, coordsystem_linearise2d(erosion%coord,node))
           end if
        end do
        ! swap rows
@@ -204,8 +203,8 @@ contains
        node1%pt(2)=j
        node2%pt(2)=j
        concentration(1:erosion%ewn,j) = &
-            trans%lin_con(coordsystem_linearise2d(trans%coord,node1):coordsystem_linearise2d(trans%coord,node2)) &
-            + trans%lin_stuff2(coordsystem_linearise2d(trans%coord,node1):coordsystem_linearise2d(trans%coord,node2))
+            trans%lin_con(coordsystem_linearise2d(erosion%coord,node1):coordsystem_linearise2d(erosion%coord,node2)) &
+            + trans%lin_stuff2(coordsystem_linearise2d(erosion%coord,node1):coordsystem_linearise2d(erosion%coord,node2))
     end do
 
   end subroutine transport_scalar

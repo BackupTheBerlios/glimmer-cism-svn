@@ -76,6 +76,8 @@ program simple_erosion
 
   ! fill dimension variables
   call glide_nc_fillall(model)
+  call erosion_nc_fillall(model,er)
+
   time = model%numerics%tstart
   do while(time.le.model%numerics%tend)
      call simple_massbalance(climate,model,time)

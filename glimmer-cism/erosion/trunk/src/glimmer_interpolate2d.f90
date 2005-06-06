@@ -63,7 +63,7 @@ contains
        this_node%pt(2)=j
        do i=1,numx
           this_node%pt(1)=i
-          lini = coordsystem_linearise2d(coord,this_node)
+          lini = i+(j-1)*numx
           point%pt(1)=dispx(i,j)
           point%pt(2)=dispy(i,j)
           call glimmer_bilinear(coord, point, nodes, weights)
@@ -97,7 +97,7 @@ contains
 
     nodes(1)%pt(:) = 1+floor((point%pt(:)-coord%origin%pt(:))*coord%delta_r%pt(:))
 
-    if (any(nodes(1)%pt(:).lt.1)) then
+    if (.not.coordsystem_point_inside(coord,point)) then
        nodes(1)%pt(:) = 1
        nodes(2)%pt(:) = 1
        nodes(3)%pt(:) = 1

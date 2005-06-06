@@ -122,7 +122,7 @@ contains
     if (.not.inters) then ! patch does not intersect cell
        ! two possibilities
        do j=1,4 ! loop over box coords
-          if (.not.point_in_cpoly(cell%poly(1),patch)) then  ! cell is outside patch
+          if (.not.point_in_cpoly(cell%poly(j),patch)) then  ! cell is outside patch
              return
           end if
        end do
@@ -133,6 +133,7 @@ contains
              call addmat(coords,weight,n,n2,1.d0)
           end do
        end do
+       return
     end if
 
     ! shape intersects box

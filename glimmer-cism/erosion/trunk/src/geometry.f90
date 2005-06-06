@@ -12,7 +12,7 @@ module geometry
   ! number of dimensions
   integer :: geom_unit = 6
   integer, parameter :: geom_dim = 2
-  real(kind=dp), parameter, private :: tolerance = 1e-7
+  real(kind=dp), parameter, private :: tolerance = 1d-7
 
   private :: advance,add_intersect
 
@@ -165,7 +165,7 @@ contains
        return
     end if
     
-    if (a%pt(1) .ne. b%pt(1)) then
+    if (abs(a%pt(1)-b%pt(1)).gt.tolerance) then
        between = ((a%pt(1) .le. c%pt(1)) .and. (c%pt(1) .le. b%pt(1))) &
             .or. ((a%pt(1) .ge. c%pt(1)) .and. (c%pt(1) .ge. b%pt(1)))
     else
@@ -265,7 +265,7 @@ contains
          c%pt(1) * (a%pt(2)-b%pt(2))
 
     ! if denom is 0 then return false since segments are parallel (although they might overlap
-    if (denom .eq. 0.) then
+    if (abs(denom) .le. tolerance) then
        intersection = .false.
        return
     end if
@@ -397,7 +397,7 @@ contains
 
        ! advance rules
        ! special case a and b are collinear
-       if (cross.eq.0. .and. ahb.eq.0 .and. bha.eq.0) then
+       if (abs(cross).le.tolerance .and. abs(ahb).le.tolerance .and. abs(bha).le.tolerance) then
 #ifdef DEBUG_GEOM  
           write(*,*) '   ', count,'spec'
 #endif
@@ -472,7 +472,7 @@ contains
 
     add_intersect = .false.
     if (poly%n .gt. 1) then
-       if (any(poly%poly(1)%pt.ne.point%pt)) then
+       if (any(abs(poly%poly(1)%pt-point%pt).gt.tolerance)) then
           call poly_add_vert(poly,point%pt(1),point%pt(2))
           return
        else
@@ -482,7 +482,7 @@ contains
     end if
     if (poly%n .gt. 0) then ! more than one vertex
        ! check previous point
-       if (any(poly%poly(poly%n)%pt.ne.point%pt)) then
+       if (any(abs(poly%poly(poly%n)%pt-point%pt).gt.tolerance)) then
           call poly_add_vert(poly,point%pt(1),point%pt(2))
           return
        end if

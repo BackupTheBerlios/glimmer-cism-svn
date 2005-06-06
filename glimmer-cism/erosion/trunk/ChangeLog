@@ -1,4 +1,16 @@
 2005-06-06 Magnus Hagdorn
+ * geometry.f90: replace .eq. and .ne. using tolerance
+ * erosion_vars.def: change coord systems of erate (to velo grid) and erosion
+   (to sed grid)
+ * erosion_integrate2d.f90: fix bug
+ * glimmer_interpolate2d.f90: fix another bug
+ * erosion_transport_fv.f90: move sediment coord from transport type to erosion type
+ * erosion_transport_interp.f90: ditto
+ * erosion.f90: use glimmer_interpolate2d for interpolation
+ * simple_erosion.f90: fill erosion dimension variables
+ * eis_erosion.f90: ditto
+
+2005-06-06 Magnus Hagdorn
  * moved glimmer_coordinates.f90 to glimmer sources
  * Makefile.am: removed glimmer_coordinates.f90
  * erosion_advect.f90: changed types to new names from glimmer

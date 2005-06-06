@@ -76,6 +76,7 @@ program eis_erosion
   call er_initialise(er,config,model)
   ! fill dimension variables
   call glide_nc_fillall(model)
+  call erosion_nc_fillall(model,er)
 
   er%seds3 = 5.d0
 

@@ -52,13 +52,19 @@ module erosion
 contains
   subroutine er_initialise(erosion,config,model)
     !*FD initialise erosion model
+    use glimmer_interpolate2d
     use glide_types
+    use glimmer_coordinates
     use glimmer_config
     use paramets, only : len0,thk0
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(ConfigSection), pointer :: config !*FD structure holding sections of configuration file   
     type(glide_global_type) :: model       !*FD model instance
+
+    ! local variables
+    real(kind=dp),dimension(:,:),allocatable :: dispx, dispy
+    integer ew,ns
 
     ! read config
     call er_readconfig(erosion,config)
@@ -70,6 +76,7 @@ contains
     erosion%nsn = model%general%nsn * erosion%grid_magnifier
     erosion%dew = model%numerics%dew/real(erosion%grid_magnifier)
     erosion%dns = model%numerics%dns/real(erosion%grid_magnifier)
+    erosion%coord = coordsystem_new(0.d0,0.d0,erosion%dew,erosion%dns, erosion%ewn,erosion%nsn)
 
     ! create erosion variables
     call erosion_io_createall(model,erosion)
@@ -93,6 +100,22 @@ contains
     ! read variables
     call erosion_io_readall(erosion,model)
 
+    ! setup interpolation between velo grid and sediment grid
+    if (erosion%grid_magnifier.gt.1) then
+       allocate(dispx(erosion%ewn,erosion%nsn))
+       allocate(dispy(erosion%ewn,erosion%nsn))
+       
+       do ns = 1,erosion%nsn
+          dispy(:,ns) = (ns-1)*erosion%dns
+       end do
+       do ew = 1,erosion%ewn
+          dispx(ew,:) = (ew-1)*erosion%dew
+       end do
+       
+       call glimmer_init_bilinear(model%general%velo_grid,dispx,dispy,erosion%velo_seds)
+       deallocate(dispx,dispy)
+    end if
+
   end subroutine er_initialise
 
   subroutine er_tstep(erosion,model)
@@ -103,12 +126,14 @@ contains
     use paramets, only : vel0
     use erosion_advect
     use erosion_transport
+    use glimmer_interpolate2d
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(glide_global_type) :: model       !*FD model instance
     
     ! local variables
     integer ew,ns
+    type(coord_ipoint) :: node
     real(kind=dp) :: dummy
 
     call erosion_io_writeall(erosion,model)
@@ -117,22 +142,23 @@ contains
 
     if (erosion%doerosion) then
        
+       if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%ndt)) then
        !----------------------------------------------------------
        ! set up sediment transport sparse matrix
        !----------------------------------------------------------
-       if (erosion%dotransport) then
+!       if (erosion%dotransport) then
           ! update transport matrix
-          if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%transport_ndt)) then
+!          if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%transport_ndt)) then
              ! transport in ice base
              call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
              call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds1)
              ! transport in deformable sediment layer
              call set_velos(model%velocity%ubas,model%velocity%vbas,-erosion%transport_fac)
              call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds2)      
-          end if
-       end if
+!          end if
+!       end if
 
-       if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%ndt)) then
+!       if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*erosion%ndt)) then
 
           !----------------------------------------------------------
           ! move sediments
@@ -148,8 +174,8 @@ contains
           !------------------------------------------------       
           ! add sediment to deformable soft bed from below
           call  er_calc_dthick(erosion,model)
-          do ns=2,model%general%nsn-1
-             do ew=2,model%general%ewn-1
+          do ns=2,erosion%nsn-1
+             do ew=2,erosion%ewn-1
                 if (erosion%seds2(ew,ns) .lt. erosion%seds2_max(ew,ns)) then
                    dummy = erosion%seds2_max(ew,ns) - erosion%seds2(ew,ns)
                    if (dummy .gt. erosion%seds3(ew,ns)) then
@@ -164,9 +190,20 @@ contains
           end do
           ! calculate erosion rate
           call er_calc_erate(erosion,model)
-          erosion%er_accu = erosion%erosion_rate * erosion%dt
-          do ns=2,model%general%nsn-1
-             do ew=2,model%general%ewn-1
+          ! interpolate
+          if (erosion%grid_magnifier.gt.1) then
+             call glimmer_interpolate(erosion%velo_seds,erosion%erosion_rate,erosion%er_accu)
+          else
+             do ns=2,model%general%nsn-1
+                do ew=2,model%general%ewn-1
+                   erosion%er_accu(ew,ns) = 0.25*sum(erosion%erosion_rate(ew-1:ew,ns-1:ns))
+                end do
+             end do
+          end if
+          erosion%er_accu = erosion%er_accu * erosion%dt
+
+          do ns=2,erosion%nsn-1
+             do ew=2,erosion%ewn-1
                 ! initially all eroded material goes into basal dirty ice layer
                 erosion%seds1(ew,ns) = erosion%seds1(ew,ns) + erosion%er_accu(ew,ns)
                 dummy = erosion%seds2(ew,ns) + erosion%seds3(ew,ns)
@@ -179,16 +216,15 @@ contains
                    erosion%seds3(ew,ns) = max(0.d0,erosion%seds3(ew,ns) + erosion%seds2(ew,ns) - erosion%er_accu(ew,ns))
                    erosion%seds2(ew,ns) = 0.
                 end if
-                erosion%er_accu(ew,ns) = - max(0.d0,erosion%er_accu(ew,ns)-dummy)
-                erosion%erosion(ew,ns) = erosion%erosion(ew,ns) + erosion%er_accu(ew,ns)
+                erosion%erosion(ew,ns) = erosion%erosion(ew,ns) -min(0.d0,dummy - erosion%er_accu(ew,ns))
              end do
           end do
 
           !------------------------------------------------
           ! sediment deposition
           !------------------------------------------------
-          do ns=2,model%general%nsn-1
-             do ew=2,model%general%ewn-1
+          do ns=2,erosion%nsn-1
+             do ew=2,erosion%ewn-1
                 ! from dirty basal ice layer
                 if (erosion%seds1(ew,ns) .gt. erosion%dirty_ice_max) then
                    erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + erosion%seds1(ew,ns) - erosion%dirty_ice_max
@@ -200,7 +236,10 @@ contains
                    erosion%seds2(ew,ns) = erosion%seds2_max(ew,ns)
                 end if
                 ! depositing debris in basal layer when ice has retreated
-                if (model%geometry%thck(ew,ns).eq.0) then
+                node%pt(1) = ew
+                node%pt(2) = ns
+                node = coordsystem_get_node(model%general%ice_grid, coordsystem_get_coord(erosion%coord, node))
+                if (model%geometry%thck(node%pt(1),node%pt(2)).eq.0) then
                    erosion%seds3(ew,ns) = erosion%seds3(ew,ns) + erosion%seds2(ew,ns) + erosion%seds1(ew,ns)
                    erosion%seds2(ew,ns) = 0.
                    erosion%seds1(ew,ns) = 0.
@@ -233,10 +272,10 @@ contains
     
     ! local variables
     integer ew,ns
-    do ns=2,model%general%nsn-1
-       do ew=2,model%general%ewn-1
-          erosion%erosion_rate(ew,ns) = erosion%hb_erosion_factor * model%geometry%thck(ew,ns) &
-               * sqrt( sum(model%velocity%ubas(ew-1:ew,ns-1:ns))**2 + sum(model%velocity%vbas(ew-1:ew,ns-1:ns))**2 )
+    do ns=1,model%general%nsn-1
+       do ew=1,model%general%ewn-1
+          erosion%erosion_rate(ew,ns) = erosion%hb_erosion_factor * model%geomderv%stagthck(ew,ns) &
+               * sqrt(model%velocity%ubas(ew,ns)**2 + model%velocity%vbas(ew,ns)**2)
        end do
     end do
   end subroutine er_calc_erate
@@ -246,30 +285,40 @@ contains
     use glimmer_global, only: dp
     use glide_types
     use glide_velo
+    use glimmer_interpolate2d
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(glide_global_type) :: model       !*FD model instance
 
     real(kind=dp) :: dummy
 
-    integer ew,ns
+    integer ew,ns, i, j, is, js
+    real(kind=dp) :: a,b
 
     ! calculate basal shear stresses
     call calc_basal_shear(model)
 
-    do ns=2,model%general%nsn-1
-       do ew=2,model%general%ewn-1
-          if (erosion%erosion_rate(ew,ns).gt.0) then
-             dummy = 0.25*sum(model%velocity%tau_x(ew-1:ew,ns-1:ns))
-             erosion%seds2_max(ew,ns) = dummy*dummy
-             dummy = 0.25*sum(model%velocity%tau_y(ew-1:ew,ns-1:ns))
-             erosion%seds2_max(ew,ns) = erosion%seds2_max(ew,ns) + dummy*dummy
-             erosion%seds2_max(ew,ns) = erosion%soft_a*sqrt(erosion%seds2_max(ew,ns)) + erosion%soft_b
-          else
-             erosion%seds2_max(ew,ns) = 0.
+    erosion%seds2_max_v = 0.
+    do ns=1,model%general%nsn-1
+       do ew=1,model%general%ewn-1
+          if (abs(model%velocity%ubas(ew,ns))+abs(model%velocity%vbas(ew,ns)) .gt. 0.) then
+             erosion%seds2_max_v(ew,ns) = erosion%soft_b + erosion%soft_a * &
+                  sqrt(model%velocity%tau_x(ew,ns)**2 + model%velocity%tau_y(ew,ns)**2)
           end if
        end do
-    end do
+    end do    
+
+    ! interpolate
+    if (erosion%grid_magnifier.gt.1) then
+       call glimmer_interpolate(erosion%velo_seds,erosion%seds2_max_v,erosion%seds2_max)
+    else
+       do ns=2,model%general%nsn-1
+          do ew=2,model%general%ewn-1
+             erosion%seds2_max(ew,ns) = 0.25*sum(erosion%seds2_max_v(ew-1:ew,ns-1:ns))
+          end do
+       end do
+    end if
+
   end subroutine er_calc_dthick
 
   subroutine er_finalise(erosion)

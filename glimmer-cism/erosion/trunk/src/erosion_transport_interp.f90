@@ -25,7 +25,6 @@ contains
     allocate(trans%lin_con(erosion%ewn*erosion%nsn))
     allocate(trans%lin_stuff2(erosion%ewn*erosion%nsn))
 
-    trans%coord = coordsystem_new(0.d0,0.d0,erosion%dew,erosion%dns, erosion%ewn,erosion%nsn)
     allocate(trans%dispx(erosion%ewn,erosion%nsn))
     allocate(trans%dispy(erosion%ewn,erosion%nsn))
 
@@ -58,7 +57,7 @@ contains
        node%pt(2) = j
        do i=2,erosion%ewn-1
           node%pt(1) = i
-          pt = coordsystem_get_coord(trans%coord,node)
+          pt = coordsystem_get_coord(erosion%coord,node)
           call er_advect2d(time,pt%pt(1),pt%pt(2),x,y)
           trans%dispx(i,j)=x(1)
           trans%dispy(i,j)=y(1)
@@ -66,7 +65,7 @@ contains
     end do
 
     ! setup sparse matrix
-    call glimmer_init_bilinear(trans%coord,trans%dispx,trans%dispy,lagrange)
+    call glimmer_init_bilinear(erosion%coord,trans%dispx,trans%dispy,lagrange)
 
   end subroutine calc_lagrange
 
