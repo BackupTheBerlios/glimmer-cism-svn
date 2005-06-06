@@ -9,23 +9,22 @@ module erosion_advect
   use glimmer_coordinates
 
   ! private data
-  real(kind=dp), private, dimension(:,:), allocatable :: ux, uy
-  type(coordsystem), private :: coords
+  real(kind=dp), private, dimension(:,:), pointer :: ux, uy
+  type(coordsystem_type), private :: coords
   real(kind=dp), private :: eps
   
 contains
-  subroutine er_advect2d_init(x0d,y0d,numxd,numyd,deltaxd,deltayd)
+  subroutine er_advect2d_init(velo_coords)
     !initialise advection
     implicit none
-    real(kind=dp), intent(in)    :: x0d,y0d         ! lower left corner of grid
-    integer, intent(in) :: numxd,numyd     ! number of nodes
-    real(kind=dp), intent(in)    :: deltaxd,deltayd ! node spacing
+    type(coordsystem_type) :: velo_coords ! coordinate system for velo grid
+    
+    call coordsystem_allocate(velo_coords, ux)
+    call coordsystem_allocate(velo_coords, uy)
 
-    coords = coordsystem_new(x0d,y0d,deltaxd,deltayd,numxd,numyd)
+    coords = velo_coords
 
-    allocate(ux(numxd,numyd))
-    allocate(uy(numxd,numyd))
-    eps = 0.00001*min(deltaxd,deltayd)
+    eps = 0.00001*minval(velo_coords%delta%pt)
 
   end subroutine er_advect2d_init
 
@@ -65,8 +64,8 @@ contains
     real(kind=dp), intent(out), dimension(2) :: velo
 
     ! local vars
-    type(geom_point) :: pnt
-    type(geom_ipoint), dimension(4) :: nodes
+    type(coord_point) :: pnt
+    type(coord_ipoint), dimension(4) :: nodes
     real(kind=dp), dimension(4) :: weights
 
     integer k

@@ -6,7 +6,6 @@
 
 module erosion_transport
   use geometry
-  use glimmer_coordinates
 
   integer, parameter, private :: offset = 2
 
@@ -38,9 +37,7 @@ contains
     call init_integrate2d
     trans%half_xstep = 0.5*erosion%dew
     trans%half_ystep = 0.5*erosion%dns
-    call er_advect2d_init(model%numerics%dew/2.,model%numerics%dns/2., &
-         model%general%ewn-1,model%general%nsn-1, &
-         model%numerics%dew,model%numerics%dns)
+    call er_advect2d_init(model%general%velo_grid)
     ismintegrate2d_zero = 0. ! effective zero
   end subroutine init_transport
 
@@ -63,9 +60,9 @@ contains
     real(kind=dp) x0,y0
     real(kind=dp), dimension(1) ::  time,x,y
     logical d1,d2, l
-    type(geom_point) :: cross
-    type(geom_point) :: pt
-    type(geom_ipoint) :: node
+    type(coord_point) :: cross
+    type(coord_point) :: pt
+    type(coord_ipoint) :: node
 
     time = deltat
     lagrange%n = 0
@@ -182,7 +179,7 @@ contains
 
     ! local variables
     integer :: i,j,k
-    type(geom_ipoint) :: node1,node2
+    type(coord_ipoint) :: node1,node2
     integer ierr
 
     ! linearise concentration

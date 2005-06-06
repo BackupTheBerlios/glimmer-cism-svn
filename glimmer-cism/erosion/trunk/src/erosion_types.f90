@@ -51,10 +51,10 @@ module erosion_types
   type er_transport_type
      ! private data
      real(kind=dp), dimension(:), pointer :: lin_stuff,lin_stuff2,lin_con
-     type(coordsystem) :: coord
+     type(coordsystem_type) :: coord
      real(kind=dp) :: half_xstep, half_ystep
      ! for finite volume
-     type(geom_point), dimension(:,:), pointer :: patch_strip 
+     type(coord_point), dimension(:,:), pointer :: patch_strip 
      type(geom_poly) :: patch, patch1, patch2
      ! for interpolation
      real(kind=dp), dimension(:,:), pointer :: dispx => NULL() ! x-displacement field

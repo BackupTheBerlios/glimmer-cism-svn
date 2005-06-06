@@ -8,26 +8,18 @@
 
 module geometry
   use glimmer_global
+  use glimmer_coordinates
   ! number of dimensions
   integer :: geom_unit = 6
   integer, parameter :: geom_dim = 2
   real(kind=dp), parameter, private :: tolerance = 1e-7
 
   private :: advance,add_intersect
-  ! point type
-  type geom_point
-     real(kind=dp), dimension(geom_dim) :: pt
-  end type geom_point
-
-  ! integer point type
-  type geom_ipoint
-     integer, dimension(geom_dim) :: pt
-  end type geom_ipoint
 
   ! polygon type
   type geom_poly
      integer n
-     type(geom_point), dimension(:), pointer :: poly
+     type(coord_point), dimension(:), pointer :: poly
   end type geom_poly
 
   interface poly_add_vert
@@ -77,8 +69,8 @@ contains
   function subvec(a,b)
     ! vector substraction
     implicit none
-    type(geom_point), intent(in) :: a,b
-    type(geom_point) subvec
+    type(coord_point), intent(in) :: a,b
+    type(coord_point) subvec
 
     subvec%pt(:) = a%pt(:) - b%pt(:)
   end function subvec
@@ -99,7 +91,7 @@ contains
     ! positive if a, b, c are counterclockwise
     ! negative if a, b, c are clockwise
     implicit none
-    type(geom_point), intent(in) :: a,b,c
+    type(coord_point), intent(in) :: a,b,c
     real(kind=dp) triangle_area2
     
     triangle_area2 = a%pt(1)*b%pt(2) - a%pt(2)*b%pt(1) + &
@@ -123,7 +115,7 @@ contains
   function left(a,b,c)
     ! determines if a,b,c are ordered ccw
     implicit none
-    type(geom_point), intent(in) :: a,b,c
+    type(coord_point), intent(in) :: a,b,c
     logical left
 
     left = (triangle_area2(a,b,c) .gt. 0.d0)
@@ -132,7 +124,7 @@ contains
   function lefton(a,b,c)
     ! determines if a,b,c are ordered ccw
     implicit none
-    type(geom_point), intent(in) :: a,b,c
+    type(coord_point), intent(in) :: a,b,c
     logical lefton
 
     lefton = (triangle_area2(a,b,c) .ge. 0.d0)
@@ -141,7 +133,7 @@ contains
   function collinear(a,b,c)
     ! are a,b,c on same line
     implicit none
-    type(geom_point), intent(in) :: a,b,c
+    type(coord_point), intent(in) :: a,b,c
     logical collinear
 
     collinear = (abs(triangle_area2(a,b,c)) .le. tolerance)
@@ -150,7 +142,7 @@ contains
   function intersectProp(a,b,c,d)
     ! does [a,b] intersect [c,d]
     implicit none
-    type(geom_point), intent(in) :: a,b,c,d
+    type(coord_point), intent(in) :: a,b,c,d
     logical intersectProp
 
     ! eliminate special cases
@@ -165,7 +157,7 @@ contains
   function between(a,b,c)
     ! returns true iff (a,b,c) are colin and c lies on closed segment [a,b]
     implicit none
-    type(geom_point), intent(in) :: a,b,c
+    type(coord_point), intent(in) :: a,b,c
     logical between
     
     if (.not.collinear(a,b,c)) then
@@ -185,7 +177,7 @@ contains
   function intersect(a,b,c,d)
     ! returns true iff segments [a,b] and [c,d] intersect properly or improperly
     implicit none
-    type(geom_point), intent(in) :: a,b,c,d
+    type(coord_point), intent(in) :: a,b,c,d
     logical intersect
     if (intersectProp(a,b,c,d)) then
        intersect = .true.
@@ -260,9 +252,9 @@ contains
   function intersection(a,b,c,d,p)
     ! calculates intersection of segment [a,b] with [c,d], stores it in p and returns true if they intersect
     implicit none
-    type(geom_point), intent(in) :: a,b,c,d
+    type(coord_point), intent(in) :: a,b,c,d
     logical intersection
-    type(geom_point), intent(out) :: p
+    type(coord_point), intent(out) :: p
 
     real(kind=dp) s,t,denom
 
@@ -331,7 +323,7 @@ contains
   function point_in_cpoly(pnt, poly)
     ! test if pnt is in concave polygon
     implicit none
-    type(geom_point), intent(in) :: pnt
+    type(coord_point), intent(in) :: pnt
     type(geom_poly), intent(in) :: poly
     logical point_in_cpoly
     
@@ -349,9 +341,9 @@ contains
     type(geom_poly), intent(in) :: polya, polyb
     type(geom_poly) ConvexIntersect
 
-    type(geom_point) :: p,q ! directed edges on polya and polyb
-    type(geom_point) :: origin
-    type(geom_point) :: pq ! intersection point
+    type(coord_point) :: p,q ! directed edges on polya and polyb
+    type(coord_point) :: origin
+    type(coord_point) :: pq ! intersection point
     integer a,a1,b,b1  ! indices on polya and polyb, and a-1, b-1
     integer i          ! loop counter
     real(kind=dp) bha,ahb    ! b in H(a); a in H(b)
@@ -460,7 +452,7 @@ contains
     integer, intent(inout) :: a,adv
     integer, intent(in) :: n
     logical, intent(in) :: flag
-    type(geom_point), intent(in) :: pta
+    type(coord_point), intent(in) :: pta
     type(geom_poly) :: poly
     logical round
 
@@ -475,7 +467,7 @@ contains
     ! avoiding repeated vertices, return true iff at the starting point
     implicit none
     type(geom_poly) :: poly
-    type(geom_point), intent(in) :: point
+    type(coord_point), intent(in) :: point
     logical add_intersect
 
     add_intersect = .false.

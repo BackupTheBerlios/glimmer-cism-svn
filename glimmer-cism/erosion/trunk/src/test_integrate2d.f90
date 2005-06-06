@@ -19,7 +19,7 @@ program testintegrate2d
   real(kind=dp), dimension(:,:), allocatable :: vec
   real(kind=dp), dimension(:), allocatable ::res
   real(kind=dp) :: area
-  type(coordsystem) :: coords
+  type(coordsystem_type) :: coords
 
   deltaxy = 10.
 

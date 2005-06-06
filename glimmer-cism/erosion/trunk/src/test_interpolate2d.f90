@@ -9,7 +9,7 @@ program test_interpolate
   use glimmer_interpolate2d
   implicit none
 
-  type(coordsystem) :: coords
+  type(coordsystem_type) :: coords
   type(sparse_matrix_type) :: interpolator
   real(kind=dp) :: delta = 0.1
   integer i,j

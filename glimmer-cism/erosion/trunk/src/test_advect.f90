@@ -19,6 +19,7 @@ program testadvect
   real(kind=dp), dimension(:), allocatable :: time,x,y
   real(kind=dp) :: deltax,deltay,deltat
   integer numx,numy,numt
+  type(coordsystem_type) :: coords
 
   ! output
   integer numtimes,i,t
@@ -74,7 +75,9 @@ program testadvect
   status = nf90_inq_varid(ncid,"vvel",uyid)
   call nc_errorhandle(status)
  
-  call er_advect2d_init(x(1),y(1),numx,numy,deltax,deltay)
+  coords = coordsystem_new(x(1),y(1),deltax,deltay,numx,numy)
+
+  call er_advect2d_init(coords)
 
   open(10,file='test_advect.data',status='unknown')
   write(10,*) time(timeslice), x0, y0

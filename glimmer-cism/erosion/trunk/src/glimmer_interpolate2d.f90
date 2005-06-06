@@ -42,15 +42,15 @@ contains
     use glimmer_coordinates
     implicit none
     !*FD initialise sparse matrix defining interpolation given by displacement field
-    type(coordsystem), intent(in)             :: coord        !*FD coordinate system of the input field
+    type(coordsystem_type), intent(in)             :: coord        !*FD coordinate system of the input field
     real(kind=dp), dimension(:,:), intent(in) :: dispx, dispy !*FD displacement field 
     type(sparse_matrix_type)                  :: bilinear     !*FD sparse matrix containing interpolation
 
     ! local variables
     integer :: i,j, k, lini, numx,numy
-    type(geom_point) :: point
-    type(geom_ipoint) :: this_node
-    type(geom_ipoint), dimension(4) :: nodes
+    type(coord_point) :: point
+    type(coord_ipoint) :: this_node
+    type(coord_ipoint), dimension(4) :: nodes
     real(kind=dp), dimension(4) :: weights
 
 
@@ -80,12 +80,12 @@ contains
     use glimmer_coordinates
     implicit none
     !*FD bilinear interpolation
-    type(coordsystem), intent(in)            :: coord     !*FD coordinate system to operate on
-    type(geom_point), intent(in)             :: point     !*FD desired point
-    type(geom_ipoint), dimension(4), intent(out) :: nodes !*FD array containing indicies into field
+    type(coordsystem_type), intent(in)            :: coord     !*FD coordinate system to operate on
+    type(coord_point), intent(in)             :: point     !*FD desired point
+    type(coord_ipoint), dimension(4), intent(out) :: nodes !*FD array containing indicies into field
     real(kind=dp), dimension(4), intent(out) :: weights   !*FD array of weights
 
-    type(geom_point) :: pnt
+    type(coord_point) :: pnt
 
     ! check if point is inside coord-system
 #ifdef DEBUG

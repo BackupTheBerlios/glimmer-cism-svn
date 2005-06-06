@@ -19,16 +19,14 @@ contains
 
   subroutine calc_weight(coords, weight, patch, n)
     use glimmer_sparse
-    use geometry
-    use glimmer_coordinates
     implicit none
-    type(coordsystem), intent(in) :: coords
+    type(coordsystem_type), intent(in) :: coords
     type(sparse_matrix_type) :: weight            ! sparse matrix
     type(geom_poly), intent(in) :: patch     ! the polygone over which will be integrated
     integer, intent(in) :: n                 ! cell number
 
     ! local variables
-    type(geom_ipoint) :: node
+    type(coord_ipoint) :: node
     integer i
     integer imin, inum, pow, jmin, jnum,  num
     real(kind=dp) w
@@ -80,17 +78,17 @@ contains
     use glimmer_sparse
     use glimmer_coordinates
     implicit none
-    type(coordsystem), intent(in) :: coords
+    type(coordsystem_type), intent(in) :: coords
     type(sparse_matrix_type) :: weight            ! sparse matrix
     type(geom_poly), intent(in) :: patch     ! the polygone over which will be integrated
-    type(geom_ipoint),intent(inout) :: node  ! cell coordinates
+    type(coord_ipoint),intent(inout) :: node  ! cell coordinates
     integer, intent(in) :: pow               ! size of square (numi,numj = 2**pow)
     integer, intent(in) :: n                 ! cell number
 
     ! local variables
     type(geom_poly) :: poly
-    type(geom_point) :: point
-    type(geom_ipoint) :: n2
+    type(coord_point) :: point
+    type(coord_ipoint) :: n2
     integer p
     logical inters
     integer i,j, i1,j1,next
@@ -164,10 +162,10 @@ contains
     use glimmer_coordinates
     use glimmer_sparse
     implicit none
-    type(coordsystem), intent(in) :: coords
+    type(coordsystem_type), intent(in) :: coords
     type(sparse_matrix_type) :: weight
     integer, intent(in) :: n
-    type(geom_ipoint), intent(in) :: node
+    type(coord_ipoint), intent(in) :: node
     real(kind=dp), intent(in) :: val
 
     if (coordsystem_node_inside(coords,node) .and. abs(val).gt.ismintegrate2d_zero) then

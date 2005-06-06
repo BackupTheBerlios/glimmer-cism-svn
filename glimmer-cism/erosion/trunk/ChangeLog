@@ -1,3 +1,18 @@
+2005-06-06 Magnus Hagdorn
+ * moved glimmer_coordinates.f90 to glimmer sources
+ * Makefile.am: removed glimmer_coordinates.f90
+ * erosion_advect.f90: changed types to new names from glimmer
+ * erosion_integrate2d.f90: ditto
+ * erosion_transport_fv.f90: ditto
+ * erosion_transport_interp.f90: ditto
+ * erosion_types.f90: ditto
+ * geometry.f90: ditto, moved point def to glimmer_coordinates.f90
+ * glimmer_interpolate2d.f90: ditto
+ * test_advect.f90: ditto
+ * test_geometry.f90: ditto
+ * test_integrate2d.f90: ditto
+ * test_interpolate2d.f90: ditto
+
 2005-06-01 Magnus Hagdorn
  * erosion_vars.def: new sediment dimensions xs, ys
  * erosion_nc_custom.f90: filling erosion dim variables

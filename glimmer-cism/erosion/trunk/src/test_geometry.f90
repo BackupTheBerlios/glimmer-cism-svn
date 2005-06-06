@@ -7,7 +7,7 @@ program testgeom
   use geometry
   implicit none
   type(geom_poly) :: polygon, poly2
-  type(geom_point) :: test
+  type(coord_point) :: test
   logical res
 
   integer i,j, i1, j1

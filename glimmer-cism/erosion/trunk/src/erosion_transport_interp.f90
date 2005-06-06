@@ -29,9 +29,7 @@ contains
     allocate(trans%dispx(erosion%ewn,erosion%nsn))
     allocate(trans%dispy(erosion%ewn,erosion%nsn))
 
-    call er_advect2d_init(0.5*model%numerics%dew, 0.5*model%numerics%dns, &
-         model%general%ewn-1,model%general%nsn-1, &
-         model%numerics%dew,model%numerics%dns)
+    call er_advect2d_init(model%general%velo_grid)
 
   end subroutine init_transport
 
@@ -50,8 +48,8 @@ contains
 
     ! local variables
     integer i,j
-    type(geom_point) :: pt
-    type(geom_ipoint) :: node
+    type(coord_point) :: pt
+    type(coord_ipoint) :: node
     real(kind=dp), dimension(1) ::  time,x,y
 
     ! calculate displacement field
@@ -86,7 +84,7 @@ contains
 
     ! local variables
     integer :: i,j,k
-    type(geom_ipoint) :: node1,node2
+    type(coord_ipoint) :: node1,node2
     integer ierr
 
     call glimmer_interpolate(lagrange, concentration, concentration)
