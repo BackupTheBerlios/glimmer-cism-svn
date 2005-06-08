@@ -52,13 +52,14 @@ program testtransport
   write(*,*) 'total concentration ', sum(er%seds1)
   ! set up sparse matrix
   call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
-  call calc_lagrange(er, er%trans, model%numerics%dt , er%lag_seds1)
-  call print_sparse(er%lag_seds1,101)
+  call calc_lagrange(er, er%trans, er%dt , er%lag_seds1)
   do while(time.le.model%numerics%tend)
      model%numerics%time = time
      call glide_io_writeall(model,model)
      call erosion_io_writeall(er,model)
-     call transport_scalar(er,er%trans,er%seds1,er%lag_seds1)
+     if (model%numerics%tinc .gt. mod(model%numerics%time,model%numerics%tinc*er%ndt)) then
+        call transport_scalar(er,er%trans,er%seds1,er%lag_seds1)
+     end if
      time = time + model%numerics%tinc
   end do
   write(*,*) 'total concentration ', sum(er%seds1)

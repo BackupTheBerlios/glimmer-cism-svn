@@ -59,14 +59,7 @@ def create_velo(outname, grid_spacing):
     centrex = centrex*1000.
     centrey = centrey*1000.
     radius = radius*1000.
-    
-    # create initial sediment distribution
-    seds1=cffile.createVariable('seds1')
-    i = [int(math.floor(sedx[0]/grid_spacing)), int(math.ceil(sedx[1]/grid_spacing))]
-    j = [int(math.floor(sedy[0]/grid_spacing)), int(math.ceil(sedy[1]/grid_spacing))]
-    seds1[0,:,:] = 0.
-    seds1[0,j[0]:j[1],i[0]:i[1]] = sed_thck
-    
+        
     # create velos
     ubas = cffile.createVariable('ubas')
     vbas = cffile.createVariable('vbas')
@@ -100,6 +93,6 @@ def create_velo(outname, grid_spacing):
 
 if __name__ == '__main__':
 
+    create_velo("velo.20km.nc",20.)
     create_velo("velo.10km.nc",10.)
     create_velo("velo.5km.nc",5.)
-    create_velo("velo.2km.nc",2.)

@@ -150,7 +150,7 @@ contains
              ! transport in deformable sediment layer
              call set_velos(model%velocity%ubas,model%velocity%vbas,-erosion%transport_fac)
              call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds2)      
-
+             
              !----------------------------------------------------------
              ! move sediments
              !----------------------------------------------------------
@@ -158,7 +158,7 @@ contains
              call transport_scalar(erosion,erosion%trans,erosion%seds1,erosion%lag_seds1)
              ! move sediments in deformable sed layer
              call transport_scalar(erosion,erosion%trans,erosion%seds2,erosion%lag_seds2)
-
+             
              !------------------------------------------------
              ! sediment erosion
              !------------------------------------------------       
@@ -226,15 +226,16 @@ contains
 
              !erosion%er_isos = erosion%er_isos + erosion%er_accu
              !model%geometry%topg = model%geometry%topg + erosion%er_accu
+          else
+             !------------------------------------------------
+             ! no sediment transport 
+             ! eroded sediments are lost instantly
+             !------------------------------------------------
+
+             erosion%erosion(:,:) = erosion%erosion(:,:) - erosion%er_accu(:,:)
+             
           end if
        end if
-    else
-       !------------------------------------------------
-       ! no sediment transport 
-       ! eroded sediments are lost instantly
-       !------------------------------------------------
-
-       erosion%erosion(:,:) = erosion%erosion(:,:) - erosion%er_accu(:,:)
     end if
 
 !!$    ! update load if necessary

@@ -1,3 +1,11 @@
+2005-06-08 Magnus Hagdorn
+ * erosion.f90: fix bug
+ * test_transport.f90: fix another bug
+ * er-transport1.config: clean up configuration
+ * trans_velo.py: tidyed up
+ * test_transport.sh: script for testing transport code
+ * trans_velo.config.in: config file for testing transport code
+
 2005-06-06 Magnus Hagdorn
  * erosion.f90: clean up
  * erosion_transport_fv.f90: ditto
