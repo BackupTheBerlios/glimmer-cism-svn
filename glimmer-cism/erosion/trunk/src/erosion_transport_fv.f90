@@ -37,7 +37,7 @@ contains
     trans%half_xstep = 0.5*erosion%dew
     trans%half_ystep = 0.5*erosion%dns
     call er_advect2d_init(model%general%velo_grid)
-    ismintegrate2d_zero = 0. ! effective zero
+    ismintegrate2d_zero = 1.d-7 ! effective zero
   end subroutine init_transport
 
   subroutine calc_lagrange(erosion, trans, deltat, lagrange)
@@ -104,10 +104,15 @@ contains
        end do
        !calculate weights 
        do i=1+offset,erosion%ewn-offset
-          trans%patch%poly(1) = trans%patch_strip(i-offset,lower)
-          trans%patch%poly(2)%pt(:) = trans%patch_strip(i-offset+1,lower)%pt(:)-small
+          if (erosion%er_accu(i,j) .lt. small) then
+             continue
+          end if
+          trans%patch%poly(1)%pt(:) = trans%patch_strip(i-offset,lower)%pt(:)+small
+          trans%patch%poly(2)%pt(1) = trans%patch_strip(i-offset+1,lower)%pt(1)-small
+          trans%patch%poly(2)%pt(2) = trans%patch_strip(i-offset+1,lower)%pt(2)+small
           trans%patch%poly(3)%pt(:) = trans%patch_strip(i-offset+1,upper)%pt(:)-small
-          trans%patch%poly(4) = trans%patch_strip(i-offset,upper)
+          trans%patch%poly(4)%pt(1) = trans%patch_strip(i-offset,upper)%pt(1)+small
+          trans%patch%poly(4)%pt(2) = trans%patch_strip(i-offset,upper)%pt(2)-small
           node%pt(1) = i
           node%pt(2) = j
           if (is_anti_clock(trans%patch)) then
@@ -184,6 +189,18 @@ contains
     trans%lin_stuff = pack(concentration,.true.)
     trans%lin_stuff2 = 0.
     trans%lin_con = 0.
+
+
+    ! normalise sparse matrix to 1 iff val > 1
+    do k=1,lagrange%n
+       trans%lin_stuff2(lagrange%row(k)) = trans%lin_stuff2(lagrange%row(k))+lagrange%val(k)
+    end do
+    do k=1,lagrange%n
+       if (trans%lin_stuff2(lagrange%row(k)).gt.1.) then
+          lagrange%val(k) = lagrange%val(k)/trans%lin_stuff2(lagrange%row(k))
+       end if
+    end do
+    trans%lin_stuff2 = 0.
 
     ! calculate new concentrations
     do k=1,lagrange%n

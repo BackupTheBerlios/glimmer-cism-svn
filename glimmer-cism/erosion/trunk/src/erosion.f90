@@ -98,6 +98,10 @@ contains
     ! setup interpolation between velo grid and sediment grid
     call glimmer_init_bilinear(model%general%velo_grid, erosion%coord, erosion%velo_seds)
 
+    ! initialise profile
+#ifdef PROFILING
+    call erosion_prof_init(model,erosion)
+#endif
   end subroutine er_initialise
 
   subroutine er_tstep(erosion,model)
@@ -108,6 +112,7 @@ contains
     use erosion_advect
     use erosion_transport
     use glimmer_interpolate2d
+    use glide_profile
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
     type(glide_global_type) :: model       !*FD model instance
@@ -126,6 +131,9 @@ contains
           !----------------------------------------------------------
           ! calculate erosion rate
           !----------------------------------------------------------
+#ifdef PROFILING
+          call glide_prof_start(model,erosion%er_prof%erate)
+#endif      
           call er_calc_erate(erosion,model)
           ! interpolate
           if (erosion%grid_magnifier.gt.1) then
@@ -138,31 +146,48 @@ contains
              end do
           end if
           erosion%er_accu = erosion%er_accu * erosion%dt
-
+#ifdef PROFILING
+    call glide_prof_stop(model,erosion%er_prof%erate)
+#endif
 
           if (erosion%dotransport) then
              !----------------------------------------------------------
              ! set up sediment transport sparse matrix
              !----------------------------------------------------------
              ! transport in ice base
+#ifdef PROFILING
+             call glide_prof_start(model,erosion%er_prof%calc_lag)
+#endif      
              call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
              call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds1)
              ! transport in deformable sediment layer
              call set_velos(model%velocity%ubas,model%velocity%vbas,-erosion%transport_fac)
              call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds2)      
+#ifdef PROFILING
+             call glide_prof_stop(model,erosion%er_prof%calc_lag)
+#endif
              
              !----------------------------------------------------------
              ! move sediments
              !----------------------------------------------------------
              ! move sediments in basal ice layer
+#ifdef PROFILING
+             call glide_prof_start(model,erosion%er_prof%trans_sed)
+#endif      
              call transport_scalar(erosion,erosion%trans,erosion%seds1,erosion%lag_seds1)
              ! move sediments in deformable sed layer
              call transport_scalar(erosion,erosion%trans,erosion%seds2,erosion%lag_seds2)
+#ifdef PROFILING
+             call glide_prof_stop(model,erosion%er_prof%trans_sed)
+#endif
              
              !------------------------------------------------
              ! sediment erosion
              !------------------------------------------------       
              ! add sediment to deformable soft bed from below
+#ifdef PROFILING
+             call glide_prof_start(model,erosion%er_prof%sed_eros)
+#endif      
              call  er_calc_dthick(erosion,model)
              do ns=2,erosion%nsn-1
                 do ew=2,erosion%ewn-1
@@ -196,10 +221,16 @@ contains
                    erosion%erosion(ew,ns) = erosion%erosion(ew,ns) -min(0.d0,dummy - erosion%er_accu(ew,ns))
                 end do
              end do
+#ifdef PROFILING
+             call glide_prof_stop(model,erosion%er_prof%sed_eros)
+#endif
 
              !------------------------------------------------
              ! sediment deposition
              !------------------------------------------------
+#ifdef PROFILING
+             call glide_prof_start(model,erosion%er_prof%sed_dep)
+#endif      
              do ns=2,erosion%nsn-1
                 do ew=2,erosion%ewn-1
                    ! from dirty basal ice layer
@@ -223,6 +254,9 @@ contains
                    end if
                 end do
              end do
+#ifdef PROFILING
+             call glide_prof_stop(model,erosion%er_prof%sed_dep)
+#endif
 
              !erosion%er_isos = erosion%er_isos + erosion%er_accu
              !model%geometry%topg = model%geometry%topg + erosion%er_accu

@@ -48,6 +48,14 @@ module erosion_types
   use geometry
   use glimmer_coordinates
 
+  type er_prof_type
+     integer :: erate
+     integer :: calc_lag
+     integer :: trans_sed
+     integer :: sed_eros
+     integer :: sed_dep
+  end type er_prof_type
+
   type er_transport_type
      ! private data
      real(kind=dp), dimension(:), pointer :: lin_stuff,lin_stuff2,lin_con
@@ -92,6 +100,8 @@ module erosion_types
      real(kind=dp) :: dew,dns                              !*FD grid spacing
      type(coordsystem_type) :: coord                       !*FD coordinate system of sed grid
      type(sparse_matrix_type) :: velo_seds                 !*FD transformation from velo to seds grid
+     ! profiling
+     type(er_prof_type) :: er_prof
   end type erosion_type
 
 contains

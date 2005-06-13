@@ -152,7 +152,7 @@ contains
     else ! we are left with a single cell now
        ! calculate intersection between cell and patch
        poly = ConvexIntersect(patch,cell)
-       val = 0.5*real(poly_area2(poly)) / (coords%delta%pt(1)*coords%delta%pt(2))
+       val = 0.5*abs(poly_area2(poly)) / (coords%delta%pt(1)*coords%delta%pt(2))
        call addmat(coords,weight,n,node,val)
        call poly_delete(poly)
     end if

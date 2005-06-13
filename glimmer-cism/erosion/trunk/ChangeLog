@@ -1,3 +1,12 @@
+2005-06-13 Magnus Hagdorn
+ * erosion.f90: add profiling
+ * erosion_integrate2d.f90: fix bug with negative areas
+ * erosion_setup.f90: move grid_factor to main erosion section, add 
+   profile setup
+ * erosion_transport_fv.f90: set small to 1.d-7, make test patch slightly 
+   smaller so it fits into cell, add normalisation
+ * erosion_types.f90: add profile type
+
 2005-06-08 Magnus Hagdorn
  * erosion.f90: fix bug
  * test_transport.f90: fix another bug

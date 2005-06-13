@@ -57,11 +57,11 @@ contains
        erosion%doerosion = .True.
        call GetValue(section,'hb_erosion',erosion%hb_erosion_factor)
        call GetValue(section,'ntime',erosion%ndt)
+       call GetValue(section,'grid_factor',erosion%grid_magnifier)
     end if
     call GetSection(config,section,'Transport')
     if (associated(section)) then
        erosion%dotransport = .True.
-       call GetValue(section,'grid_factor',erosion%grid_magnifier)
        call GetValue(section,'deformable_velo',erosion%transport_fac)
        call GetValue(section,'dirty_ice_thick',erosion%dirty_ice_max)
        call GetValue(section,'soft_a',erosion%soft_a)
@@ -83,14 +83,14 @@ contains
        call write_log('-------')
        write(message,*) 'Updating erosion every ',erosion%ndt,' time steps'
        call write_log(message)
+       write(message,*) 'Sediment grid resolution increased by : ',erosion%grid_magnifier
+       call write_log(message)
        write(message,*) 'hard bedrock erosion constant : ',erosion%hb_erosion_factor
        call write_log(message)
        call write_log('')
        if (erosion%dotransport) then
           call write_log('Sediment Transport')
           call write_log('------------------')
-          write(message,*) 'Sediment grid resolution increased by : ',erosion%grid_magnifier
-          call write_log(message)
           write(message,*) 'deformable sediment velo factor: ',erosion%transport_fac
           call write_log(message)
           write(message,*) 'max thickness of dirty basal ice layer: ',erosion%dirty_ice_max
@@ -103,5 +103,26 @@ contains
        end if
     end if
   end subroutine er_printconfig
+
+  subroutine erosion_prof_init(model,erosion)
+    !*FD initialise profiling
+    use profile
+    use glide_types
+    use erosion_types
+    implicit none
+    type(glide_global_type) :: model        !*FD model instance
+    type(erosion_type) :: erosion           !*FD structure holding erosion data
+    
+    if (model%profile%profile_unit .eq. 0) then
+       call profile_init(model%profile,'erosion.profile')
+       write(model%profile%profile_unit,*) '# take a profile every ',model%numerics%profile_period,' time steps'
+    end if
+
+    erosion%er_prof%erate     = profile_register(model%profile,'erosion rate')
+    erosion%er_prof%calc_lag  = profile_register(model%profile,'calc lagrangian')
+    erosion%er_prof%trans_sed = profile_register(model%profile,'trans sed')
+    erosion%er_prof%sed_eros  = profile_register(model%profile,'erode sediments')
+    erosion%er_prof%sed_dep   = profile_register(model%profile,'deposit sediments')
+  end subroutine erosion_prof_init
 
 end module erosion_setup
