@@ -9,7 +9,7 @@ docdir = $(prefix)/doc
 dist_doc_DATA = $(doc_DATA)
 SUBDIRS = erosion common
 
-EXTRA_DIST = erosion.tex  erosion_pdf.tex  erosion_ps.tex
+EXTRA_DIST = erosion.tex  erosion_pdf.tex  erosion_ps.tex erosion.bib
 
 CLEANFILES = *~ *.aux *.dvi *.log *.out *.toc
 
@@ -21,4 +21,5 @@ erosion.ps:	erosion_ps.dvi
 
 .tex.dvi::
 	latex $<
+	bibtex $*
 	latex $<
