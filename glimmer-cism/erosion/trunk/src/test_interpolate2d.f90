@@ -9,9 +9,9 @@ program test_interpolate
   use glimmer_interpolate2d
   implicit none
 
-  type(coordsystem_type) :: coords
-  type(sparse_matrix_type) :: interpolator
-  real(kind=dp) :: delta = 0.1
+  type(coordsystem_type) :: coords,hires_coords
+  type(sparse_matrix_type) :: interpolator,f2f_interp
+  real(kind=dp) :: delta = 0.1,x,y
   integer i,j
   integer, parameter :: numx = 100
   integer, parameter :: numy = 150
@@ -19,32 +19,50 @@ program test_interpolate
   integer, parameter :: inter_numy = 50
 
   real(kind=dp), dimension(numx,numy) ::  orig_field
+  real(kind=dp), dimension(2*numx,2*numy) ::  highres_field
 
   real(kind=dp), dimension(inter_numx,inter_numy) :: dispx, dispy, interp_field
 
   ! setup coordsystem
   coords = coordsystem_new(0.d0,0.d0,delta, delta, numx, numy)
+  hires_coords = coordsystem_new(0.d0,0.d0,delta/2., delta/2., 2*numx, 2*numy)
+
   ! setup data
   do j=1,numy
+     y=(j-1)*delta
      do i=1,numx
-        orig_field(i,j) = calc_data((i-1)*delta,(j-1)*delta)
+        x=(i-1)*delta
+        orig_field(i,j) = calc_data(x,y)
      end do
   end do
 
   ! generate random displacement field
   call random_number(dispx)
-  dispx = dispx * numx*delta
+  dispx = dispx * (numx-1)*delta
   call random_number(dispy)
-  dispy = dispy * numy*delta
+  dispy = dispy * (numy-1)*delta
   
+  open(unit=1,file="interp_disp.data",status="unknown")
   call glimmer_init_bilinear(coords,dispx, dispy,interpolator)
-  call glimmer_interpolate(interpolator,orig_field,interp_field)
-  
+  call glimmer_interpolate(interpolator,orig_field,interp_field)  
   do j=1,inter_numy
      do i=1,inter_numx
-        write(*,*) dispx(i,j), dispy(i,j), calc_data(dispx(i,j), dispy(i,j)), interp_field(i,j)
+        write(1,*) dispx(i,j), dispy(i,j), calc_data(dispx(i,j), dispy(i,j)), interp_field(i,j)
      end do
   end do
+  close(1)
+
+  open(unit=1,file="interp_coord.data",status="unknown")
+  call glimmer_init_bilinear(coords,hires_coords,f2f_interp)
+  call glimmer_interpolate(f2f_interp,orig_field,highres_field)
+  do j=1,2*numy-1
+     y=0.5*(j-1)*delta
+     do i=1,2*numx-1
+        x=0.5*(i-1)*delta
+        write(1,*) x,y,calc_data(x,y),highres_field(i,j)
+     end do
+  end do
+  close(1)
 
 contains 
   function calc_data(x,y)
@@ -52,7 +70,7 @@ contains
     real(kind=dp) :: calc_data
     real(kind=dp), intent(in) :: x,y
 
-    calc_data = sin(x)+sin(y)
+    calc_data = sin(x)+cos(y)
   end function calc_data
 end program test_interpolate
 

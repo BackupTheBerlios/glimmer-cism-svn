@@ -9,7 +9,7 @@ module erosion_transport
 
   integer, parameter, private :: offset = 2
 
-  real(kind=dp), private, parameter :: small = 1.d-7
+  real(kind=dp), private, parameter :: small = 1.d-10
 
 contains
   subroutine init_transport(trans,model,erosion)
@@ -192,15 +192,15 @@ contains
 
 
     ! normalise sparse matrix to 1 iff val > 1
-    do k=1,lagrange%n
-       trans%lin_stuff2(lagrange%row(k)) = trans%lin_stuff2(lagrange%row(k))+lagrange%val(k)
-    end do
-    do k=1,lagrange%n
-       if (trans%lin_stuff2(lagrange%row(k)).gt.1.) then
-          lagrange%val(k) = lagrange%val(k)/trans%lin_stuff2(lagrange%row(k))
-       end if
-    end do
-    trans%lin_stuff2 = 0.
+!!$    do k=1,lagrange%n
+!!$       trans%lin_stuff2(lagrange%row(k)) = trans%lin_stuff2(lagrange%row(k))+lagrange%val(k)
+!!$    end do
+!!$    do k=1,lagrange%n
+!!$       if (trans%lin_stuff2(lagrange%row(k)).gt.1.) then
+!!$          lagrange%val(k) = lagrange%val(k)/trans%lin_stuff2(lagrange%row(k))
+!!$       end if
+!!$    end do
+!!$    trans%lin_stuff2 = 0.
 
     ! calculate new concentrations
     do k=1,lagrange%n

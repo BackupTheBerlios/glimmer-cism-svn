@@ -19,9 +19,9 @@ niso = 1.
 
 [Erosion]
 ntime = NTIME
+grid_factor = GRID_FACTOR
 
 [Transport]
-grid_factor = GRID_FACTOR
 
 [CF default]
 title: DGRIDkm, NTIMEx5a, xGRID_FACTOR

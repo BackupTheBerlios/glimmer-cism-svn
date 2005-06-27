@@ -3,7 +3,8 @@
 # test transport code
 # Magnus Hagdorn, June 2005
 
-DGRID="20 10"
+#DGRID="20 10"
+DGRID=10
 NTIME="10 20"
 GRID_FACTOR="1 4"
 
@@ -32,4 +33,4 @@ done
 echo "0.      0.
 1500000.        1500000." > prof
 
-plotProfile.py -vseds1 -t12.9 -pprof $plots trans_velo.ps
+plotProfile.py -vseds1 -t 0  -t 3 -t 6 -t 9 -t 12 -t 15 -pprof $plots trans_velo.ps

@@ -104,5 +104,5 @@ AM_CONDITIONAL([DO_DOC_PS],  [test "$DVIPS" != ""])
 AM_CONDITIONAL([DO_DOC_PDF], [test "$DVIPDFT" != ""])
 AM_CONDITIONAL([BUILD_DOCS], [test "$enable_doc" == "yes"])
 
-AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile doc/common/Makefile doc/erosion/Makefile doc/erosion/figs/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile doc/common/Makefile doc/erosion/Makefile doc/erosion/figs/Makefile tests/Makefile])
 AC_OUTPUT([erosion-config src/erosion_version.f90 doc/common/version.tex])

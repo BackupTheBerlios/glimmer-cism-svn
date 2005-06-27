@@ -121,16 +121,11 @@ contains
 
     type(coord_point) :: pnt
 
+
+    ! get lower left node of cell into which point falls
+    nodes(1) = coordsystem_get_llnode(coord,point)
+
     ! check if point is inside coord-system
-#ifdef DEBUG
-    if (.not.coordsystem_point_inside(coord,point)) then
-       write(*,*) 'Error (',__FILE__,__LINE__,'): point (',point%pt,') not inside coord system'
-       return
-    end if
-#endif
-
-    nodes(1)%pt(:) = 1+floor((point%pt(:)-coord%origin%pt(:))*coord%delta_r%pt(:))
-
     if (.not.coordsystem_point_inside(coord,point)) then
        nodes(1)%pt(:) = 1
        nodes(2)%pt(:) = 1
@@ -156,6 +151,7 @@ contains
        nodes(2:4)%pt(2) = 1
        weights(1) = 1.d0
        weights(2:4) = 0.d0
+       return
     else if (nodes(1)%pt(1).eq.coord%size%pt(1)) then
        nodes(2)%pt(:) = 1
        nodes(3)%pt(:) = 1
@@ -163,6 +159,7 @@ contains
        weights(2) = 0.d0
        weights(3) = 0.d0
        weights(4) = pnt%pt(2)
+       return
     else if (nodes(1)%pt(2).eq.coord%size%pt(2)) then
        nodes(3)%pt(:) = 1
        nodes(4)%pt(:) = 1
@@ -170,6 +167,7 @@ contains
        weights(2) = pnt%pt(1)
        weights(3) = 0.d0
        weights(4) = 0.d0
+       return
     else
        weights(1) = (1-pnt%pt(1))*(1-pnt%pt(2))
        weights(2) = pnt%pt(1)*(1-pnt%pt(2))

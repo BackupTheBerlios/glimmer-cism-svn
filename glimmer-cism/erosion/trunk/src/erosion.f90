@@ -311,9 +311,6 @@ contains
 
     integer ew,ns
 
-    ! calculate basal shear stresses
-    call calc_basal_shear(model)
-
     erosion%seds2_max_v = 0.
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1

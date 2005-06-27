@@ -23,5 +23,7 @@
 		$(SED) 's#psfile=#psfile=\\dir/gnu/#' $@ > .tmp
 		mv .tmp  $@
 
+.ps.eps:	
+		$(PS2EPSI) $< $@
 
-SUFFIXES = .fig .pstex .pstex_t .eps .dia .gp .pslatex
+SUFFIXES = .fig .pstex .pstex_t .eps .dia .gp .pslatex .ps

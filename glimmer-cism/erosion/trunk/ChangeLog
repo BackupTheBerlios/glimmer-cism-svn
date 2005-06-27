@@ -1,3 +1,15 @@
+2005-06-27 Magnus Hagdorn
+ * src/erosion.f90: basal shear stresses are now calculated by glimmer
+ * erosion_transport_fv.f90: don't normalise weight matrix
+ * glimmer_interpolate.f90: use new call to get lower left node of cell
+ * test_interpolate.f90: expand test program to also test coord-coord 
+   system interpolatation, fix various bugs
+ * tests/Makefile.am: added tests to build system. 
+ * test_transport.sh: minor improvements
+ * trans_velo.config.in: bug fix
+ * Makefile.am, configure.in: add tests to build system
+ * improve docs
+
 2005-06-20 Magnus Hagdorn
  * more doc
  * fix date of last ChangeLog entry
