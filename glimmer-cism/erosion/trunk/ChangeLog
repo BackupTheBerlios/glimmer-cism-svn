@@ -1,4 +1,7 @@
 2005-07-01 Magnus Hagdorn
+ * updated NEWS and added date to documentation
+
+2005-07-01 Magnus Hagdorn
  * erosion_trans_lagtype.f90: type for semi-Lagrangian advection solvers,
    moved here from erosion_types.f90
  * erosion_types.f90: removed transport type
