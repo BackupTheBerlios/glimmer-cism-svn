@@ -38,7 +38,29 @@ contains
     trans%half_ystep = 0.5*erosion%dns
     call er_advect2d_init(model%general%velo_grid)
     ismintegrate2d_zero = 1.d-7 ! effective zero
+
+    ! initialise sparse matrices
+    call new_sparse_matrix(10000,trans%lag_seds1)
+    call new_sparse_matrix(10000,trans%lag_seds2)
   end subroutine init_transport
+
+  subroutine transport_sediments(erosion,model)
+    use erosion_types
+    use glide_types
+    use erosion_advect
+    implicit none
+    type(erosion_type) :: erosion          !*FD structure holding erosion data
+    type(glide_global_type) :: model
+
+    ! transport in ice base
+    call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
+    call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%trans%lag_seds1)
+    call transport_scalar(erosion,erosion%trans,erosion%seds1,erosion%trans%lag_seds1)
+    ! transport in deformable sediment layer
+    call set_velos(model%velocity%ubas,model%velocity%vbas,-erosion%transport_fac)
+    call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%trans%lag_seds2)    
+    call transport_scalar(erosion,erosion%trans,erosion%seds2,erosion%trans%lag_seds2)
+  end subroutine transport_sediments
 
   subroutine calc_lagrange(erosion, trans, deltat, lagrange)
     use glimmer_coordinates

@@ -88,9 +88,6 @@ contains
 
     ! initialise transport
     call init_transport(erosion%trans, model,erosion)
-    ! initialise sparse matrices
-    call new_sparse_matrix(10000,erosion%lag_seds1)
-    call new_sparse_matrix(10000,erosion%lag_seds2)
 
     ! read variables
     call erosion_io_readall(erosion,model)
@@ -109,7 +106,6 @@ contains
     use isostasy
     use glide_types
     use physcon, only : rhom
-    use erosion_advect
     use erosion_transport
     use glimmer_interpolate2d
     use glide_profile
@@ -152,31 +148,12 @@ contains
 
           if (erosion%dotransport) then
              !----------------------------------------------------------
-             ! set up sediment transport sparse matrix
+             ! transport sediments
              !----------------------------------------------------------
-             ! transport in ice base
-#ifdef PROFILING
-             call glide_prof_start(model,erosion%er_prof%calc_lag)
-#endif      
-             call set_velos(model%velocity%ubas,model%velocity%vbas,-1.d0)
-             call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds1)
-             ! transport in deformable sediment layer
-             call set_velos(model%velocity%ubas,model%velocity%vbas,-erosion%transport_fac)
-             call calc_lagrange(erosion, erosion%trans, erosion%dt, erosion%lag_seds2)      
-#ifdef PROFILING
-             call glide_prof_stop(model,erosion%er_prof%calc_lag)
-#endif
-             
-             !----------------------------------------------------------
-             ! move sediments
-             !----------------------------------------------------------
-             ! move sediments in basal ice layer
 #ifdef PROFILING
              call glide_prof_start(model,erosion%er_prof%trans_sed)
 #endif      
-             call transport_scalar(erosion,erosion%trans,erosion%seds1,erosion%lag_seds1)
-             ! move sediments in deformable sed layer
-             call transport_scalar(erosion,erosion%trans,erosion%seds2,erosion%lag_seds2)
+             call transport_sediments(erosion,model)
 #ifdef PROFILING
              call glide_prof_stop(model,erosion%er_prof%trans_sed)
 #endif

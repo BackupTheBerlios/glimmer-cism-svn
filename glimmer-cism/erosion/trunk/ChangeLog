@@ -1,3 +1,22 @@
+2005-07-01 Magnus Hagdorn
+ * erosion_trans_lagtype.f90: type for semi-Lagrangian advection solvers,
+   moved here from erosion_types.f90
+ * erosion_types.f90: removed transport type
+ * erosion_transport_fv.f90: initialise sparse matrices here, wrap-up
+   transport code in single subroutine
+ * erosion_transport_interp.f90: ditto
+ * erosion.f90: use new API for calling transport code
+ * advect_2ndmo.f90: new advection code based on conservation of 2nd
+   moments
+ * erosion_trans_2ndmotype.f90: type definition for conservation of 2nd
+   moment code
+ * erosion_transport_2ndmo.f90: transport sediments using conservation of 2nd
+   moment code
+ * test_transport_2ndmo.f90: testing conservation of 2nd moment code
+ * Makefile.am: hook it all up
+ * er-transport1.config: fix bug
+ * some general doc work
+
 2005-06-27 Magnus Hagdorn
  * src/erosion.f90: basal shear stresses are now calculated by glimmer
  * erosion_transport_fv.f90: don't normalise weight matrix

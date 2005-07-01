@@ -45,8 +45,8 @@ module erosion_types
 
   use glimmer_global, only : dp  
   use glimmer_sparse
-  use geometry
   use glimmer_coordinates
+  use erosion_transport_type
 
   type er_prof_type
      integer :: erate
@@ -55,18 +55,6 @@ module erosion_types
      integer :: sed_eros
      integer :: sed_dep
   end type er_prof_type
-
-  type er_transport_type
-     ! private data
-     real(kind=dp), dimension(:), pointer :: lin_stuff,lin_stuff2,lin_con
-     real(kind=dp) :: half_xstep, half_ystep
-     ! for finite volume
-     type(coord_point), dimension(:,:), pointer :: patch_strip 
-     type(geom_poly) :: patch, patch1, patch2
-     ! for interpolation
-     real(kind=dp), dimension(:,:), pointer :: dispx => NULL() ! x-displacement field
-     real(kind=dp), dimension(:,:), pointer :: dispy => NULL() ! y-displacement field
-  end type er_transport_type
 
   type erosion_type
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
@@ -82,8 +70,6 @@ module erosion_types
      real(kind=dp) :: soft_b = 0.                          !*FD param B for max def thick calculations
      ! internal fields, etc
      type(er_transport_type) :: trans                      !*FD type holding transport stuff
-     type(sparse_matrix_type) :: lag_seds1                 !*FD sparse matrix holding dirty ice layer
-     type(sparse_matrix_type) :: lag_seds2                 !*FD sparse matrix holding deformable sediment layer
      real(kind=dp),dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
      real(kind=dp),dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion
      real(kind=dp),dimension(:,:),pointer :: er_accu => null()      !*FD accumulated erosion during one erosion time step
