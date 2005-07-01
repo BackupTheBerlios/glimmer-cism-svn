@@ -1,4 +1,9 @@
 2005-07-01 Magnus Hagdorn
+ * removing semi-Lagrangian routines
+ * bumped version to 0.3
+ * use today's date in documentation
+
+2005-07-01 Magnus Hagdorn
  * updated NEWS and added date to documentation
 
 2005-07-01 Magnus Hagdorn
