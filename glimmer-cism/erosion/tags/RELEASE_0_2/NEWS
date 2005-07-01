@@ -1,0 +1,11 @@
+Changes in Version 0.2
+======================
+* enabled erosion transport
+* choice between various transport schemes:
+  - semi-Lagrangian using interpolation
+  - semi-Lagrangian using finite volumes
+  - conservation of 2nd moments
+
+Changes in Version 0.1
+======================
+* we've got a version and we use the GNU autotools

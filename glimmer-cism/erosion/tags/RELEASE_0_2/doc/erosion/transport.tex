@@ -1,0 +1,208 @@
+\section{Sediment Transport}
+Ice sheets and glaciers modify their beds by eroding it, transporting sediments within a basal ice layer and a deformable bed and depositing these sediments again. These processes leave a wealth of geological data once the ice sheet has disappeared. Modelling these processes adds to our understanding of the cryospherice system. The model can be tested by comparing model output with geological observations. As usual there are feedback mechanisms between various subsystems.
+
+There are three possible basal boundary conditions. The most simple boundary condition is when the ice is frozen to the bed which can be hard bed rock or frozen sediments (see Fig. \ref{erosion.fig.velos}A). In this case ice moves through internal deformation driven by gravity only.  The second boundary condition occurs when the ice sheet resting on hard bedrock is melting. In this case basal d\'ecollement occurs and the ice sheet can slide over the bed (see Fig. \ref{erosion.fig.velos}B). Empirical sliding laws usually take the form
+\begin{equation}
+  \vec{v}_{\text{slide}} = a\tau_b^pN^{-q},
+\end{equation}
+where $\tau_b$ is the basal shear stress, $N$ the effective pressure and $a$, $p$ and $q$ are parameters \citep{Paterson1994}. The third boundary condition occurs when the sediments at the ice bed can deform (see Fig. \ref{erosion.fig.velos}C).
+
+This document focuses on the theoretical background and implementation of the third type of boundary condition. The model used here is based on the theory developed in \citet{Boulton1996a}. 
+
+\begin{figure}[htbp]
+  \centering
+  \input{\dir/figs/ice_velo.pstex_t} 
+  \caption{Profiles showing horizontal velocities when the basal ice is frozen to the bed (A), the ice sheet is sliding over a rigid bed (B) and when the ice sheet is sliding over a bed of deforming sediments (C). There are three possible velocity components: the internal ice velocity, $\vec{v}_{\text{ice}}$, the sliding velocity, $\vec{v}_{\text{slide}}$ and the sediment velocity, $\vec{v}_{\text{sed}}$ \citep[after][]{Boulton1996a}.}
+  \label{erosion.fig.velos}
+\end{figure}
+
+Here, the till layer is treated as a perfectly plastic material, i.e. it does not deform until the applied stress exceeds the yield strength, $\sigma_0$, of the till layer. The yield strength of the sediment is given by a Mohr--Coulomb failure criterion:
+\begin{equation}
+  \sigma_0=N\tan\phi+c,
+\end{equation}
+where $c$ is the cohesion and $\phi$ the angle of internal friction. The effective pressure at depth is
+\begin{equation}
+  N(z)=N_0+\frac{dN}{dz}z
+\end{equation}
+where $N_0$ is the effective pressure at the ice bed. The effective pressure can be assumed to increase linearly with depth as a function of the weight of the overlying sediments. If the applied stress $\tau_b$ is assumed to be constant with depth, sediment motion will cease at a depth, $z_a$, where $\tau_b$ is equal to the yield strenght of the material, i.e.
+\begin{equation}
+  \tau_b=\left(N_0+z_a\frac{dN}{dz}\right)\left(c+\tan\phi\right)
+\end{equation}
+or
+\begin{equation}
+  \label{erosion.eq.sed_thick}
+  z_a=\left(\frac{\tau_b}{c-\tan\phi}-N_0\right)\left({\frac{dN}{dz}}\right)^{-1}.
+\end{equation}
+
+Assuming a non--linearly viscous medium, the flow law for the deforming sediment layer can be written as
+\begin{equation}
+  \dot\epsilon=A\frac{\tau_b^n}{N^m}
+  \label{erosion.eq.tillflow}
+\end{equation}
+where $\dot\epsilon$ is the shear strain rate and $A$, $m$ and $n$ are constants \citep{Boulton1996a}. The velocity of the till, $v_{\text{sed}}$, as a function of depth is found by integrating the flow law \eqref{erosion.eq.tillflow} from the base of the deforming sediment layer to the surface:
+\begin{equation}
+  \label{erosion.eq.tillvelo}
+  v_{\text{sed}}(z)=\int_{z_a}^z\dot\epsilon dz=\int_{z_a}^z\frac{A\tau_b^n}{\left(N_0+\frac{dN}{dz}z\right)^m}dz.
+\end{equation}
+The sediment flux $Q_{\text{sed}}$ is then
+\begin{equation}
+  \label{erosion.eq.tillflux}
+  Q_{\text{sed}}=z_a\overline{v}_{\text{sed}}=\int_{z_a}^0v_{\text{sed}}(z)dz,
+\end{equation}
+where $\overline{v}_{\text{sed}}$ is the average velocity in the deforming sediment layer.
+\subsection{Simplifications}
+The effective pressure at the ice base, $N_0=p_{\text{ice}}-p_{\text{water}}$, depends on the basal hydrology which we currently do not simulate. This omission forces us to make some simplifying assumptions. Assuming values of $\phi$ and $c$ for a typical till (see Table \ref{erosion.tab.typical_till}) and basal shear stress of about 100kPa, sediment deformation only occurs when the effective pressure is less than 145kPa \citep{Paterson1994}. This value fits well with effective pressures between 20 and 200kPa calculated by \citet{Boulton1996a}. In \citet{Boulton1996} constant effective pressure is assumed with values of 50kPa and 100kPa.
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{|l|c|c|}
+    \hline
+    Material & $c$ [kPa] & $\phi$ [$^\circ$] \\
+    \hline
+    typical till$^\dag$ & 15 & 30\\
+    soft glacial clay & 30-70 & 27-32\\
+    stiff glacial clay & 70-150 & 30-32\\
+    till (mixed grain size) & 150-250 & 32-35\\
+    \hline
+  \end{tabular}
+  \caption{Values for cohesion $c$ and angle of internal friction $\phi$ for glacial tills. Values from \citet{Benn1998} except $^\dag$ which is from \citet{Clarke1987}.}
+  \label{erosion.tab.typical_till}
+\end{table}
+
+Assuming the sediment is relatively well drained, the potential gradient $dN/dz$ is the typical gravitational gradient of about 10kPam$^{-1}$ \citep{Boulton1996a}. Finally, the basal shear stress is given by the ice sheet model and depends on the ice thickness and surface slope \citep{Paterson1994}:
+\begin{equation}
+  \vec\tau_b=-\rho_{\text{ice}}gH\vec\nabla s.
+\end{equation}
+
+Now all quantities of Equations \eqref{erosion.eq.sed_thick} and \eqref{erosion.eq.tillflux} are specified and the thickness of the actively deforming sediment bed can be expressed as a linear function of the basal shear stress,
+\begin{subequations}
+  \begin{equation}
+    \label{erosion.eq.sed_thick_param}
+    z_a(\tau_b)=\alpha\tau_b+\beta,
+  \end{equation}
+  where
+  \begin{equation}
+    \alpha=\left({(c-\tan\phi)\frac{dN}{dz}}\right)^{-1}\quad\text{and}\quad\beta=-\frac{N_0}{dN/dz}.
+  \end{equation}
+\end{subequations}
+The average velocity in the active sediment layer when expressed as a function of basal shear stress becomes
+\begin{subequations}
+  \begin{equation}
+    \label{erosion.eq.sed_trans_param}
+    \overline{\vec{v}}_{\text{sed}}=\gamma\vec\tau_b^n,
+  \end{equation}
+  where
+  \begin{equation}
+    \gamma=\frac1{z_a}\int_{z_a}^0\int_{z_a}^{z}\frac{A}{\left(N_0+\frac{dN}{dz}z'\right)^m}dz'dz.
+  \end{equation}
+\end{subequations}
+
+\subsection{The Sediment Model}
+The simplifications described above suggest a simple subglacial sediment model with 3 layers and 2 boundaries. The 3 layers are
+\begin{enumerate}
+\item \textbf{basal ice layer:} a thin layer of ice which carries debris gained
+by regelation processes. The layer is assumed to have a uniform thickness over the entire ice sheet.
+\item \textbf{deformable soft bed:} a layer of deformable sediments may accumulate below the ice sheet. The thickness of this layer is given by Equation \eqref{erosion.eq.sed_thick_param}.
+\item \textbf{non--deformable soft bed:} a layer of glaciogenic sediments which is not deforming.
+\end{enumerate}
+The two boundary layers are the clean ice above the dirty, basal ice layer carrying debris and the hard bed rock below the non--deformable soft bed. Figure \ref{erosion.fig.ice_sed_model} illustrates this model.
+
+\begin{figure}[htbp]
+  \centering
+  \input{\dir/figs/erosion_layers.pstex_t}
+  \caption{Schematic illustration of the ice sheet/sediment model.}
+  \label{erosion.fig.ice_sed_model}
+\end{figure}
+
+Sediment erosion/deposition and transport are a consequence of the applied basal stress and hydrology. These processes are:
+\begin{description}
+\item[Erosion:] There are two possibilities why the subsurfaces can be eroded. The first process actually erodes the subsurfaces by abrasion/plucking, etc. Hard bedrock erosion is described in Section \ref{erosion.sec.hb}. Secondly, the thickness of the deformable sediment layer is linked to the applied basal stress via Equation \eqref{erosion.eq.sed_thick_param}. It can only grow if there is an undeformable soft bed layer underneath (case 2, Fig. \ref{erosion.fig.ice_sed_model}).
+\item[Deposition:] is a consequence of the sediment carrying capacity of the layers being exceeded. The thickness of the dirty basal ice layer is assumed to be
+constant. Excess sediment in this layer is lost to the underlying deformable soft bed (case 1, Fig. \ref{erosion.fig.ice_sed_model}). In a similar manner sediment is transferred from the deformable to the non--deformable soft bed layer when the maximum thickness of the deforming layer, given by Equation \eqref{erosion.eq.sed_thick_param}, is exceeded (case 2, Fig.\ref{erosion.fig.ice_sed_model}).
+\item[Transport:] of sediment can occur in the dirty basal ice and in the deforming soft bed layer. The transport velocity in the basal ice layer is equal to the basal ice velocity, whereas the transport velocity in the deforming soft bed is given by Equation \eqref{erosion.eq.sed_trans_param}.
+\end{description}
+Numerical treatment of the sediment transport is described in detail in the next subsection.
+
+\subsection{Sediment Transport}
+Considering the flux of sediments through the sides of a small test volume and the continuity equation we have
+\begin{equation}
+  \label{erosion.eq.continuity_eqn}
+  \frac{\pd s}{\pd t}+\vec\nabla\cdot\vec{q}_s=\dot{S},
+\end{equation}
+where $s$ is the thickness of the thickness of the sediment layer\footnote{Here we are assuming that the sediment layer is incompressible}, $\dot{S}$ is sediment erosion/deposition. The sediment flux through the faces of the control volume, $\vec{q}_s$, is defined by
+\begin{equation}
+  \vec{q}_s=\vec{v}_{\text{sed}}s-(D+\epsilon)\vec\nabla s,
+\end{equation}
+where $\vec{v}_{\text{sed}}$ is the transport velocity of the sediment, $D$ the diffusion coefficient and $\epsilon$ the turbulent mixing coefficients. In the case of sediment transport we can ignore diffusion and turbulent mixing so that Equation \eqref{erosion.eq.continuity_eqn} reduces to
+\begin{equation}
+  \label{erosion.eq.transport_eqn}
+  \frac{\pd s}{\pd t}+\vec\nabla\cdot(\vec{v}_{\text{sed}}s)=\dot{S}.
+\end{equation}
+
+There are two fundamentally different approaches to solving the advection equation \eqref{erosion.eq.transport_eqn} numerically:
+\begin{enumerate}
+\item In the \textbf{Eulerian approach} an observer watches the system evolve at fixed points in space. This scheme is easily implemented on a fixed cartesian grid. However, a numerically stable method is only found if the \emph{Courant number} is smaller than 1 \citep{Press1992}, i.e.
+  \begin{equation}
+    \frac{|\vec{v}_{\text{sed}}|\Delta t}{\Delta x}\le1.
+  \end{equation}
+  One major drawback of these schemes is that they often exhibit excessive non--physical oscillations \citep{Celia1990}.
+\item In a \textbf{Lagrangian approach} an observer watches the system evolve as he travels with a fluid particle. This approach has the advantage that the time step can be much larger than the time step of an Eulerian scheme. However, an initially regular spaced set of particles will evolve to a highly irregularly set at later times \citep{Staniforth1991}.
+\end{enumerate}
+Semi--Lagrangian advection schemes combine the regular resolution of the Eulerian approach with the enhanced stability of the Lagrangian approach. Semi--Lagrangian schemes are also knwon as Method of Characteristics where the advected species is tracked only along those fluid trajectories (characteristics) which terminate at nodal points of the fixed grid \citep{Manson2000}.
+
+The mass conserving semi--Lagrangian scheme used here is an extension of the one--dimensional DISCUS scheme by \citet{Manson2000,Manson1999} to two dimensions.
+
+\subsubsection{Numerical Solution of the Advection Equation}
+The DISCUS method is based on a finite volume approach. Figure \ref{erosion.fig.lag1d} illustrates this method for a control volume, $M_i=s_i\Delta x$ centred at $x_i$ and bounded by $x_A$ and $x_B$. Assuming the sediment distribution at time $n$ is known, then the new distribution at time $n+1$ is found by evaluating the domain of influence, i.e. tracing the volume boundaries $x_A$ and $x_B$ back in time to find the boundaries at time $n$, $x_a$ and $x_b$. This is done by defining particle trajectories using characteristic lines. For example, the particle that ends up at point $x_B$ originated at
+\begin{equation}
+  \label{erosion.eq.traj1d}
+  x_a=x_A-\int^{x_A}_{x_a}dx=x_A-\int^{t_{n+1}}_{t_n}v_{\text{sed}}(x)dt.
+\end{equation}
+The sediment contained within the control volume is given by the integral
+\begin{equation}
+  \label{erosion.eq.sed1d}
+  S_i=\int_{x_a}^{x_b}s(x)dx.
+\end{equation}
+If there is no sediment erosion or deposition, i.e. if there is only advection,
+the new sediment distribution is given by
+\begin{equation}
+  s_i^{n+1}=\frac{S_i^n}{\Delta x}.
+\end{equation}
+
+\begin{figure}[htbp]
+  \centering
+  \input{\dir/figs/lagrange1d.pstex_t}
+  \caption{Illustration of the one--dimensional mass conserving semi--Lagrangian solver.}
+  \label{erosion.fig.lag1d}
+\end{figure}
+
+It is easy to conceptually extent the one--dimensional DISCUS method described above to two dimensions. In two dimensions, the control volume is bound by four points, $\mathbf{x}_A$,  $\mathbf{x}_B$, $\mathbf{x}_C$ and $\mathbf{x}_D$ (see Fig. \ref{erosion.fig.lag2d}). The origin of the trajectories is calculated analogously to Equation \eqref{erosion.eq.traj1d}:
+\begin{equation}
+  \mathbf{x}_a=\mathbf{x}_A-\int^{\mathbf{x}_A}_{\mathbf{x}_a}ds=\mathbf{x}_A-\int^{t_{n+1}}_{t_n}\mathbf{v}(\mathbf{x})dt.
+\end{equation}
+The difficulty of this approach lies in evaluating the two--dimensional version of Equation \eqref{erosion.eq.sed1d},
+\begin{equation}
+  \label{erosion.eq.sed2d}
+  S_{ij}=\int_\Omega s(x,y)dA,
+\end{equation}
+where $\Omega$ is the area bound by the points $\mathbf{x}_a$,  $\mathbf{x}_b$, $\mathbf{x}_c$ and $\mathbf{x}_d$.
+
+\begin{figure}[htbp]
+  \centering
+  \input{\dir/figs/lagrange2d.pstex_t}
+  \caption{Semi--Lagrangian solver in two dimensions.}
+  \label{erosion.fig.lag2d}
+\end{figure}
+
+The integral \eqref{erosion.eq.sed2d} is solved numerically by calculating weights, $w_{ijmn}\in[0,1]$, so that
+\begin{equation}
+  S_{ij}=w_{ijmn}s_{mn}.
+\end{equation}
+The weight $w_{ijmn}$ is found by calculating the area of the intersection of the polygon $\Omega_{ij}$ with the cell $(mn)$. The computational geometry algorithms used for finding the intersection of two polygons are described in \citet{O'Rourke1998}. 
+
+\begin{figure}[htbp]
+  \centering
+  \epsfig{file=../tests/trans_velo.eps,width=0.95\textwidth}
+  \caption{Numerical diffusion of the semi-Lagrangian solver for different resolutions and time steps.}
+  \label{erosion.fig.art_diffu}
+\end{figure}

@@ -1,0 +1,216 @@
+2005-07-01 Magnus Hagdorn
+ * updated NEWS and added date to documentation
+
+2005-07-01 Magnus Hagdorn
+ * erosion_trans_lagtype.f90: type for semi-Lagrangian advection solvers,
+   moved here from erosion_types.f90
+ * erosion_types.f90: removed transport type
+ * erosion_transport_fv.f90: initialise sparse matrices here, wrap-up
+   transport code in single subroutine
+ * erosion_transport_interp.f90: ditto
+ * erosion.f90: use new API for calling transport code
+ * advect_2ndmo.f90: new advection code based on conservation of 2nd
+   moments
+ * erosion_trans_2ndmotype.f90: type definition for conservation of 2nd
+   moment code
+ * erosion_transport_2ndmo.f90: transport sediments using conservation of 2nd
+   moment code
+ * test_transport_2ndmo.f90: testing conservation of 2nd moment code
+ * Makefile.am: hook it all up
+ * er-transport1.config: fix bug
+ * some general doc work
+
+2005-06-27 Magnus Hagdorn
+ * src/erosion.f90: basal shear stresses are now calculated by glimmer
+ * erosion_transport_fv.f90: don't normalise weight matrix
+ * glimmer_interpolate.f90: use new call to get lower left node of cell
+ * test_interpolate.f90: expand test program to also test coord-coord 
+   system interpolatation, fix various bugs
+ * tests/Makefile.am: added tests to build system. 
+ * test_transport.sh: minor improvements
+ * trans_velo.config.in: bug fix
+ * Makefile.am, configure.in: add tests to build system
+ * improve docs
+
+2005-06-20 Magnus Hagdorn
+ * more doc
+ * fix date of last ChangeLog entry
+
+2005-06-15 Magnus Hagdorn
+ * add to documentation
+
+2005-06-13 Magnus Hagdorn
+ * erosion.f90: add profiling
+ * erosion_integrate2d.f90: fix bug with negative areas
+ * erosion_setup.f90: move grid_factor to main erosion section, add 
+   profile setup
+ * erosion_transport_fv.f90: set small to 1.d-7, make test patch slightly 
+   smaller so it fits into cell, add normalisation
+ * erosion_types.f90: add profile type
+
+2005-06-08 Magnus Hagdorn
+ * erosion.f90: fix bug
+ * test_transport.f90: fix another bug
+ * er-transport1.config: clean up configuration
+ * trans_velo.py: tidyed up
+ * test_transport.sh: script for testing transport code
+ * trans_velo.config.in: config file for testing transport code
+
+2005-06-06 Magnus Hagdorn
+ * erosion.f90: clean up
+ * erosion_transport_fv.f90: ditto
+ * test_geometry.f90: ditto
+ * test_integrate2d.f90: ditto
+ * glimmer_interpolate2d.f90: new routine to init bilinear transform between
+   two coord systems
+ * erosion_setup.f90: remove transport time step (not needed anymore)
+ * erosion_types.f90: ditto, use allocation routines from coord module 
+
+2005-06-06 Magnus Hagdorn
+ * geometry.f90: replace .eq. and .ne. using tolerance
+ * erosion_vars.def: change coord systems of erate (to velo grid) and erosion
+   (to sed grid)
+ * erosion_integrate2d.f90: fix bug
+ * glimmer_interpolate2d.f90: fix another bug
+ * erosion_transport_fv.f90: move sediment coord from transport type to erosion type
+ * erosion_transport_interp.f90: ditto
+ * erosion.f90: use glimmer_interpolate2d for interpolation
+ * simple_erosion.f90: fill erosion dimension variables
+ * eis_erosion.f90: ditto
+
+2005-06-06 Magnus Hagdorn
+ * moved glimmer_coordinates.f90 to glimmer sources
+ * Makefile.am: removed glimmer_coordinates.f90
+ * erosion_advect.f90: changed types to new names from glimmer
+ * erosion_integrate2d.f90: ditto
+ * erosion_transport_fv.f90: ditto
+ * erosion_transport_interp.f90: ditto
+ * erosion_types.f90: ditto
+ * geometry.f90: ditto, moved point def to glimmer_coordinates.f90
+ * glimmer_interpolate2d.f90: ditto
+ * test_advect.f90: ditto
+ * test_geometry.f90: ditto
+ * test_integrate2d.f90: ditto
+ * test_interpolate2d.f90: ditto
+
+2005-06-01 Magnus Hagdorn
+ * erosion_vars.def: new sediment dimensions xs, ys
+ * erosion_nc_custom.f90: filling erosion dim variables
+ * Makefile.am: hooked up erosion_nc_custom.f90
+ * erosion_setup.f90: added sediment grid factor, only print transport
+   variables if transport is enabled
+ * erosion_types.f90: moved transport type to here, added sediment grid,
+   allocate seds variables on sed grid
+ * erosion.f90: load erosion modules, initialise sed grid
+ * erosion_transport_fv.f90: removed transport type, use sediment grid
+ * erosion_transport_interp.f90: ditto
+ * test_transport.f90: calculate intial sediment distribution
+
+2005-05-31 Magnus Hagdorn
+ * Makefile.am: use finite-volume approach by default
+ * erosion_integrate2d.f90: fixed a problem where patch was wrongly flagged
+   as being inside cell, although they are only adjacent. this code is still
+   very fragile.
+ * erosion_transport.f90: replaced with erosion_transport_fv.f90
+ * erosion_transport_fv.f90: removed normalisation since it is not needed,
+   changed effective zero to zero
+ * glimmer_interpolate.f90: added case when point is entirely outside region
+ * test_transport.f90: use tend in config file to determine the end of the run
+ * trans_velo.py: new program for setting up a velo field to be used with
+   test_transport.f90
+
+2005-05-27 Magnus Hagdorn
+ * sparse.f90: removed (use the one provided by glimmer)
+ * Makefile.am: removed sparse.f90
+ * erosion_integrated2d.f90: changed to glimmer_sparse
+ * erosion_transport.f90: ditto
+ * erosion_transport_fv.f90: ditto
+ * erosion_transport_interp.f90: ditto
+ * erosion_types.f90: ditto
+ * glimmer_interpolate.f90: ditto
+ * test_integrate2d.f90: ditto
+ * test_interpolate2d.f90: ditto
+
+2005-05-10 Magnus Hagdorn
+ * erosion_transport.f90 renamed to erosion_transport_fv.f90
+ * added erosion_transport_interp.f90 (which uses simple interpolation)
+ * Makefile.am: choice of finite volume/interpolation approach during compile time (currently hard-wired)
+
+2005-05-10 Magnus Hagdorn
+ * erosion_advect.f90: use glimmer_interpolate2d to interpolate velos
+ * glimmer_interpolate.f90: improve BC of bilinear interpolation routine
+ 
+2005-05-10 Magnus Hagdorn
+ * sparse.f90: make reals double precision, change new_sparse_matrix to subroutine
+ * erosion.f90: changed calls of new_sparse_matrix to subroutine
+ * test_integrate2d.f90: ditto
+ * erosion_integrate2d.f90: make reals double precision
+ * glimmer_coordinates.f90: add reciprocal grid spacing
+ * glimmer_interpolate2d.f90: new 2d interpolation routines, so far only bilinear
+ * test_interpolate2d.f90: test program
+ * configure.in: require glimmer 0.5.2
+
+2005-05-09 Magnus Hagdorn
+ * erosion.f90: read erosion varibles from netCDF during initialisation
+ * test_transport.f90: fix bugs
+
+2005-04-07 Magnus Hagdorn
+ * eis_erosion.f90: default sediment thickness of 5m
+ * simple_erosion.f90: ditto
+ * erosion.f90: disable isostasy for now, fix some probs
+ * erosion_setup.f90: forgot to write some settings to log
+ * erosion_types.f90: make some vars double precision
+ * erosion_vars.def: change scaling, add seds2_max
+ 
+2005-04-04 Magnus Hagdorn
+ * merged in SIMPLE-EROSION branch
+	
+2005-04-01 Magnus Hagdorn
+ * erosion_advect.f90: added optional parameter to multiply velos with a factor
+ * erosion_integrate2d.f90: some cosmetics
+ * erosion_setup.f90: added transport related options
+ * erosion_types.f90: added transport related variables
+ * erosion_transport.f90: calc_lagrange does not set velo field
+ * geometry.f90: replace .eq.0 with abs().le.tolerance
+ * test_transport.f90: time step is now double precision
+ * erosion.f90: hooked up transport
+ * .config files: fixed netCDF I/O statements, they were renamed to [CF ...]
+ * er-transport1.config: new test configuration for transport code
+	
+2005-02-16 Magnus Hagdorn
+ * erosion_transport.f90: added transport module
+ * test_transport.f90: initial test prog for transport stuff	
+ * erosion.f90: initialise transport code during erosion init
+ * erosion_setup.f90: some transport params
+ * erosion_types.f90: added sediment transport variables to type
+ * erosion_vars.def: new sediment trans variables
+ * create_seds.py: new python prog for initialising sediment distribution
+
+2005-02-04 Magnus Hagdorn
+ * changed Makefile to reflect recent changes of glimmer
+ * changed precesion of reals to kind=dp (erosion_advect.f90, geometry.f90,
+ glimmer_coordinates.f90, runge_kutta.f90, test_advect.f90,
+ test_integrate2d.f90, test_rk4.f90)
+
+2005-01-24 Magnus Hagdorn
+ * added 2d integration code
+
+2005-01-03 Magnus Hagdorn
+ * a bunch of stuff for transport code
+
+2004-12-19 Magnus Hagdorn
+ * added EIS driver
+ * changed bedrock erosion factor to something somewhat more
+   reasonable
+
+2004-12-18 Magnus Hagdorn
+ * added random topo
+
+2004-12-17 Magnus Hagdorn
+ * added tests and documentation
+ * erosion.f90: implemented isostatic adjustment and erosion update frequency
+ * erosion_setup.f90: get erosion update frequency
+ * erosion_types.f90: added variables for isostasy
+
+2004-12-16 Magnus Hagdorn
+ * first stab at simple erosion model
