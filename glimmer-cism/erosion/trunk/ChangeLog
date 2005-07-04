@@ -1,3 +1,14 @@
+2005-07-04 Magnus Hagdorn
+ src
+ * renamed 2nmo routines to generic transport routines
+ * Makefile.am: changed file names
+ * erosion_types.f90: changed defaults to reasonable values
+ tests
+ * Makefile.am: run tests only on make check
+ * test_transport.sh: run test_transport only for different grids
+ docs
+ * updated docs
+
 2005-07-01 Magnus Hagdorn
  * removing semi-Lagrangian routines
  * bumped version to 0.3

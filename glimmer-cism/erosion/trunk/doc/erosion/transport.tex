@@ -123,7 +123,7 @@ constant. Excess sediment in this layer is lost to the underlying deformable sof
 \end{description}
 Numerical treatment of the sediment transport is described in detail in the next subsection.
 
-\subsection{Sediment Transport}
+\subsection{Numerical Advection of Sediments}
 Considering the flux of sediments through the sides of a small test volume and the continuity equation we have
 \begin{equation}
   \label{erosion.eq.continuity_eqn}
@@ -150,59 +150,4 @@ There are two fundamentally different approaches to solving the advection equati
 \end{enumerate}
 Semi--Lagrangian advection schemes combine the regular resolution of the Eulerian approach with the enhanced stability of the Lagrangian approach. Semi--Lagrangian schemes are also knwon as Method of Characteristics where the advected species is tracked only along those fluid trajectories (characteristics) which terminate at nodal points of the fixed grid \citep{Manson2000}.
 
-The mass conserving semi--Lagrangian scheme used here is an extension of the one--dimensional DISCUS scheme by \citet{Manson2000,Manson1999} to two dimensions.
-
-\subsubsection{Numerical Solution of the Advection Equation}
-The DISCUS method is based on a finite volume approach. Figure \ref{erosion.fig.lag1d} illustrates this method for a control volume, $M_i=s_i\Delta x$ centred at $x_i$ and bounded by $x_A$ and $x_B$. Assuming the sediment distribution at time $n$ is known, then the new distribution at time $n+1$ is found by evaluating the domain of influence, i.e. tracing the volume boundaries $x_A$ and $x_B$ back in time to find the boundaries at time $n$, $x_a$ and $x_b$. This is done by defining particle trajectories using characteristic lines. For example, the particle that ends up at point $x_B$ originated at
-\begin{equation}
-  \label{erosion.eq.traj1d}
-  x_a=x_A-\int^{x_A}_{x_a}dx=x_A-\int^{t_{n+1}}_{t_n}v_{\text{sed}}(x)dt.
-\end{equation}
-The sediment contained within the control volume is given by the integral
-\begin{equation}
-  \label{erosion.eq.sed1d}
-  S_i=\int_{x_a}^{x_b}s(x)dx.
-\end{equation}
-If there is no sediment erosion or deposition, i.e. if there is only advection,
-the new sediment distribution is given by
-\begin{equation}
-  s_i^{n+1}=\frac{S_i^n}{\Delta x}.
-\end{equation}
-
-\begin{figure}[htbp]
-  \centering
-  \input{\dir/figs/lagrange1d.pstex_t}
-  \caption{Illustration of the one--dimensional mass conserving semi--Lagrangian solver.}
-  \label{erosion.fig.lag1d}
-\end{figure}
-
-It is easy to conceptually extent the one--dimensional DISCUS method described above to two dimensions. In two dimensions, the control volume is bound by four points, $\mathbf{x}_A$,  $\mathbf{x}_B$, $\mathbf{x}_C$ and $\mathbf{x}_D$ (see Fig. \ref{erosion.fig.lag2d}). The origin of the trajectories is calculated analogously to Equation \eqref{erosion.eq.traj1d}:
-\begin{equation}
-  \mathbf{x}_a=\mathbf{x}_A-\int^{\mathbf{x}_A}_{\mathbf{x}_a}ds=\mathbf{x}_A-\int^{t_{n+1}}_{t_n}\mathbf{v}(\mathbf{x})dt.
-\end{equation}
-The difficulty of this approach lies in evaluating the two--dimensional version of Equation \eqref{erosion.eq.sed1d},
-\begin{equation}
-  \label{erosion.eq.sed2d}
-  S_{ij}=\int_\Omega s(x,y)dA,
-\end{equation}
-where $\Omega$ is the area bound by the points $\mathbf{x}_a$,  $\mathbf{x}_b$, $\mathbf{x}_c$ and $\mathbf{x}_d$.
-
-\begin{figure}[htbp]
-  \centering
-  \input{\dir/figs/lagrange2d.pstex_t}
-  \caption{Semi--Lagrangian solver in two dimensions.}
-  \label{erosion.fig.lag2d}
-\end{figure}
-
-The integral \eqref{erosion.eq.sed2d} is solved numerically by calculating weights, $w_{ijmn}\in[0,1]$, so that
-\begin{equation}
-  S_{ij}=w_{ijmn}s_{mn}.
-\end{equation}
-The weight $w_{ijmn}$ is found by calculating the area of the intersection of the polygon $\Omega_{ij}$ with the cell $(mn)$. The computational geometry algorithms used for finding the intersection of two polygons are described in \citet{O'Rourke1998}. 
-
-\begin{figure}[htbp]
-  \centering
-  \epsfig{file=../tests/trans_velo.eps,width=0.95\textwidth}
-  \caption{Numerical diffusion of the semi-Lagrangian solver for different resolutions and time steps.}
-  \label{erosion.fig.art_diffu}
-\end{figure}
+The Courant number of the sediment transport problem is naturally smaller than 1, considering typical ice velocities of the order of up to 1kma$^{-1}$ and a grid spacing of 5-10km. The conservative, semi-Lagrangian method of \citet{Manson1999} works best for Courant numbers larger than 1. Similar to \citet{Hildes2004}, we also use the Eulerian method developed by \citet{Prather1986} which conserves second--order moments and includes a flux--limiter.

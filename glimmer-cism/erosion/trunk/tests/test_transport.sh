@@ -3,10 +3,9 @@
 # test transport code
 # Magnus Hagdorn, June 2005
 
-#DGRID="20 10"
-DGRID=10
-NTIME="10 20"
-GRID_FACTOR="1 4"
+DGRID="20 10 5"
+NTIME="1"
+GRID_FACTOR="1"
 
 # create input velo fields
 python trans_velo.py

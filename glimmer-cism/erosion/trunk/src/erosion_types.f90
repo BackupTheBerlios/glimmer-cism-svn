@@ -58,7 +58,7 @@ module erosion_types
 
   type erosion_type
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
-     integer :: ndt = 5                                    !*FD erosion time step (multiplier of main time step)
+     integer :: ndt = 1                                    !*FD erosion time step (multiplier of main time step)
      real(kind=dp) :: dt                                   !*FD erosion time step
      real(kind=dp) :: hb_erosion_factor =   1.d-10         !*FD constant of proportionality for erosion rate calcs
      real :: density = 3000.                               !*FD density of hard bedrock (kg m$^{-3}$)
@@ -81,7 +81,7 @@ module erosion_types
      real(kind=dp),dimension(:,:),pointer :: seds2_max_v => null()  !*FD maximum thickness of deforming sediment layer on velocity grid
      real(kind=dp),dimension(:,:),pointer :: seds3 => null()        !*FD thickness of non-deforming sediment layer
      ! sediment grid
-     integer :: grid_magnifier = 2                         !*FD increase sediment grid resolution by this factor
+     integer :: grid_magnifier = 1                         !*FD increase sediment grid resolution by this factor
      integer :: ewn,nsn                                    !*FD number of nodes in x and y dir
      real(kind=dp) :: dew,dns                              !*FD grid spacing
      type(coordsystem_type) :: coord                       !*FD coordinate system of sed grid
