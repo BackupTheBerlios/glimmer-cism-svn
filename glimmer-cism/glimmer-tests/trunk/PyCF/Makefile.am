@@ -3,7 +3,7 @@
 # This should also give an idea what the programs can do.
 # We assume that the test suite has been run so these data files can be used.
 if HAVE_RSL_DB
-  rsl_runs = test7
+  rsl_runs = test7a test7b test7c
 endif
 
 if BUILD_GRAPHICS
@@ -53,7 +53,7 @@ test5:	test5a test5b
 test5a:
 	echo "Test 5a"
 	echo "Plotting ice surfaces at 6 times"
-	@GLIMMER_PREFIX@/bin/plotCFvar.py --width=7.5 -vis -cthk --land -t -100. -t -80. -t -60. -t -40. -t -20 -t -1. ../eis/fenscan.nc fenscan.is.ps
+	@GLIMMER_PREFIX@/bin/plotCFvar.py --width=7.5 -vis -cthk -iis --land -t -100. -t -80. -t -60. -t -40. -t -20 -t -1. ../eis/fenscan.nc fenscan.is.ps
 test5b:
 	echo "Test 5b"
 	echo "Plotting different variables"
@@ -70,11 +70,21 @@ test6b:
 	echo "Plotting 2D temperature prof"
 	@GLIMMER_PREFIX@/bin/plotProfile.py --not_projected -p fenscan.prof -vtemp  --pmt -t -20 ../eis/fenscan.2000a.nc fenscan.temp.ps
 
+# plotting RSL locations
+test7a:
+	echo "Test 7a"
+	echo "Plotting RSL locations"
+	@GLIMMER_PREFIX@/bin/plotRSLloc.py ../eis/fenscan.nc fenscan.rsl-loc.ps
 # plotting RSL curves
-test7:
-	echo "Test 7"
+test7b:
+	echo "Test 7b"
 	echo "Plotting RSL curves"
 	@GLIMMER_PREFIX@/bin/plotRSL.py ../eis/fenscan.nc fenscan.rsl.ps
+# plotting RSL histograms
+test7c:
+	echo "Test 7c"
+	echo "Plotting RSL histogram"
+	@GLIMMER_PREFIX@/bin/plotRSLhist.py ../eis/fenscan.nc fenscan.rsl-hist.ps
 
 # plotting EIS forcing
 test8:

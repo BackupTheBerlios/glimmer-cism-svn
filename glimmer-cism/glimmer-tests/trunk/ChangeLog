@@ -1,3 +1,6 @@
+2005-07-07 Magnus Hagdorn
+ * PyCF/Makefile.am: add more RSL plotting tests
+
 2005-04-18 Magnus Hagdorn
  * configure.in: bump version to 0.4, make rsl plot dependent on
    presence of rsl database
