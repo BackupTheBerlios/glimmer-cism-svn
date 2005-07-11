@@ -26,50 +26,41 @@ where $c$ is the cohesion and $\phi$ the angle of internal friction. The effecti
 \end{equation}
 where $N_0$ is the effective pressure at the ice bed. The effective pressure can be assumed to increase linearly with depth as a function of the weight of the overlying sediments. If the applied stress $\tau_b$ is assumed to be constant with depth, sediment motion will cease at a depth, $z_a$, where $\tau_b$ is equal to the yield strenght of the material, i.e.
 \begin{equation}
-  \tau_b=\left(N_0+z_a\frac{dN}{dz}\right)\left(c+\tan\phi\right)
+  \tau_b=\left(N_0+z_a\frac{dN}{dz}\right)\tan\phi+c
 \end{equation}
 or
 \begin{equation}
   \label{erosion.eq.sed_thick}
-  z_a=\left(\frac{\tau_b}{c-\tan\phi}-N_0\right)\left({\frac{dN}{dz}}\right)^{-1}.
+  z_a=\left(\frac{\tau_b-c}{\tan\phi}-N_0\right)\left({\frac{dN}{dz}}\right)^{-1}.
 \end{equation}
 
+\begin{subequations}
 Assuming a non--linearly viscous medium, the flow law for the deforming sediment layer can be written as
 \begin{equation}
   \dot\epsilon=A\frac{\tau_b^n}{N^m}
-  \label{erosion.eq.tillflow}
+  \label{erosion.eq.tillflow1}
 \end{equation}
-where $\dot\epsilon$ is the shear strain rate and $A$, $m$ and $n$ are constants \citep{Boulton1996a}. The velocity of the till, $v_{\text{sed}}$, as a function of depth is found by integrating the flow law \eqref{erosion.eq.tillflow} from the base of the deforming sediment layer to the surface:
+where $\dot\epsilon$ is the shear strain rate and $A$, $m$ and $n$ are constants \citep{Boulton1996a}. A similar flow law can be formulated by assuming that strain rates depend on the amount by which the shear stress exceeds the yield stress \citep{Boulton1987}, i.e.
+\begin{equation}
+  \dot\epsilon=A\frac{(\tau_b-\sigma_0)^n}{N^m}.
+  \label{erosion.eq.tillflow2}
+\end{equation}
+\end{subequations}
+The velocity of the till, $v_{\text{sed}}$, as a function of depth is found by integrating the flow law \eqref{erosion.eq.tillflow1} from the base of the deforming sediment layer to the surface:
 \begin{equation}
   \label{erosion.eq.tillvelo}
-  v_{\text{sed}}(z)=\int_{z_a}^z\dot\epsilon dz=\int_{z_a}^z\frac{A\tau_b^n}{\left(N_0+\frac{dN}{dz}z\right)^m}dz.
+  v_{\text{sed}}(z)=\int_{z_a}^z\dot\epsilon(z') dz'.
 \end{equation}
 The sediment flux $Q_{\text{sed}}$ is then
 \begin{equation}
   \label{erosion.eq.tillflux}
-  Q_{\text{sed}}=z_a\overline{v}_{\text{sed}}=\int_{z_a}^0v_{\text{sed}}(z)dz,
+  Q_{\text{sed}}=z_a\overline{v}_{\text{sed}}=\int_{z_a}^0v_{\text{sed}}(z)dz=\int_{z_a}^0\int_{z_a}^z\dot\epsilon(z') dz'dz=\int_{z_a}^0(z_a-z)\dot\epsilon(z)dz,
 \end{equation}
 where $\overline{v}_{\text{sed}}$ is the average velocity in the deforming sediment layer.
 \subsection{Simplifications}
 The effective pressure at the ice base, $N_0=p_{\text{ice}}-p_{\text{water}}$, depends on the basal hydrology which we currently do not simulate. This omission forces us to make some simplifying assumptions. Assuming values of $\phi$ and $c$ for a typical till (see Table \ref{erosion.tab.typical_till}) and basal shear stress of about 100kPa, sediment deformation only occurs when the effective pressure is less than 145kPa \citep{Paterson1994}. This value fits well with effective pressures between 20 and 200kPa calculated by \citet{Boulton1996a}. In \citet{Boulton1996} constant effective pressure is assumed with values of 50kPa and 100kPa.
 
-\begin{table}[htbp]
-  \centering
-  \begin{tabular}{|l|c|c|}
-    \hline
-    Material & $c$ [kPa] & $\phi$ [$^\circ$] \\
-    \hline
-    typical till$^\dag$ & 15 & 30\\
-    soft glacial clay & 30-70 & 27-32\\
-    stiff glacial clay & 70-150 & 30-32\\
-    till (mixed grain size) & 150-250 & 32-35\\
-    \hline
-  \end{tabular}
-  \caption{Values for cohesion $c$ and angle of internal friction $\phi$ for glacial tills. Values from \citet{Benn1998} except $^\dag$ which is from \citet{Clarke1987}.}
-  \label{erosion.tab.typical_till}
-\end{table}
-
-Assuming the sediment is relatively well drained, the potential gradient $dN/dz$ is the typical gravitational gradient of about 10kPam$^{-1}$ \citep{Boulton1996a}. Finally, the basal shear stress is given by the ice sheet model and depends on the ice thickness and surface slope \citep{Paterson1994}:
+Assuming the sediment is relatively well drained, the potential gradient $dN/dz=N_z=\text{const}$ is the typical gravitational gradient of about 10kPam$^{-1}$ \citep{Boulton1996a}. Finally, the basal shear stress is given by the ice sheet model and depends on the ice thickness and surface slope \citep{Paterson1994}:
 \begin{equation}
   \vec\tau_b=-\rho_{\text{ice}}gH\vec\nabla s.
 \end{equation}
@@ -82,20 +73,70 @@ Now all quantities of Equations \eqref{erosion.eq.sed_thick} and \eqref{erosion.
   \end{equation}
   where
   \begin{equation}
-    \alpha=\left({(c-\tan\phi)\frac{dN}{dz}}\right)^{-1}\quad\text{and}\quad\beta=-\frac{N_0}{dN/dz}.
+    \alpha=\frac1{N_z\tan\phi}\quad\text{and}\quad\beta=-\frac1{N_z}\left({N_0}+\frac{c}{\tan\phi}\right)
   \end{equation}
 \end{subequations}
-The average velocity in the active sediment layer when expressed as a function of basal shear stress becomes
-\begin{subequations}
-  \begin{equation}
-    \label{erosion.eq.sed_trans_param}
-    \overline{\vec{v}}_{\text{sed}}=\gamma\vec\tau_b^n,
-  \end{equation}
-  where
-  \begin{equation}
-    \gamma=\frac1{z_a}\int_{z_a}^0\int_{z_a}^{z}\frac{A}{\left(N_0+\frac{dN}{dz}z'\right)^m}dz'dz.
-  \end{equation}
-\end{subequations}
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{|l|cc|}
+    \hline
+    Material & $c$ [kPa] & $\phi$ [$^\circ$]\\
+    \hline
+    Breidamerkurj\"okull$^\dag$ & 3.75 & 32\\
+    typical till$^\ddag$ & 15 & 30\\
+    soft glacial clay & 30-70 & 27-32\\
+    stiff glacial clay & 70-150 & 30-32\\
+    till (mixed grain size) & 150-250 & 32-35\\
+    \hline
+  \end{tabular}
+  \caption{Values for cohesion $c$ and angle of internal friction $\phi$ for glacial tills. Values from \citet{Benn1998} except $^\dag$ which is from \citet{Boulton1987} and $^\ddag$ which is from \citet{Clarke1987}.}
+  \label{erosion.tab.typical_till}
+\end{table}
+
+The parameters for the flow laws \eqref{erosion.eq.tillflow1} and \eqref{erosion.eq.tillflow2} are found by fitting them to observations from Breidamerkurj\"okull \citep{Boulton1987}. In Model C the flow law exponents $m$ and $n$ are assumed to be integers. Figure \ref{erosion.fig.stress-strain-fit} shows a plot of the observed strain rates vs calculated strain rates. The quality of the fit is not surprising considering that the data set consists of only 7 triplets of strain rate, shear stress and effective pressure. Table \ref{erosion.tab.models} shows the best--fitting parameter values. Figure \ref{erosion.fig.stress-strain} shows the observations together with lines of constant strain rate.
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{|c|c|ccc|}
+    \hline
+    \multicolumn{2}{c|}{} & $B$ & $m$ & $n$ \\
+    \hline
+    Model A& $\dot\epsilon=B_1{\tau_b^{n_1}}{N^{-m_1}}$            & 32.97  & 1.8 & 1.35 \\
+    Model B& $\dot\epsilon=B_2{(\tau_b-\sigma_0)^{n_2}}{N^{-m_2}}$ & 107.11 & 1.35 & 0.77 \\
+    Model C& $\dot\epsilon=B_3{(\tau_b-\sigma_0)}{N^{-2}}$         & 380.86 & \multicolumn{2}{c|}{}\\
+    \hline
+  \end{tabular}
+  \caption{Models}
+  \label{erosion.tab.models}
+\end{table}
+
+
+\begin{figure}[htbp]
+  \centering
+  \input{\dir/gnu/stress-strain-fit.pslatex}
+  \caption{Observed strain rates versus calculated strain rates of Models A, B and C.}
+  \label{erosion.fig.stress-strain-fit}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \input{\dir/gnu/stress-strain.pslatex}
+  \caption{Measured values of shear stress, effective pressure and strain rate, points A-G from \citet{Boulton1987} and lines of constant strain rates (30a$^{-1}$-5a$^{-1}$) for Models A,B and C. The green line indicates the yield stress.}
+  \label{erosion.fig.stress-strain}
+\end{figure}
+
+The integrals over the flow law which need to be evaluated to get the sliding velocity, $v_{\text{sed}}(0)$, and the transport velocity, $\overline{v}_{\text{sed}}$, are found by numerical integration. Figure \ref{erosion.fig.sed_velos} shows these velocities and the thickness of the deforming sediment layer as a function of shear stress.
+
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \epsfig{file=\dir/figs/plot_basal.eps,width=0.9\textwidth}
+  \caption{Thickness of deforming sediment layer, sliding velocity and average sediment velocity as a function of applied shear stress. Velocities plotted with solid lines are calculated with flow law Model A, dashed lines with Model B and dotted lines with Model C.}
+  \label{erosion.fig.sed_velos}
+\end{figure}
 
 \subsection{The Sediment Model}
 The simplifications described above suggest a simple subglacial sediment model with 3 layers and 2 boundaries. The 3 layers are
@@ -119,7 +160,7 @@ Sediment erosion/deposition and transport are a consequence of the applied basal
 \item[Erosion:] There are two possibilities why the subsurfaces can be eroded. The first process actually erodes the subsurfaces by abrasion/plucking, etc. Hard bedrock erosion is described in Section \ref{erosion.sec.hb}. Secondly, the thickness of the deformable sediment layer is linked to the applied basal stress via Equation \eqref{erosion.eq.sed_thick_param}. It can only grow if there is an undeformable soft bed layer underneath (case 2, Fig. \ref{erosion.fig.ice_sed_model}).
 \item[Deposition:] is a consequence of the sediment carrying capacity of the layers being exceeded. The thickness of the dirty basal ice layer is assumed to be
 constant. Excess sediment in this layer is lost to the underlying deformable soft bed (case 1, Fig. \ref{erosion.fig.ice_sed_model}). In a similar manner sediment is transferred from the deformable to the non--deformable soft bed layer when the maximum thickness of the deforming layer, given by Equation \eqref{erosion.eq.sed_thick_param}, is exceeded (case 2, Fig.\ref{erosion.fig.ice_sed_model}).
-\item[Transport:] of sediment can occur in the dirty basal ice and in the deforming soft bed layer. The transport velocity in the basal ice layer is equal to the basal ice velocity, whereas the transport velocity in the deforming soft bed is given by Equation \eqref{erosion.eq.sed_trans_param}.
+\item[Transport:] of sediment can occur in the dirty basal ice and in the deforming soft bed layer. The transport velocity in the basal ice layer is equal to the basal ice velocity, whereas the transport velocity in the deforming soft bed is given by Equation \eqref{erosion.eq.tillflux}.
 \end{description}
 Numerical treatment of the sediment transport is described in detail in the next subsection.
 
