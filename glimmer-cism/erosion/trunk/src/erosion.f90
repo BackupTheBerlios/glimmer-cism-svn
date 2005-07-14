@@ -54,8 +54,8 @@ contains
     !*FD initialise erosion model
     use glimmer_interpolate2d
     use glide_types
-    use glimmer_coordinates
     use glimmer_config
+    use erosion_sediment
     use paramets, only : len0,thk0
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
@@ -89,6 +89,11 @@ contains
     ! initialise transport
     call init_transport(erosion%trans, model,erosion)
 
+    ! initialise sediment layer if not simple
+    if (.not.erosion%simple_seds) then
+       call er_sediment_init(erosion%sediment,model)
+    end if
+
     ! read variables
     call erosion_io_readall(erosion,model)
 
@@ -107,7 +112,6 @@ contains
     use glide_types
     use physcon, only : rhom
     use erosion_transport
-    use glimmer_interpolate2d
     use glide_profile
     implicit none
     type(erosion_type) :: erosion          !*FD structure holding erosion data
@@ -132,15 +136,7 @@ contains
 #endif      
           call er_calc_erate(erosion,model)
           ! interpolate
-          if (erosion%grid_magnifier.gt.1) then
-             call glimmer_interpolate(erosion%velo_seds,erosion%erosion_rate,erosion%er_accu)
-          else
-             do ns=2,model%general%nsn-1
-                do ew=2,model%general%ewn-1
-                   erosion%er_accu(ew,ns) = 0.25*sum(erosion%erosion_rate(ew-1:ew,ns-1:ns))
-                end do
-             end do
-          end if
+          call er_interpolate(erosion,model,erosion%erosion_rate,erosion%er_accu)
           erosion%er_accu = erosion%er_accu * erosion%dt
 #ifdef PROFILING
     call glide_prof_stop(model,erosion%er_prof%erate)
@@ -276,40 +272,6 @@ contains
        end do
     end do
   end subroutine er_calc_erate
-
-  subroutine er_calc_dthick(erosion,model)
-    !*FD calculate thickness of deformable sediment bed
-    use glide_types
-    use glide_velo
-    use glimmer_interpolate2d
-    implicit none
-    type(erosion_type) :: erosion          !*FD structure holding erosion data
-    type(glide_global_type) :: model       !*FD model instance
-
-    integer ew,ns
-
-    erosion%seds2_max_v = 0.
-    do ns=1,model%general%nsn-1
-       do ew=1,model%general%ewn-1
-          if (abs(model%velocity%ubas(ew,ns))+abs(model%velocity%vbas(ew,ns)) .gt. 0.) then
-             erosion%seds2_max_v(ew,ns) = erosion%soft_b + erosion%soft_a * &
-                  sqrt(model%velocity%tau_x(ew,ns)**2 + model%velocity%tau_y(ew,ns)**2)
-          end if
-       end do
-    end do    
-
-    ! interpolate
-    if (erosion%grid_magnifier.gt.1) then
-       call glimmer_interpolate(erosion%velo_seds,erosion%seds2_max_v,erosion%seds2_max)
-    else
-       do ns=2,model%general%nsn-1
-          do ew=2,model%general%ewn-1
-             erosion%seds2_max(ew,ns) = 0.25*sum(erosion%seds2_max_v(ew-1:ew,ns-1:ns))
-          end do
-       end do
-    end if
-
-  end subroutine er_calc_dthick
 
   subroutine er_finalise(erosion)
     !*FD finalise erosion model

@@ -56,6 +56,26 @@ module erosion_types
      integer :: sed_dep
   end type er_prof_type
 
+  type er_sed_type
+     real(kind=dp) :: effective_pressure = 50              !*FD effective pressure in [kPa]
+     real(kind=dp) :: eff_press_grad     = -10.            !*FD effective pressure gradient [kPa/m]
+     real(kind=dp) :: phi                = 30              !*FD angle of internal friction [degree]
+     real(kind=dp) :: c                  = 15              !*FD cohesion [kPa]
+     real(kind=dp) :: alpha, beta                          !*FD parameters calculated
+     real(kind=dp) :: a = 32.97                            !*FD factor for flow law
+     real(kind=dp) :: m = 1.8                              !*FD exponent of effective pressure
+     real(kind=dp) :: n = 1.35                             !*FD exponent of shear stress
+
+     integer :: flow_law = 1                               !*FD selects the flow law
+                                                           !*FD 1 - basal shear stress; 2 - difference between basal shear stress and yield stress
+     real(kind=dp),dimension(9) :: params                  !*FD parameters for sediment flow law
+
+     real(kind=dp), dimension(:,:), pointer :: za          !*FD depth of deforming layer
+     real(kind=dp), dimension(:,:), pointer :: tau_mag     !*FD magnitude of basal shear stress
+     real(kind=dp), dimension(:,:), pointer :: tau_dir     !*FD direction of basal shear stress
+     real(kind=dp), dimension(:,:), pointer :: velx, vely  !*FD velocity of deforming sediment layer
+  end type er_sed_type
+     
   type erosion_type
      logical :: doerosion = .False.                        !*FD set to true when erosion should be included
      integer :: ndt = 1                                    !*FD erosion time step (multiplier of main time step)
@@ -64,12 +84,14 @@ module erosion_types
      real :: density = 3000.                               !*FD density of hard bedrock (kg m$^{-3}$)
      ! sediment transport stuff
      logical :: dotransport = .False.                      !*FD set to true to move sediments about
+     logical :: simple_seds = .false.                       !*FD toggle between sediment models
      real(kind=dp) :: transport_fac = 0.2                  !*FD multiplier for velos in deformable beds
      real(kind=dp) :: dirty_ice_max = 0.1                  !*FD maximum thickness of dirty basal ice layer
      real(kind=dp) :: soft_a = 1.d-5                       !*FD param A for max def thick calculations
      real(kind=dp) :: soft_b = 0.                          !*FD param B for max def thick calculations
      ! internal fields, etc
      type(er_transport_type) :: trans                      !*FD type holding transport stuff
+     type(er_sed_type) :: sediment                         !*FD deforming sediment layer stuff
      real(kind=dp),dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
      real(kind=dp),dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion
      real(kind=dp),dimension(:,:),pointer :: er_accu => null()      !*FD accumulated erosion during one erosion time step
@@ -77,6 +99,8 @@ module erosion_types
      real(kind=dp),dimension(:,:),pointer :: er_load => null()      !*FD load due to erosion
      real(kind=dp),dimension(:,:),pointer :: seds1 => null()        !*FD thickness of dirty basal ice layer
      real(kind=dp),dimension(:,:),pointer :: seds2 => null()        !*FD thickness of deforming sediment layer
+     real(kind=dp),dimension(:,:),pointer :: seds2_vx => null()     !*FD x-component of sediment velocity
+     real(kind=dp),dimension(:,:),pointer :: seds2_vy => null()     !*FD y-component of sediment velocity
      real(kind=dp),dimension(:,:),pointer :: seds2_max => null()    !*FD maximum thickness of deforming sediment layer
      real(kind=dp),dimension(:,:),pointer :: seds2_max_v => null()  !*FD maximum thickness of deforming sediment layer on velocity grid
      real(kind=dp),dimension(:,:),pointer :: seds3 => null()        !*FD thickness of non-deforming sediment layer
@@ -106,6 +130,8 @@ contains
     call coordsystem_allocate(erosion%coord, erosion%er_accu)
     call coordsystem_allocate(erosion%coord, erosion%seds1)
     call coordsystem_allocate(erosion%coord, erosion%seds2)
+    call coordsystem_allocate(erosion%coord, erosion%seds2_vx)
+    call coordsystem_allocate(erosion%coord, erosion%seds2_vy)
     call coordsystem_allocate(erosion%coord, erosion%seds2_max)
     call coordsystem_allocate(erosion%coord, erosion%seds3)
   end subroutine er_allocate

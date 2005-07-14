@@ -64,6 +64,20 @@ factor:        1
 load:          1
 hot:           1
 
+[seds2_vx]
+dimensions:    time, ys, xs
+units:         meter/year
+long_name:     average velocity of deforming sediment layer (x-component)
+data:          data%seds2_vx
+factor:        scale3d_f1
+
+[seds2_vy]
+dimensions:    time, ys, xs
+units:         meter/year
+long_name:     average velocity of deforming sediment layer (y-component
+data:          data%seds2_vy
+factor:        scale3d_f1
+
 [seds2_max]
 dimensions:    time, ys, xs
 units:         meter

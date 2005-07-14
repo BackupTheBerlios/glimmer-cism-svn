@@ -11,11 +11,10 @@ EXTRA_DIST = f90_dep.mak
 BUILT_SOURCES = erosion_io.f90
 CLEANFILES = $(BUILT_SOURCES) f90_dep.mak
 
-LAGRANGIAN = advect_2ndmo.f90  erosion_transport_type.f90  erosion_transport.f90
-
 liberosion_a_SOURCES = erosion.f90 erosion_types.f90 erosion_setup.f90 erosion_io.f90 erosion_version.f90 \
                        erosion_advect.f90 geometry.f90 runge_kutta.f90 erosion_nc_custom.f90 \
-                       glimmer_interpolate2d.f90 $(LAGRANGIAN)
+                       glimmer_interpolate2d.f90 erosion_sediment.f90 advect_2ndmo.f90  erosion_transport_type.f90  \
+                       erosion_transport.f90
 
 simple_erosion_SOURCES = simple_erosion.f90
 simple_erosion_LDADD = liberosion.a -lclimate -lglide -lglimmer -lslap

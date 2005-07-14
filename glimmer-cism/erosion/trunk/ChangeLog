@@ -1,3 +1,16 @@
+2005-07-14 Magnus Hagdorn
+ * erosion_sediment.f90: new module handling deforming sediment layer
+   using Geoffrey's theory.
+ * Makefile.am: hook up new module
+ * erosion_types.f90: added new type for deforming layer stuff
+ * erosion_vars.def: save sediment velocities
+ * erosion_transport_type.f90: removed sediment velos
+ * erosion_transport.f90: hook up new sediment module, add thickness calcs,
+   new routine for interpolation from velo to sed grid
+ * erosion.f90: removed sed thickness calcs, hooked up new sediment module
+ * erosion_setup.f90: read/display new RTP for sediment stuff
+ * configure.in: require glimmer 0.5.3
+
 2005-07-11 Magnus Hagdorn
  * more doc work
 

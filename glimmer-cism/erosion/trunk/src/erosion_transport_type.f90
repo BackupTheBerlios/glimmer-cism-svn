@@ -9,7 +9,5 @@ module erosion_transport_type
   type er_transport_type
      type(advect_type) :: mo_seds1
      type(advect_type) :: mo_seds2
-
-     real(kind=rk), dimension(:,:), pointer :: velx, vely
   end type er_transport_type
 end module erosion_transport_type
