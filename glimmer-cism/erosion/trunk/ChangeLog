@@ -1,4 +1,15 @@
 2005-07-14 Magnus Hagdorn
+ * Makefile.am: beautification
+ * erosion_nc_custom.f90: not needed anymore since we use velo coords now
+ * erosion_types.f90: removing sediment coordinate system
+ * erosion_setup.f90: ditto
+ * erosion.f90: ditto
+ * erosion_transport.f90: ditto
+ * erosion_vars.def: ditto
+ * simple_erosion.f90: ditto
+ * test_transport.f90: ditto
+
+2005-07-14 Magnus Hagdorn
  * erosion_sediment.f90: new module handling deforming sediment layer
    using Geoffrey's theory.
  * Makefile.am: hook up new module

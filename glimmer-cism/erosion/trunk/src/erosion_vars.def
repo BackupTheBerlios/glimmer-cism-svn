@@ -14,20 +14,6 @@ datatype: erosion_type
 # module where type is defined
 datamod:  erosion_types
 
-[xs]
-dimensions:    xs
-units:         meter
-long_name:     Cartisian x-coordinate, sediment grid
-standard_name: projection_x_coordinate
-dimlen:        data%ewn
-
-[ys]
-dimensions:    ys
-units:         meter
-long_name:     Cartisian y-coordinate, sediment grid
-standard_name: projection_y_coordinate
-dimlen:        data%nsn
-
 [erate]
 dimensions:    time, y0, x0
 units:         meter/year
@@ -37,7 +23,7 @@ factor:        vel0/len0*scyr
 coordinates:   lon lat
 
 [erosion]
-dimensions:    time, ys, xs
+dimensions:    time, y0, x0
 units:         1
 long_name:     total hard bedrock erosion
 data:          data%erosion
@@ -47,7 +33,7 @@ load:          1
 hot:           1
 
 [seds1]
-dimensions:    time, ys, xs
+dimensions:    time, y0, x0
 units:         meter
 long_name:     thickness of dirty basal ice layer
 data:          data%seds1
@@ -56,7 +42,7 @@ coordinates:   lon lat
 hot:           1
 
 [seds2]
-dimensions:    time, ys, xs
+dimensions:    time, y0, x0
 units:         meter
 long_name:     thickness of deforming sediment layer
 data:          data%seds2
@@ -65,21 +51,21 @@ load:          1
 hot:           1
 
 [seds2_vx]
-dimensions:    time, ys, xs
+dimensions:    time, y0, x0
 units:         meter/year
 long_name:     average velocity of deforming sediment layer (x-component)
 data:          data%seds2_vx
 factor:        scale3d_f1
 
 [seds2_vy]
-dimensions:    time, ys, xs
+dimensions:    time, y0, x0
 units:         meter/year
 long_name:     average velocity of deforming sediment layer (y-component
 data:          data%seds2_vy
 factor:        scale3d_f1
 
 [seds2_max]
-dimensions:    time, ys, xs
+dimensions:    time, y0, x0
 units:         meter
 long_name:     maximum thickness of deforming sediment layer
 data:          data%seds2_max
@@ -87,7 +73,7 @@ factor:        1
 coordinates:   lon lat
 
 [seds3]
-dimensions:    time, ys, xs
+dimensions:    time, y0, x0
 units:         meter
 long_name:     thickness of non-deforming sediment layer
 data:          data%seds3

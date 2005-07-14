@@ -102,14 +102,7 @@ module erosion_types
      real(kind=dp),dimension(:,:),pointer :: seds2_vx => null()     !*FD x-component of sediment velocity
      real(kind=dp),dimension(:,:),pointer :: seds2_vy => null()     !*FD y-component of sediment velocity
      real(kind=dp),dimension(:,:),pointer :: seds2_max => null()    !*FD maximum thickness of deforming sediment layer
-     real(kind=dp),dimension(:,:),pointer :: seds2_max_v => null()  !*FD maximum thickness of deforming sediment layer on velocity grid
      real(kind=dp),dimension(:,:),pointer :: seds3 => null()        !*FD thickness of non-deforming sediment layer
-     ! sediment grid
-     integer :: grid_magnifier = 1                         !*FD increase sediment grid resolution by this factor
-     integer :: ewn,nsn                                    !*FD number of nodes in x and y dir
-     real(kind=dp) :: dew,dns                              !*FD grid spacing
-     type(coordsystem_type) :: coord                       !*FD coordinate system of sed grid
-     type(sparse_matrix_type) :: velo_seds                 !*FD transformation from velo to seds grid
      ! profiling
      type(er_prof_type) :: er_prof
   end type erosion_type
@@ -125,15 +118,14 @@ contains
     call coordsystem_allocate(model%general%ice_grid,  erosion%er_isos)
     call coordsystem_allocate(model%general%ice_grid,  erosion%er_load)
     call coordsystem_allocate(model%general%velo_grid, erosion%erosion_rate)
-    call coordsystem_allocate(model%general%velo_grid, erosion%seds2_max_v)
-    call coordsystem_allocate(erosion%coord, erosion%erosion)
-    call coordsystem_allocate(erosion%coord, erosion%er_accu)
-    call coordsystem_allocate(erosion%coord, erosion%seds1)
-    call coordsystem_allocate(erosion%coord, erosion%seds2)
-    call coordsystem_allocate(erosion%coord, erosion%seds2_vx)
-    call coordsystem_allocate(erosion%coord, erosion%seds2_vy)
-    call coordsystem_allocate(erosion%coord, erosion%seds2_max)
-    call coordsystem_allocate(erosion%coord, erosion%seds3)
+    call coordsystem_allocate(model%general%velo_grid, erosion%erosion)
+    call coordsystem_allocate(model%general%velo_grid, erosion%er_accu)
+    call coordsystem_allocate(model%general%velo_grid, erosion%seds1)
+    call coordsystem_allocate(model%general%velo_grid, erosion%seds2)
+    call coordsystem_allocate(model%general%velo_grid, erosion%seds2_vx)
+    call coordsystem_allocate(model%general%velo_grid, erosion%seds2_vy)
+    call coordsystem_allocate(model%general%velo_grid, erosion%seds2_max)
+    call coordsystem_allocate(model%general%velo_grid, erosion%seds3)
   end subroutine er_allocate
     
   subroutine er_deallocate(erosion)
@@ -149,7 +141,6 @@ contains
     deallocate(erosion%seds1)
     deallocate(erosion%seds2)
     deallocate(erosion%seds2_max)
-    deallocate(erosion%seds2_max_v)
     deallocate(erosion%seds3)
   end subroutine er_deallocate
 end module erosion_types

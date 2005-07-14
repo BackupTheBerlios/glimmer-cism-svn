@@ -52,7 +52,6 @@ module erosion
 contains
   subroutine er_initialise(erosion,config,model)
     !*FD initialise erosion model
-    use glimmer_interpolate2d
     use glide_types
     use glimmer_config
     use erosion_sediment
@@ -66,13 +65,6 @@ contains
     call er_readconfig(erosion,config)
     ! print config
     call er_printconfig(erosion)
-
-    ! setup transport grid
-    erosion%ewn = model%general%ewn * erosion%grid_magnifier
-    erosion%nsn = model%general%nsn * erosion%grid_magnifier
-    erosion%dew = model%numerics%dew/real(erosion%grid_magnifier)
-    erosion%dns = model%numerics%dns/real(erosion%grid_magnifier)
-    erosion%coord = coordsystem_new(0.d0,0.d0,erosion%dew,erosion%dns, erosion%ewn,erosion%nsn)
 
     ! create erosion variables
     call erosion_io_createall(model,erosion)
@@ -97,9 +89,6 @@ contains
     ! read variables
     call erosion_io_readall(erosion,model)
 
-    ! setup interpolation between velo grid and sediment grid
-    call glimmer_init_bilinear(model%general%velo_grid, erosion%coord, erosion%velo_seds)
-
     ! initialise profile
 #ifdef PROFILING
     call erosion_prof_init(model,erosion)
@@ -119,7 +108,6 @@ contains
     
     ! local variables
     integer ew,ns
-    type(coord_ipoint) :: node
     real(kind=dp) :: dummy
 
     call erosion_io_writeall(erosion,model)
@@ -135,9 +123,7 @@ contains
           call glide_prof_start(model,erosion%er_prof%erate)
 #endif      
           call er_calc_erate(erosion,model)
-          ! interpolate
-          call er_interpolate(erosion,model,erosion%erosion_rate,erosion%er_accu)
-          erosion%er_accu = erosion%er_accu * erosion%dt
+          erosion%er_accu = erosion%erosion_rate * erosion%dt
 #ifdef PROFILING
     call glide_prof_stop(model,erosion%er_prof%erate)
 #endif
@@ -162,9 +148,9 @@ contains
              call glide_prof_start(model,erosion%er_prof%sed_eros)
 #endif      
              call  er_calc_dthick(erosion,model)
-             do ns=2,erosion%nsn-1
-                do ew=2,erosion%ewn-1
-                   if (erosion%seds2(ew,ns) .lt. erosion%seds2_max(ew,ns)) then
+             do ns=1,model%general%nsn-1
+                do ew=1,model%general%ewn-1
+                  if (erosion%seds2(ew,ns) .lt. erosion%seds2_max(ew,ns)) then
                       dummy = erosion%seds2_max(ew,ns) - erosion%seds2(ew,ns)
                       if (dummy .gt. erosion%seds3(ew,ns)) then
                          erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + erosion%seds3(ew,ns)
@@ -177,8 +163,8 @@ contains
                 end do
              end do
 
-             do ns=2,erosion%nsn-1
-                do ew=2,erosion%ewn-1
+             do ns=1,model%general%nsn-1
+                do ew=1,model%general%ewn-1
                    ! initially all eroded material goes into basal dirty ice layer
                    erosion%seds1(ew,ns) = erosion%seds1(ew,ns) + erosion%er_accu(ew,ns)
                    dummy = erosion%seds2(ew,ns) + erosion%seds3(ew,ns)
@@ -204,8 +190,8 @@ contains
 #ifdef PROFILING
              call glide_prof_start(model,erosion%er_prof%sed_dep)
 #endif      
-             do ns=2,erosion%nsn-1
-                do ew=2,erosion%ewn-1
+             do ns=1,model%general%nsn-1
+                do ew=1,model%general%ewn-1
                    ! from dirty basal ice layer
                    if (erosion%seds1(ew,ns) .gt. erosion%dirty_ice_max) then
                       erosion%seds2(ew,ns) = erosion%seds2(ew,ns) + erosion%seds1(ew,ns) - erosion%dirty_ice_max
@@ -217,10 +203,7 @@ contains
                       erosion%seds2(ew,ns) = erosion%seds2_max(ew,ns)
                    end if
                    ! depositing debris in basal layer when ice has retreated
-                   node%pt(1) = ew
-                   node%pt(2) = ns
-                   node = coordsystem_get_node(model%general%ice_grid, coordsystem_get_coord(erosion%coord, node))
-                   if (model%geometry%thck(node%pt(1),node%pt(2)).eq.0) then
+                   if (model%geomderv%stagthck(ew,ns).eq.0) then
                       erosion%seds3(ew,ns) = erosion%seds3(ew,ns) + erosion%seds2(ew,ns) + erosion%seds1(ew,ns)
                       erosion%seds2(ew,ns) = 0.
                       erosion%seds1(ew,ns) = 0.

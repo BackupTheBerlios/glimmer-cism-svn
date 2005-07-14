@@ -36,7 +36,6 @@ program testtransport
   call er_initialise(er,config,model)
   ! fill dimension variables
   call glide_nc_fillall(model)
-  call erosion_nc_fillall(model,er)
   time = model%numerics%tstart
 
   start(:) = 50000./len0
