@@ -72,7 +72,7 @@ contains
     ! scale variables
     erosion%hb_erosion_factor = erosion%hb_erosion_factor*len0*thk0
     erosion%dt = erosion%ndt * model%numerics%dt
-    erosion%soft_a = erosion%soft_a*thk0*thk0/len0
+    erosion%soft_a = erosion%soft_a*1e3
 
     ! allocate memory
     call er_allocate(erosion,model)
@@ -147,7 +147,6 @@ contains
 #ifdef PROFILING
              call glide_prof_start(model,erosion%er_prof%sed_eros)
 #endif      
-             call  er_calc_dthick(erosion,model)
              do ns=1,model%general%nsn-1
                 do ew=1,model%general%ewn-1
                   if (erosion%seds2(ew,ns) .lt. erosion%seds2_max(ew,ns)) then

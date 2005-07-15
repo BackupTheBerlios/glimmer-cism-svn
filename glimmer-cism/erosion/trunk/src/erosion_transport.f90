@@ -32,8 +32,10 @@ contains
     integer ns,ew
 
 
-    ! transport in ice base
-    
+    ! transform basal shear from cartesian to radial components
+    call er_trans_tau(erosion,model)
+
+    ! transport in ice base    
     call set_species(erosion%trans%mo_seds1,erosion%seds1)
     call advect(erosion%trans%mo_seds1,model%velocity%ubas,model%velocity%vbas,erosion%dt)
     call get_species(erosion%trans%mo_seds1,erosion%seds1)
@@ -45,9 +47,6 @@ contains
        erosion%seds2_vy = erosion%transport_fac*model%velocity%vbas
     else
        call er_sediment_tstep(erosion,model)
-       erosion%sediment%za = erosion%seds2_max
-       erosion%seds2_vx = erosion%sediment%velx
-       erosion%seds2_vy = erosion%sediment%vely
     end if
     call set_species(erosion%trans%mo_seds2,erosion%seds2)
     call advect(erosion%trans%mo_seds2,erosion%seds2_vx,erosion%seds2_vy,erosion%dt)
@@ -70,8 +69,7 @@ contains
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1
           if (abs(model%velocity%ubas(ew,ns))+abs(model%velocity%vbas(ew,ns)) .gt. 0.) then
-             erosion%seds2_max(ew,ns) = erosion%soft_b + erosion%soft_a * &
-                  sqrt(model%velocity%tau_x(ew,ns)**2 + model%velocity%tau_y(ew,ns)**2)
+             erosion%seds2_max(ew,ns) = erosion%soft_b + erosion%soft_a * erosion%tau_mag(ew,ns)
           end if
        end do
     end do    

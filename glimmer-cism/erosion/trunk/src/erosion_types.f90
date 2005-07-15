@@ -68,10 +68,6 @@ module erosion_types
 
      real(kind=dp),dimension(10) :: params                 !*FD parameters for sediment flow law
 
-     real(kind=dp), dimension(:,:), pointer :: za          !*FD depth of deforming layer
-     real(kind=dp), dimension(:,:), pointer :: tau_mag     !*FD magnitude of basal shear stress
-     real(kind=dp), dimension(:,:), pointer :: tau_dir     !*FD direction of basal shear stress
-     real(kind=dp), dimension(:,:), pointer :: velx, vely  !*FD velocity of deforming sediment layer
   end type er_sed_type
      
   type erosion_type
@@ -90,6 +86,8 @@ module erosion_types
      ! internal fields, etc
      type(er_transport_type) :: trans                      !*FD type holding transport stuff
      type(er_sed_type) :: sediment                         !*FD deforming sediment layer stuff
+     real(kind=dp), dimension(:,:), pointer :: tau_mag => null()    !*FD magnitude of basal shear stress
+     real(kind=dp), dimension(:,:), pointer :: tau_dir => null()    !*FD direction of basal shear stress
      real(kind=dp),dimension(:,:),pointer :: erosion_rate => null() !*FD hard bedrock erosion rate
      real(kind=dp),dimension(:,:),pointer :: erosion => null()      !*FD total hard bedrock erosion
      real(kind=dp),dimension(:,:),pointer :: er_accu => null()      !*FD accumulated erosion during one erosion time step
@@ -113,6 +111,8 @@ contains
     type(erosion_type) :: erosion     !*FD data structure holding erosion stuff
     type(glide_global_type) :: model  !*FD model instance
 
+    call coordsystem_allocate(model%general%velo_grid, erosion%tau_mag)
+    call coordsystem_allocate(model%general%velo_grid, erosion%tau_dir)
     call coordsystem_allocate(model%general%ice_grid,  erosion%er_isos)
     call coordsystem_allocate(model%general%ice_grid,  erosion%er_load)
     call coordsystem_allocate(model%general%velo_grid, erosion%erosion_rate)

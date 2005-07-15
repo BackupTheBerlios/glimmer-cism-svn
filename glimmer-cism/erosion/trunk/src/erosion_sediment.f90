@@ -46,7 +46,7 @@ module erosion_sediment
   use glimmer_global, only : dp
 
   private
-  public :: er_sediment_init,er_sediment_tstep,er_sediment_finalise
+  public :: er_sediment_init,er_sediment_tstep,er_trans_tau
 
 contains
   subroutine er_sediment_init(seds,model)
@@ -59,13 +59,6 @@ contains
 
     type(er_sed_type) :: seds              !*FD sediment type
     type(glide_global_type) :: model       !*FD model instance
-
-    ! allocate memory
-    call coordsystem_allocate(model%general%velo_grid, seds%za)
-    call coordsystem_allocate(model%general%velo_grid, seds%tau_mag)
-    call coordsystem_allocate(model%general%velo_grid, seds%tau_dir)
-    call coordsystem_allocate(model%general%velo_grid, seds%velx)
-    call coordsystem_allocate(model%general%velo_grid, seds%vely)
 
     seds%alpha = 1./(seds%eff_press_grad*tan(seds%phi*pi/180.))
     seds%beta  = -(seds%effective_pressure+seds%c/tan(seds%phi*pi/180.))/seds%eff_press_grad
@@ -93,36 +86,16 @@ contains
     type(erosion_type) :: erosion          !*FD data structure holding erosion stuff
     type(glide_global_type) :: model       !*FD model instance
 
-    ! transform basal shear from cartesian to radial components
-    call er_trans_tau(erosion%sediment,model)
-
     ! calculate sediment thickness
-    call calc_za(erosion%sediment)
+    call calc_za(erosion)
 
     ! calculate sediment velocities
     call calc_velo(erosion,model)
 
-    erosion%sediment%za = -erosion%sediment%za
+    erosion%seds2_max = -erosion%seds2_max
   end subroutine er_sediment_tstep
 
-  subroutine er_sediment_finalise(seds)
-    !*FD deallocate memory, etc.
-    use erosion_types
-    implicit none
-    type(er_sed_type) :: seds              !*FD sediment type
-  
-    deallocate(seds%za)
-    deallocate(seds%tau_mag)
-    deallocate(seds%tau_dir)
-    deallocate(seds%velx)
-    deallocate(seds%vely)
-  end subroutine er_sediment_finalise
-
-  ! ----------------------------------------------------------------------------
-  ! private procedures
-  ! ----------------------------------------------------------------------------
-
-  subroutine er_trans_tau(seds,model)
+  subroutine er_trans_tau(erosion,model)
     !*FD transform basal shear from cartesian to radial components
     !*FD and scale to kPa
     use paramets
@@ -130,36 +103,40 @@ contains
     use erosion_types
     implicit none
 
-    type(er_sed_type) :: seds              !*FD sediment type
+    type(erosion_type) :: erosion          !*FD data structure holding erosion stuff
     type(glide_global_type) :: model       !*FD model instance
 
     real(kind=dp),parameter :: fact = 1e-3*thk0*thk0/len0
     integer ew,ns
 
-    seds%tau_dir=0
-    seds%tau_mag=0
+    erosion%tau_dir=0
+    erosion%tau_mag=0
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1
           if (abs(model%velocity%ubas(ew,ns))+abs(model%velocity%vbas(ew,ns)) .gt. 0.) then
-             seds%tau_dir(ew,ns) = atan2(model%velocity%tau_y(ew,ns),model%velocity%tau_x(ew,ns))
-             seds%tau_mag(ew,ns) = sqrt(model%velocity%tau_y(ew,ns)**2+model%velocity%tau_x(ew,ns)**2)*fact
+             erosion%tau_dir(ew,ns) = atan2(model%velocity%tau_y(ew,ns),model%velocity%tau_x(ew,ns))
+             erosion%tau_mag(ew,ns) = sqrt(model%velocity%tau_y(ew,ns)**2+model%velocity%tau_x(ew,ns)**2)*fact
           end if
        end do
     end do
   end subroutine er_trans_tau
 
-  subroutine calc_za(seds)
+  ! ----------------------------------------------------------------------------
+  ! private procedures
+  ! ----------------------------------------------------------------------------
+
+  subroutine calc_za(erosion)
     !*FD calculate depth of deforming layer
     use glide_types
     use erosion_types
     implicit none
 
-    type(er_sed_type) :: seds              !*FD sediment type
+    type(erosion_type) :: erosion          !*FD data structure holding erosion stuff    
 
-    where (seds%tau_mag.gt.0)
-       seds%za = min(seds%alpha * seds%tau_mag + seds%beta,0.d0)
+    where (erosion%tau_mag.gt.0)
+       erosion%seds2_max = min(erosion%sediment%alpha * erosion%tau_mag + erosion%sediment%beta,0.d0)
     elsewhere
-       seds%za = 0
+      erosion%seds2_max  = 0
     end where
   end subroutine calc_za
 
@@ -228,21 +205,21 @@ contains
     erosion%sediment%params(10) = 1
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1
-          if (erosion%sediment%za(ew,ns).lt.0. .and. erosion%seds2(ew,ns).gt.0.) then
-             erosion%sediment%params(1) = erosion%sediment%tau_mag(ew,ns)
+          if (erosion%seds2(ew,ns).gt.0.) then
+             erosion%sediment%params(1) = erosion%tau_mag(ew,ns)
              erosion%sediment%params(9) = 0.
-             total = romberg_int(flow_law,erosion%sediment%za(ew,ns),0.d0,erosion%sediment%params)
+             total = romberg_int(flow_law,erosion%seds2_max(ew,ns),0.d0,erosion%sediment%params)
              erosion%sediment%params(9) = -erosion%seds2(ew,ns)
-             part = romberg_int(flow_law,erosion%sediment%za(ew,ns),-erosion%seds2(ew,ns),erosion%sediment%params)
-             erosion%sediment%velx(ew,ns) = (total - part)/erosion%seds2(ew,ns)
+             part = romberg_int(flow_law,erosion%seds2_max(ew,ns),-erosion%seds2(ew,ns),erosion%sediment%params)
+             erosion%seds2_vx(ew,ns) = (total - part)/erosion%seds2(ew,ns)
           else
-             erosion%sediment%velx(ew,ns) =  0.
+             erosion%seds2_vx(ew,ns) =  0.
           end if
        end do
     end do
 
-    erosion%sediment%vely = sin(erosion%sediment%tau_dir)*erosion%sediment%velx
-    erosion%sediment%velx = cos(erosion%sediment%tau_dir)*erosion%sediment%velx
+    erosion%seds2_vy = sin(erosion%tau_dir)*erosion%seds2_vx
+    erosion%seds2_vx = cos(erosion%tau_dir)*erosion%seds2_vx
 
   end subroutine calc_velo
 

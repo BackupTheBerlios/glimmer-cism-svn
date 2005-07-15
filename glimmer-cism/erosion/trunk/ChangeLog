@@ -1,4 +1,15 @@
 2005-07-15 Magnus Hagdorn
+ * erosion.f90: fix bug where old sed2 thick calculations were called
+   in every case
+ * erosion_types.f90: moved field variables from sediment type to
+   erosion type
+ * erosion_sediment.f90: make basal shear stress transform available 
+   to other modules, use fields from erosion type
+ * erosion_transport.f90: call basal shear stress transform and use it,
+   avoid copying data
+ * er-transport1.config: update to use new calcs
+
+2005-07-15 Magnus Hagdorn
  * erosion_sediment.f90: only use shear-yield stress type flow law, 
    integrate from base of deforming sed layer to top (rather than
    maximum depth), separate function to calculate yield stress, change
