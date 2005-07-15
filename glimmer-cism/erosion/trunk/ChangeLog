@@ -1,3 +1,7 @@
+2005-07-15 Magnus Hagdorn
+ * erosion_sediments.f90: combine flow laws in one subroutine
+ * erosion_types.f90: increase number of params for flow law
+
 2005-07-14 Magnus Hagdorn
  * Makefile.am: beautification
  * erosion_nc_custom.f90: not needed anymore since we use velo coords now

@@ -68,7 +68,7 @@ module erosion_types
 
      integer :: flow_law = 1                               !*FD selects the flow law
                                                            !*FD 1 - basal shear stress; 2 - difference between basal shear stress and yield stress
-     real(kind=dp),dimension(9) :: params                  !*FD parameters for sediment flow law
+     real(kind=dp),dimension(11) :: params                 !*FD parameters for sediment flow law
 
      real(kind=dp), dimension(:,:), pointer :: za          !*FD depth of deforming layer
      real(kind=dp), dimension(:,:), pointer :: tau_mag     !*FD magnitude of basal shear stress

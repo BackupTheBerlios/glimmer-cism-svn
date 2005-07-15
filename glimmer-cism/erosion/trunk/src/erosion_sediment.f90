@@ -81,7 +81,11 @@ contains
     seds%params(6) = seds%eff_press_grad
     seds%params(7) = seds%c
     seds%params(8) = tan(seds%phi*pi/180.)
-
+    if (seds%flow_law.eq.1) then
+       seds%params(10) = -1.
+    else
+       seds%params(10) = 1.
+    end if
 
   end subroutine er_sediment_init
 
@@ -174,7 +178,7 @@ contains
     calc_n = N0+Nz*z
   end function calc_n
   
-  real(kind=dp) function flow_law1(z,params)
+  real(kind=dp) function flow_law(z,params)
     !*FD first sediment flow law depending only on the basal shear stress
     !*FD params(1) : taub
     !*FD params(2) : A
@@ -185,35 +189,24 @@ contains
     !*FD params(7) : c
     !*FD params(8) : tan(phi)
     !*FD params(9) : za
+    !*FD params(10): flowlaw
+    !*FD params(11): avrg
+
 
     implicit none
     real(kind=dp),intent(in)  :: z
     real(kind=dp),dimension(:),intent(in) :: params
 
-    flow_law1 = (params(9)-z)*params(2)*(params(1))**params(3) * calc_n(z,params(5),params(6))**params(4)
-  end function flow_law1
-
-  real(kind=dp) function flow_law2(z,params)
-    !*FD second sediment flow law depending on the difference between basal shear stress and the yield stress
-    !*FD params(1) : taub
-    !*FD params(2) : A
-    !*FD params(3) : n
-    !*FD params(4) : -m
-    !*FD params(5) : N0
-    !*FD params(6) : dN/dz
-    !*FD params(7) : c
-    !*FD params(8) : tan(phi)
-    !*FD params(9) : za
-
-    implicit none
-    real(kind=dp),intent(in)  :: z
-    real(kind=dp),dimension(:),intent(in) :: params
-
-
-    flow_law2 = (params(9)-z)*params(2)*(params(1)-(calc_n(z,params(5),params(6))*params(8)+params(7)))**params(3) * &
-         calc_n(z,params(5),params(6))**params(4)
-    
-  end function flow_law2
+    if (params(10).lt.0) then
+       flow_law = params(2)*(params(1))**params(3) * calc_n(z,params(5),params(6))**params(4)
+    else
+       flow_law = params(2)*(params(1)-(calc_n(z,params(5),params(6))*params(8)+params(7)))**params(3) * &
+            calc_n(z,params(5),params(6))**params(4)
+    end if
+    if (params(11).gt.0) then
+       flow_law = (params(9)-z)*flow_law
+    end if
+  end function flow_law
 
   subroutine calc_velo(seds,model)
     !*FD calculate sediment velocities by integrating one of the flow laws
@@ -227,31 +220,18 @@ contains
     
     integer ew,ns
 
-    if (seds%flow_law.eq.1) then
-       do ns=1,model%general%nsn-1
-          do ew=1,model%general%ewn-1
-             if (seds%za(ew,ns).lt.0.) then
-                seds%params(1) = seds%tau_mag(ew,ns)
-                seds%params(9) = seds%za(ew,ns)
-                seds%velx(ew,ns) = romberg_int(flow_law1,seds%za(ew,ns),0.d0,seds%params)/seds%za(ew,ns)
-             else
-                seds%velx(ew,ns) =  0.
-             end if
-          end do
+    seds%params(11) = 1
+    do ns=1,model%general%nsn-1
+       do ew=1,model%general%ewn-1
+          if (seds%za(ew,ns).lt.0.) then
+             seds%params(1) = seds%tau_mag(ew,ns)
+             seds%params(9) = seds%za(ew,ns)
+             seds%velx(ew,ns) = romberg_int(flow_law,seds%za(ew,ns),0.d0,seds%params)/seds%za(ew,ns)
+          else
+             seds%velx(ew,ns) =  0.
+          end if
        end do
-    else
-       do ns=1,model%general%nsn-1
-          do ew=1,model%general%ewn-1
-             if (seds%za(ew,ns).lt.0.) then
-                seds%params(1) = seds%tau_mag(ew,ns)
-                seds%params(9) = seds%za(ew,ns)
-                seds%velx(ew,ns) = romberg_int(flow_law2,seds%za(ew,ns),0.d0,seds%params)/seds%za(ew,ns)
-             else
-                seds%velx(ew,ns) =  0.
-             end if
-          end do
-       end do
-    end if
+    end do
 
     seds%vely = sin(seds%tau_dir)*seds%velx
     seds%velx = cos(seds%tau_dir)*seds%velx
