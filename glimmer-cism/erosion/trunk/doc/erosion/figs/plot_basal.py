@@ -56,14 +56,14 @@ def flow1(z,params):
     Nz  = params[5]
     c   = params[6]
     phi = params[7]
-    za  = params[8]
+    upper  = params[8]
 
     if za == None:
         return A*tau**n/(N0+Nz*z)**m
     else:
-        return (za-z)*A*tau**n/(N0+Nz*z)**m
+        return (upper-z)*A*tau**n/(N0+Nz*z)**m
 
-def flow2(tau,params):
+def flow2(z,params):
     """flow law 1.
 
     tau: basal shear stress
@@ -84,12 +84,12 @@ def flow2(tau,params):
     Nz  = params[5]
     c   = params[6]
     phi = params[7]
-    za  = params[8]
+    upper  = params[8]
 
-    if za == None:
-        return A*(tau-calc_sigma(z,N0,Nz,c,phi))**n/(N0+Nz*z)**m
+    if upper == None:
+        return A*abs(tau-calc_sigma(z,N0,Nz,c,phi))**n/(N0+Nz*z)**m
     else:
-        return (za-z)*A*(tau-calc_sigma(z,N0,Nz,c,phi))**n/(N0+Nz*z)**m
+        return (upper-z)*A*abs(tau-calc_sigma(z,N0,Nz,c,phi))**n/(N0+Nz*z)**m
      
 def calc_vsld(tau,A,m,n,N0,Nz,c,phi,sigma=False):
 
@@ -103,7 +103,6 @@ def calc_vsld(tau,A,m,n,N0,Nz,c,phi,sigma=False):
 
     for i in range(0,len(v)):
         sys = integrate.gsl_function(f,[tau[i],A,m,n,N0,Nz,c,phi,None])
-        sys = integrate.gsl_function(flow1,[tau[i],A,m,n,N0,Nz,c,phi,None])
         flag,result,error,num = integrate.qng(sys,za[i],0.,1e-8, 1e-8)
         if flag != 0:
             print flag
@@ -131,12 +130,12 @@ def calc_vavg(tau,A,m,n,N0,Nz,c,phi,sigma=False):
         f = flow1
 
     for i in range(0,len(v)):
-        sys = integrate.gsl_function(flow1,[tau[i],A,m,n,N0,Nz,c,phi,za[i]])
-        flag,result,error,num = integrate.qng(sys,za[i],0.,1e-8, 1e-8)
+        sys = integrate.gsl_function(f,[tau[i],A,m,n,N0,Nz,c,phi,0.])
+        flag,result,error,num = integrate.qng(sys,za[i],0.,1e-6, 1e-6)
         if flag != 0:
             print flag
         if za[i]!=0:
-            v[i] = result/za[i]
+            v[i] = -result/za[i]
     return v    
 
 if __name__ == '__main__':
@@ -179,13 +178,13 @@ if __name__ == '__main__':
         key.plot_line(name,'-W2/%s'%colour)
         
         area_za.line('-W2/%s'%colour,tau,calc_za(tau, N0,Nz,c,phi))
-        area_vsld.line('-W2/%s'%colour,tau,calc_vsld(tau, 34.8,1.8,1.33, N0,Nz,c,phi,False))
-        area_vsld.line('-W2/%sta'%colour,tau,calc_vsld(tau,107.11,1.35,0.77 ,N0,Nz,c,phi,True))
-        area_vsld.line('-W2/%sto'%colour,tau,calc_vsld(tau, 380.86,2,1,N0,Nz,c,phi,True))
+        #area_vsld.line('-W2/%s'%colour,tau,calc_vsld(tau, 34.8,1.8,1.33, N0,Nz,c,phi,False))
+        area_vsld.line('-W2/%st'%colour,tau,calc_vsld(tau,107.11,1.35,0.77 ,N0,Nz,c,phi,True))
+        area_vsld.line('-W2/%sta'%colour,tau,calc_vsld(tau, 380.86,2,1,N0,Nz,c,phi,True))
 
-        area_vavg.line('-W2/%s'%colour,tau,calc_vavg(tau, 34.8,1.8,1.33, N0,Nz,c,phi,False))
-        area_vavg.line('-W2/%sta'%colour,tau,calc_vavg(tau,107.11,1.35,0.77 ,N0,Nz,c,phi,True))
-        area_vavg.line('-W2/%sto'%colour,tau,calc_vavg(tau, 380.86,2,1,N0,Nz,c,phi,True))
+        #area_vavg.line('-W2/%s'%colour,tau,calc_vavg(tau, 34.8,1.8,1.33, N0,Nz,c,phi,False))
+        area_vavg.line('-W2/%s'%colour,tau,calc_vavg(tau,107.11,1.35,0.77 ,N0,Nz,c,phi,True))
+        area_vavg.line('-W2/%sta'%colour,tau,calc_vavg(tau, 380.86,2,1,N0,Nz,c,phi,True))
 
 
     # Breidamerkurkoekull

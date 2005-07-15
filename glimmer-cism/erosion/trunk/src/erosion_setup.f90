@@ -79,7 +79,6 @@ contains
        call GetValue(section,'a',erosion%sediment%a)
        call GetValue(section,'m',erosion%sediment%m)
        call GetValue(section,'n',erosion%sediment%n)
-       call GetValue(section,'flowlaw',erosion%sediment%flow_law)
     end if
   end subroutine er_readconfig
 
@@ -131,11 +130,6 @@ contains
              call write_log(message)
              write(message,*) 'exponent of shear stress (n) : ',erosion%sediment%n
              call write_log(message)
-             if (erosion%sediment%flow_law.eq.1) then
-                call write_log('Sediment flow law 1 - function of applied shear stress')
-             else
-                call write_log('Sediment flow law 2 - function of difference between shear stress and yield stress')
-             end if
           end if
           call write_log('')
       end if

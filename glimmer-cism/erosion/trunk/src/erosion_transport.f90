@@ -44,7 +44,7 @@ contains
        erosion%seds2_vx = erosion%transport_fac*model%velocity%ubas
        erosion%seds2_vy = erosion%transport_fac*model%velocity%vbas
     else
-       call er_sediment_tstep(erosion%sediment,model)
+       call er_sediment_tstep(erosion,model)
        erosion%sediment%za = erosion%seds2_max
        erosion%seds2_vx = erosion%sediment%velx
        erosion%seds2_vy = erosion%sediment%vely

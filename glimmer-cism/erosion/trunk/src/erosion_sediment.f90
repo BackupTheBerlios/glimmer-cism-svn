@@ -81,33 +81,28 @@ contains
     seds%params(6) = seds%eff_press_grad
     seds%params(7) = seds%c
     seds%params(8) = tan(seds%phi*pi/180.)
-    if (seds%flow_law.eq.1) then
-       seds%params(10) = -1.
-    else
-       seds%params(10) = 1.
-    end if
 
   end subroutine er_sediment_init
 
-  subroutine er_sediment_tstep(seds,model)
+  subroutine er_sediment_tstep(erosion,model)
     !*FD calculate deforming sediment layer thickness and average velo
     use glide_types
     use erosion_types
     implicit none
 
-    type(er_sed_type) :: seds              !*FD sediment type
+    type(erosion_type) :: erosion          !*FD data structure holding erosion stuff
     type(glide_global_type) :: model       !*FD model instance
 
     ! transform basal shear from cartesian to radial components
-    call er_trans_tau(seds,model)
+    call er_trans_tau(erosion%sediment,model)
 
     ! calculate sediment thickness
-    call calc_za(seds)
+    call calc_za(erosion%sediment)
 
     ! calculate sediment velocities
-    call calc_velo(seds,model)
+    call calc_velo(erosion,model)
 
-    seds%za = -seds%za
+    erosion%sediment%za = -erosion%sediment%za
   end subroutine er_sediment_tstep
 
   subroutine er_sediment_finalise(seds)
@@ -178,6 +173,18 @@ contains
     calc_n = N0+Nz*z
   end function calc_n
   
+  real(kind=dp) pure function calc_sigma(z,N0,Nz,tan_phi,cohesion)
+    !*FD calculate yield stress
+    implicit none
+    real(kind=dp), intent(in) :: z  !*FD depth
+    real(kind=dp), intent(in) :: N0 !*FD effective pressure at ice base
+    real(kind=dp), intent(in) :: Nz !*FD effective pressure gradient
+    real(kind=dp), intent(in) :: tan_phi !*FD tan of angle of internal friction
+    real(kind=dp), intent(in) :: cohesion !*FD cohesion
+    
+    calc_sigma = calc_n(z,N0,Nz)*tan_phi+cohesion
+  end function calc_sigma
+
   real(kind=dp) function flow_law(z,params)
     !*FD first sediment flow law depending only on the basal shear stress
     !*FD params(1) : taub
@@ -197,44 +204,45 @@ contains
     real(kind=dp),intent(in)  :: z
     real(kind=dp),dimension(:),intent(in) :: params
 
-    if (params(10).lt.0) then
-       flow_law = params(2)*(params(1))**params(3) * calc_n(z,params(5),params(6))**params(4)
-    else
-       flow_law = params(2)*(params(1)-(calc_n(z,params(5),params(6))*params(8)+params(7)))**params(3) * &
-            calc_n(z,params(5),params(6))**params(4)
-    end if
-    if (params(11).gt.0) then
+
+    flow_law = params(2)*abs(params(1)-calc_sigma(z,params(5),params(6),params(8),params(7)))**params(3) * &
+         calc_n(z,params(5),params(6))**params(4)
+    if (params(9).gt.0) then
        flow_law = (params(9)-z)*flow_law
     end if
   end function flow_law
 
-  subroutine calc_velo(seds,model)
+  subroutine calc_velo(erosion,model)
     !*FD calculate sediment velocities by integrating one of the flow laws
     use erosion_types
     use glide_types
     use glimmer_integrate
     implicit none
 
-    type(er_sed_type) :: seds              !*FD sediment type
+    type(erosion_type) :: erosion     !*FD data structure holding erosion stuff
     type(glide_global_type) :: model       !*FD model instance
     
     integer ew,ns
+    real(kind=dp) total,part
 
-    seds%params(11) = 1
+    erosion%sediment%params(10) = 1
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1
-          if (seds%za(ew,ns).lt.0.) then
-             seds%params(1) = seds%tau_mag(ew,ns)
-             seds%params(9) = seds%za(ew,ns)
-             seds%velx(ew,ns) = romberg_int(flow_law,seds%za(ew,ns),0.d0,seds%params)/seds%za(ew,ns)
+          if (erosion%sediment%za(ew,ns).lt.0. .and. erosion%seds2(ew,ns).gt.0.) then
+             erosion%sediment%params(1) = erosion%sediment%tau_mag(ew,ns)
+             erosion%sediment%params(9) = 0.
+             total = romberg_int(flow_law,erosion%sediment%za(ew,ns),0.d0,erosion%sediment%params)
+             erosion%sediment%params(9) = -erosion%seds2(ew,ns)
+             part = romberg_int(flow_law,erosion%sediment%za(ew,ns),-erosion%seds2(ew,ns),erosion%sediment%params)
+             erosion%sediment%velx(ew,ns) = (total - part)/erosion%seds2(ew,ns)
           else
-             seds%velx(ew,ns) =  0.
+             erosion%sediment%velx(ew,ns) =  0.
           end if
        end do
     end do
 
-    seds%vely = sin(seds%tau_dir)*seds%velx
-    seds%velx = cos(seds%tau_dir)*seds%velx
+    erosion%sediment%vely = sin(erosion%sediment%tau_dir)*erosion%sediment%velx
+    erosion%sediment%velx = cos(erosion%sediment%tau_dir)*erosion%sediment%velx
 
   end subroutine calc_velo
 

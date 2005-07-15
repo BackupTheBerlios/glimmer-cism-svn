@@ -54,7 +54,7 @@ The velocity of the till, $v_{\text{sed}}$, as a function of depth is found by i
 The sediment flux $Q_{\text{sed}}$ is then
 \begin{equation}
   \label{erosion.eq.tillflux}
-  Q_{\text{sed}}=z_a\overline{v}_{\text{sed}}=\int_{z_a}^0v_{\text{sed}}(z)dz=\int_{z_a}^0\int_{z_a}^z\dot\epsilon(z') dz'dz=\int_{z_a}^0(z_a-z)\dot\epsilon(z)dz,
+  Q_{\text{sed}}=z_a\overline{v}_{\text{sed}}=\int_{z_a}^0v_{\text{sed}}(z)dz=\int_{z_a}^0\int_{z_a}^z\dot\epsilon(z') dz'dz
 \end{equation}
 where $\overline{v}_{\text{sed}}$ is the average velocity in the deforming sediment layer.
 \subsection{Simplifications}
@@ -126,17 +126,29 @@ The parameters for the flow laws \eqref{erosion.eq.tillflow1} and \eqref{erosion
   \label{erosion.fig.stress-strain}
 \end{figure}
 
+The repeated integral over the flow law, Equation \eqref{erosion.eq.tillflow2}, can be simplified to a single integral. The sediment flux between the lower boundary $z_a$ and some level within the deforming layer $a$ is
+\begin{equation}
+  Q_{\text{sed}}(a)=\int_{z_a}^a\int_{z_a}^{z'}A\frac{(\tau_b-\sigma_0)^n}{N^m}dz'dz = A\int_{z_a}^a\frac{(a-z)(\tau_b-\sigma_0)^n}{N^m}dz.
+\end{equation}
+The sediment flux in a layer of thickness $z_{\text{seds}}$ which is smaller than the maximum thickness, $z_a$ is then
+\begin{equation}
+  Q_{\text{sed}} = Q_{\text{sed}}(0) - Q_{\text{sed}}(z_{\text{seds}})
+\end{equation}
+and the transport sediment velocity
+\begin{equation}
+  \overline{v}_{\text{sed}} = \frac{Q_{\text{sed}}(0) - Q_{\text{sed}}(z_{\text{seds}})}{z_{\text{seds}}}.
+\end{equation}
+
 The integrals over the flow law which need to be evaluated to get the sliding velocity, $v_{\text{sed}}(0)$, and the transport velocity, $\overline{v}_{\text{sed}}$, are found by numerical integration. Figure \ref{erosion.fig.sed_velos} shows these velocities and the thickness of the deforming sediment layer as a function of shear stress.
-
-
-
 
 \begin{figure}[htbp]
   \centering
   \epsfig{file=\dir/figs/plot_basal.eps,width=0.9\textwidth}
-  \caption{Thickness of deforming sediment layer, sliding velocity and average sediment velocity as a function of applied shear stress. Velocities plotted with solid lines are calculated with flow law Model A, dashed lines with Model B and dotted lines with Model C.}
+  \caption{Thickness of deforming sediment layer, sliding velocity and average sediment velocity as a function of applied shear stress. Velocities plotted with solid lines are calculated with flow law Model B and dashed lines with Model C.}
   \label{erosion.fig.sed_velos}
 \end{figure}
+
+The sediment velocity $v_{\text{sed}}(z_{\text{seds}})$ could be used for the erosion calculation described in Section \ref{erosion.sec.hb}.
 
 \subsection{The Sediment Model}
 The simplifications described above suggest a simple subglacial sediment model with 3 layers and 2 boundaries. The 3 layers are

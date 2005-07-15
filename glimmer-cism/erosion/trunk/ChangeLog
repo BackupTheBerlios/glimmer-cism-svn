@@ -1,4 +1,16 @@
 2005-07-15 Magnus Hagdorn
+ * erosion_sediment.f90: only use shear-yield stress type flow law, 
+   integrate from base of deforming sed layer to top (rather than
+   maximum depth), separate function to calculate yield stress, change
+   argument of er_sediment_tstep
+ * erosion_setup.f90: only have one flow law
+ * erosion_transport.f90: change argument of er_sediment_tstep
+ * erosion_types.f90: change default values of flow law, only use one
+   flow law
+ * plot_basal.py: fix bugs, only plot shear-yield stress type flow law
+ * transport.tex: update docs
+
+2005-07-15 Magnus Hagdorn
  * erosion_sediments.f90: combine flow laws in one subroutine
  * erosion_types.f90: increase number of params for flow law
 

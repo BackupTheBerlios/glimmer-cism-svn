@@ -62,13 +62,11 @@ module erosion_types
      real(kind=dp) :: phi                = 30              !*FD angle of internal friction [degree]
      real(kind=dp) :: c                  = 15              !*FD cohesion [kPa]
      real(kind=dp) :: alpha, beta                          !*FD parameters calculated
-     real(kind=dp) :: a = 32.97                            !*FD factor for flow law
-     real(kind=dp) :: m = 1.8                              !*FD exponent of effective pressure
-     real(kind=dp) :: n = 1.35                             !*FD exponent of shear stress
+     real(kind=dp) :: a = 107.11                            !*FD factor for flow law
+     real(kind=dp) :: m = 1.35                              !*FD exponent of effective pressure
+     real(kind=dp) :: n = 0.77                             !*FD exponent of shear stress
 
-     integer :: flow_law = 1                               !*FD selects the flow law
-                                                           !*FD 1 - basal shear stress; 2 - difference between basal shear stress and yield stress
-     real(kind=dp),dimension(11) :: params                 !*FD parameters for sediment flow law
+     real(kind=dp),dimension(10) :: params                 !*FD parameters for sediment flow law
 
      real(kind=dp), dimension(:,:), pointer :: za          !*FD depth of deforming layer
      real(kind=dp), dimension(:,:), pointer :: tau_mag     !*FD magnitude of basal shear stress
