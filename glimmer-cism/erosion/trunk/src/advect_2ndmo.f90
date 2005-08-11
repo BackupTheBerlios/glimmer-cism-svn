@@ -255,7 +255,7 @@ contains
 
     do i = 2,adv%nx - 1
        ! place limits on appropriate moments to limit flux
-       do j = 2,adv%nx - 1
+       do j = 2,adv%ny - 1
           slpmax = max(real(0.,kind=rk),_S0(i,j))
           s1max = 1.5*slpmax
           s1new = min( s1max, max(-s1max,_SY(i,j)) )

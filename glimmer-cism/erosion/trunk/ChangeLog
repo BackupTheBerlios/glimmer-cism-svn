@@ -1,3 +1,9 @@
+2005-08-11 Magnus Hagdorn
+ * advect_2ndmo.f90: fix bug with wrong index
+ * erosion_sediment.f90: fix bug
+ * erosion_vars.def: add variables for magnitude and direction of 
+   basal shear stress
+
 2005-07-15 Magnus Hagdorn
  * erosion.f90: fix bug where old sed2 thick calculations were called
    in every case

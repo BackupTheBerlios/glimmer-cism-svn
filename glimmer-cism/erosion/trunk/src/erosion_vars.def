@@ -80,3 +80,17 @@ data:          data%seds3
 factor:        1
 load:          1
 hot:           1
+
+[tau_mag]
+dimensions:    time, y0, x0
+long_name:     magnitude of basal stress
+unit:          kilopascal
+data:          data%tau_mag
+factor:        1
+
+[tau_dir]
+dimensions:    time, y0, x0
+unit:          degree
+long_name:     direction of basal stress
+data:          data%tau_dir
+factor:        1

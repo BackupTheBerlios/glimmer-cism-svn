@@ -205,7 +205,7 @@ contains
     erosion%sediment%params(10) = 1
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1
-          if (erosion%seds2(ew,ns).gt.0.) then
+          if (erosion%seds2(ew,ns).gt.0. .and. erosion%seds2_max(ew,ns).lt.0.) then
              erosion%sediment%params(1) = erosion%tau_mag(ew,ns)
              erosion%sediment%params(9) = 0.
              total = romberg_int(flow_law,erosion%seds2_max(ew,ns),0.d0,erosion%sediment%params)
