@@ -51,6 +51,7 @@ contains
     type(ConfigSection), pointer :: config  !*FD structure holding sections of configuration file   
     ! local variables
     type(ConfigSection), pointer :: section
+    integer :: dummy
 
     call GetSection(config,section,'Erosion')
     if (associated(section)) then
@@ -61,7 +62,7 @@ contains
     call GetSection(config,section,'Basic_Transport')
     if (associated(section)) then
        erosion%dotransport = .True.
-       erosion%simple_seds = .True.
+       erosion%simple_seds = .True.       
        call GetValue(section,'deformable_velo',erosion%transport_fac)
        call GetValue(section,'dirty_ice_thick',erosion%dirty_ice_max)
        call GetValue(section,'soft_a',erosion%soft_a)
@@ -72,6 +73,9 @@ contains
        erosion%dotransport = .True.
        erosion%simple_seds = .False.
        call GetValue(section,'dirty_ice_thick',erosion%dirty_ice_max)
+       dummy = 0
+       call GetValue(section,'calc_btrc',dummy)
+       erosion%sediment%calc_btrc=(dummy.eq.1)
        call GetValue(section,'effective_pressure',erosion%sediment%effective_pressure)
        call GetValue(section,'pressure_gradient',erosion%sediment%eff_press_grad)
        call GetValue(section,'phi',erosion%sediment%phi)
@@ -114,6 +118,9 @@ contains
           else
              call write_log('Full Sediment Transport')
              call write_log('-----------------------')
+             if (erosion%sediment%calc_btrc) then
+                call write_log('Calculate basal sliding velocities')
+             end if
              write(message,*) 'max thickness of dirty basal ice layer: ',erosion%dirty_ice_max
              call write_log(message)
              write(message,*) 'effective pressure : ',erosion%sediment%effective_pressure, ' kPa'

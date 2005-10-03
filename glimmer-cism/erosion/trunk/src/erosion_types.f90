@@ -62,9 +62,11 @@ module erosion_types
      real(kind=dp) :: phi                = 30              !*FD angle of internal friction [degree]
      real(kind=dp) :: c                  = 15              !*FD cohesion [kPa]
      real(kind=dp) :: alpha, beta                          !*FD parameters calculated
-     real(kind=dp) :: a = 107.11                            !*FD factor for flow law
-     real(kind=dp) :: m = 1.35                              !*FD exponent of effective pressure
+     real(kind=dp) :: a = 107.11                           !*FD factor for flow law
+     real(kind=dp) :: m = 1.35                             !*FD exponent of effective pressure
      real(kind=dp) :: n = 0.77                             !*FD exponent of shear stress
+     logical :: calc_btrc = .False.                        !*FD set to .True. if sliding velos should be calculated by
+                                                           !*FD sediment module
 
      real(kind=dp),dimension(11) :: params                 !*FD parameters for sediment flow law
 

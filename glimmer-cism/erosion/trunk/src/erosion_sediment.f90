@@ -93,7 +93,9 @@ contains
     call calc_velo(erosion,model)
 
     ! calculate basal traction parameter
-    !call er_calc_btrc(erosion, model)
+    if (erosion%sediment%calc_btrc) then
+       call er_calc_btrc(erosion, model)
+    end if
 
     erosion%seds2_max = -erosion%seds2_max
   end subroutine er_sediment_tstep

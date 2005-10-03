@@ -1,4 +1,9 @@
 2005-10-03 Magnus Hagdorn
+ * erosion_types.f90: new switch to enable sliding velo calculations
+ * erosion_sediment.f90: use new switch to enable sliding velo calculations
+ * erosion_setup.f90: load switch from config file
+
+2005-10-03 Magnus Hagdorn
  * erosion_types.f90: increase number of parameters
  * erosion_sediment.f90: bug fix and use precense of basal water to 
    determine if erosion happens, add function for calculating basal 
