@@ -92,6 +92,9 @@ contains
     ! calculate sediment velocities
     call calc_velo(erosion,model)
 
+    ! calculate basal traction parameter
+    !call er_calc_btrc(erosion, model)
+
     erosion%seds2_max = -erosion%seds2_max
   end subroutine er_sediment_tstep
 
@@ -113,7 +116,8 @@ contains
     erosion%tau_mag=0
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1
-          if (abs(model%velocity%ubas(ew,ns))+abs(model%velocity%vbas(ew,ns)) .gt. 0.) then
+          if (0.0d0 < model%temper%stagbwat(ew,ns)) then
+             !MH really we should use the sliding coeff for this
              erosion%tau_dir(ew,ns) = atan2(model%velocity%tau_y(ew,ns),model%velocity%tau_x(ew,ns))
              erosion%tau_mag(ew,ns) = sqrt(model%velocity%tau_y(ew,ns)**2+model%velocity%tau_x(ew,ns)**2)*fact
           end if
@@ -184,7 +188,7 @@ contains
 
     flow_law = params(2)*abs(params(1)-calc_sigma(z,params(5),params(6),params(8),params(7)))**params(3) * &
          calc_n(z,params(5),params(6))**params(4)
-    if (params(9).gt.0) then
+    if (params(11).eq.1) then
        flow_law = (params(9)-z)*flow_law
     end if
   end function flow_law
@@ -203,14 +207,18 @@ contains
     real(kind=dp) total,part
 
     erosion%sediment%params(10) = 1
+    erosion%sediment%params(11) = 1
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1
           if (erosion%seds2(ew,ns).gt.0. .and. erosion%seds2_max(ew,ns).lt.0.) then
              erosion%sediment%params(1) = erosion%tau_mag(ew,ns)
+
              erosion%sediment%params(9) = 0.
              total = romberg_int(flow_law,erosion%seds2_max(ew,ns),0.d0,erosion%sediment%params)
+
              erosion%sediment%params(9) = -erosion%seds2(ew,ns)
              part = romberg_int(flow_law,erosion%seds2_max(ew,ns),-erosion%seds2(ew,ns),erosion%sediment%params)
+
              erosion%seds2_vx(ew,ns) = (total - part)/erosion%seds2(ew,ns)
           else
              erosion%seds2_vx(ew,ns) =  0.
@@ -222,5 +230,35 @@ contains
     erosion%seds2_vx = cos(erosion%tau_dir)*erosion%seds2_vx
 
   end subroutine calc_velo
+
+  subroutine er_calc_btrc(erosion, model)
+    !*FD calculate basal traction parameter when ice sheet is coupled to deforming sediment layer
+    use erosion_types
+    use glide_types
+    use glimmer_integrate
+    use paramets
+    implicit none
+
+    type(erosion_type) :: erosion     !*FD data structure holding erosion stuff
+    type(glide_global_type) :: model       !*FD model instance
+    
+    integer ew,ns
+    real(kind=dp) velo_mag ! sediment velo at ice/bed interface
+    real(kind=dp),parameter :: fact = 1e-3*thk0*thk0/len0
+
+    erosion%sediment%params(10) = 1
+    erosion%sediment%params(11) = 0
+    do ns=1,model%general%nsn-1
+       do ew=1,model%general%ewn-1
+          if (erosion%seds2_max(ew,ns).lt.0.0 .and. erosion%tau_mag(ew,ns).ne.0.) then
+             erosion%sediment%params(1) = erosion%tau_mag(ew,ns)
+             velo_mag = romberg_int(flow_law,erosion%seds2_max(ew,ns),0.d0,erosion%sediment%params)
+             model%velocity%btrc(ew,ns) = velo_mag/erosion%tau_mag(ew,ns)*fact
+          else
+             model%velocity%btrc(ew,ns) = 0.
+          end if
+       end do
+    end do
+  end subroutine er_calc_btrc
 
 end module erosion_sediment

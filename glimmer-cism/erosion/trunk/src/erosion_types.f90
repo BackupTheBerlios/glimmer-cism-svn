@@ -66,7 +66,7 @@ module erosion_types
      real(kind=dp) :: m = 1.35                              !*FD exponent of effective pressure
      real(kind=dp) :: n = 0.77                             !*FD exponent of shear stress
 
-     real(kind=dp),dimension(10) :: params                 !*FD parameters for sediment flow law
+     real(kind=dp),dimension(11) :: params                 !*FD parameters for sediment flow law
 
   end type er_sed_type
      

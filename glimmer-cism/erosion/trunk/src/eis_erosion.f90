@@ -71,7 +71,8 @@ program eis_erosion
   call ConfigRead(fname,config)
 
   ! initialise GLIDE
-  call glide_initialise(model,config)
+  call glide_config(model,config)
+  call glide_initialise(model)
   call eis_initialise(climate,config,model)
   call er_initialise(er,config,model)
   ! fill dimension variables
@@ -83,9 +84,8 @@ program eis_erosion
   do while(time.le.model%numerics%tend)
      call eis_climate(climate,model,time)
      call glide_tstep_p1(model,time)
-     call eis_io_writeall(climate,model)
-     call glide_tstep_p2(model)
      call er_tstep(er,model)
+     call glide_tstep_p2(model)
      call glide_tstep_p3(model)
      ! override masking stuff for now
      time = time + model%numerics%tinc
