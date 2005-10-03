@@ -1,3 +1,6 @@
+2005-10-03 Magnus Hagdorn
+ * example.f90: use new glide API
+
 2005-02-28 Magnus Hagdorn
  * Makefile: quick hack to build a distribution tar-ball
  * example.f90: check that all sections are used

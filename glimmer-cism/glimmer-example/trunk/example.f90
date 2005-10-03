@@ -48,9 +48,10 @@ program example
   ! read configuration
   call ConfigRead(fname,config)
   call CheckSections(config)
-  
+  call glide_config(model,config)
+
   ! initialise GLIDE
-  call glide_initialise(model,config)
+  call glide_initialise(model)
   ! fill dimension variables
   call glide_nc_fillall(model)
   ! get current time from start time
