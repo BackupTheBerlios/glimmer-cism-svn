@@ -34,7 +34,7 @@ test2a:
 test2b:
 	echo "Test 2b"
 	echo "Plotting EIS stats with reconstructed ice extent."
-	@GLIMMER_PREFIX@/bin/plotCFstats.py -p fenscan.prof --not_projected -f fenscan.data ../eis/fenscan.nc fenscan.stat.ps
+	@GLIMMER_PREFIX@/bin/plotCFstats.py -mi -p fenscan.prof --not_projected -f fenscan.data ../eis/fenscan.nc ../eis/fenscan-gthf.nc fenscan.stat.ps
 
 # EISmint plot
 test3:
@@ -49,7 +49,7 @@ test4:
 	@GLIMMER_PREFIX@/bin/plotSpot.py -vthk --ij 15 15 --ij 20 20 ../EISMINT-2/e2.h.nc e2.h.spot.ps
 
 # plotting CF variables
-test5:	test5a test5b
+test5:	test5a test5b test5c
 test5a:
 	echo "Test 5a"
 	echo "Plotting ice surfaces at 6 times"
@@ -58,17 +58,21 @@ test5b:
 	echo "Test 5b"
 	echo "Plotting different variables"
 	@GLIMMER_PREFIX@/bin/plotCFvar.py --width=7.5 -vacab -vcony -vslc -vtopg -t-17. ../eis/fenscan.nc fenscan.vars.ps
+test5c:
+	echo "Test 5c"
+	echo "Plotting basal velocities"
+	@GLIMMER_PREFIX@/bin/plotCFvar.py --width=10 --land -cthk -vbvel -t-17. ../eis/fenscan.nc ../eis/fenscan-gthf.nc fenscan.bvel.ps
 
 # plotting profiles
 test6:	test6a test6b
 test6a:
 	echo "Test 6a"
 	echo "Plotting some profiles"
-	@GLIMMER_PREFIX@/bin/plotProfile.py --not_projected -p fenscan.prof -vis -vbtemp -vslc --pmt -t -20 ../eis/fenscan.nc fenscan.profs.ps
+	@GLIMMER_PREFIX@/bin/plotProfile.py --not_projected -p fenscan.prof -vis -vbtemp -vslc --pmt -t -20 ../eis/fenscan.nc ../eis/fenscan-gthf.nc fenscan.profs.ps
 test6b:
 	echo "Test 6b"
 	echo "Plotting 2D temperature prof"
-	@GLIMMER_PREFIX@/bin/plotProfile.py --not_projected -p fenscan.prof -vtemp  --pmt -t -20 ../eis/fenscan.2000a.nc fenscan.temp.ps
+	@GLIMMER_PREFIX@/bin/plotProfile.py --not_projected -p fenscan.prof -vlitho_temp -vtemp --pmt -t -16 ../eis/fenscan-gthf.2000a.nc fenscan.temp.ps
 
 # plotting RSL locations
 test7a:
@@ -79,7 +83,7 @@ test7a:
 test7b:
 	echo "Test 7b"
 	echo "Plotting RSL curves"
-	@GLIMMER_PREFIX@/bin/plotRSL.py ../eis/fenscan.nc fenscan.rsl.ps
+	@GLIMMER_PREFIX@/bin/plotRSL.py ../eis/fenscan.nc ../eis/fenscan-gthf.nc fenscan.rsl.ps
 # plotting RSL histograms
 test7c:
 	echo "Test 7c"
@@ -90,6 +94,10 @@ test7c:
 test8:
 	echo "Test 8"
 	echo "Plotting EIS forcing"
-	@GLIMMER_PREFIX@/bin/plotEISvar.py --land -cthk -t -17. -vis --ela=../eis/mb.data --temp=../eis/s10.data --slc=../eis/specmap.data ../eis/fenscan.nc fenscan.forcing.ps
+	@GLIMMER_PREFIX@/bin/plotEISvar.py --land -cthk -t -17. -vis --ela=../eis/mb2.data --temp=../eis/temp-exp.model --type_temp=exp --slc=../eis/specmap.data ../eis/fenscan.nc fenscan.forcing.ps
 
-
+# plotting ice sheet extent
+test9:
+	echo "Test 9"
+	echo "Plotting ice sheet extent"
+	@GLIMMER_PREFIX@/bin/plot_extent.py -t -17 ../eis/fenscan.nc ../eis/fenscan-gthf.nc  fenscan.extent.ps

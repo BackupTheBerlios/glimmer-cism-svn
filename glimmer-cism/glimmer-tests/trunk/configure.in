@@ -17,8 +17,8 @@ AC_SUBST(GLIMMER_TESTS_MINOR_VERSION)
 AC_SUBST(GLIMMER_TESTS_VERSION)
 
 min_glimmer_major_version=0
-min_glimmer_minor_version=3
-min_glimmer_micro_version=0
+min_glimmer_minor_version=5
+min_glimmer_micro_version=3
 
 dnl checking for glimmer prefix
 AC_ARG_WITH(glimmer-prefix,[  --with-glimmer-prefix=PFX   Prefix where GLIMMER is installed (optional)],

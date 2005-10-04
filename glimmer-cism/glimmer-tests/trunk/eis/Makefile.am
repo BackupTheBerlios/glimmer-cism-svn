@@ -1,9 +1,9 @@
 if BUILD_GRAPHICS
   graphics = 
 endif
-BUILT_SOURCES = fenscan.nc $(graphics)
+BUILT_SOURCES = fenscan.nc fenscan-gthf.nc $(graphics)
 
-EXTRA_DIST = fenscan.config europe.20km.nc mb.data s10.data specmap.data
+EXTRA_DIST = fenscan.config fenscan-gthf.config europe.20km.nc mb2.data temp-exp.model specmap.data
 
 MOSTLYCLEANFILES = $(graphics)
 CLEANFILES = $(BUILT_SOURCES)

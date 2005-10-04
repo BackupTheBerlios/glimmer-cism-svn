@@ -1,3 +1,10 @@
+2005-10-04 Magnus Hagdorn
+ * PyCF/Makefile.am: more plots
+ * new forcing for European runs
+ * fenscan-gthf.config: new run with GTHF calcs enabled
+ * Makefile.am hook up new files
+ * configure.in: require glimmer-0.5.3
+
 2005-07-07 Magnus Hagdorn
  * PyCF/Makefile.am: add more RSL plotting tests
 
