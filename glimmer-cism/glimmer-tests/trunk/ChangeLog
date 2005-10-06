@@ -1,3 +1,8 @@
+2005-10-06 Magnus Hagdorn
+ * configure.in: bump version
+ * Makefile.am: fix minor bug
+ * NEWS: update NEWS
+
 2005-10-04 Magnus Hagdorn
  * PyCF/Makefile.am: more plots
  * new forcing for European runs

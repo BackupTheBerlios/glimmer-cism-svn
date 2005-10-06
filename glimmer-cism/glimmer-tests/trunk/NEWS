@@ -1,3 +1,9 @@
+Changes in Version 0.5
+======================
+* add more PyCF tests
+* add European run with GTHF calculations enabled
+* use new forcing for European run
+
 Changes in Version 0.4
 ======================
  * minor bug fixes
