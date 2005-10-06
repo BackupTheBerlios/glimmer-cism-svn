@@ -1,0 +1,384 @@
+2006-10-06 Magnus Hagdorn
+ * setup.py: bump version
+ * update NEWS
+
+2006-10-04 Magnus Hagdorn
+ * CF_IOmisc.py: add expontential temperature EIS forcing
+ * CF_options.py: add options to handle expontential temperature EIS forcing
+ * plotEISvar.py: use new temperature forcing
+ * plot_extent.py: plot key if we are plotting more than one file
+
+2005-10-03 Magnus Hagdorn
+ * CF_options.py: improve help message somewhat
+ * plotCFstats.py: add option to plot average ice thickness
+ * plotStreams.py: we can plot more than 1 file, we can also plot
+   average basal velos
+
+2005-09-12 Magnus Hagdorn
+ * 2Dsplinemodule.c: pygsl wrapper for splines is badly leaking memory
+   and doesn't work on x86_64. Resurrected old implementation. It could 
+   be improved vastly, but hey it works
+ * setup.py: added function for looking for libraries, added extension
+   2Dsplinemodule
+ * __init__.py: added 2Dsplinemodule
+ * CF_loadfile.py: use TwoDspline for extracting RSL
+ * plotRSL.py: minor improvements
+
+2005-08-17 Stewart Jamieson
+ * a2c.py: fix origins of velo grid
+
+2005-08-15 Magnus Hagdorn
+ * litho_temp.cpt: new colourmap for temperatures of lithosphere
+ * CF_colourmap.py: hooked up litho_temp.cpt
+ * setup.py: ditto
+ * CF_options.py: new options for specifying x and y axis, split up variable
+   options into two methods
+ * plotSpot.py: use options mentioned above and handle lithoz
+ * CF_area.py: split up method image into two methods
+ * CF_loadfile.py: add lithoz to check for 3Dness
+ * CF_profile.py: add 2D profile extraction for litho_temp
+ * CF_profilearea.py: option for plotting 2D litho_temp profile
+ * plotProfile.py: we can also plot multiple times
+ 
+2005-07-07 Magnus Hagdorn
+ * CF_IOrsl.py: add methods to return min and max time
+ * CF_file.py: fix small bug
+ * CF_loadfile.py: fix bug in time method, add methods to get RSL residuals
+   and 2D histogram of RSL residuals
+ * CF_rsl.py: new class for plotting temporal histogram of RSL residuals
+ * plotRSLhist.py: new program for plotting RSL histograms
+ * setup.py: hook up plotRSLhist.py
+
+2005-07-04 Magnus Hagdorn
+ * CF_IOrsl.py: add dataset selector
+ * CF_area.py: optionally plot legend when plotting rsl locs
+ * plotRSL.py: speed up RSL plotting
+ * plotRSLloc.py: new prog for plotting locations of RSL data
+ * setup.py: hook up plotRSLloc.py
+
+2005-06-24 Magnus Hagdorn
+ * CF_colourmap.py: round min/max for auto-colourscale
+ * CF_loadfile.py: add basal shear stress, cache calculated variables, fix
+   minor bug
+
+2005-06-15 Stewart Jamieson
+ * CF_proj.py: fixed bug, added function to parse ESRI projection files
+ * a2c.py: new program for converting ESRI ASCII files to netCDF
+ * setup.py: install a2c.py
+
+2005-05-31 Magnus Hagdorn
+ * gthf.cpt: new colourmap for geothermal heat flux
+ * CF_colourmap.py: registered gthf colourmap
+ * setup.py: install colourmap
+ * MANIFEST: ditto
+ * plotProfile.py: ignore missing variables when plotting more than
+   one file
+
+2005-05-27 Magnus Hagdorn
+ * CF_loadfile.py: add virtual variable pmp -- pressure melting point of ice
+ * CF_profile.py: add switch to show pmp when plotting temps
+ * CF_options.py: ditto
+ * CF_profilearea.py: optionally plot pmp when plotting temps
+ * plotSpot.py: minor bug fix
+
+2005-05-13 Magnus Hagdorn
+ * surf_temp.cpt: new colour map for air temperatures
+ * CF_colourmap.py: added surf_temp.cpt to list of known colour maps
+ * setup.py: install surf_temp.cpt:
+ * plot_extent.py: add profiles
+ * plotProfileTS.py: plot legend
+
+2005-04-20 Magnus Hagdorn
+ * added simple prog for plotting ice extent
+
+2005-04-18 Magnus Hagdorn
+ * setup.py: bump version to 0.3
+ * CF_area.py: change scaling of linear projections to 10km
+ * plotEISvar.py: bug fix
+ * plotProfile.py: move plot to right to make space for lables
+
+2005-04-13 Magnus Hagdorn
+ * plotCFvar.py: added switch to plot velo glyphs
+
+2005-04-01 Magnus Hagdorn
+ * CF_createfile.py: added 'VARSET' to list of non-variables for test.nc file
+
+2005-03-29 Magnus Hagdorn
+ * plotCFvar.py: plot velo fields for number of files
+
+2005-03-23 Magnus Hagdorn
+ * create_topo.py: fixed bug where the velo grid has the wrong origin
+ * CF_loadfile.py: add option to interpolate onto velocity grid
+ * CF_area.py: add option to illuminate images to give impression of a 3D surface,
+   we also use basal velo fields for vector plots, add illumination to land option,
+   fix profile plotting bug
+ * CF_options.py: add illumination option, rename spot option to --ij
+ * plotCFvar.py: hook up illumination
+
+2005-03-12 Magnus Hagdorn
+ * setup.py: bump version to 0.2
+ * CF_createfile.py: fix minor bug
+ * CF_loadfile.py: add method to clone a CF file
+
+2005-03-12 Magnus Hagdorn
+ * CF_diff.py, plotCFdiff.py: minor improvements
+
+2005-03-09 Magnus Hagdorn
+ * plotProfileTS.py: add ice extend to plot
+ * CF_diff.py: plotting area for displaying difference between two CF files as a time
+   series
+ * plotCFdiff.py: simple program using CF_diff.py
+ * setup.py, __init__.py: hooked up new files
+
+2005-03-07 Magnus Hagdorn
+ * bumped version to 0.1
+ * CF_profile.py: disabled caching for now (we run out of memory for large files)
+ * plotCFstats.py: close file after we've used it
+ * plotProfileTS.py: add simpe profiles at beginning and end of period
+ * plotStreams.py: centre period on time slice
+ * sort out distribution of files in progs and data
+
+2005-03-04 Magnus Hagdorn
+ * plotCFvar.py: fixed bug with checking profile options
+ * glide_launch.py moved to glimmer
+
+2005-02-15 Magnus Hagdorn
+ * CF_options.py: fix bug where interval is not set for profiles
+ * plotCFvars.sh: fixed bug with checking profile options
+ * plotStreams.py: new prog for plotting funky stream locations
+
+2005-02-11 Magnus Hagdorn
+ * CF_file.py: add method to get number of time slices
+ * CF_profile.py: add profile time series
+ * extractCFstats.py: add switch for EISMINT runs
+ * extractTS.py: new prog for extracting a timeseries
+ * plotCFvar.py: add option to plot location of a profile
+ * plotProfileTS.py: new prog for plotting time-dist diagrams
+
+2005-02-03 Magnus Hagdorn
+ * CF_area.py: fixed a bug
+ * CF_createfile.py: removed spot, now can load var definitions from multiple files
+ * CF_options.py: fixed a minor problem
+
+2004-12-13 Magnus Hagdorn
+ * CF_profilearea.py: select different pens, plot more than one profile
+ *  plotProfile.py, plotSpot.py: plot more than one file
+
+2004-12-02 Magnus Hagdorn
+ * extract3DProfile.py: new prog for extracting profile through
+   3D field
+
+2004-12-01 Magnus Hagdorn
+ * CF_area.py: have fixed length vectors. Still not quite right...
+ * plotCFstats.py: added option to plot central ice thicknesses
+ * plotCFvar.py: we can now also plot multiple files
+ * plotEISMINT2stats.py: added legend
+
+2004-11-30 Magnus Hagdorn
+ * CF_area.py: added vector velocity plots
+ * CF_colourmap.py: colourmaps for vel and bvel
+ * CF_loadfile.py: get magnitude of velocity fields
+ * plotCFvar.py: also plot vectors
+
+2004-11-29 Magnus Hagdorn
+ * plotEISMINT2stats.py: fixed bug where relative changes were not multiplied
+ with 100 to get %
+
+2004-11-29 Magnus Hagdorn
+ * CF_colourmap.py: moved data directory stuff to CF_utils.py
+ * CF_utils.py: added data directory stuff, added EISMINT2 stats extraction
+ * extractCFstats.py: moved EISMINT2 stats extraction to CF_utils.py
+ * plotEISMINT2stats.py: new prog for plotting EISMINT2 statistics
+ * eismint2.data: stats from EISMINT2 paper
+
+2004-11-26 Magnus Hagdorn
+ * extractCFstats.py: fixed bug
+
+2004-11-25 Magnus Hagdorn
+ * CF_loadfile.py: some minor fixes
+ * CF_options.py: added -T switch to specify time slice rather than time
+ * extractCFstats.py: new program for extracting EISMINT statistics
+
+2004-11-23 Magnus Hagdorn
+ * extractProfile.py: correct labeling for averaged quantities
+ * plotEISMINT.py: much improved EISMINT plotter
+ * CF_profilearea.py: slight bug with averaged quantities and is3d
+
+2004-11-23 Magnus Hagdorn
+ * CF_loadfile.py: appending _avg to a variable takes the vertical average of it
+
+2004-11-18 Magnus Hagdorn
+ * CF_loadfile.py: fix bug in temperature correction
+ * CF_options.py: apply colourmaps to profiles as well
+
+2004-11-10 Magnus Hagdorn
+ * CF_area.py: added switch to plot mono images
+ * CF_options.py: added switch to plot mono images
+ * CF_loadfile.py: calculate fractional melt area
+ * CF_createfile.py: produce CF compliant netCDF files
+ * plotCFstats.py: plot melt fraction
+ * plotCFstats.py: added switch to plot mono images
+
+2004-11-04 Magnus Hagdorn
+ * plot3DProfiles.py: plot more profiles per page
+ * minor changes of plotEISMINT.py
+
+2004-11-01 Magnus Hagdorn
+ * CF_options.py: added number of input files
+ * CF_profilearea.py: added text stamp to profile area
+ * plot3DProfiles.py: new prog for plotting profiles from different files above each other
+
+2004-10-22 Magnus Hagdorn
+ * CF_area.py: plot profile line if requested
+ * CF_colourmap.py: revert min/max finding algorithm
+ * CF_loadfile.py: added ice surface variable, ie. topg+thk
+ * CF_options.py: don't need to load plot options
+ * CF_profilearea.py: add new class to plot multiple profiles above each other
+ * plotCFvar.py: contour ice thickness/surface
+ * plotProfile.py: change default size of profile plot
+ * extractProfile.py: new program used for extracting data along profile
+	
+2004-10-22 Magnus Hagdorn
+ * CF_IOrsl.py: new class for handling RSL data base
+ * CF_rsl.py: plot RSL curve
+ * CF_file.py: get min/max latitude and longitude
+ * CF_loadfile.py: added method to interpolate field using splines,
+	           added method to extraxr RSL data at geographic location
+ * CF_area.py: added method to plot RSL locations on map
+ * CF_options.py: added some RSL options
+ * plotRSL.py: plot funky RSL diagram
+ * updated README
+	
+2004-09-29 Magnus Hagdorn
+ * CF_profile.py: remove triangulate from imports
+ * plotEISMINT.py: tidy up help messages (we don't need to ask for variables)
+ * ran_topo.py: added very basic random (white noise) topo generator
+
+2004-09-28 Magnus Hagdorn
+ * CF_loadfile.py: made CFchecklist public, fixed ice vol/area calculations to ignore missing data
+ * CF_options.py: can select a profile without selecting variable
+ * CF_profile.py: added method to extract ice extent along profile
+ * plotEISMINT.py: added GPL license
+ * plotCFstats.py: new program to plot time series of model statistics 
+ * setup.py: handle plotCFstats.py
+	
+2004-09-17 Magnus Hagdorn
+ * added glide launcher
+ * added super EISMINT plotter
+
+2004-09-16 Magnus Hagdorn
+ * CF_colourmap.py: need to find min max of field by hand so we honour the NC_FILL_VALUE
+ * CF_options.py: coordinates should be list rather than tuples
+ * CF_profile.py: linearly interpolate vertical layers for each column
+ * CF_utils.py: add linear interpolation routine
+ * temp.cpt, mb.cpt: change background and foreground to white
+
+2004-08-26 Magnus Hadorn
+ * CF_area.py: we can now also plot profile lines
+ * CF_loadfile.py: add methods to calculate ice area and volume
+ * CF_profile.py: we can now load 2D profiles (e.g. temperatures etc)
+   this does not quite work yet because we use triangulate which will interpolate
+   data outside ice sheet
+ * CF_profilearea.py: simple plotting area for profiles
+ * CF_timeseries.py: use new AutoXY API
+ * __init__.py: added CF_profilearea.py
+ * create_topo.py: we can now also specify upper right corner
+ * plotProfile.py: use CF_profilearea.py
+ * plotSpot.py: use new AutoXY API
+ * temp.cpt: NaN nodes set to white
+	
+2004-08-20 Magnus Hagdorn
+ * plotProfile.py works now
+
+2004-08-20 Magnus Hagdorn
+ * start of profile stuff
+
+2004-08-09 Magnus Hagdorn
+ * added new program to plot variables at a single location (plotSpot.py, setup.py)
+ * added non-geographic projection (CF_area.py, CF_file.py 
+ * CF_file.py: added property for grid spacing
+ * new method to extract data at a single node (CF_loadfile.py)
+ * CF_options.py: added spots, homologous temperature, level selection
+ * plotCFvar.py: added level selection
+	
+2004-07-01 Magnus Hagdorn
+ * plotEISvar.py: added new program to plot EIS forcing and variable
+ * added plotting of land above SL (CF_area.py, CF_options.py, plotCFvar.py)
+ * CF_IOmisc.py: timeseries I/O
+ * CF_timeseries.py: timeseries
+
+2004-06-21 Magnus Hagdorn
+ * add append option to CF_createfile.py
+
+2004-06-21 Ian Rutt
+ * Added -f option to add_projinfo.py to allow overwriting
+   of existing projection data, if desired.
+
+2004-06-18 Magnus Hagdorn
+ * override colourmaps
+
+2004-06-18 Magnus Hagdorn
+ * need to also create unused dimensions
+
+2004-06-18 Magnus Hagdorn
+ * make a disitinction between polar stereographic and general stereographic
+   projections.
+
+2004-06-17 Magnus Hagdorn
+ * added aspect ratio to CF_file.py
+ * added check for number of arguments (CF_options.py, CF_area.py)
+ * added papersize, nvars, ntimes to CF_options.py
+ * added new program plotCFvar.py
+	
+2004-06-17 Magnus Hagdorn
+ * projmodule.c: massive change. The extension module provides a 
+   projection type, with lots of methods to do proj4 projections
+ * CF_proj.py: use new proj module
+ * CFcreatefile and CFloadfile both inherit from the new CFfile class,
+   they all provide the same meta data. (CF_file.py, CF_createfile.py, CF_loadfile.py)
+ * create_topo.py: use new CFcreatefile class
+ * add_projinfo.py: add grid_mapping attribute to all variables containing x and y in the
+   dimension string
+
+2004-06-15 Magnus Hagdorn
+ * added clipping
+
+2004-06-15 Magnus Hagdorn
+ * install data files and programs (setup.py)
+ * added colourmaps
+ * CF_createfile.py: look for ncdf_vars.def in GLIMMER_PREFIX
+
+2004-06-14 Magnus Hagdorn
+ * added shared command line option parser
+
+2004-06-14 Magnus Hagdorn
+ * rename false_westing to false_easting
+   (CF_proj.py, add_projinfo.py, create_topo.py)
+
+2004-06-14 Magnus Hagdorn
+ * added colour maps
+	
+2004-06-14 Magnus Hagdorn
+ * CF_loadfile.py: added variable class
+ * CF_area.py: first test of plotting images and contour lines
+	
+2004-06-13 Magnus Hagdorn
+ * CF_proj.py: made scale_factor_at_projection_origin optional and added a 
+   function for projecting points
+ * CF_loadfile.py: Class for loading a CF file
+ * CF_area.py: Class for visualising CF data sets
+	
+2004-06-13 Magnus Hagdorn
+ * move projection help messages to CF_proj.py (create_topo.py)
+ * add_projinfo.py: program used to add mapping info to netCDF files
+	
+2004-06-13 Magnus Hagdorn
+ * added some contents to README
+ * added class for creating new netCDF files using the specs from the glimmer 
+   src (CF_createfile.py, __init__.py)
+ * added Lambert Azimuthal Equal Area projection (CF_proj.py)
+ * create_topo.py: using new netCDF file creating infrastructure, using
+   GMT grids for input data
+	
+2004-06-10 Magnus Hagdorn
+ * started PyCF, python progs/modules for handling CF/Glimmer netCDF files
