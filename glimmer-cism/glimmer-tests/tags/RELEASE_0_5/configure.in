@@ -1,0 +1,105 @@
+dnl Process this file with autoconf to produce a configure script.
+
+dnl set version
+m4_define([glimmer_tests_major_version], [0])
+m4_define([glimmer_tests_minor_version], [5])
+m4_define([glimmer_tests_version],
+	[glimmer_tests_major_version.glimmer_tests_minor_version])
+
+AC_INIT([glimmer-tests],[glimmer_tests_version],[glimmer-discuss@forge.nesc.ac.uk])
+AM_INIT_AUTOMAKE
+
+GLIMMER_TESTS_MAJOR_VERSION=glimmer_tests_major_version
+GLIMMER_TESTS_MINOR_VERSION=glimmer_tests_minor_version
+GLIMMER_TESTS_VERSION=glimmer_tests_version
+AC_SUBST(GLIMMER_TESTS_MAJOR_VERSION)
+AC_SUBST(GLIMMER_TESTS_MINOR_VERSION)
+AC_SUBST(GLIMMER_TESTS_VERSION)
+
+min_glimmer_major_version=0
+min_glimmer_minor_version=5
+min_glimmer_micro_version=3
+
+dnl checking for glimmer prefix
+AC_ARG_WITH(glimmer-prefix,[  --with-glimmer-prefix=PFX   Prefix where GLIMMER is installed (optional)],
+            glimmer_config_prefix="$withval", glimmer_config_prefix="")
+
+if test x$glimmer_config_prefix != x ; then
+     glimmer_config_args="$glimmer_config_args --prefix=$glimmer_config_prefix"
+     if test x${GLIMMER_CONFIG+set} != xset ; then
+        GLIMMER_CONFIG=$glimmer_config_prefix/bin/glimmer-config
+     fi
+fi
+
+AC_PATH_PROG(GLIMMER_CONFIG, glimmer-config, no)
+if ! test -x "$GLIMMER_CONFIG"; then
+  GLIMMER_CONFIG="no"
+fi
+if test "$GLIMMER_CONFIG" = "no" ; then
+  AC_MSG_ERROR([Could not find glimmer-config])
+fi
+
+dnl Checking for version of glimmer
+min_glimmer_version=$min_glimmer_major_version.$min_glimmer_minor_version.$min_glimmer_micro_version
+AC_MSG_CHECKING(for GLIMMER - version >= $min_glimmer_version)
+no_glimmer="no"
+GLIMMER_CFLAGS=`$GLIMMER_CONFIG $glimmer_config_args --fcflags`
+GLIMMER_LIBS=`$GLIMMER_CONFIG $glimmer_config_args --libs`
+glimmer_config_major_version=`$GLIMMER_CONFIG $glimmer_config_args --version | \
+       sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\1/'`
+glimmer_config_minor_version=`$GLIMMER_CONFIG $glimmer_config_args --version | \
+       sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\2/'`
+glimmer_config_micro_version=`$GLIMMER_CONFIG $glimmer_config_args --version | \
+       sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\3/'`
+AC_MSG_RESULT([$glimmer_config_major_version.$glimmer_config_minor_version.$glimmer_config_micro_version])
+if test  "$min_glimmer_micro_version" -gt "$glimmer_config_micro_version"; then
+    no_glimmer="yes"
+fi
+if test  "$min_glimmer_minor_version" -gt "$glimmer_config_minor_version"; then
+    no_glimmer="yes"
+elif test  "$min_glimmer_minor_version" -lt "$glimmer_config_minor_version"; then
+    no_glimmer="no"
+fi
+if test  "$min_glimmer_major_version" -gt "$glimmer_config_major_version"; then
+    no_glimmer="yes"
+elif test "$min_glimmer_major_version" -lt "$glimmer_config_major_version"; then
+    no_glimmer="no"
+fi
+if test "$no_glimmer" = "yes" ; then
+  AC_MSG_ERROR([GLIMMER version too old])
+fi
+
+GLIMMER_PREFIX=`$GLIMMER_CONFIG $glimmer_config_args --prefix`
+AC_SUBST(GLIMMER_PREFIX)
+
+FCFLAGS="$CFLAGS $GLIMMER_CFLAGS"
+LIBS="$GLIMMER_LIBS $LIBS"
+
+dnl Checking for python
+AM_PATH_PYTHON([2.3],,[AC_MSG_RESULT(need at least python 2.3)])
+
+dnl checking if we should do the graphics as well
+AC_MSG_CHECKING([whether we should build graphics])
+AC_ARG_ENABLE(graphics, AS_HELP_STRING([--enable-graphics],[Run PyCF scripts]),
+[case "${enableval}" in
+ yes)  AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-graphics) ;;
+esac],[AC_MSG_RESULT([no])])
+AM_CONDITIONAL([BUILD_GRAPHICS], [test "$enable_graphics" == "yes"])
+
+dnl checking if the RSL data base is present
+AC_CHECK_FILE($GLIMMER_PREFIX/share/PyCF/rsl.db,have_rsl_db="yes",have_rsl_db="no")
+AM_CONDITIONAL([HAVE_RSL_DB], [test "$have_rsl_db" == "yes"])
+
+AC_CONFIG_FILES([ \
+Makefile \
+EISMINT-1/Makefile \
+EISMINT-2/Makefile \
+lin-non_lin/Makefile \
+eis/Makefile \
+isos/Makefile \
+PyCF/Makefile \
+benchmarks/Makefile \
+])
+AC_OUTPUT()
