@@ -8,9 +8,9 @@ CLEANFILES = $(BUILT_SOURCES)
 
 SUBDIRS = figs
 
-glide_varlist.tex:	../../src/fortran/glide_vars.def varlist.tex.in
-			$(PYTHON) ../../src/python/generate_ncvars.py $^
-eis_varlist.tex:	../../src/fortran/eis_vars.def varlist.tex.in
-			$(PYTHON) ../../src/python/generate_ncvars.py $^
-glint_varlist.tex:	../../src/fortran/glint_vars.def varlist.tex.in
-			$(PYTHON) ../../src/python/generate_ncvars.py $^
+glide_varlist.tex:	@GLIMMER_PREFIX@/share/glimmer/glide_vars.def varlist.tex.in
+			$(PYTHON) @GLIMMER_PREFIX@/bin/generate_ncvars.py $^
+eis_varlist.tex:	@GLIMMER_PREFIX@/share/glimmer/eis_vars.def varlist.tex.in
+			$(PYTHON) @GLIMMER_PREFIX@/bin/generate_ncvars.py $^
+glint_varlist.tex:	@GLIMMER_PREFIX@/share/glimmer/glint_vars.def varlist.tex.in
+			$(PYTHON) @GLIMMER_PREFIX@/bin/generate_ncvars.py $^
