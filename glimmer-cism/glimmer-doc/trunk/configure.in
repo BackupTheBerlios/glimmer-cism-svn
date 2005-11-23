@@ -92,20 +92,35 @@ AC_CHECK_PROGS(SED,[sed])
 AM_CONDITIONAL([DO_DOC_PS],  [test "$DVIPS" != ""])
 AM_CONDITIONAL([DO_DOC_PDF], [test "$DVIPDFT" != ""])
 
-# checking if we include GLIMMER tools doc
-AC_MSG_CHECKING([whether we should build tools documentation])
-AC_ARG_ENABLE(toolsdoc, AS_HELP_STRING([--enable-toolsdoc],[Build documentation for GLIMMER tools]),
-if eval "test x$enable_toolsdoc = xyes"; then
- dotools=true
-fi)
-if test -n "$dotools"; then
+# looking for glimmer-tests
+dotools=false
+AC_ARG_WITH(glimmertests,AS_HELP_STRING([--with-glimmertests],[location where glimmer-tests is installed]),[GLIMMER_TESTS=$withval])
+if test "$GLIMMER_TESTS" != ""; then
+  AC_MSG_RESULT(glimmer_tests location: $GLIMMER_TESTS)
+
+  # checking if PyCF is installed
+  AC_CHECK_PROGS(PLOTCFVAR,[plotCFvar.py])
+  # checking if the tests were run
+  AC_CHECK_FILE($GLIMMER_TESTS/eis/fenscan.nc,have_fenscan_nc="yes",have_fenscan_nc="no")
+  AC_CHECK_FILE($GLIMMER_TESTS/eis/fenscan.2000a.nc,have_fenscan2_nc="yes",have_fenscan2_nc="no")
+  AC_CHECK_FILE($GLIMMER_TESTS/eis/fenscan-gthf.nc,have_fenscan_gthf_nc="yes",have_fenscan_gthf_nc="no")
+
+  AC_SUBST(GLIMMER_TESTS)
+
+  if test "$have_fenscan_nc" == "yes" -a "$have_fenscan2_nc" == "yes" -a "$have_fenscan_gthf_nc" == "yes" -a "$PLOTCFVAR" != ""; then
+    dotools=true
+  fi
+fi
+AC_MSG_CHECKING([whether we can build PyCF documentation])
+if test "$dotools" == "true" ; then
   AC_MSG_RESULT([yes])
 else
-  dotools=false
   AC_MSG_RESULT([no])
 fi
+AM_CONDITIONAL([HAVE_PYCF],[test "$dotools" == "true"])
 AC_SUBST(dotools)
 
 AC_CONFIG_FILES([Makefile doc/Makefile doc/common/Makefile doc/dg/Makefile doc/dg/figures/Makefile \
-		doc/ug/Makefile doc/ug/figs/Makefile doc/num/Makefile doc/num/figs/Makefile doc/num/gnu/Makefile])
+		doc/ug/Makefile doc/ug/figs/Makefile doc/num/Makefile doc/num/figs/Makefile doc/num/gnu/Makefile \
+                doc/tg/Makefile doc/tg/figures/Makefile])
 AC_OUTPUT([doc/glimmer.tex doc/common/version.tex])

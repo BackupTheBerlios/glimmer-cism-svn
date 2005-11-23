@@ -1,0 +1,14 @@
+\section{Using \texttt{plotProfile.py}}
+\texttt{plotProfile.py} can be used to plot variables along a profile line. Again, time slices can be selected and multiple variables plotted. A number of files can be plotted if the variable is not three--dimensional. If the variable is three--dimensional, like temperature, it is transformed from the $\sigma$-- to the $z$--coordinate system (see Chapter \ref{num.sec.sigma}).
+
+\begin{pycf}{plotProfile.py -vis  -t -17 -p prof --not\_p fenscan.nc fenscan-gthf.nc is.ps}{\dir/figures/prof_is.eps}
+  plots a profile of the ice elevation and bed rock topograpy at time -17ka.
+\end{pycf}
+
+\begin{pycf}{plotProfile.py -vis -vbvel -vbmelt -t -17 -p prof --not\_p $\backslash$ \newline   fenscan.nc fenscan-gthf.nc vars.ps}{\dir/figures/prof_vars.eps}
+  stacks a number of variables on top of each other.
+\end{pycf}
+
+\begin{pycf}{plotProfile.py -vtemp  -t -18 -p prof --not\_p fenscan.nc temp.ps}{\dir/figures/prof_temp.eps}
+  plots a profile of the internal temperature structure at -18ka.
+\end{pycf}

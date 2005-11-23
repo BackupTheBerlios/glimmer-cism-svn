@@ -27,7 +27,7 @@
 
 \ifthenelse{\boolean{glimmertools}}
 {
-\chapter{Tools}
+\chapter{PyCF Tools}
 \renewcommand{\dir}{tg}
 \input{\dir/tg.tex}
 }

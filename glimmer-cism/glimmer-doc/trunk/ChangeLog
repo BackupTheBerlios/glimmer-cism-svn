@@ -1,3 +1,10 @@
+2005-11-23 Magnus Hagdorn
+ * configure.in: look for glimmer-tests and use it as a data source for
+   PyCF documentation
+ * definitions.tex: new environment for PyCF documentation
+ * visualisation.tex, ug.tex: move old PyCF documentation to new tree
+ * lots of new files documenting various PyCF programs
+
 2005-11-18 Magnus Hagdorn
  * added AUTHORS
 

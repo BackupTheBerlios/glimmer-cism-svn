@@ -1,5 +1,8 @@
 %\date{6th October 2005}
 
+\newboolean{html}
+\setboolean{html}{false}
+
 \newcommand{\pd}{\partial}
 \renewcommand{\vec}{\boldsymbol}
 
@@ -17,8 +20,25 @@
 }%
 \fi\endgroup%
 
-\newboolean{html}
-\setboolean{html}{false}
+% environment for PyCF cookbook
+\newcommand{\pycffigure}{}
+\newenvironment{pycf}[2] %
+{\renewcommand{\pycffigure}{#2}
+ \begin{center}
+ \begin{tabular}{lc}
+ \multicolumn{2}{p{\textwidth}}{\tt #1}\\
+ \begin{minipage}[t]{0.65\textwidth}
+ \vspace{0pt}
+}%
+{\end{minipage} &
+ \begin{minipage}[t]{0.35\textwidth}
+ \vspace{0pt}
+ \includegraphics[width=0.9\textwidth]{\pycffigure}
+ \end{minipage}\\
+ \end{tabular}
+ \end{center}
+}
+
 \bibliographystyle{plainnat}
 
 \input{common/version.tex}
