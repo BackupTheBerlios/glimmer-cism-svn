@@ -1,0 +1,10 @@
+\subsection{Using \texttt{plotSpot.py}}
+\texttt{plotSpot.py} is used to reduce the variable to one dimension by either plotting a time series of a 2D variable or a vertical profile of a 3D variable at a given time for a given location. The location is specified with a pair of integers $(i,j)$ identifying the node. The lower--left corner is $(0,0)$. 
+
+\begin{pycf}{plotSpot.py --ij 57 42 --ij 77 76 -vtemp  -t-18 fenscan.nc temp.ps}{\dir/figures/spot_temp.eps}
+plots ice temperatures as a function of $\sigma$ for two locations at time -18ka.  
+\end{pycf}
+
+\begin{pycf}{plotSpot.py --ij 77 76 -vthk  fenscan.nc fenscan-gthf.nc thk.ps}{\dir/figures/spot_thk.eps}
+plots ice thickness as a function of time at one location for two different runs.
+\end{pycf}

@@ -1,0 +1,34 @@
+\newboolean{rsldb}
+\setboolean{rsldb}{@have_rsl_db@}
+\section{Using the Relative Sea--Level Database}
+PyCF includes a number of programs which can plot the simulated relative sea--level (RSL) change and compare it with observations. In order to be able to use these programs you need a RSL database which is not distributed with PyCF. However, you can use the RSL data set of \citet{Tushingham1993} and generate your own RSL database. You can download the data from the \href{ftp://ftp.ncdc.noaa.gov/pub/data/paleo/paleocean/relative_sea_level/sealevel.dat}{World Data Center A --- Paleoclimatology} site. The database is then created using the command
+\begin{verbatim}
+PyCF/CF_IOrsl.py --create_db -p sealevel.dat $GLIMMER_PREFIX/share/PyCF/rsl.db
+\end{verbatim}
+The data is stored in a \href{http://www.sqlite.org/}{SQLite} database which is platform independent. Have a look at \texttt{PyCF/CF\_IOrsl.py} to see how the database created if you want to add RSL data from different sources.
+
+All RSL plotting programs understand the \texttt{-r} option with which you can select an alternative database.
+
+\ifthenelse{\boolean{rsldb}}
+{
+\begin{pycf}{plotRSLloc.py fenscan.nc loc.ps}{\dir/figures/rsl_loc.eps}
+plots the locations of the RSL observations. You can also get a list of IDs, coordinates and number of observations if you add the \texttt{--print\_ids} switch.
+\end{pycf}
+
+\begin{pycf}{plotRSL.py fenscan.nc fenscan-gthf.nc rsl.ps}{\dir/figures/rsl_curves.eps}
+plots simulated RSL curves and observations for selected sites. You can plot more than one file. You can choose to plot only data for ice--free locations using the \texttt{--ice\_free} switch.
+\end{pycf}
+
+\begin{pycf}{plotRSLdata.py --id=103 fenscan.nc fenscan-gthf.nc data.ps}{\dir/figures/rsl_data.eps}
+plots simulated RSL curves and observations for a single site specified with the \texttt{--id} option. You can also plot a map with the location by adding the \texttt{--show\_loc} switch.
+\end{pycf}
+
+\begin{pycf}{plotRSLhist.py fenscan.nc hist.ps}{\dir/figures/rsl_hist.eps}
+plots a histogram of the RSL residuals, $\Delta\zeta_{\text{model}}-\Delta\zeta_{\text{obs}}$. The panal on the left shows the RSL residuals as a function of time, the colours indicate counts. The panal on the right shows the overall histogram. You can plot only the time--dependent histogram using the \texttt{--nohist1d} switch. Similarly you can plot only the overall distribution of RSL residuals using the \texttt{--nohist2d} switch.
+\end{pycf}
+
+\begin{pycf}{plotRSLres.py --legend fenscan.nc residuals.ps}{\dir/figures/rsl_res.eps}
+plots a map with the locations of the RSL observations. The RSL sites are coloured according to the mean RSL residuals. The \texttt{--legend} adds a colourlegend.
+\end{pycf}
+}
+{}

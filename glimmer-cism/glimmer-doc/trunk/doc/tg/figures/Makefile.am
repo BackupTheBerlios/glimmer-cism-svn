@@ -1,4 +1,11 @@
-graphics = topo.eps is.eps btemp.eps bvel.eps bvelp.eps extent.eps prof_is.eps prof_vars.eps prof_temp.eps
+if HAVE_RSL_DB
+  rsl_graphics = rsl_loc.eps rsl_curves.eps rsl_data.eps rsl_res.eps rsl_hist.eps
+endif
+
+graphics = topo.eps is.eps btemp.eps bvel.eps bvelp.eps extent.eps prof_is.eps prof_vars.eps prof_temp.eps prof_temp2.eps \
+           stats.eps spot_temp.eps spot_thk.eps time_dist1.eps time_dist2.eps streams1.eps streams2.eps \
+           $(rsl_graphics)
+
 EXTRA_DIST = $(graphics)
 BUILT_SOURCES = $(graphics)
 CLEANFILES = $(BUILT_SOURCES)
@@ -30,5 +37,44 @@ prof_vars.ps:	@GLIMMER_TESTS@/eis/fenscan.nc @GLIMMER_TESTS@/eis/fenscan-gthf.nc
 
 prof_temp.ps:	@GLIMMER_TESTS@/eis/fenscan.2000a.nc
 		plotProfile.py -vtemp  -t -18 -p @GLIMMER_TESTS@/PyCF/fenscan.prof --not_p $^ $@
+
+prof_temp2.ps:	@GLIMMER_TESTS@/eis/fenscan.2000a.nc @GLIMMER_TESTS@/eis/fenscan-gthf.2000a.nc
+		plot3DProfiles.py -vtemp  -t -18 -p @GLIMMER_TESTS@/PyCF/fenscan.prof --not_p $^ $@
+
+stats.ps:	@GLIMMER_TESTS@/eis/fenscan.nc @GLIMMER_TESTS@/eis/fenscan-gthf.nc
+		plotCFstats.py -mi -p @GLIMMER_TESTS@/PyCF/fenscan.prof --not_p -f @GLIMMER_TESTS@/PyCF/fenscan.data $^ $@
+
+spot_temp.ps:	@GLIMMER_TESTS@/eis/fenscan.2000a.nc
+		plotSpot.py --ij 57 42 --ij 77 76 -vtemp  -t-18 $< $@
+
+spot_thk.ps:	@GLIMMER_TESTS@/eis/fenscan.nc @GLIMMER_TESTS@/eis/fenscan-gthf.nc
+		plotSpot.py --ij 77 76 -vthk $^ $@
+
+time_dist1.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
+		plotProfileTS.py -t -30 0 -vbtemp --pmt -cthk -p @GLIMMER_TESTS@/PyCF/fenscan.prof --not_p $^ $@
+
+time_dist2.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
+		plotProfileTS.py -e stages --profvar is -vbtemp --pmt -cthk -p @GLIMMER_TESTS@/PyCF/fenscan.prof --not_p $^ $@
+
+rsl_loc.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
+		plotRSLloc.py $< $@
+
+rsl_curves.ps:	@GLIMMER_TESTS@/eis/fenscan.nc @GLIMMER_TESTS@/eis/fenscan-gthf.nc
+		plotRSL.py $^ $@
+
+rsl_data.ps:	@GLIMMER_TESTS@/eis/fenscan.nc  @GLIMMER_TESTS@/eis/fenscan-gthf.nc
+		plotRSLdata.py --id=103 $^ $@
+
+rsl_res.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
+		plotRSLres.py --legend $< $@
+
+rsl_hist.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
+		plotRSLhist.py $< $@
+
+streams1.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
+		plotStreams.py --legend -t-10 --deltat=10000. $< $@
+
+streams2.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
+		plotStreams.py -t-10 --deltat=10000. --velocity $< $@
 
 include $(top_srcdir)/doc/make_doc.rules

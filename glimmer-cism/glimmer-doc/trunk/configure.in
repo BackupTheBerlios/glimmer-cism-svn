@@ -120,7 +120,12 @@ fi
 AM_CONDITIONAL([HAVE_PYCF],[test "$dotools" == "true"])
 AC_SUBST(dotools)
 
+dnl checking if the RSL data base is present
+AC_CHECK_FILE($GLIMMER_PREFIX/share/PyCF/rsl.db,have_rsl_db="true",have_rsl_db="false")
+AM_CONDITIONAL([HAVE_RSL_DB], [test "$have_rsl_db" == "true"])
+AC_SUBST(have_rsl_db)
+
 AC_CONFIG_FILES([Makefile doc/Makefile doc/common/Makefile doc/dg/Makefile doc/dg/figures/Makefile \
 		doc/ug/Makefile doc/ug/figs/Makefile doc/num/Makefile doc/num/figs/Makefile doc/num/gnu/Makefile \
                 doc/tg/Makefile doc/tg/figures/Makefile])
-AC_OUTPUT([doc/glimmer.tex doc/common/version.tex])
+AC_OUTPUT([doc/glimmer.tex doc/common/version.tex doc/tg/rsl.tex])

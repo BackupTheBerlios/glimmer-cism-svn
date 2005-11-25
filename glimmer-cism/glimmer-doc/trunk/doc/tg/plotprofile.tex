@@ -1,4 +1,4 @@
-\section{Using \texttt{plotProfile.py}}
+\subsection{Using \texttt{plotProfile.py}}
 \texttt{plotProfile.py} can be used to plot variables along a profile line. Again, time slices can be selected and multiple variables plotted. A number of files can be plotted if the variable is not three--dimensional. If the variable is three--dimensional, like temperature, it is transformed from the $\sigma$-- to the $z$--coordinate system (see Chapter \ref{num.sec.sigma}).
 
 \begin{pycf}{plotProfile.py -vis  -t -17 -p prof --not\_p fenscan.nc fenscan-gthf.nc is.ps}{\dir/figures/prof_is.eps}
@@ -11,4 +11,8 @@
 
 \begin{pycf}{plotProfile.py -vtemp  -t -18 -p prof --not\_p fenscan.nc temp.ps}{\dir/figures/prof_temp.eps}
   plots a profile of the internal temperature structure at -18ka.
+\end{pycf}
+
+\begin{pycf}{plot3DProfiles.py -vtemp  -t -18 -p prof --not\_p fenscan.nc fenscan-gthf.nc $\backslash$ \newline temp2.ps}{\dir/figures/prof_temp2.eps}
+is a variation of \texttt{plotProfile.py} and can be used to plot vertical slices through a 3D field for different runs.
 \end{pycf}

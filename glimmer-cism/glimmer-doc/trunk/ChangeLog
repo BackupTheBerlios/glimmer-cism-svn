@@ -1,3 +1,9 @@
+2005-11-25 Magnus Hagdorn
+ * definitions.tex: use \url instead of \texttt
+ * packages.tex: load url style
+ * configure.in: check if RSL database is present
+ * loads of PyCF docs
+
 2005-11-23 Magnus Hagdorn
  * configure.in: look for glimmer-tests and use it as a data source for
    PyCF documentation
