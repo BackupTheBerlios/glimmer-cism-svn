@@ -1,4 +1,7 @@
 2005-11-25 Magnus Hagdorn
+ * fix some TeX4ht issues
+
+2005-11-25 Magnus Hagdorn
  * definitions.tex: use \url instead of \texttt
  * packages.tex: load url style
  * configure.in: check if RSL database is present

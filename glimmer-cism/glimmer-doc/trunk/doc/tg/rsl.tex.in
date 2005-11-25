@@ -1,6 +1,6 @@
 \newboolean{rsldb}
 \setboolean{rsldb}{@have_rsl_db@}
-\section{Using the Relative Sea--Level Database}
+\subsection{Using the Relative Sea--Level Database}
 PyCF includes a number of programs which can plot the simulated relative sea--level (RSL) change and compare it with observations. In order to be able to use these programs you need a RSL database which is not distributed with PyCF. However, you can use the RSL data set of \citet{Tushingham1993} and generate your own RSL database. You can download the data from the \href{ftp://ftp.ncdc.noaa.gov/pub/data/paleo/paleocean/relative_sea_level/sealevel.dat}{World Data Center A --- Paleoclimatology} site. The database is then created using the command
 \begin{verbatim}
 PyCF/CF_IOrsl.py --create_db -p sealevel.dat $GLIMMER_PREFIX/share/PyCF/rsl.db
