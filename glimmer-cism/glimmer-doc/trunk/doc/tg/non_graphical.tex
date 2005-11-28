@@ -1,0 +1,43 @@
+\section{Non--Graphical PyCF Tools}
+\subsection{Using \texttt{create\_topo.py}}
+The program \texttt{create\_topo.py} is used to create a suitable input topography file containing the bedrock topography, longitude and latitude variables and projection information. \texttt{create\_topo.py} reads a GMT grid file. The lower--left corner of the grid is selected using the \texttt{-o LON/LAT} option. The node spacing is set with the \texttt{-d DX[/DY]} option. The upper--right corner is set either by using the \texttt{-u} option or by setting the number of nodes in $x$ and $y$--direction with the \texttt{-n} option. A projection is set using the \texttt{-J} option (see Table \ref{tg.tab.create_topo} for details). 
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{|p{0.3\textwidth}|p{0.6\textwidth}|}
+    \hline
+    \texttt{-Jalon0/lat0} & Lambert Azimuthal Equal Area with projection centre at \texttt{lon0/lat0}. \\
+    \texttt{-Jblon0/lat0/lat1/lat2} & Lambert Conic Conformal with projection centre at \texttt{lon0/lat0} and two standard parallels \texttt{lat1} and \texttt{lat2}. \\
+    \texttt{-Jllon0/lat0/lat1/lat2} & Lambert Conic Conformal with projection centre at \texttt{lon0/lat0} and two standard parallels \texttt{lat1} and \texttt{lat2}. \\
+    \texttt{-Jslon0/lat0[/slat]} & Stereographic projection with projection centre at \texttt{lon0/lat0} and optionally a standard parallel \texttt{slat}.\\
+    \hline
+  \end{tabular}
+  \caption{GMT projection strings used by \texttt{create\_topo.py}. The string format is similar to the GMT projection options.}
+  \label{tg.tab.create_topo}
+\end{table}
+
+\subsection{Using \texttt{construct\_field.py}}\label{tg.sec.cfield}
+\texttt{construct\_field.py} is used to generate an input file containing a variable (such as continentality) which is based on values inside and outside a polygon. The variable to be processed is selected with the \texttt{-v} option. The polygon is defined by it's vertices which are specified with multiple \texttt{-p} options. Values inside the polygon are set with the \texttt{-i} option and outside the polygon with the \texttt{-o} option. The area and projection information is taken from the input file. 
+
+\texttt{construct\_field.py} can be used to modify an existing variable if the input file contains the selected variable. For example different polygons can be filled calling \texttt{construct\_field.py} multiple times with the output of the previous call used as input for the next run.
+
+\begin{pycf}{}{\dir/figures/soft.eps}
+\begin{verbatim}
+construct_field.py --title="1 patch" -vsoft \
+-o 1.e-2 -i 5.e-2 -p 4.5 62.5 -p 5 59 -p 7.5 58 \
+-p 10 59 -p 11 58 -p 8 57.5 -p 5 58 -p 2.5 62 \
+fenscan.nc soft1.nc
+\end{verbatim}
+produces the data file with one soft patch.
+\begin{verbatim}
+construct_field.py  --title="2 patches" -vsoft \
+-i 5.e-2 -p 22.5 58 -p 26 55 -p 28 55.5 -p 23 58.8 \
+soft1.nc soft2.nc
+\end{verbatim}
+adds the second soft patch. The title is added using the \texttt{--title} option. Similarly, you can change other metadata using \texttt{--institution}, \texttt{--source}, \texttt{--references} and \texttt{--comment}. The results are plotted using \texttt{plotCFvar.py}.
+\end{pycf}
+
+Finally, results can be smoothed with a moving average filter. The half--size of the smoother can be set with the \texttt{-s} switch.
+
+%\subsection{Using \texttt{a2c.py}}
+
