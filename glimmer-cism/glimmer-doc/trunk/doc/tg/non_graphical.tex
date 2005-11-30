@@ -20,7 +20,6 @@ The program \texttt{create\_topo.py} is used to create a suitable input topograp
 \texttt{construct\_field.py} is used to generate an input file containing a variable (such as continentality) which is based on values inside and outside a polygon. The variable to be processed is selected with the \texttt{-v} option. The polygon is defined by it's vertices which are specified with multiple \texttt{-p} options. Values inside the polygon are set with the \texttt{-i} option and outside the polygon with the \texttt{-o} option. The area and projection information is taken from the input file. 
 
 \texttt{construct\_field.py} can be used to modify an existing variable if the input file contains the selected variable. For example different polygons can be filled calling \texttt{construct\_field.py} multiple times with the output of the previous call used as input for the next run.
-
 \begin{pycf}{}{\dir/figures/soft.eps}
 \begin{verbatim}
 construct_field.py --title="1 patch" -vsoft \
@@ -34,9 +33,8 @@ construct_field.py  --title="2 patches" -vsoft \
 -i 5.e-2 -p 22.5 58 -p 26 55 -p 28 55.5 -p 23 58.8 \
 soft1.nc soft2.nc
 \end{verbatim}
-adds the second soft patch. The title is added using the \texttt{--title} option. Similarly, you can change other metadata using \texttt{--institution}, \texttt{--source}, \texttt{--references} and \texttt{--comment}. The results are plotted using \texttt{plotCFvar.py}.
+adds the second soft patch. The title is added using the \texttt{--title} option. Similarly, you can change other metadata using \texttt{--institution}, \texttt{--source}, \texttt{--references} and \texttt{--comment}. The results are plotted using \texttt{plotCFvar.py}. Alternatively, you can also use the \texttt{-f} option to load a file containing multiple polygon outlines. Each polygon starts with the value inside followed by a \texttt{:}. Coordinates for the vertices follow.
 \end{pycf}
-
 Finally, results can be smoothed with a moving average filter. The half--size of the smoother can be set with the \texttt{-s} switch.
 
 %\subsection{Using \texttt{a2c.py}}
