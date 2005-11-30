@@ -4,7 +4,7 @@
 
 import PyGMT,PyCF,sys,os, Numeric, Polygon
 
-def munch_erosion(cfprofile,epochs,etime):
+def munch_erosion(cfprofile,epochs,etime,yrange=None):
     """Produce erosion surfaces.
 
     cfprofile: CF file containing erosion.
@@ -19,6 +19,7 @@ def munch_erosion(cfprofile,epochs,etime):
     seds3 = cfprofile.getprofile('seds3').getProfileTS(time=time).data
     
     init_seds = seds1[:,0] + seds2[:,0] + seds3[:,0]
+    hb = cfprofile.getprofile('erosion').getProfile(time=etime) - init_seds
 
     upper_x = Numeric.zeros(len(init_seds)+2,Numeric.Float)
     upper_x[:-2] = Numeric.array(cfprofile.xvalues)
@@ -33,7 +34,9 @@ def munch_erosion(cfprofile,epochs,etime):
     for j in range(0,len(seds1[0,:])):
         seds1[:,j] = seds1[:,j] + seds2[:,j] + seds3[:,j] - init_seds[:]
 
-    minseds = PyGMT.round_down(min(Numeric.ravel(seds1)))
+    minseds = PyGMT.round_down(min(hb))
+    if yrange!=None:
+        minseds = min(minseds,yrange[0])
     maxseds = PyGMT.round_up(max(Numeric.ravel(seds1)))
 
     upper_y = Numeric.zeros(len(init_seds)+2,Numeric.Float)
@@ -47,8 +50,8 @@ def munch_erosion(cfprofile,epochs,etime):
     # initial sediment distribution
     polygons.append( Polygon.Polygon( Numeric.transpose(Numeric.array([lower_x,lower_y])) ) )
     colours.append('255/255/0')
+    stages.append('orig seds')
     current_epoch = epochs.get_epoch(times[0])
-    stages.append(current_epoch)
     for j in range(0,len(seds1[0,:])):
         e = epochs.get_epoch(times[j])
         if e != current_epoch:
@@ -65,18 +68,20 @@ def munch_erosion(cfprofile,epochs,etime):
             polygons[p] = polygons[p] - upoly
 
     # hard bedrock erosion
-    hb = cfprofile.getprofile('erosion').getProfile(time=etime).data - init_seds
     lower_y[2:] = hb[:]
     polygons.insert(0, Polygon.Polygon( Numeric.transpose(Numeric.array([lower_x,lower_y])) ) )
-    colours.insert(0, '0/0/0')
-    stages.inert(0, 'Bedrock')
+    colours.insert(0, '202/119/74')
+    stages.insert(0, 'Bedrock')
 
     coords = []
     for p in range(0,len(polygons)):
-        coords.append({'x':[],'y':[]})
-        for j in range(0,len(polygons[p][0])):
-            coords[p]['x'].append(polygons[p][0][j][0])
-            coords[p]['y'].append(polygons[p][0][j][1])
+        c = []
+        for i in range(0,len(polygons[p])):
+            c.append({'x':[],'y':[]})
+            for j in range(0,len(polygons[p][i])):
+                c[i]['x'].append(polygons[p][i][j][0])
+                c[i]['y'].append(polygons[p][i][j][1])
+        coords.append(c)
         
     return (coords,colours,stages)
     
@@ -86,6 +91,7 @@ if __name__ == '__main__':
     parser.time()
     parser.epoch()
     parser.profile_file()
+    parser.region1d()
     parser.plot()
     opts = PyCF.CFOptions(parser,2)
 
@@ -98,7 +104,7 @@ if __name__ == '__main__':
     time = opts.times(infile,0)
 
     # load data
-    (polygons,colours,stages) = munch_erosion(infile,epoch,time)
+    (polygons,colours,stages) = munch_erosion(infile,epoch,time,yrange=opts.options.yrange)
 
     #print colours,stages
 
@@ -117,10 +123,14 @@ if __name__ == '__main__':
 
 
     prof_seds = infile.getprofile('seds1')
-    seds_area = area.newprof(prof_seds,time)
+    seds_area = area.empty()
     seds_area.ylabel = 'sediments [m]'
     for p in range(len(polygons)-1,-1,-1):
-        seds_area.line('-G%s -W1/0/0/0 -L'%(colours[p]),polygons[p]['x'],polygons[p]['y'])
+        for i in (range(0,len(polygons[p]))):
+            seds_area.line('-G%s  -W1/0/0/0'%(colours[p]),polygons[p][i]['x'],polygons[p][i]['y'])
+    if opts.options.yrange != None:
+        seds_area.ll[1] = opts.options.yrange[0]
+        seds_area.ur[1] = opts.options.yrange[1]
 
     # plot ice surface
     prof_is = infile.getprofile('is')
