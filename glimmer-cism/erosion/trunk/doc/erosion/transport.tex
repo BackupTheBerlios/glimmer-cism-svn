@@ -1,4 +1,4 @@
-\section{Sediment Transport}
+\section{Sediment Transport}\label{erosion.sec.full_trans}
 Ice sheets and glaciers modify their beds by eroding it, transporting sediments within a basal ice layer and a deformable bed and depositing these sediments again. These processes leave a wealth of geological data once the ice sheet has disappeared. Modelling these processes adds to our understanding of the cryospherice system. The model can be tested by comparing model output with geological observations. As usual there are feedback mechanisms between various subsystems.
 
 There are three possible basal boundary conditions. The most simple boundary condition is when the ice is frozen to the bed which can be hard bed rock or frozen sediments (see Fig. \ref{erosion.fig.velos}A). In this case ice moves through internal deformation driven by gravity only.  The second boundary condition occurs when the ice sheet resting on hard bedrock is melting. In this case basal d\'ecollement occurs and the ice sheet can slide over the bed (see Fig. \ref{erosion.fig.velos}B). Empirical sliding laws usually take the form
@@ -9,7 +9,7 @@ where $\tau_b$ is the basal shear stress, $N$ the effective pressure and $a$, $p
 
 \begin{figure}[htbp]
   \centering
-  \input{\dir/figs/pressure_stress_strain.pstex_t}
+  \includegraphics{\dir/figs/pressure_stress_strain.eps}
   \label{fig.stress_etc}
 \end{figure}
 
@@ -17,7 +17,7 @@ This document focuses on the theoretical background and implementation of the th
 
 \begin{figure}[htbp]
   \centering
-  \input{\dir/figs/ice_velo.pstex_t} 
+  \includegraphics{\dir/figs/ice_velo.eps} 
   \caption{Profiles showing horizontal velocities when the basal ice is frozen to the bed (A), the ice sheet is sliding over a rigid bed (B) and when the ice sheet is sliding over a bed of deforming sediments (C). There are three possible velocity components: the internal ice velocity, $\vec{v}_{\text{ice}}$, the sliding velocity, $\vec{v}_{\text{slide}}$ and the sediment velocity, $\vec{v}_{\text{sed}}$ \citep[after][]{Boulton1996a}.}
   \label{erosion.fig.velos}
 \end{figure}
@@ -120,14 +120,14 @@ The parameters for the flow laws \eqref{erosion.eq.tillflow1} and \eqref{erosion
 
 \begin{figure}[htbp]
   \centering
-  \input{\dir/gnu/stress-strain-fit.pslatex}
+  \includegraphics{\dir/gnu/stress-strain-fit.eps}
   \caption{Observed strain rates versus calculated strain rates of Models A, B and C.}
   \label{erosion.fig.stress-strain-fit}
 \end{figure}
 
 \begin{figure}[htbp]
   \centering
-  \input{\dir/gnu/stress-strain.pslatex}
+  \includegraphics{\dir/gnu/stress-strain.eps}
   \caption{Measured values of shear stress, effective pressure and strain rate, points A-G from \citet{Boulton1987} and lines of constant strain rates (30a$^{-1}$-5a$^{-1}$) for Models A,B and C. The green line indicates the yield stress.}
   \label{erosion.fig.stress-strain}
 \end{figure}
@@ -149,7 +149,7 @@ The integrals over the flow law which need to be evaluated to get the sliding ve
 
 \begin{figure}[htbp]
   \centering
-  \epsfig{file=\dir/figs/plot_basal.eps,width=0.9\textwidth}
+  \includegraphics[width=0.9\textwidth]{\dir/figs/plot_basal.eps}
   \caption{Thickness of deforming sediment layer, sliding velocity and average sediment velocity as a function of applied shear stress. Velocities plotted with solid lines are calculated with flow law Model B and dashed lines with Model C.}
   \label{erosion.fig.sed_velos}
 \end{figure}
@@ -168,7 +168,7 @@ The two boundary layers are the clean ice above the dirty, basal ice layer carry
 
 \begin{figure}[htbp]
   \centering
-  \input{\dir/figs/erosion_layers.pstex_t}
+  \includegraphics{\dir/figs/erosion_layers.eps}
   \caption{Schematic illustration of the ice sheet/sediment model.}
   \label{erosion.fig.ice_sed_model}
 \end{figure}

@@ -1,3 +1,17 @@
+2005-12-06 Magnus Hagdorn
+ * configure.in: check if we should run tests
+ * plot_seds.py: plot multiple profiles
+ * clean up tests in tests directory
+ * update documentation
+ changes in src/
+ * eis_erosion.f90: derive name of log file from configuration file name,
+   read initial sediment distribution from input CF file
+ * simple_erosion.f90: ditto
+ * erosion.f90: calculate isostatic adjustment due to sediment redistribution
+   and erosion. Modify ice bed if required.
+ * erosion_setup.f90: new switch to disable ice bed modification
+ * erosion_types.f90: new variables to support isostasy calculations
+
 2005-11-30 Magnus Hagdorn
  * plot_seds_profile.py: improvements
 

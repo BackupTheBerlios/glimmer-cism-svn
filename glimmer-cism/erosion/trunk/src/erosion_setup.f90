@@ -58,6 +58,7 @@ contains
        erosion%doerosion = .True.
        call GetValue(section,'hb_erosion',erosion%hb_erosion_factor)
        call GetValue(section,'ntime',erosion%ndt)
+       call GetValue(section,'update_topo',erosion%update_topo)
     end if
     call GetSection(config,section,'Basic_Transport')
     if (associated(section)) then
@@ -102,6 +103,11 @@ contains
        call write_log(message)
        write(message,*) 'hard bedrock erosion constant : ',erosion%hb_erosion_factor
        call write_log(message)
+       if (erosion%update_topo) then
+          call write_log('erosion modifies bedrock topography')
+       else
+          call write_log('erosion does not modifies bedrock topography')
+       end if
        call write_log('')
        if (erosion%dotransport) then
           if (erosion%simple_seds) then

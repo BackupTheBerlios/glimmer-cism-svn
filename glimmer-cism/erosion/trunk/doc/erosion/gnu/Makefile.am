@@ -1,7 +1,7 @@
-graphics = stress-strain.pslatex stress-strain-fit.pslatex
+graphics = stress-strain.eps stress-strain-fit.eps
 
 EXTRA_DIST = stress-strain.gp fit.gp stress-strain-fit.gp stress-strain.data $(graphics)
- 
+
 BUILT_SOURCES = $(graphics)
 CLEANFILES = $(BUILT_SOURCES)
 

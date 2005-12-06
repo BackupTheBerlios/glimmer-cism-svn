@@ -99,6 +99,7 @@ contains
     !*FD do the erosion
     use isostasy
     use glide_types
+    use paramets, only: thk0
     use physcon, only : rhom
     use erosion_transport
     use glide_profile
@@ -129,6 +130,11 @@ contains
 #endif
 
           if (erosion%dotransport) then
+
+             if (erosion%update_topo) then
+                erosion%seds_init(:,:) = erosion%seds1(:,:) + erosion%seds2(:,:) + erosion%seds3(:,:)
+             end if
+
              !----------------------------------------------------------
              ! transport sediments
              !----------------------------------------------------------
@@ -213,8 +219,11 @@ contains
              call glide_prof_stop(model,erosion%er_prof%sed_dep)
 #endif
 
-             !erosion%er_isos = erosion%er_isos + erosion%er_accu
-             !model%geometry%topg = model%geometry%topg + erosion%er_accu
+             if (erosion%update_topo) then
+                erosion%er_accu(:,:) = - erosion%er_accu(:,:) + erosion%seds1(:,:) + erosion%seds2(:,:) + erosion%seds3(:,:) &
+                     - erosion%seds_init(:,:)
+             end if
+
           else
              !------------------------------------------------
              ! no sediment transport 
@@ -222,19 +231,31 @@ contains
              !------------------------------------------------
 
              erosion%erosion(:,:) = erosion%erosion(:,:) - erosion%er_accu(:,:)
-             
+             erosion%er_accu(:,:) = - erosion%er_accu(:,:)
           end if
+       end if
+
+       if (erosion%update_topo) then
+          erosion%er_accu(:,:) = erosion%er_accu(:,:)/thk0
+          do ns=2,model%general%nsn-1
+             do ew=2,model%general%ewn-1
+                erosion%er_isos(ew,ns) = erosion%er_isos(ew,ns) + 0.25* &
+                     (erosion%er_accu(ew,ns) + erosion%er_accu(ew-1,ns) + erosion%er_accu(ew-1,ns-1) + erosion%er_accu(ew,ns-1))
+                model%geometry%topg(ew,ns) = model%geometry%topg(ew,ns) + 0.25*&
+                     (erosion%er_accu(ew,ns) + erosion%er_accu(ew-1,ns) + erosion%er_accu(ew-1,ns-1) + erosion%er_accu(ew,ns-1))
+             end do
+          end do
        end if
     end if
 
-!!$    ! update load if necessary
-!!$    if (model%isos%new_load) then
-!!$       model%isos%relx = model%isos%relx + erosion%er_isos
-!!$       erosion%er_isos = erosion%er_isos * erosion%density/rhom
-!!$       call isos_lithosphere(model,erosion%er_load,erosion%er_isos)
-!!$       model%isos%relx = model%isos%relx - erosion%er_load
-!!$       erosion%er_isos = 0.
-!!$    end if
+    ! update load if necessary
+    if (model%isos%new_load) then
+       model%isos%relx = model%isos%relx + erosion%er_isos
+       erosion%er_isos = erosion%er_isos * erosion%density/rhom
+       call isos_lithosphere(model,erosion%er_load,erosion%er_isos)
+       model%isos%relx = model%isos%relx - erosion%er_load
+       erosion%er_isos = 0.
+    end if
 
   end subroutine er_tstep
 

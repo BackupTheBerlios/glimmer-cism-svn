@@ -2,12 +2,12 @@
 
 """Plot sediment maps"""
 
-import PyGMT,PyCF,sys,os
+import PyGMT,PyCF,sys,os,string
 
 # creating option parser
 parser = PyCF.CFOptParser()
 parser.var_options()
-parser.profile_file()
+parser.profile_file(plist=True)
 parser.time()
 parser.region()
 parser.plot()
@@ -26,10 +26,7 @@ if count > 1:
     sys.stderr.write('Error, can only have either more than one time slice or more than one file!\n')
     sys.exit(1)
 
-if opts.options.profname!=None:
-    infile = opts.cfprofile()
-else:
-    infile = opts.cffile()
+infile = opts.cffile()
 
 time = opts.times(infile)
 # get number of plots
@@ -64,6 +61,13 @@ else:
         pass
     area.coordsystem()
     area.printinfo(time)
+    if opts.options.profname !=None:
+        i=0
+        for pn in opts.options.profname:
+            pdata = PyCF.CFprofile(infile,interval=opts.options.interval)
+            pdata.coords_file(pn,opts.options.prof_is_projected)
+            area.profile(args='-W5/0/0/0',prof=pdata,slabel=string.ascii_uppercase[i])
+            i=i+1    
     if opts.options.dolegend:
         PyGMT.colourkey(area,var.colourmap.cptfile,title=var.long_name,pos=[0,-2])
     

@@ -80,7 +80,8 @@ module erosion_types
      real :: density = 3000.                               !*FD density of hard bedrock (kg m$^{-3}$)
      ! sediment transport stuff
      logical :: dotransport = .False.                      !*FD set to true to move sediments about
-     logical :: simple_seds = .false.                       !*FD toggle between sediment models
+     logical :: simple_seds = .false.                      !*FD toggle between sediment models
+     logical :: update_topo = .True.                       !*FD whether erosion/sediment transport changes bedrock topo
      real(kind=dp) :: transport_fac = 0.2                  !*FD multiplier for velos in deformable beds
      real(kind=dp) :: dirty_ice_max = 0.1                  !*FD maximum thickness of dirty basal ice layer
      real(kind=dp) :: soft_a = 1.d-5                       !*FD param A for max def thick calculations
@@ -95,6 +96,7 @@ module erosion_types
      real(kind=dp),dimension(:,:),pointer :: er_accu => null()      !*FD accumulated erosion during one erosion time step
      real(kind=dp),dimension(:,:),pointer :: er_isos => null()      !*FD accumulated erosion for isostasy calcs
      real(kind=dp),dimension(:,:),pointer :: er_load => null()      !*FD load due to erosion
+     real(kind=dp),dimension(:,:),pointer :: seds_init => null()    !*FD initial sediment distribution
      real(kind=dp),dimension(:,:),pointer :: seds1 => null()        !*FD thickness of dirty basal ice layer
      real(kind=dp),dimension(:,:),pointer :: seds2 => null()        !*FD thickness of deforming sediment layer
      real(kind=dp),dimension(:,:),pointer :: seds2_vx => null()     !*FD x-component of sediment velocity
@@ -120,6 +122,7 @@ contains
     call coordsystem_allocate(model%general%velo_grid, erosion%erosion_rate)
     call coordsystem_allocate(model%general%velo_grid, erosion%erosion)
     call coordsystem_allocate(model%general%velo_grid, erosion%er_accu)
+    call coordsystem_allocate(model%general%velo_grid, erosion%seds_init)
     call coordsystem_allocate(model%general%velo_grid, erosion%seds1)
     call coordsystem_allocate(model%general%velo_grid, erosion%seds2)
     call coordsystem_allocate(model%general%velo_grid, erosion%seds2_vx)
@@ -138,6 +141,7 @@ contains
     deallocate(erosion%er_accu)
     deallocate(erosion%er_isos)
     deallocate(erosion%er_load)
+    deallocate(erosion%seds_init)
     deallocate(erosion%seds1)
     deallocate(erosion%seds2)
     deallocate(erosion%seds2_max)

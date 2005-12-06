@@ -43,7 +43,7 @@
 program eis_erosion
   !*FD This is the Edinburgh Ice Sheet GLIDE driver
   !*FD with erosion
-  use glimmer_global, only:rk
+  use glimmer_global, only:rk,fname_length
   use glide
   use eis_forcing
   use eis_io
@@ -56,7 +56,7 @@ program eis_erosion
   type(eis_climate_type) :: climate       ! climate
   type(erosion_type) :: er                ! erosion
   type(ConfigSection), pointer :: config  ! configuration stuff
-  character(len=50) :: fname   ! name of paramter file
+  character(len=fname_length) :: fname   ! name of paramter file
   real(kind=rk) time
   
 
@@ -65,7 +65,7 @@ program eis_erosion
   read(*,*) fname
   
   ! start logging
-  call open_log(unit=50)
+  call open_log(unit=50, fname=logname(fname))
 
   ! read configuration
   call ConfigRead(fname,config)
@@ -77,8 +77,6 @@ program eis_erosion
   call er_initialise(er,config,model)
   ! fill dimension variables
   call glide_nc_fillall(model)
-
-  er%seds3 = 5.d0
 
   time = model%numerics%tstart
   do while(time.le.model%numerics%tend)

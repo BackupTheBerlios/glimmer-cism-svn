@@ -104,5 +104,15 @@ AM_CONDITIONAL([DO_DOC_PS],  [test "$DVIPS" != ""])
 AM_CONDITIONAL([DO_DOC_PDF], [test "$DVIPDFT" != ""])
 AM_CONDITIONAL([BUILD_DOCS], [test "$enable_doc" == "yes"])
 
+# should we run the tests
+AC_MSG_CHECKING([whether we should run the tests])
+AC_ARG_ENABLE(tests, AS_HELP_STRING([--enable-tests],[Run short tests]),
+[case "${enableval}" in
+ yes)  AC_MSG_RESULT([yes]);;
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-tests) ;;
+esac],[AC_MSG_RESULT([no])])
+AM_CONDITIONAL([RUN_TESTS], [test "$enable_tests" == "yes"])
+
 AC_CONFIG_FILES([Makefile src/Makefile python/Makefile doc/Makefile doc/common/Makefile doc/erosion/Makefile doc/erosion/figs/Makefile doc/erosion/gnu/Makefile tests/Makefile])
 AC_OUTPUT([erosion-config src/erosion_version.f90 doc/common/version.tex])
