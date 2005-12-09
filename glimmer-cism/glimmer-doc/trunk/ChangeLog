@@ -1,3 +1,6 @@
+2005-12-09 Magnus Hagdorn
+ * document recent changes in PyCF
+
 2005-11-30 Magnus Hagdorn
  * non_graphical.tex: update doc for construct_field.py
 

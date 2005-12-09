@@ -13,6 +13,10 @@ The GMT coastline database is used to add present--day coastlines. The colourmap
 plots the ice surface which is calculated from the variables \texttt{topg} and \texttt{thk}. The switch \texttt{-t} select a time slice at -17ka. The data is clipped to the area covered by ice with the \texttt{-c} switch. \texttt{-i} adds illumination. The \texttt{--land} switch colours areas above sea--level in grey.
 \end{pycf}
 
+\begin{pycf}{plotCFvar.py -vthk -cthk -t-17 --land --contours=0/4000/500/1000 fenscan.nc is.ps}{\dir/figures/thk.eps}
+plots ice thicknesses with custom contours. The \texttt{--contours} option takes 3 or 4 values separated with a \texttt{/}. The first two values give start and end contour value. The third value the contour interval and optionally, the forth value sets the annotation interval.
+\end{pycf}
+
 \begin{pycf}{plotCFvar.py -vbtemp -cthk -gbvel --pmt -t -17 --land fenscan.nc btemp.ps}{\dir/figures/btemp.eps}
 plots the basal temperatures adjusted for its dependance on pressure (\texttt{--pmt}) and adds glyphs for the basal velocity directions with the \texttt{-g} switch. The density of glyphs is automatically adjusted to the size of the plot. Glyphs only indicate direction. If you want magnitudes as well you should just plot the basal velocity field with \texttt{-vbvel}.
 \end{pycf}

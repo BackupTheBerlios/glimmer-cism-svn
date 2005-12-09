@@ -16,7 +16,7 @@ plots the locations of the RSL observations. You can also get a list of IDs, coo
 \end{pycf}
 
 \begin{pycf}{plotRSL.py fenscan.nc fenscan-gthf.nc rsl.ps}{\dir/figures/rsl_curves.eps}
-plots simulated RSL curves and observations for selected sites. You can plot more than one file. You can choose to plot only data for ice--free locations using the \texttt{--ice\_free} switch.
+plots simulated RSL curves and observations for selected sites. You can plot more than one file. You can choose to plot only data for ice--free locations using the \texttt{--ice\_free} switch. \texttt{plotRSL.py} attempts to automatically layout the surrounding plots. If they do not fit you can try changing the width of the central map with the \texttt{--width} option and the orientation of the plot with the \texttt{--landscape} switch.
 \end{pycf}
 
 \begin{pycf}{plotRSLdata.py --id=103 fenscan.nc fenscan-gthf.nc data.ps}{\dir/figures/rsl_data.eps}

@@ -2,7 +2,7 @@ if HAVE_RSL_DB
   rsl_graphics = rsl_loc.eps rsl_curves.eps rsl_data.eps rsl_res.eps rsl_hist.eps
 endif
 
-graphics = topo.eps is.eps btemp.eps bvel.eps bvelp.eps extent.eps prof_is.eps prof_vars.eps prof_temp.eps prof_temp2.eps \
+graphics = topo.eps is.eps thk.eps btemp.eps bvel.eps bvelp.eps extent.eps prof_is.eps prof_vars.eps prof_temp.eps prof_temp2.eps \
            stats.eps spot_temp.eps spot_thk.eps time_dist1.eps time_dist2.eps streams1.eps streams2.eps diff.eps soft.eps\
            $(rsl_graphics)
 
@@ -16,6 +16,9 @@ topo.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
 
 is.ps:		@GLIMMER_TESTS@/eis/fenscan.nc
 		plotCFvar.py -vis -cthk -iis -t -17 --land $< $@
+
+thk.ps:		@GLIMMER_TESTS@/eis/fenscan.nc
+		plotCFvar.py -vthk -cthk -t-17 --land --contours=0/4000/500/1000 $< $@
 
 btemp.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
 		plotCFvar.py -vbtemp -cthk -gbvel --pmt -t -17 --land $< $@
