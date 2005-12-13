@@ -47,6 +47,6 @@ if test "$DIE" -eq 1; then
     exit 1
 fi
 
-$ACLOCAL \
+$ACLOCAL -I $GLIMMER_PREFIX/share/aclocal \
 && $AUTOMAKE --gnu --add-missing \
 && autoconf
