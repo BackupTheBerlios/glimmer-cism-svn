@@ -1,3 +1,10 @@
+Changes in Version 0.4
+======================
+* can run either erosion or erosion+transport
+* enable isostatic adjustment
+* erosion/transport optionally modifies ice bed
+* lots of updates to documentation
+
 Changes in Version 0.2
 ======================
 * enabled erosion transport
