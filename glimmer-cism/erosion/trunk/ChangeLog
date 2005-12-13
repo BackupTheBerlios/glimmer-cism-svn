@@ -1,4 +1,7 @@
 2005-12-13 Magnus Hagdorn
+ * configure.in: bump version number for development
+
+2005-12-13 Magnus Hagdorn
  * configure.in: bump version number
  * NEWS: update
 

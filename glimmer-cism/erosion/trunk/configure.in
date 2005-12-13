@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 
 dnl set version
 m4_define([erosion_major_version], [0])
-m4_define([erosion_minor_version], [4])
+m4_define([erosion_minor_version], [5])
 m4_define([erosion_version],
 	[erosion_major_version.erosion_minor_version])
 
@@ -12,7 +12,7 @@ AM_INIT_AUTOMAKE
 dnl minimum required glimmer version
 min_glimmer_major_version=0
 min_glimmer_minor_version=5
-min_glimmer_micro_version=3
+min_glimmer_micro_version=5
 
 EROSION_MAJOR_VERSION=erosion_major_version
 EROSION_MINOR_VERSION=erosion_minor_version
