@@ -4,10 +4,16 @@ Brief instruction on how to install this model.
 
 Prerequisites:
 ==============
-You will need to install GLIMMER and all its dependencies.
+You will need to install GLIMMER and all its dependencies. 
 
 Compiling under Unix/Linux:
 ==========================
+If you do not compile from a released source distribution you will need to 
+first run ./bootstrap to generate the configure script. Set the environment
+variable GLIMMER_PREFIX to the prefix where GLIMMER is installed if you have
+it installed in some unusual place so that aclocal can find the AM_PATH_GLIMMER
+macro.
+
 The erosion model now uses the GNU auto tools. Compiling the sources from a
 tarball distribution follows the usual sequence of commands:
 ./configure

@@ -1,4 +1,10 @@
 2005-12-13 Magnus Hagdorn
+ * configure.in: use AM_PATH_GLIMMER to set up GLIMMER
+ * bootstrap: look for glimmer.m4
+ * Makefile.am: add rule to regenerate aclocal.m4
+ * INSTALL: update installation instructions
+
+2005-12-13 Magnus Hagdorn
  * configure.in: bump version number for development
 
 2005-12-13 Magnus Hagdorn
