@@ -1,3 +1,8 @@
+2005-12-13 Magnus Hagdorn
+ * configure.in: use AM_PATH_GLIMMER to set up GLIMMER
+ * bootstrap: look for glimmer.m4
+ * Makefile.am: add rule to regenerate aclocal.m4
+
 2005-11-22 Magnus Hagdorn
  * update AUTHORS, README, NEWS and tests/index.html
  * add matlab code to distribution
