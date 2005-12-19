@@ -1,0 +1,8 @@
+Changes in Version 0.3
+======================
+* use glimmer.m4 for setting up GLIMMER
+
+Changes in Version 0.2
+======================
+* added matlab code to distribution
+* push module to GLIMMER CVS repository

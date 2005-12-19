@@ -1,0 +1,63 @@
+2005-12-19 Magnus Hagdorn
+ * configure.in: bump version to 0.3, small fix
+ * NEWS: update
+ * Makefile.am: use wildcard macro
+
+2005-12-13 Magnus Hagdorn
+ * configure.in: use AM_PATH_GLIMMER to set up GLIMMER
+ * bootstrap: look for glimmer.m4
+ * Makefile.am: add rule to regenerate aclocal.m4
+
+2005-11-22 Magnus Hagdorn
+ * update AUTHORS, README, NEWS and tests/index.html
+ * add matlab code to distribution
+ * bump version to 0.2
+
+2005-11-07 Magnus Hagdorn
+ * plot_verif.py: use abs for finding max and min error
+ * plot_errors.py: ditto
+ * plot_diff.py: new plot program for plotting 2D maps of errors
+ * errors.cpt: colourmap for errors
+ * index.html: html page for results overview
+ * general improvements for make system
+
+2005-10-27 Magnus Hagdorn
+ * plot_vol.py: add title
+ * run_verif.py: parse configuration from a single string
+ * plot_errors.py: plot errors as a function of grid spacing
+ * plot_time.py: plot relationship between runtime/time step and grid size
+ * tests/Makefile.am: add machinery to run a reasonable set of tests and 
+   produce plots
+ * generally tidy up make system
+
+2005-10-27 Magnus Hagdorn
+ * verif.f90: calculate ice volume
+ * verif_vars.def: add new variable for exact ice volume
+ * template.config: add ice volume and exact ice volume to list of variables
+ * plot_verif.py: stick title parser in a function
+ * plot_vol.py: plot relative volume errors
+
+2005-10-26 Magnus Hagdorn
+ * run_verif.py: added setup for test D
+ * verif.f90: main module calling individual tests
+ * verif_vars.def: use verif module
+ * verif_glide.f90: ditto and some clean-up
+ * verifBC.f90: changes in API so that tests BC can be used
+   from verif module
+ * verifD.f90: test D
+ * Makefile.am: code is in library now
+ * template.config: save mass balance
+
+2005-10-10 Magnus Hagdorn
+ * plot_verif.py: added plotter
+
+2005-09-27 Magnus Hagdorn
+ * verifBC.f90: fixed test C
+ * run_verif.py: added test launcher
+ * template.config: template configuration
+ * process_verif.py: new
+
+2005-09-23 Magnus Hagdorn
+ * added automagic, ChangeLog, etc
+ * verifBC.f90: fixed bugs
+ * verif_glide.f90: added custom output
