@@ -1,0 +1,2 @@
+.config.nc:
+	@GLIMMER_PREFIX@/bin/glide_launch.py --prefix @GLIMMER_PREFIX@ $<

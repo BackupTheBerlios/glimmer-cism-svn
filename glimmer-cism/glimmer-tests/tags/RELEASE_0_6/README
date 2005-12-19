@@ -1,0 +1,23 @@
+This is a collection of examples demonstrating and testing various aspects
+of GLIMMER.
+
+The EISMINT-1 and EISMINT-2 directories contain model configuration files for 
+most EISMINT test cases. The eis directory contains an example configuration
+for the Edinburgh Ice Sheet model climate driver. It is based on the climate
+driver described in the PhD thesis of Magnus Hagdorn. The lin-non_lin and
+isos directories contain some experiments testin the linear and non-linear
+solvers and the isostasy code. Finally, the PyCF directory contains some
+examples showing how the visualisation scripts might be used.
+
+These examples and tests should be viewed as a demonstration of what GLIMMER
+can do. It's not a test suite as such. We are working on that.
+
+INSTALLATION
+------------
+It's the usual
+./configure
+make
+
+You can enable graphics whith the --enable-graphics switch to configure. See
+./configure --help for a complete list of options.
+You will need to run ./bootstrap first if you have got this module from CVS.
