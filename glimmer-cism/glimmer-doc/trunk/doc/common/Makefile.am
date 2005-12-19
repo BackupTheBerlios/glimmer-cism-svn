@@ -1,1 +1,1 @@
-EXTRA_DIST = definitions.tex packages.tex
+EXTRA_DIST = definitions.tex packages.tex version.tex

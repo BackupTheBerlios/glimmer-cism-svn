@@ -16,7 +16,7 @@
 		ps2epsi $< $@
 %.eps:		%.dia
 		$(DIA) -t eps-builtin -n -e $@ $<
-gnu_%.ps %.pslatex:	%.gp
+%.pslatex gnu_%.ps:	%.gp
 		$(GNUPLOT) $<
 		$(SED) 's#psfile=#psfile=gnu_#' $@ > .tmp
 		mv $*.ps gnu_$*.ps
