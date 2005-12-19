@@ -5,7 +5,7 @@ variable_DATA = verif_vars.def
 variabledir = $(datadir)/glimmer
 dist_variable_DATA = $(variable_DATA)
 
-nodist_include_HEADERS = *.mod
+nodist_include_HEADERS := $(wildcard *.mod)
 EXTRA_DIST = f90_dep.mak
 BUILT_SOURCES = verif_io.f90
 CLEANFILES = $(BUILT_SOURCES) f90_dep.mak

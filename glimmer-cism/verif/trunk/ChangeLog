@@ -1,3 +1,8 @@
+2005-12-19 Magnus Hagdorn
+ * configure.in: bump version to 0.3, small fix
+ * NEWS: update
+ * Makefile.am: use wildcard macro
+
 2005-12-13 Magnus Hagdorn
  * configure.in: use AM_PATH_GLIMMER to set up GLIMMER
  * bootstrap: look for glimmer.m4
