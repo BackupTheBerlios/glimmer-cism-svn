@@ -1,4 +1,8 @@
 2005-12-19 Magnus Hagdorn
+ * definitions.tex: use normal \date
+ * configure.in: bump version to 0.5.7
+
+2005-12-19 Magnus Hagdorn
  * Makefile.ams: fixed list of distributed files so that documentation can
    be built for tar ball by just running latex
  * make_doc.rules: fixed rule to build gnuplot plots
