@@ -1,3 +1,8 @@
+2005-12-19 Magnus Hagdorn
+ * configure.in: fix bug
+ * erosion.f90: remove non-existing module file
+ * Makefile.am: wildcard macro
+
 2005-12-13 Magnus Hagdorn
  * configure.in: use AM_PATH_GLIMMER to set up GLIMMER
  * bootstrap: look for glimmer.m4

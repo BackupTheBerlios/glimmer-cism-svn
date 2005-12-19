@@ -33,7 +33,7 @@ if test x$GLIMMER_PREFIX = x ;then
   AC_MSG_ERROR([Could not find glimmer])
 fi
 
-FCFLAGS="$CFLAGS $GLIMMER_CFLAGS"
+FCFLAGS="$FCFLAGS $GLIMMER_FFLAGS"
 LIBS="$GLIMMER_LIBS $LIBS"
 
 # checking if we build the docs

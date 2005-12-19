@@ -46,7 +46,6 @@ module erosion
   use erosion_setup
   use erosion_io
   use erosion_advect
-  use erosion_nc_custom
   use erosion_transport
 
 contains
