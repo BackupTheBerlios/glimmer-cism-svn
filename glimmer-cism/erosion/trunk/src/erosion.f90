@@ -71,7 +71,6 @@ contains
     ! scale variables
     erosion%hb_erosion_factor = erosion%hb_erosion_factor*len0*thk0
     erosion%dt = erosion%ndt * model%numerics%dt
-    erosion%soft_a = erosion%soft_a*1e3
 
     ! allocate memory
     call er_allocate(erosion,model)

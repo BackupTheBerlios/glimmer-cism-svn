@@ -1,3 +1,9 @@
+2005-12-31 Magnus Hagdorn
+ * erosion.f90: don't scale soft_a
+ * erosion_types.f90: swap soft_a and soft_b, to be in accordance with
+   documentation
+ * erosion_transport.f90: ditto
+
 2005-12-19 Magnus Hagdorn
  * configure.in: fix bug
  * erosion.f90: remove non-existing module file

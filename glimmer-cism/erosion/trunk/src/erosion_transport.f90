@@ -69,7 +69,7 @@ contains
     do ns=1,model%general%nsn-1
        do ew=1,model%general%ewn-1
           if (abs(model%velocity%ubas(ew,ns))+abs(model%velocity%vbas(ew,ns)) .gt. 0.) then
-             erosion%seds2_max(ew,ns) = erosion%soft_b + erosion%soft_a * erosion%tau_mag(ew,ns)
+             erosion%seds2_max(ew,ns) = erosion%soft_a + erosion%soft_b * erosion%tau_mag(ew,ns)
           end if
        end do
     end do    

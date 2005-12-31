@@ -84,8 +84,8 @@ module erosion_types
      logical :: update_topo = .True.                       !*FD whether erosion/sediment transport changes bedrock topo
      real(kind=dp) :: transport_fac = 0.2                  !*FD multiplier for velos in deformable beds
      real(kind=dp) :: dirty_ice_max = 0.1                  !*FD maximum thickness of dirty basal ice layer
-     real(kind=dp) :: soft_a = 1.d-5                       !*FD param A for max def thick calculations
-     real(kind=dp) :: soft_b = 0.                          !*FD param B for max def thick calculations
+     real(kind=dp) :: soft_b = 1.d-5                       !*FD param A for max def thick calculations
+     real(kind=dp) :: soft_a = 0.                          !*FD param B for max def thick calculations
      ! internal fields, etc
      type(er_transport_type) :: trans                      !*FD type holding transport stuff
      type(er_sed_type) :: sediment                         !*FD deforming sediment layer stuff
