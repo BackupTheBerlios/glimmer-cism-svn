@@ -8,8 +8,6 @@ graphics = topo.eps is.eps thk.eps btemp.eps bvel.eps bvelp.eps extent.eps prof_
 
 EXTRA_DIST = $(graphics)
 BUILT_SOURCES = $(graphics)
-CLEANFILES = $(BUILT_SOURCES)
-
 
 topo.ps:	@GLIMMER_TESTS@/eis/fenscan.nc
 		plotCFvar.py -vtopg $< $@

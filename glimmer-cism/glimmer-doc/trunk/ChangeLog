@@ -1,3 +1,9 @@
+2006-02-19 Magnus Hagdorn
+ * make_doc.rules: fix bug # 161
+ * doc/Makefile.am: run bibtex when producing HTML doc to sort references
+ * other Makefile.am: don't define CLEANFILES
+ * grid.tex: close brackets
+
 2005-12-19 Magnus Hagdorn
  * definitions.tex: use normal \date
  * configure.in: bump version to 0.5.7
