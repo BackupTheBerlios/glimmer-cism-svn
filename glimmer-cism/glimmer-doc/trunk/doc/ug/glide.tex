@@ -90,8 +90,8 @@ Sections and keys are case sensitive and may contain white space. However, the c
     \texttt{marine\_margin} & 
     \begin{tabular}[t]{cp{\linewidth}}
       0 & ignore marine margin\\
-      {\bf 1} & Set thickness to zero if relaxed bedrock is more than certain water depth\\
-      2 & Set thickness to zero if floating\\
+      {\bf 1} & Set thickness to zero if floating\\
+      2 & Set thickness to zero if relaxed bedrock is more than certain water depth\\
       3 & Lose fraction of ice when edge cell\\
     \end{tabular}\\
     \texttt{slip\_coeff} & 
@@ -123,6 +123,8 @@ Sections and keys are case sensitive and may contain white space. However, the c
     \begin{tabular}[t]{cp{\linewidth}}
       {\bf 0} & relaxed topography is read from a separate variable\\
       1 & first time slice of input topography is assumed to be relaxed\\
+      2 & first time slice of input topography is assumed to be in isostatic
+      equilibrium with ice thickness. \\
     \end{tabular}\\
     \texttt{periodic\_ew} & 
     \begin{tabular}[t]{cp{\linewidth}}
