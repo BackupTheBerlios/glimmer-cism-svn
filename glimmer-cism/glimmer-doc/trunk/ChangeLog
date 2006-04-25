@@ -1,3 +1,7 @@
+2006-04-25 Ian Rutt
+ * Removed redundant options from GLIDE documentation
+ * Added daily PDD scheme option to GLINT docs (but no docs of the scheme yet)
+
 2006-04-20 Ian Rutt
  * Added brief description of isostasy models (elastic lithosphere)
  * Added option for equilibrium topography
