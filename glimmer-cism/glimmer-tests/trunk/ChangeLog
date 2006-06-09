@@ -1,3 +1,7 @@
+2006-06-09 Ian Rutt
+ * Corrected EISMINT-3 Greenland input file - precipitation now
+   water-equivalent
+
 2006-04-27 Ian Rutt
  * Added files for EISMINT-3 Greenland steady-state scenario
 
