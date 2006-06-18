@@ -40,6 +40,10 @@
 !
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module erosion_setup
 contains
   subroutine er_readconfig(erosion,config)

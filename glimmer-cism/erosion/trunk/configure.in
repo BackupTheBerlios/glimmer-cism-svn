@@ -7,10 +7,11 @@ m4_define([erosion_version],
 	[erosion_major_version.erosion_minor_version])
 
 AC_INIT([erosion],[erosion_version],[Magnus.Hagdorn@ed.ac.uk])
+AC_CONFIG_HEADERS(config.inc)
 AM_INIT_AUTOMAKE
 
 dnl minimum required glimmer version
-min_glimmer_version=0.5.5
+min_glimmer_version=0.5.7
 
 EROSION_MAJOR_VERSION=erosion_major_version
 EROSION_MINOR_VERSION=erosion_minor_version
@@ -67,4 +68,4 @@ esac],[AC_MSG_RESULT([no])])
 AM_CONDITIONAL([RUN_TESTS], [test "$enable_tests" == "yes"])
 
 AC_CONFIG_FILES([Makefile src/Makefile python/Makefile doc/Makefile doc/common/Makefile doc/erosion/Makefile doc/erosion/figs/Makefile doc/erosion/gnu/Makefile tests/Makefile])
-AC_OUTPUT([erosion-config src/erosion_version.f90 doc/common/version.tex])
+AC_OUTPUT([erosion-config src/erosion_version.F90 doc/common/version.tex])

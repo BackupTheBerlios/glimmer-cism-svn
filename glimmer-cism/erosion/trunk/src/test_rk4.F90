@@ -3,6 +3,10 @@
 !
 ! testing rk4 code
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 program testrk4
   use rk4module
   implicit none

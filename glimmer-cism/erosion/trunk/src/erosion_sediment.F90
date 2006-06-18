@@ -40,6 +40,10 @@
 !
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module erosion_sediment
   !*FD module handling properties of deforming sediment layer
 

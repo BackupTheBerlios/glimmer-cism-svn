@@ -3,6 +3,10 @@
 !
 ! module defining er_transport_type for conservation of 2nd moment advection scheme
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module erosion_transport_type
   use advect_2ndmo
   use glimmer_global, only : rk

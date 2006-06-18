@@ -3,6 +3,10 @@
 !
 ! testing 2d interpolation stuff
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 program test_interpolate
   use glimmer_coordinates
   use glimmer_sparse

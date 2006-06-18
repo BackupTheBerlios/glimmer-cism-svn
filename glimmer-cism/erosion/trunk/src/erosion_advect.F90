@@ -3,6 +3,10 @@
 !
 ! for solving dx/dt=v(x,t)
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module erosion_advect
 
   use glimmer_global, only : dp

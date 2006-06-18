@@ -4,6 +4,10 @@
 ! implementation of the conservation of 2nd order moments algorithm
 ! M. Prather 1987, JGR Vol 91, D6, p 6671-6681
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 #define _S0(i,j)  adv%moments(i,j)%s0
 #define _SX(i,j)  adv%moments(i,j)%sx
 #define _SXX(i,j)  adv%moments(i,j)%sxx

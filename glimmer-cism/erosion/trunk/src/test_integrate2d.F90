@@ -3,6 +3,10 @@
 !
 ! testing the 2d integration stuff
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 program testintegrate2d
   use erosion_integrate2d
   use glimmer_sparse

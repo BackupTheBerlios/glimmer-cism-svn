@@ -6,6 +6,10 @@
 ! - intersection of two concave polygons
 ! - area of polygon
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module geometry
   use glimmer_global
   use glimmer_coordinates

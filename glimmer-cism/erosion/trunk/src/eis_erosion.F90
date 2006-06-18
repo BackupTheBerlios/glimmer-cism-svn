@@ -1,6 +1,6 @@
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! +                                                           +
-! +  simple_erosion.f90 - part of the GLIMMER ice model       + 
+! +  eis_erosion.f90 - part of the GLIMMER ice model          + 
 ! +                                                           +
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ! 
@@ -40,46 +40,51 @@
 !
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-program simple_erosion
-  !*FD This is a simple GLIDE test driver. It can be used to run
-  !*FD the EISMINT test cases
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
+program eis_erosion
+  !*FD This is the Edinburgh Ice Sheet GLIDE driver
+  !*FD with erosion
   use glimmer_global, only:rk,fname_length
   use glide
-  use simple_forcing
+  use eis_forcing
+  use eis_io
   use glimmer_log
   use glimmer_config
   use erosion
   implicit none
 
   type(glide_global_type) :: model        ! model instance
-  type(simple_climate) :: climate         ! climate
-  type(erosion_type) :: er           ! erosion
+  type(eis_climate_type) :: climate       ! climate
+  type(erosion_type) :: er                ! erosion
   type(ConfigSection), pointer :: config  ! configuration stuff
   character(len=fname_length) :: fname   ! name of paramter file
   real(kind=rk) time
+  
+
 
   write(*,*) 'Enter name of GLIDE configuration file to be read'
   read(*,*) fname
   
   ! start logging
   call open_log(unit=50, fname=logname(fname))
-  
+
   ! read configuration
   call ConfigRead(fname,config)
 
   ! initialise GLIDE
   call glide_config(model,config)
-  call simple_initialise(climate,config)
   call glide_initialise(model)
+  call eis_initialise(climate,config,model)
   call er_initialise(er,config,model)
-
   ! fill dimension variables
   call glide_nc_fillall(model)
 
   time = model%numerics%tstart
   do while(time.le.model%numerics%tend)
-     call simple_massbalance(climate,model,time)
-     call simple_surftemp(climate,model,time)     
+     call eis_climate(climate,model,time)
      call glide_tstep_p1(model,time)
      call er_tstep(er,model)
      call glide_tstep_p2(model)
@@ -91,4 +96,4 @@ program simple_erosion
   ! finalise GLIDE
   call er_finalise(er)
   call glide_finalise(model)
-end program simple_erosion
+end program eis_erosion

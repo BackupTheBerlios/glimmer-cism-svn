@@ -3,6 +3,10 @@
 !
 ! testing geometry module
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 program testgeom
   use geometry
   implicit none

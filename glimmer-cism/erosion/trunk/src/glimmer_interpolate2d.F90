@@ -3,6 +3,10 @@
 !
 ! module for 2D interpolation
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module glimmer_interpolate2d
 
   use glimmer_sparse

@@ -40,6 +40,10 @@
 !
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module erosion
   !*FD the main erosion module
   use erosion_types

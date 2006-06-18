@@ -4,6 +4,10 @@
 ! this module transports some scalar quantity c through a 2D velo field using
 ! the conservation of 2nd order moments algorithm
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module erosion_transport
   
 contains

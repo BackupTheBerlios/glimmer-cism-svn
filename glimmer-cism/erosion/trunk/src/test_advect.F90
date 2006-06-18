@@ -3,6 +3,10 @@
 !
 ! testing the advection code
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 program testadvect
   use erosion_advect
   use netcdf

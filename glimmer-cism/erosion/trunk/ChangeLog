@@ -1,3 +1,10 @@
+2006-06-18 Magnus Hagdorn
+ * src/Makefile.am: rename .f90 to .F90
+ * src/*.f90: rename to src/*.F90, include config.inc
+ * tests/Makefile.am: remove superfluous tests
+ * bootstrap: add call to autoheader
+ * configure.in: use autoheader, bump required glimmer vers to 0.5.7
+
 2005-12-31 Magnus Hagdorn
  * erosion.f90: don't scale soft_a
  * erosion_types.f90: swap soft_a and soft_b, to be in accordance with

@@ -4,6 +4,10 @@
 ! module doing RK4 integration
 ! adopted from num rec (page 558)
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module rk4module
   use glimmer_global, only : dp
 
