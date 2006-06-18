@@ -3,6 +3,10 @@
 ! verif
 ! front-end to verif test cases
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module verif
 
   use verifBC

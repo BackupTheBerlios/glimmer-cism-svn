@@ -8,6 +8,10 @@
 ! N. Bowman, Exact solutions and the verification of numerical models for
 ! isothermal ice sheets, to appear in J. Glaciology
 
+#ifdef HAVE_CONFIG_H
+#include <config.inc>
+#endif
+
 module verifD
   
   use glimmer_global, only : rk, sp
