@@ -1,4 +1,7 @@
 2006-06-18 Magnus Hagdorn
+ * configure.in: preprocessor flag is no longer required
+
+2006-06-18 Magnus Hagdorn
  * src/Makefile.am: rename .f90 to .F90
  * src/*.f90: rename to src/*.F90, include config.inc
  * tests/Makefile.am: remove superfluous tests
