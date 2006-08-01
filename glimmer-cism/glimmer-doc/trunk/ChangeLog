@@ -1,6 +1,8 @@
 2006-08-01 Ian Rutt
  * Corrected GLINT multiple instances typo in glint.tex
-
+ * Substantial addition to developers' guide, aimed at introducing glimmer
+ structure and programming techniques to beginners.
+	
 2006-04-25 Ian Rutt
  * Removed redundant options from GLIDE documentation
  * Added daily PDD scheme option to GLINT docs (but no docs of the scheme yet)
