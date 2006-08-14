@@ -1,3 +1,6 @@
+2006-08-14 Ian Rutt
+ * Corrected typo in GLINT API doc. Precip input is in mm/s
+
 2006-08-01 Ian Rutt
  * Corrected GLINT multiple instances typo in glint.tex
  * Substantial addition to developers' guide, aimed at introducing glimmer
