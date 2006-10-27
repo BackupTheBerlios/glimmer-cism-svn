@@ -17,7 +17,7 @@ other documentation for details).
 \paragraph{Name and mandatory arguments}
 %
 \begin{verbatim}
-  subroutine initialise_glint(params,lats,longs,paramfile)
+  subroutine initialise_glint(params,lats,longs,paramfile,time_step)
 \end{verbatim}
 %
 \paragraph{Arguments}
@@ -47,6 +47,8 @@ other documentation for details).
     location of grid-points in global data (given in $^{\circ}\mathrm{E}$)\\ 
     \texttt{paramfile} & \texttt{character(*)} & \texttt{intent(in)} & name of
     top-level parameter file \\
+    \texttt{time\_step} & \texttt{integer} & \texttt{intent(in)} & Intended
+    calling time-step (hours) \\
     \hline
     \multicolumn{4}{|l|}{{\bf Optional}}\\
     \hline
@@ -113,7 +115,7 @@ available for feedback.
 \paragraph{Name and mandatory arguments}
 %
 \begin{verbatim}
-  subroutine glint(params,time,temp,precip,zonwind,merwind,orog)
+  subroutine glint(params,time,temp,precip,orog)
 \end{verbatim}
 %
 \paragraph{Arguments}
@@ -142,14 +144,14 @@ available for feedback.
     \texttt{temp(:,:)} & \texttt{real(rk)} & \texttt{intent(in)} & Surface
     temperature field ($^{\circ}\mathrm{C}$) \\
     \texttt{precip(:,:)} & \texttt{real(rk)} & \texttt{intent(in)} & Precipitation field (mm/s) \\
-    \texttt{zonwind(:,:)} & \texttt{real(rk)} & \texttt{intent(in)} & Zonal
-    component of the wind field ($\mathrm{ms}^{-1}$) \\
-    \texttt{merwind(:,:)} & \texttt{real(rk)} & \texttt{intent(in)} & Meridional 
-    component of the wind field ($\mathrm{ms}^{-1}$) \\
     \texttt{orog(:,:)} & \texttt{real(rk)} & \texttt{intent(in)} & Global orography (m) \\
     \hline
     \multicolumn{4}{|l|}{{\bf Optional}}\\
     \hline
+    \texttt{zonwind(:,:)} & \texttt{real(rk)} & \texttt{intent(in)} & Zonal
+    component of the wind field ($\mathrm{ms}^{-1}$) \\
+    \texttt{merwind(:,:)} & \texttt{real(rk)} & \texttt{intent(in)} & Meridional 
+    component of the wind field ($\mathrm{ms}^{-1}$) \\
     \texttt{output\_flag} & \texttt{logical} & \texttt{intent(out)} & Set to show
     new output fields have been calculated after an ice-model time-step. If this
     flag is not set, the output fields retain their values at input. \\ 
@@ -186,10 +188,7 @@ available for feedback.
   will lead to unpredictable results.
 \item Zonal and meridional components of the wind are only required if the
   small-scale precipitation parameterization is being used (with
-  \texttt{whichprecip} set to 2). In other circumstances, \texttt{zonwind} and
-  \texttt{merwind} must still be arrays of the correct rank, but need not be
-  the correct size, or may be unallocated if desired (this should be changed
-  at some point).
+  \texttt{whichprecip} set to 2).
 \item The output field arguments only return data relevant to the parts of the globe
   covered by the ice model instances. The fraction of each global
   grid-box covered by ice model instances may be obtained using the

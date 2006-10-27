@@ -1,6 +1,7 @@
 2006-10-27 Ian Rutt
  * Updated GLINT and GLIDE docs to reflect some recent changes
  * This version uploaded to website. Tagged CVS_DOCS_061027
+ * Added missed changes to API docs. Tagged CVS_DOCS_061027A
 
 2006-08-14 Ian Rutt
  * Corrected typo in GLINT API doc. Precip input is in mm/s
