@@ -75,7 +75,7 @@ Before the ice-sheet model may be called from the climate model, it must be
 initialised. This is done with the following subroutine call:
 %
 \begin{verbatim}
-  call initialise_glint(ice_sheet,lats,lons,paramfile)
+  call initialise_glint(ice_sheet,lats,lons,time_step,paramfile)
 \end{verbatim}
 %
 In this call, the arguments are as follows:
@@ -84,19 +84,21 @@ In this call, the arguments are as follows:
 \item \texttt{ice\_sheet} is the variable of type \texttt{glint\_params}
  defined above;
 \item \texttt{lats} and \texttt{lons} are one-dimensional arrays giving the
-  locations of the global grid-points in latitude and longitude, respectively; 
+  locations of the global grid-points in latitude and longitude, respectively;
+\item \texttt{time\_step} is the intended interval between calls to GLINT, in
+hours. This is known as the \emph{forcing timestep}. 
 \item \texttt{paramfile} is the name of the GLINT configuration file.
 \end{itemize}
 %
-The contents of the namelist files will be dealt with later. Having
+The contents of the configuration file will be dealt with later. Having
 initialised the model, it may now be called as part of the main climate
 model time-step loop:
 %
 \begin{verbatim}
-    call glint(ice_sheet,time,temp,precip,zonwind,merwind,orog)
+    call glint(ice_sheet,time,temp,precip,orog)
 \end{verbatim} 
 %
-The arguments given in this example are the compulsory ones only; a number of
+The arguments given in this example are the compulsory ones only; a large number of
 optional arguments may be specified -- these are detailed in the reference
 section below. The compulsory arguments are:
 %
@@ -109,17 +111,19 @@ section below. The compulsory arguments are:
 \item \texttt{precip} is the global daily accumulated precipitation field,
   in $\mathrm{mm}$ (water equivalent, making no distinction
   between rain, snow, etc.);
-\item \texttt{zonwind} and \texttt{merwind} are the daily mean global zonal and
-  meridional components of the $10\,\mathrm{m}$ wind field, in
-  $\mathrm{ms}^{-1}$;
 \item \texttt{orog} is the global orography field, in $\mathrm{m}$.
 \end{itemize}
 %
-For the positive degree-day mass-balance routine, which is currently the only
-mass-balance model included with GLINT, the daily quantities given above are
-necessary, and, as such, GLINT should be called once per day. With the
-energy-balance mass-balance model currently being developed in the RAPID
-project, hourly calls will be necessary. 
+Two mass-balance schemes, both based on the positive degree day (PDD) method,
+are supplied with Glimmer. One of these calculates the mass-balance for the
+whole year (the \emph{Annual PDD scheme}), while the other calculates on a
+daily basis (the \emph{Daily PDD scheme}). The annual scheme incorporates a
+stochastic temperature variation to account for diurnal and other variations,
+which means that if this scheme is to be used, GLINT should be called such
+that it sees a seasonal temperature variation which has had those variations
+removed. In practice, this means calling GLINT on a monthly basis, with
+monthly mean temperatures. For the daily scheme, no such restriction exists,
+and the scheme should be called at least every 6 hours.
 %
 \subsubsection{Finishing off}
 %
@@ -178,27 +182,6 @@ GLINT are as follows:
     \hline
 %%%% 
     \hline
-    \multicolumn{2}{|l|}{\texttt{[GLINT projection]}}\\
-    \hline
-    \multicolumn{2}{|p{0.98\textwidth}|}{Projection info}\\
-    \hline
-    \texttt{projection} & {\raggedright (integer) type of projection:\\
-       \begin{tabular}{lp{10cm}}
-         1 & Lambert Equal Area \\
-         2 & Spherical polar \\
-         3 & Spherical stereographic (oblique)\\
-         4 & Spherical stereographic (equatorial)\\
-       \end{tabular}}\\
-    \texttt{lonc} & Longitide of projection centre (degrees east)\\
-    \texttt{latc} & Latitude of projection centre (degrees north)\\
-    \texttt{cpx} & Local $x$-coordinate of projection centre (grid-points)\\
-    \texttt{cpy} & Local $y$-coordinate of projection centre (grid-points)\\
-    \texttt{std parallel} & Standard parallel of projection (degrees
-    north). Only relevant when \texttt{projection}=3 (default=90.0)\\
-    \texttt{earth\_radius} & Radius of the Earth (m) (default=$6.37\times10^6$)\\
-    \hline
-%%%% 
-    \hline
     \multicolumn{2}{|l|}{\texttt{[GLINT climate]}}\\
     \hline
     \multicolumn{2}{|p{0.98\textwidth}|}{GLINT climate configuration}\\
@@ -223,6 +206,92 @@ GLINT are as follows:
     the atmospheric temperature onto the ice model orography. This should be
     \emph{positive} for temperature falling with height
     ($\mathrm{K}\,\mathrm{km}^{-1}$) (default=8.0) \\
+    \texttt{ice\_tstep\_multiply} & Ice time-step multiplier: allows
+    asynchronous climate-ice coupling. See below for full explanation of GLINT
+    time-stepping. (default = 1) \\
+    \texttt{mbal\_accum\_time} & Mass-balance accumulation time (in years,
+    default is equal to mass-balance timestep).  See below for full explanation of GLINT
+    time-stepping. \\
     \hline
   \end{supertabular}
 \end{center}
+
+\subsubsection{GLINT timestepping --- an explanation}
+
+By default, the model accepts input on each forcing timestep (as specified in 
+the call to \texttt{initialise\_glint}, above). These are accumulated over the course 
+of a mass-balance time-step, whereupon the mass-balance model is called. The 
+output from the mass-balance model is accumulated over the course of an ice 
+model time-step, and finally the ice model is called.
+
+This default behaviour can be altered, in two ways:
+\begin{enumerate}
+\item The number of ice sheet time-steps executed for each accumulated 
+mass-balance field may be increased - thus accelerating the icesheet relative 
+to the forcing. To do this, set \texttt{ice\_tstep\_multiply} in the \texttt{[GLINT climate]} 
+config section - must be an integer. This is only possible if the 
+mass-balance is accumulated over an integer number of years.
+\item The mass-balance accumulation period can be altered by setting  
+\texttt{mbal\_accum\_time} in the \texttt{[GLINT climate]} config section --- this is a 
+floating-point value in years.
+\end{enumerate}
+
+The interaction of these two parameters is fairly complex, and permits a 
+reasonably sophisticated control of how the ice sheet model is forced. I've 
+added various checks to make sure sensible/possible values are selected. Most 
+importantly, all relevant time-steps must divide into one another 
+appropriately - the model will (should\ldots) stop if an un-sensible combination 
+of values is detected.
+
+\subsubsection{GLINT timestepping --- further examples}
+
+\emph{(The following is lifted verbatim from an email to the glimmer-discuss
+mailing list)}
+
+\begin{verbatim}
+Suppose we have these time-step values:
+
+forcing time-step:      6 hours
+mass-balance time-step: 1 day
+ice time-step:          0.5 year
+
+By default, the model will accumulate 6 months' worth of mass-balance 
+calculations, and force the ice sheet model based on that. This might not be 
+desirable, so you could set:
+
+mbal_accum_time = 1.0
+
+This would make GLINT accumulate 1 year's worth of mass-balance output before 
+forcing the ice sheet (at which point it would execute _two_ ice sheet 
+time-steps of 0.5 years each).
+
+Having done that, you could accelerate the ice model by a factor of ten, by 
+setting:
+
+ice_tstep_multiply = 10
+
+In this scenario, 20 ice sheet time-steps of 0.5 years each would be done 
+after each 12-month accumulation of mass-balance data.
+
+EXAMPLE 2:
+----------
+
+By contrast, there can be situations where we don't want to calculate a 
+mass-balance on all the available data (perhaps to save time?). Consider 
+these time-step values:
+
+forcing time-step:      6 hours
+mass-balance time-step: 1 day
+ice time-step:          10 years
+
+(Clearly this a fairly numerically stable and/or low-res ice sheet).
+
+To avoid running the daily PDD scheme ~3600 times (depending on the value of 
+days_in_year), we can set to only use the first two years of data:
+
+mbal_accum_time = 2.0
+
+GLINT accumulates mass-balance for 2 years, then waits for 8 years (incoming 
+data are ignored during this time), before calling the ice sheet. Ice sheet 
+acceleration may be enabled with ice_tstep_multiply as before.
+\end{verbatim}

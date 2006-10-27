@@ -55,7 +55,6 @@ Sections and keys are case sensitive and may contain white space. However, the c
     \texttt{dt} & (real) size of time step in years\\
     \texttt{ntem} & (real) time step multiplier setting the ice temperature update interval\\
     \texttt{nvel} & (real) time step multiplier setting the velocity update interval\\
-    \texttt{niso} & (real) time step multiplier setting the isostasy update interval\\
     \hline
 %%%% Options
     \hline
@@ -162,6 +161,24 @@ Sections and keys are case sensitive and may contain white space. However, the c
     \texttt{relaxed\_tau} & characteristic time constant of relaxing mantle (default: 4000.a) \\
     \texttt{update} & lithosphere update period (default: 500.a) \\
     \hline
+%%%%
+    \hline
+    \multicolumn{2}{|l|}{\texttt{[projection]}}\\
+    \hline
+    \multicolumn{2}{|p{0.95\textwidth}|}{Specify map projection. The reader is
+    referred to Snyder J.P. (1987) \emph{Map Projections - a working manual.} USGS 
+        Professional Paper 1395. }\\
+    \hline
+    \texttt{type} & This is a string that specifies the projection type
+    (\texttt{LAEA}, \texttt{AEA}, \texttt{LCC} or \texttt{STERE}). \\
+    \texttt{centre\_longitude} & Central longitude in degrees east \\
+    \texttt{centre\_latitude} & Central latitude in degrees north \\
+    \texttt{false\_easting} & False easting in meters \\
+    \texttt{false\_northing} & False northing in meters \\
+    \texttt{standard\_parallel} & Location of standard parallel(s) in degrees
+    north. Up to two standard parallels may be specified (depending on the
+    projection). \\
+    \texttt{scale\_factor} & non-dimensional. Only relevant for the Stereographic projection.  \\
 %%%%
     \hline
     \multicolumn{2}{|l|}{\texttt{[elastic lithosphere]}}\\
