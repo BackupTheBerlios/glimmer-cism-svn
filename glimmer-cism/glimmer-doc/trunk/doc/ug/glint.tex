@@ -206,9 +206,18 @@ GLINT are as follows:
     the atmospheric temperature onto the ice model orography. This should be
     \emph{positive} for temperature falling with height
     ($\mathrm{K}\,\mathrm{km}^{-1}$) (default=8.0) \\
+    %%%%%%%%%%%%%%
+    \texttt{data\_lapse\_rate} & Atmospheric temperature vertical lapse rate,
+    to be used in the calculation of temperature at
+    sea-level. The variable \texttt{lapse\_rate} is then used to adjust the
+    temperature to the surface of the local ice sheet topography. If
+    \texttt{data\_lapse\_rate} is not set, it is set to the value of
+    \texttt{lapse\_rate} by default. \\
+    %%%%%%%%%%%%%%
     \texttt{ice\_tstep\_multiply} & Ice time-step multiplier: allows
     asynchronous climate-ice coupling. See below for full explanation of GLINT
     time-stepping. (default = 1) \\
+    %%%%%%%%%%%%%%
     \texttt{mbal\_accum\_time} & Mass-balance accumulation time (in years,
     default is equal to mass-balance timestep).  See below for full explanation of GLINT
     time-stepping. \\

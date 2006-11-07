@@ -1,3 +1,6 @@
+2006-11-07 Ian Rutt
+ * Added data_lapse_rate to GLINT docs
+
 2006-10-27 Ian Rutt
  * Updated GLINT and GLIDE docs to reflect some recent changes
  * This version uploaded to website. Tagged CVS_DOCS_061027
