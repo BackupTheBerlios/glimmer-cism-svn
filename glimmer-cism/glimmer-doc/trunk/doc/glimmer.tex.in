@@ -41,6 +41,11 @@
 \renewcommand{\dir}{dg}
 \input{\dir/dg.tex}
 
+\chapter{Tutorial}
+\renewcommand{\dir}{tut}
+\input{\dir/tut.tex}
+
+
 \appendix
 \renewcommand{\dir}{ug}
 \chapter{netCDF Variables}
