@@ -10,7 +10,7 @@ endif
 doc_DATA = $(ps_doc) $(pdf_doc)
 docdir = $(prefix)/doc
 dist_doc_DATA = $(doc_DATA)
-SUBDIRS = dg ug num common $(pycf_dir)
+SUBDIRS = dg ug num tut common $(pycf_dir)
 
 EXTRA_DIST = dg.tex dg_pdf.tex dg_ps.tex glimmer.tex glimmer_pdf.tex \
              glimmer_ps.tex num.tex num_pdf.tex num_ps.tex ug.tex ug_pdf.tex \

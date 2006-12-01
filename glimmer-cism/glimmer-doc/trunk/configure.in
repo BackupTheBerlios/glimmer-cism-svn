@@ -78,5 +78,5 @@ AC_SUBST(have_rsl_db)
 
 AC_CONFIG_FILES([Makefile doc/Makefile doc/common/Makefile doc/dg/Makefile doc/dg/figures/Makefile \
 		doc/ug/Makefile doc/ug/figs/Makefile doc/num/Makefile doc/num/figs/Makefile doc/num/gnu/Makefile \
-                doc/tg/Makefile doc/tg/figures/Makefile])
+                doc/tg/Makefile doc/tg/figures/Makefile doc/tut/Makefile])
 AC_OUTPUT([doc/glimmer.tex doc/common/version.tex doc/tg/rsl.tex])
