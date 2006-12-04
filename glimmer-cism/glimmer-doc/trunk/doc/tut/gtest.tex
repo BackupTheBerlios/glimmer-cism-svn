@@ -33,7 +33,7 @@ driver.
 
 \subsubsection{A short introduction to the EIS driver parameterisation}
 
-Again, check the config file \texttt{fenscan.config} printed below to see the basic
+Again, check the config file \texttt{fenscan.config} to see the basic
 parameters for this model run. Have a look at the \texttt{mb2.data} (mass
 balance forcing via ELA), \texttt{temp-exp.model} (exponential type temperature
 forcing) and \texttt{specmap.data} (sealevel change) data files and compare
@@ -89,11 +89,20 @@ Where a globally changing $\Delta z_{ELA}$ is insufficient to reflect
 disparities in ELA, there are two options to fine tune ELA behaviour. First,
 continentality can be used to introduce a dependency of mass balance with
 distance to oceans. The according settings are supplied using the \texttt{[EIS CONY]}
-section of the config file (again, see section \ref{driver:eis}).
+section of the config file (see section \ref{driver:eis}).
+In short, an index is calculated for every grid cell reflecting 
+the ratio of below sealevel cells to land cells within a certain \textt{range} (defaults to 600km).
+Maximum mass balance values are then scaled between the values given in the \texttt{[EIS ELA]} section 
+for \texttt{bmax\_mar} (marine conditions, all cells within \textt{range} are below sea level) and
+\texttt{bmax\_cont} (continenal conditions, all cells within \textt{range} are above sea level).
+Alternatively, continentality values between 0 and 1 can be input using a file. Set the according
+flag \texttt{file} to 1 and specify the file containing the cony data using a \texttt{[CF input]} section
+in the configuration file (see example for ELA file below).
+.
 
-In case a more detailed spatial distribution of ELA altitudes are needed, e.g. 
-to reflect special orographic effects, a map of $\Delta z_{ELA}$ can be given
-to the model using an input netcdf file, containing a variable 'ela' on a grid
+In case a more detailed spatial distribution of ELA altitudes is needed, e.g. 
+to reflect special orographic effects, a map of $\Delta z_{ELA}$ can be input
+to the model using a netcdf file, containing a variable 'ela' on a grid
 the same size and coordinates as the input topography grid the model is running
 on. This ela file is coupled using a \texttt{[CF input]} section in the
 configuration file
