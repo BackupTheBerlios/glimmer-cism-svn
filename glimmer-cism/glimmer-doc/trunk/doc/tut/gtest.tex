@@ -91,10 +91,10 @@ continentality can be used to introduce a dependency of mass balance with
 distance to oceans. The according settings are supplied using the \texttt{[EIS CONY]}
 section of the config file (see section \ref{driver:eis}).
 In short, an index is calculated for every grid cell reflecting 
-the ratio of below sealevel cells to land cells within a certain \textt{range} (defaults to 600km).
+the ratio of below sealevel cells to land cells within a certain \texttt{range} (defaults to 600km).
 Maximum mass balance values are then scaled between the values given in the \texttt{[EIS ELA]} section 
-for \texttt{bmax\_mar} (marine conditions, all cells within \textt{range} are below sea level) and
-\texttt{bmax\_cont} (continenal conditions, all cells within \textt{range} are above sea level).
+for \texttt{bmax\_mar} (marine conditions, all cells within \texttt{range} are below sea level) and
+\texttt{bmax\_cont} (continenal conditions, all cells within \texttt{range} are above sea level).
 Alternatively, continentality values between 0 and 1 can be input using a file. Set the according
 flag \texttt{file} to 1 and specify the file containing the cony data using a \texttt{[CF input]} section
 in the configuration file (see example for ELA file below).

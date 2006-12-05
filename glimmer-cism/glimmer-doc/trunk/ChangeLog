@@ -1,3 +1,6 @@
+2006-12-05 Magnus Hagdorn
+ * doc/tut/gtest.tex: fixed some LaTeX errors
+
 2006-12-01 Magnus Hagdorn
  * hook up Felix's tutorial to main documentation and minor fixes to
    build system
