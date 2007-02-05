@@ -1,3 +1,6 @@
+2007-2-5 Felix Hebeler
+ * Updated example.config to use EISMINT 1 binary so no -m flag is needed
+ 
 2005-10-06 Magnus Hagdorn
  * Makefile: bump version
 
