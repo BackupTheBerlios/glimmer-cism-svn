@@ -1,5 +1,5 @@
 
-\subsection{EISMINT: using \texttt{glimmer-example}}
+\section{EISMINT: using \texttt{glimmer-example}}
 As you hopefully already know, the heart of GLIMMER is the actual ice sheet model
 GLIDE. This is where ice physics are resolved etc. To model an ice sheet using
 GLIDE, you at least need to provide it with information about the 
@@ -16,6 +16,8 @@ the EISMINT type climate driver (section \ref{driver:eismint}) to better underst
 
 \begin{verbatim}
 # configuration for the EISMINT-1 test-case # moving margin
+
+[EISMINT-1 moving margin]
 
 [grid]
 # grid sizes
@@ -56,6 +58,15 @@ frequency: 1000
 variables: thk uflx vflx bmlt temp
 uvel vvel wvel
 \end{verbatim}
+
+The line \texttt{[EISMINT-1 moving margin]} sets the model type for this run to be EISMINT (simple_glide binary).
+This can also be achieved by specifying the correct binary using the \texttt{-m} flag, e.g.
+\begin{verbatim}
+glide_launch.py -m simple_glide example.config
+\end{verbatim}
+It is probably advisable to use the \texttt{-m} option instead of specifying the binary using a 
+keyterm, as this will only work for EIS and EISMINT model types. For ease of use, the option was integrated
+in the config file for this example. 
 
 The \texttt{[grid]} section sets up the topography for the model run.\\
 As this is an EISMINT testcase, there is no 'real' input topography, but ice is building up on a

@@ -1,5 +1,5 @@
 
-\subsection{GLINT: using glint-example}
+\section{GLINT: using glint-example}
 If finally you want to see what GLIMMER can do using the GLINT climate driver,
 download the \texttt{glint-example} and try one of the provided example setups.
 CD into the directory and try any of the config examples. Start glint\_example
@@ -27,10 +27,10 @@ Both models are outputting three files each, containing different variables.
 Every 100 years, a file \texttt{namerica20.hot.nc} or \texttt{gland20.hot.nc}, respectively is output, 
 which can be used to hotstart the model later from any of the recorded stages.
 
-Notice the model type (binary) to use can be stated in the configuration file,
+As mentioned above, the model type (binary) to use can be stated in the configuration file,
 or given using the \texttt{-m} option. Currently, the three model binaries that
 come with GLIMMER are \texttt{simple\_glide, eis\_glide} and
-\texttt{glint\_example}. As the simple\_glide and eis\-glide drivers that are started using the glide\_launch.py Python script,
- it needs to know which binary to address. The model binary can also be set as an environment variable \$GLIDE\_MODEL. 
-As glint is called directly using the compiled binary \texttt{glint\_example} here, it is not necessary to further 
+\texttt{glint\_example}. The simple\_glide and eis\_glide drivers that are started using the glide\_launch.py Python script,
+which needs to know which binary to address. The model binary can also be set as an environment variable \$GLIDE\_MODEL. 
+However, as glint is called directly using the compiled binary \texttt{glint\_example} here, it is not necessary to further 
 specify the model.

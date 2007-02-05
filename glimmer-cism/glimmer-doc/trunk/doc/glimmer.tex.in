@@ -26,6 +26,10 @@
 \newcommand{\dir}{ug}
 \input{\dir/ug.tex}
 
+\chapter{Tutorial}
+\renewcommand{\dir}{tut}
+\input{\dir/tut.tex}
+
 \ifthenelse{\boolean{glimmertools}}
 {
 \chapter{PyCF Tools}
@@ -41,10 +45,6 @@
 \chapter{Developer Guide}
 \renewcommand{\dir}{dg}
 \input{\dir/dg.tex}
-
-\chapter{Tutorial}
-\renewcommand{\dir}{tut}
-\input{\dir/tut.tex}
 
 
 \appendix
