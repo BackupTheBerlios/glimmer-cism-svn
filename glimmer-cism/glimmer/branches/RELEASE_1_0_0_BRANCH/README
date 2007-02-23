@@ -1,0 +1,47 @@
+
+GLIMMER README file:
+===================
+
+GLIMMER is a land ice model designed to be used as part of 
+an earth-system or climate model. Full documentation can be found 
+in the doc directory. 
+
+Licensing:
+=========
+
+GLIMMER is issued under the GNU General Public Licence. 
+See LICENCE in the main directory.
+
+Note that this licence DOES NOT APPLY to the SLAP linear algebra library, 
+which is contained in its own directory, and is in the public domain.
+
+Mailing list
+============
+The mailing list archive can be found here
+http://forge.nesc.ac.uk/pipermail/glimmer-discuss/
+You can subscribe to it here:
+http://forge.nesc.ac.uk/mailman/listinfo/glimmer-discuss
+
+Bugs:
+====
+
+Please send all bug reports (preferably with fixes!) to the glimmer mailing list:
+glimmer-discuss@forge.nesc.ac.uk
+
+Compiling:
+=========
+
+The model should build reasonably straightforwardly using make. 
+Additional notes are provided in COMPILE in the main directory.
+
+References:
+==========
+
+The ice model which froms the core of GLIMMER is described in:
+
+Payne, A.J. (1999) A thermomechanical model of ice flow in West Antarctica
+Climate Dynamics, 15:115-125
+
+Payne, A.J. and P.W. Dongelmans (1997) Self-organisation in the
+thermomechanical flow of ice sheets. J. Geophysical Research, 102 (B6)
+12219-12233
