@@ -1,0 +1,1249 @@
+2007-02-23 Ian Rutt
+ * configure.in: bump version to 1.5.1 (HEAD)
+
+2007-02-23 Ian Rutt
+ * configure.in: bump version to 1.0.0
+ * NEWS: update
+	
+2007-02-23 Ian Rutt
+ * Minor change to build (restarts) in preparation for version 1.0.0 release
+
+2007-02-07 Ian Rutt
+ * Fixed bug with start time consistency check... (doh)
+ * Clarified comments about log-levels
+
+2006-12-06 Ian Rutt
+ * Added extra check on glint start time consistency (thanks to Oli).
+
+2006-12-05 Magnus Hagdorn
+ * src/fortran/eismint3_forcing.F90: fixed minor bug where line was too long
+
+2006-11-07 Ian Rutt
+ * Fixed IBM build problem reported by Oli.
+
+2006-10-31 Ian Rutt
+ * Fixed minor bug in EISMINT-3-GL output
+
+2006-10-27 Ian Rutt
+ * Merged RESTART_ON_DEMAND branch into main trunk. Builds fine.
+
+2006-10-25 Ian Rutt
+ * Fixed problem with hotstart variables - now works when hotstart
+ variables are specified in several var.def files.
+ * Better implementation of EISMINT-3-GL forcing - copes with temperature
+ perturbation and hotstarts better now.
+
+2006-10-23 Ian Rutt
+ * Major enhancements to GLINT API, plus one or two bug
+ corrections. Time-step coordination and averaging is now handled in a
+ much-improved way.
+
+2006-10-13 Ian Rutt
+ * Corrected bug with initialisation of precip enhancement in EISMINT3-GL
+ * Made romberg integration functions recursive. This corrects a serious
+   bug in the annual PDD scheme
+ * Corrected problem with annual PDD scheme whereby two edges of the PDD
+   table weren't being initialised.
+	
+2006-10-10 Ian Rutt
+ * Added precip enhancement to eismint3-greenland code
+
+2006-10-02 (from RESTART_ON_DEMAND)
+ * Minor bug-fix (spotted by Magi)
+ * Fixed build bug (hopefully)
+
+2006-09-28 Ian Rutt
+ * Added append capability to output files. 
+
+2006-09-27 Ian Rutt
+ * Fixed minor bug in nc2config
+
+2006-09-27 Ian Rutt (from RESTART_ON_DEMAND)
+ * Tested restarts with glint, and tidied up a few loose ends
+
+2006-09-26 Ian Rutt (from RESTART_ON_DEMAND)
+ * Fixed various bugs - lower array bounds now handled
+ correctly.
+ * Implemented glint- and glide-specific interfaces
+ * Wrote basic code to handle file information in restart files
+
+2006-09-25 Ian Rutt (from RESTART_ON_DEMAND)
+ * Made restart compilation and generation optional (using configure
+ option --enable-restarts)
+ * Rewrote restart generation to produce only two include files (one for
+ the header info, one for the module body).
+ * Wrote top-level interface code for restarts
+	
+2006-09-20 Ian Rutt
+ * Added feature so that config file data is automatically added to output
+ netcdf files as attribute.
+ * Added utility nc2config that extracts this attribute and outputs it as
+ plain text.
+
+2006-09-19 Ian Rutt (from RESTART_ON_DEMAND)
+ * First rough go at restart on demand completed.
+
+2006-09-15 Ian Rutt
+ * Reorganisation and extension of restart-on-demand code
+ * Added glimmer_restart_statscal.F90, which deals with static scalar
+ variables.
+
+2006-09-11 Ian Rutt
+ * Slightly changed behaviour of depth-dependent calving. Now calves if
+ depth <= specified level, rather than just less-than.
+ * Fixed some bugs with water-budget accounting in glint.
+
+2006-09-06 Ian Rutt
+ * Began adding base code for restart-on-demand. This is
+ glimmer_restart_common.F90, which provides a set of NetCDF routines for
+ dumping arbitrary sequences of variables/arrays to file and retrieving
+ them.
+
+2006-08-25 Ian Rutt
+ * Plumbed in new projection code. Tested successfully.
+ * Retained capability to pase [GLINT projection] config section, but
+ warning issued. This is a deprecated feature and should be removed at
+ some point.
+ * Fixed bug in glimmer_config.F90. Array-reading code now correctly
+ parses arrays with varying sizes - a pointer array of the correct length
+ is returned.
+
+2006-08-22 Ian Rutt
+ * Finished consolidated projection code. Tested against exisiting
+ projection code where available, and against itself (i.e. forward and
+ reverse transformations agree) where projection is new. Ready to be
+ plumbed in.
+
+2006-08-21 Ian Rutt
+ * Completed first go through re-jigging of projection transformation and
+ CF handling code. Still to be integrated into build and tested.
+
+2006-08-18 Ian Rutt
+ * More work on projection code. Only inverse of stereographic projection
+ still to do
+
+2006-08-17 Ian Rutt
+ * Added beginnings of consolidated projection code:
+	glimmer_map_types.F90
+	glimmer_map_init.F90
+	glimmer_map_trans.F90
+
+2006-08-16 Ian Rutt
+ * Removed long-redundant restart code in glint_proj.F90
+
+2006-08-14 Ian Rutt
+ * Fixed tiny bug in glint.f90 - orog argument is now intent(in), not intent(inout).
+
+2006-08-09 Ian Rutt
+ * Fixed pointer nullification bug in glimmer_ncparms.F90 (Thanks to Oli
+ Browne for finding this one).
+ * Fixed glint logging bug - multiple instances generated fort.101
+ file. Moved close log outside glide_finalise and updated all driver
+ programs accordingly.
+
+2006-08-01 Ian Rutt
+ * Corrected typo: finialise_elastic -> finalise_elastic
+
+2006-06-18 Magnus Hagdorn
+ * src/fortran/test_integrate.F90: minor fix to make it compile with gfortran
+
+2006-06-18 Magnus Hagdorn
+ * src/python/glide_launch.py: need to add \n for gfortran
+
+2006-06-18 Magnus Hagdorn
+ * src/fortran/Makefile.am: rename files *.f90 -> *.F90
+ * src/python/generate_ncvars.py: ditto
+ * src/fortran/*.f90: rename to *.F90, add preprocessor machinery to load
+   config.inc
+ * bootstrap: add call to autoheader
+ * configure.in: rename .f90 -> .F90, use autoheader to generate config.inc
+
+2006-06-15 Ian Rutt
+ * Added precip scaling option to glint_example_clim.f90
+
+2006-05-29 Ian Rutt
+ * spelling mistakes in glint_vars.def corrected. (Thanks to Oli Browne)
+
+2006-05-21 Stewart Jamieson
+ * glide_vars.def: annual massbalance can be averaged over time
+ * glide_types.f90: add new variable for averaging annual 
+   massbalance
+
+2006-05-18 Ian Rutt
+ * Minor bugfix to profiling (mistake in glide_stop.f90 - non-existent
+ derived type element)
+
+2006-05-10 Ian Rutt
+ * Minor enhancements/bugfixes to EISMINT3GL driver
+ * Minor doc change in glide_types.f90 (thanks, Oli)
+	
+2006-05-02 Ian Rutt
+ * Added temperature half-range to glint output variables as glint_arng
+ * Cleared up series of important confusions/bugs in mass-balance
+ calculations in glint. Note that all mass-balance calculations in glint,
+ including in the two PDD schemes are done in terms of water-equivalent
+ depths. The mass balance is then converted to ice-equivalent depth at the
+ point where the glide timestep subroutines are called.
+	
+2006-04-27 Ian Rutt
+ * Final version of EISMINT3 Greenland scenario. Can choose to start from
+ present-day ice sheet or from no ice.
+ * Added new calving scheme (marine ice edge/threshold based) and tidied
+ up calving code (removed strange unknown option which was left over from
+ old model)
+	
+2006-04-25 Ian Rutt
+ * Removed redundant GLIDE options (sliding_law and stress_calc)
+
+2006-04-20 Magnus Hagdorn
+ * configure.in: when looking for Sun compiler also grep for Forte
+
+2006-04-20 Ian Rutt
+ * Added driver for EISMINT3 Greenland scenario, based on Magi's EISMINT
+ 1 & 2 drivers.
+ * Added option to specify topography as being in isostatic equilibrium
+ and thus calculate relaxed topography on the fly.
+
+2006-02-22 Ian Rutt
+ * Corrected CF mapping compliance in glimmer_CFproj.f90; this time,
+ changed LAEA projection.
+
+2006-02-09 Ian Rutt
+ * Rewrote parts of glint_initialise to allow the specification of an
+   array of parameter files for individual instances in the API, as an
+   alternative to a top-level parameter file that points to the
+   instances. This is so that we can also supply an array of config file
+   types to overwrite parameters read from files, but need to be sure of
+   the ordering when doing so. 
+ * Added a non-pointer wrapper type to glimmer_config, to allow the
+   creation of arrays of config data types. These can now be passed to
+   glint_initialise using array constructors or whatever method you like,
+   and will overwrite the data loaded from file
+ * Also added some overloaded subroutines to allow access to and
+   combination of these types
+ * For the purposes of identifying config sections where there may be more
+   than one instance in a given file, the value of the key 'tag' is now
+   significant. If one is setting a value in a config file, a tag may now
+   be specified, and if a section with that tag is found, the value is set
+   there, otherwise a new, tagged section is created.
+	
+2006-02-08 Ian Rutt
+ * Added subroutine to glimmer_config.f90 to allow the merging of two
+   config file types. This means that an additional config file can be read,
+   passed to glint as an instance of ConfigSection, and then merged with
+   another config file. 
+	
+2006-02-07 Ian Rutt
+ * Added subroutine to glimmer_config.f90 to allow arbitrary addition or
+   overwriting of config file entries once file has been read. This is
+   a first step towards allowing the arbitrary passing of runtime
+   parameters through glint API.
+
+2006-01-31 Ian Rutt
+ * Added snow densification to daily PDD scheme, and rewrote core of the
+   scheme to make it more logical. Tested fairly thoroughly.
+
+2006-01-19 Ian Rutt
+ * Corrected CF mapping compliance in glimmer_CFproj.f90
+ * Added ability to write CF-compilant mapping info to glimmer_proj.f90
+ * (need to combine these two bits of code at some point)
+
+2005-12-19 Magnus Hagdorn
+ * configure.in: bump version to 0.5.7 for new development series
+
+2005-12-19 Magnus Hagdorn
+ * configure.in: bump version to 0.5.6
+ * NEWS: update
+
+2005-12-13 Magnus Hagdorn
+ * m4macros/glimmer.m4: new file containing m4 macro for setting up GLIMMER
+ * m4macros/Makefile.am: install glimmer.m4
+ * Makefile.am: deal with m4macros dir
+ * configure.in: generate m4macros/Makefile
+ * glide_launch.py: add option to run a specific binary
+
+2005-11-28 Magnus Hagdorn
+ * glide_types.f90: add new variable for bed softness
+ * glide_vars.def: ditto
+ * glide.f90: initialise bed softness variable
+ * glide_velo.f90: use bed softness variable to determine sliding parameter
+ * glide_setup.f90: move some parameter scaling from glide_velo.f90 to here
+
+2005-11-18 Ian Rutt
+ * Added calving field to glide. This accessed by glint through accessor
+   functions. The field is calculated in the marine limit routine in
+   glide_setup.f90
+ * Added possibility of supplying a list of hotstart files in glint API.
+   This was requested, but is a big fudge, which I'm not terribly happy
+   with. It might not work, either.
+
+2005-11-18 Magnus Hagdorn
+ * moved doc to CVS module glimmer-doc
+ * Makefile.am: removed subdir doc
+ * configure.in: removed doc related stuff
+
+2005-11-16 Magnus Hagdorn
+ * configure.in: add some sanity checks and use variables pointing to where 
+   sources live
+ * tests/Makefile.am: use variables pointing to where sources live
+ * src/fortran/Makefile.am: ditto
+ * glide_launch.py: avoid fortran sillyness where strings have to be quoted
+ * cvs_version.py: we now have to specify where Entries file is
+ * glimmer_global.f90: add directory separator constant
+ * glimmer_log.f90: new function for deriving name of logfile
+ * simple_glide.f90: use logname to get name of logfile
+ * eis_glide.f90: ditto
+ * INSTALL: update
+
+2005-11-07 Magnus Hagdorn
+ * src/fortran/Makefile.am: use wildcard function for *.mod
+
+2005-11-07 Magnus Hagdorn
+ * glimmer_ncio.f90: print out file name of netCDF file that cannot be read
+ * glimmer_config.f90: add logical variables
+ * eis_vars.def: load ELA from file if present
+ * eis_ela.f90: do not calculate ELA field (presumably so that it can be
+   read from netCDF file), do not set MB to 0 for areas covered by sea
+
+2005-11-05 Magnus Hagdorn
+ * doc/Makefile.am: fix permissions
+ * simple_forcing.f90: fix sign for temp gradient for moving margin, pointed
+   out by Qinghua Yang
+
+2005-11-04 Magnus Hagdorn
+ * common/template.tex: new for generating eps files from gnuplot/xfig output
+ * common/definitions.tex: new boolean for html code
+ * common/packages.tex: use graphicx instead of epsfig
+ * dg/dg.tex use includegraphics instead of epsfig
+ * num/basal_bc.tex: ditto
+ * num/grid.tex: ditto
+ * num/kinematics.tex: ditto
+ * num/vert_velo.tex: ditto
+ * ug/glint.tex: ditto
+ * ug/intro.tex: ditto
+ * glimmer.tex.in: add code to autogenerate pngs for html output
+ * make_doc.rules: changed rules so we can generate eps for all graphics
+ * glimmer_html.tex: new master tex file for generating html output
+ * Makefile.am: target for generating html output
+ * num/figs/Makefile.am: generate eps
+ * num/gnu/Makefile.am: ditto
+ 
+2005-11-04 Magnus Hagdorn
+ * configure.in: optionally build tools guide
+ * doc/Makefile.am: use implicit rules
+ * glimmer.tex.in: autogenerate glimmer.tex
+ * tg*: structure for tools guide
+ * packages.tex: use ifthenelse
+
+2005-10-30 Magnus Hagdorn
+ * glimmer_CFproj.f90: type definitions of individual projections are now
+   public.
+ * glimmer_config.f90: make the character array fixed length for gfortran.
+
+2005-10-26 Magnus Hagdorn
+ * eis_ela.f90: add longitudinal ELA gradient
+ * glide_setup.f90: make fraction of ice lost due to calving a run
+   time parameter
+ * glide.f90: use calving parameter
+ * glide_types.f90: add variables for calving paramter, ice volume and
+   ice area calculations
+ * glide_mask.f90: calculate ice volume and area
+ * glide_vars.def: add ice volume and area variables
+ * glide.tex: document calving parameter
+ * drivers.tex: document longitudinal ELA gradient
+
+2005-10-14 Magnus Hagdorn
+ * glide_types.f90: add fields for some time averages
+ * glide_vars.def: request time averages for ubas, vbas and bmlt
+ * glimmer_ncdf.f90: add some variables for taking time averages
+ * ncdf_template.f90.in: add code for taking time averages
+ * generate_ncvars.py: handle time averages
+ * netcdf.tex: document changes to code generator
+ * glide_launch.py: save arch and host to results file
+
+2005-10-06 Magnus Hagdorn
+ * definitions.tex: change date
+ * configure.in: bump version to 0.5.5
+
+2005-10-06 Magnus Hagdorn
+ * definitions.tex: today's date
+ * clean up documentation
+ * configure.in: bump version
+ * update NEWS
+
+2005-10-04 Ian Rutt
+ * Added testing for pgf90 compiler
+ * Changed interface blocks in glimmer_interpolate.f90 to work with pgf90
+
+2005-10-03 Magnus Hagdorn
+ * glide_velo.f90: fix compiler warning, btrc should have intent(in)
+ * glimmer_coordinates.f90: fix compiler warning
+
+2005-10-03 Magnus Hagdorn
+ * glide.tex: minor addition to docs
+ * e2.adi.config: test config for ADI scheme
+ * Makefile.am: run ADI test
+
+2005-10-03 Magnus Hagdorn
+ * merge THERMAL_LITHO branch
+
+2005-09-08 Ian Rutt
+ * Minor cosmetic changes
+ * Improved ability to plug in emb mass-balance scheme without altering code
+ * Fixed bug loadking config files for multiple instances
+	
+2005-09-07 Ian Rutt
+ * Various enhancements and corrections to mass-balance masking in glint
+ * Removed illegal elementals (glint_global_grid.f90) and unnecessary
+   pures
+ * Fixed segfault array allocation bug (glint.f90)
+ * Changes to glint.f90 to aid readability (some structural, some
+   formatting)
+ * Substantial reformatting and tidying up of glint_*.f90 code
+	
+2005-08-24 Ian Rutt
+ * Updated with improvements from GENIE development:
+	- Sigma levels from config file if desired
+	- Longer message variables in some places
+	- Land tiling of ice, snow and veg fracs in glint output
+	- Simplified output calculation in glint
+	- Removed some unused variables
+	- minor adjustments to daily pdd scheme and coupling
+	- better ordering for glint timestep
+
+2005-08-12 Magnus Hagdorn
+ * glimmer_ncio.f90: made comparison between two floats more robust
+
+2005-08-02 Ian Rutt
+ * Fixed really obvious bug in glimmer_daily_pdd.f90
+
+2005-07-13 Magnus Hagdorn
+ * glimmer_ts.f90: fixed bug where the BC of linear interpolator
+   were not correctly implemented
+
+2005-06-28 Magnus Hagdorn
+ * glimmer.bib: added bibtex database
+ * glimmer.tex: use bibtex
+ * num.tex: ditto
+ * definitions.tex: ditto
+ * packages.tex: ditto
+ * grid.tex, kinematics.tex: add some references
+ * configure.in, Makefile.am: hook up bibtex
+
+2005-06-24 Magnus Hagdorn
+ * configure.in: added detection of Intel and gcc f95 compiler
+
+2005-06-24 Magnus Hagdorn
+ * configure.in: detect which f95 compiler is used and set some flags
+   accordingly
+ * INSTALL: also mention SUN f95 compiler
+
+2005-06-15 Ian Rutt
+ * Corrected documentation error in annual pdd scheme
+
+2005-06-08 Magnus Hagdorn
+ * glide_thck.f90: fixed bug #132, extreme velos.
+
+2005-05-18 Ian Rutt
+ * Bug-fix changes to couple to Energy-balance mass-balance model
+ * Added instantaneous outputting of mass-balance coupling fields,
+   enables checking of output from mass-balance schemes
+ * Fixed problem with precision change in output from Energy balance
+   mass-balance scheme
+
+2005-05-17 Magnus Hagdorn
+ * glide_types.f90: added variable basal heat flux
+ * glide_vars.def: ditto
+ * glide_temp.f90: replaced scalar geothermal heat flux with variable
+   basal heat flux
+ * glide.f90: initialise variable basal heat flux with scalar geothermal 
+   heat flux
+
+2005-05-17 Ian Rutt
+ * Added test example for energy-balance mass-balance scheme
+ * Changed mass-balance schemes to only calculate 'land' points (i.e. mask
+ is passed though) - hopefully might speed things up.
+ * Removed unnecessary log line in glex_ebm_clim.f90 - we do need to convert temperature
+
+2005-05-16 Ian Rutt
+ * Removed dummy code glimmer_enmabal.f90
+ * Merged in changes to allow use of RAPID energy-balance mass-balance
+ model (not released yet). These are activated using the --with-enmabal
+ flag in configure. 
+
+2005-05-13 Magnus Hagdorn
+ * glide_velo.f90: simplify API of calcbtrc, add sliding param depending on basal melt;
+   simplify API of slipvelo
+ * glide_thck.f90: hook-up new slipvelo
+ * glide.f90: hook-up new slipvelo; write glimmer version to log
+ * glide_types.f90: add new params to deal with new sliding parameterisation
+ * glide_setup.f90: read new params for configuration file
+ * tests/Makefile.am: tell make which files to delete on make clean
+
+2005-05-13 Magnus Hagdorn
+ * cvs_version.py: script used to parse CVS/Entries file to get date and branch of
+   the most recently checked-out file
+ * glimmer_version.f90.in renamed to glimmer_version.f90.in.in
+ * Makefile.am generates glimmer_version.f90 from glimmer_version.f90.in using cvs_version.py
+ * configure.in: add CVS date to version string if we compile from CVS sources
+
+2005-05-11 Ian Rutt
+ * configure.in: added rule to enable preprocessor in gfortran. Note that
+ gfortran can't actually compile glimmer at the moment, but hopefully will
+ be able to one day.
+	
+2005-04-22 Magnus Hagdorn
+ * glimmer_ncio.f90: add sanity checking to make sure input netCDF file have the same
+   grid size as the one specified in config file
+ * glimmer_ts.f90: fail gracefully when the input file cannot be opened
+
+2005-04-18 Magnus Hagdorn
+ * configure.in: bump version to 0.5.2
+ * definitions.tex: changed doc date to today
+ * make_doc.rules: fix problem with dia where fonts are tiny
+ * updated NEWS
+
+2005-04-15 Magnus Hagdorn
+ * glide.tex: added documentation for isostasy
+
+2005-04-12 Ian Rutt
+ * Added optional command-line interface to glint_example.f90. Uses
+   non-standard Fortran extensions in the intel compiler - can be
+   selected at compile-time by defining preprocessor symbol GLEX_COM_LINE.
+   Needed to do this to facilitate batch processing of glint runs on
+   our Beowulf cluster, but obviously it's non-ideal.
+ * Corrected error in comment in glint_vars.def
+	
+2005-04-11 Magnus Hagdorn
+ * glimmer_CFproj.f90: rename attribute back to scale_factor_at_projection_origin in order to
+   adhere to CF standard
+ * glint_vars.def: add standard names to a few variables
+
+2005-04-11 Magnus Hagdorn
+ * glint_global_interp.f90: real constants have to be double precision, changed
+   masko==.false. to .not.masko
+ * glint_example_clim.f90: initialise pointers to NULL(), dummy arguments which might be
+   unassociated have to be pointers
+
+2005-04-11 Ian Rutt
+ * Added asynchronous coupling of mass-balance to ice model in glint
+
+2005-04-05 Ian Rutt
+ * New climate driver for glint_example.f90, called
+   glint_example_clim.f90, now handles netcdf input files more flexibly.
+ * Added error-handling code to glint_global_interp.f90
+ * Added various operator overloadings to glint_global_grid.f90
+	
+2005-04-04 Magnus Hagdorn
+ * glide_velo.f90: grr, used wrong derivatives for basal shear calcs,
+   fixed
+
+2005-04-04 Magnus Hagdorn
+ * glide_thck.f90: move surface and horiz deriv calculations to
+   thck_evolve
+ * glide_types.f90: added basal shear stress variables
+ * glide_vars.def: ditto
+ * glide_velo.f90: added shear stress calculations
+ * glide.f90: indicated where basal shear stress cals might go
+ 
+2005-03-24 Ian Rutt
+ * Changed glint_global_interp to use global grid types to define
+   input and output grids
+ * Changed glint_example ncdf handling code to use global grid types
+ * Changed glint_global_interp to real(rk)
+ * Generally simplified glint_example and tidied it up
+	
+2005-03-23 Ian Rutt
+ * Extended length of variables used to construct log messages to 150
+   chars
+ * Fixed problem with single-precision compilation
+ * Converted awi.f to f90 (glint_global_interp.f90) - needs a bit more
+   work, but functions correctly.
+	
+2005-03-17 Ian Rutt
+ * Removed printing of ierr after calling awi.f
+ * Released at version 0.5.1
+
+2005-03-16 Ian Rutt
+ * Added some dodgy f77 interpolation code (awi.f) to deal with problems I
+ had with different global grids in NCEP data used to force
+ glint_example. It is my aim to convert this to f90 soon.
+ * Changed glint_example to deal with new precip data
+
+2005-03-14 Ian Rutt
+ * Adapted netcdf code to handle fractional year-lengths and added
+  handling in GLINT for writing mass-balance information at these times
+ * Fixed snow-depth to be accumulated on land only
+ * Sorted out glint_example so the run goes all the way to the beginning
+ of the next year.
+
+2005-03-11 Magnus Hagdorn
+ * configure.in: bumped version to 0.5.0
+ * moved test_config.conf to tests
+ * removed data dir
+ * fix doc date to release date
+
+2005-03-11 Ian Rutt
+ * Moved glint_example files to glint-example module
+
+2005-03-11 Magnus Hagdorn
+ * configure.in, version.tex.in glimmer_version.f90.in, glimmer-config.in: add micro version
+ * updated NEWS
+
+2005-03-10 Ian Rutt
+ * Began preliminary work on objectifying mass-balance accumulation in GLINT
+ * Now plumbed in and working. Needs more work to enable asynchronous coupling
+ * Removed cabability of saving global orog input and avoiding downscaling at the moment
+   as it doesn't work.
+
+2005-03-09 Ian Rutt
+ * Added glimmer_daily_pdd.f90 - fully plumbed in.
+ * Updated glint to have configureable number of days in year
+ * Added ncep data for 6h temperatures and adjusted glint_example.f90
+ * Added flags to GLINT to avoid unnecessary downscaling and accumulation
+   of variables.
+
+2005-03-08 Magnus Hagdorn
+ * removed install-sh, it is autogenerated when bootstrap is run
+
+2005-03-07 Ian Rutt
+ * Added a couple of output-to-screen subroutines to help with debugging
+   netcdf output
+ * Fixed (hopefully) a problem with averaging/accumulation in glint.f90
+ * Fixed problem with glint_example.f90 - orography input was being read
+   incorrectly.
+ * Added glide_nc_fillall call from glint_initialise
+ * Removed redundant mass-balance timestep value from glint_type
+ * Made glint_vars.def a bit more sensible
+ * Minor changes to glint_example config file
+
+2005-03-07 Magnus Hagdorn
+ * glimmer_ncio.f90: fixed bug #110
+
+2005-03-07 Magnus Hagdorn
+ * glide_thck.f90: only print warning about empty thck field when compiled with -DDEBUG
+ * glide_launch.py: write extra fields to result file, date, glimmer version, glimmer FCFLAGS
+ * add simple test directory
+ * configure.in: change default behaviour of FCFLAGS (now empty instead of -g), hook up tests
+ * INSTALL: mention tests directory
+
+2005-03-04 Magnus Hagdorn
+ * glint_example.f90: renamed program to glint_example, fixed minor prob 
+   with NAG f95 compiler
+
+2005-03-03 Ian Rutt
+ * Fixed array sized bug with glint orography output
+ * New glint_example code - uses ncep-reanalysis-derived climatology 
+
+2005-03-03 Magnus Hagdorn
+ * added glide launcher utility
+
+2005-03-03 Magnus Hagdorn
+ * glide_thck.f90: move flwa calcs up in lin solver
+ * glide_types.f90: make size of arrays on velo grid 1 less than
+   size of arrays on temp grid
+ * glide_vars.def: remove f95 array sections (since arrays are right size now)
+ * glide_velo.f90: reduce array size of some work arrays, simplify where loops
+
+2005-03-01 Magnus Hagdorn
+ * glide_velo.f90: new subroutine for handling vetical velo in case of periodic EW BC
+ * glide_temp.f90: hooked up this subroutine
+ * glide_thck.f90: modified BC for periodic BC
+ * documented the lot
+
+2005-03-01 Magnus Hagdorn
+ * documentation gets version from configure
+ * glide_velo.f90: fixed bug with loop over grid and avoid unnecessary memory allocation
+
+2005-03-01 Ian Rutt
+ * Removed redundant paramfiles.tex from doc/ug
+ * Removed a couple of redundent components from glint
+ * Hopefully fixed up hotstarts for glint (only a sinlge array needs to be written)
+	
+2005-02-29 Ian Rutt
+ * Updated docs to match new GLINT API
+ * Added additional underscore control code substitution to parts of LaTeX
+   autogeneration in generate_ncvars.py
+
+2005-02-28 Magnus Hagdorn
+ * updated documentation
+ * glimmer_config.f90: fixed a bug, grr too many programming languages swimming in my head
+ * beautified INSTALL
+
+2005-02-29 Ian Rutt
+ * Changed documentation to match renamed I/O sections
+ * Added relevant output sections to gint_vars.def
+ * Moved glint output to end of timestep, and consolidated glide timstep calls
+ * Moved output orography grid definition to initalise_glint call as
+   optional arguments, and removed glint_set_orog_res subroutine
+
+2005-02-28 Magnus Hagdorn
+ * g_land.config: renamed I/O section
+
+2005-02-26 Magnus Hagdorn
+ * bumped version to 0.3
+ * physics.tex: removed mb section since Ian resurrected it elsewhere
+ * driver.tex: some updates for eis climate
+ * glint.tex: fixed reference
+ * intro.tex: removed misleading section on GLIMMER
+ * glimmer_config.f90: added subroutine checking if all section are used
+   and hooked it up (eis_glide.f90, simple_glide.f90, glint.f90)
+ * glimmer_ncparams.f90: prefixed section names with CF
+ * glimmer_version.f90.in: version string is generated by configure
+ * glimmer_global.f90: load new version module
+ * configure.in handles versioning and also generates new script glimmer-config
+ * updated NEWS
+	
+2005-02-25 Ian Rutt
+ * Finished updating GLINT documentation
+ * Added mass-balance scheme docs for PDD (resurrected from old docs)
+ * Moved glint_example files to subdirectory in data (probably temporary)
+	
+2005-02-24 Ian Rutt
+ * Updated GLINT documetation, resurrected some old stuff about using
+   GLINT, and added a diagram about timestepping. This is perhaps a bit big
+   atm...
+ * Changed doc build so that DIA doesn't display splash screen (added -n)
+ * Added old LaTeX for GLINT API as appendix and started updating
+   it. Incomplete, though.
+
+2005-02-23 Ian Rutt
+ * Renamed modules of mass-balance schemes to glimmer_*
+ * Completed implementation of renaming scheme
+	
+2005-02-23 Magnus Hagdorn
+ * removed old tests in data
+
+2005-02-23 Magnus Hagdorn
+ * removed unused symbols and dummy arguments
+
+2005-02-23 Ian Rutt
+ * More reorganisation and pruning
+ * Set all times and timesteps in GLINT to be in *hours*, converted to
+   years when calling GLIDE
+ * All times in GLINT are integer type
+ * Implemented mass-balance timesteps in GLINT - all instances must have
+   the same mass-balance timestep
+ * Moved specification of earth's radius in glimmer_proj.f90 to config file
+   input
+ * New file - glint_constants.f90 - mostly for conversion between different
+   time units.
+ * Removed redundant Matlab code
+ * Removed redundant config files from data directory
+ * Renamed enmabal module to glint_enmabal
+
+2005-02-22 Ian Rutt
+ * Substantial reorganisation of GLINT. 
+ * Added wrapper for mass-balance schemes (glint_mbal.f90)
+ * Moved some parts of timestep into glint_climate.f90
+ * Build may need fixing under Linux
+ * Variable mass-balance timestep still to be reimplemented
+
+2005-02-22 Magnus Hagdorn
+ * glide_types.f90: fixed two bugs where arrays had the wrong size
+
+2005-02-21 Ian Rutt
+ * Removed redundant argument from calcacab call in GLINT
+ * Fixed lapse-rate adjustment problem in GLINT
+ * Removed scaling on output of precip field in GLINT
+
+2005-02-18 Ian Rutt
+ * Added fix_acab call to glint_timestep.f90
+ * Converted precip to m in glint_timestep.f90
+
+2005-02-17 Ian Rutt
+ * Tidied up GLINT pdd scheme and added config file handling
+ * Major pruning of redundant forcing code in GLINT, and general
+   reorganisation. Not fully functional yet.
+ * Began bugfixing on GLINT
+ * Fixed problem with accessor functions - get_nsn was returning ewn!
+	
+2005-02-16 Ian Rutt
+ * First stage of making sure GLINT does what it should. Build
+   successfully, but as yet untested.
+
+2005-02-16 Magnus Hagdorn
+ * glide.f90: load glide_io module into glide module name space
+ * glide_types.f90: added some static accessor functions
+ * ncdf_template.f90.in: add autogenerate accessors
+ * generate_ncvars.py: generate accessor functions
+
+2005-02-16 Magnus Hagdorn
+ * configure.in: fixed bug where --enable-doc and --enable-profile were mixed
+   up
+ * glide_vars.def: load ubas and vbas
+
+2005-02-15 Magnus Hagdorn
+ * configure.in: always check for programs required to built doc
+ * installation.tex: updated do to reflect new built system
+ * glide.dia: updated diagram to include the third part of the time step
+ * varlist.tex: hooked up autogenerated variable lists
+ * user_doc.tex, nc_conf.tex: removed old documentation
+
+2005-02-15 Magnus Hagdorn
+ * bootstrap: require version 1.9 of automake
+ * configure.in and various Makefile.am: make doc built optional
+	
+2005-02-10 Magnus Hagdorn
+ * merged in autotools
+
+2005-01-10 Ian Rutt
+ * Merge part 3 - fixed glint build, under windows and Linux
+ * Removed redundant files
+ * renamed routing code in the glint series
+
+2005-02-10 Magnus Hagdorn
+ * merged documentation
+
+2005-02-10 Ian Rutt
+ * Merge part 2 - partial fixing of GLINT so it compiles under Windows. Linux build
+   not fixed yet. Redundant files not removed either.
+
+2005-02-10 Magnus Hagdorn
+ * set default log level so that only errors are reported to stdout
+ * added new parameter log_level
+
+2005-02-10 Magnus Hagdorn
+ * glimmer_log: improved logging by allowing various severety levels (merged in Ian's implementation)
+ * hooked up logging (Makefile, bin2ncdf.f90, glide_pdd.f90, glide_setup.f90, glimmer_CFproj.f90, glimmer_config.f90,
+	glimmer_ncdf.f90, glimmer_ncparms.f90, glimmer_ts.f90, glimmer_utils.f90, gmt.f90, input2ncdf.f90, simple_forcing.f90,
+	generate_ncvars.py)
+ * removed obsolete netCDF stuff and isostasy code
+
+2005-02-09 Magnus Hagdorn
+ * merged in new stuff part 1
+
+2005-02-08 Magnus Hagdorn
+ * fixed Makefile to include flow router
+
+2005-02-08 Ian Rutt
+ * Removed NAG-non-compliant section and value name checking from glimmer_setup.f90
+
+2005-01-31 Ian Rutt
+ * Reverted last change, since it was based on a misunderstanding. _No_ fields are spliced
+   into the input - the splicing takes place as the output fields are prepared from the outputs
+   of the individual instances.
+
+2005-01-26 Ian Rutt
+ * Changed water flux fields so they replace the input rather than being spliced into it
+
+2005-01-18 Ian Rutt
+ * Plumbed in flow-routing code (and corrected a bug)
+
+2005-01-17 Ian Rutt
+ * Added flow-routing code for run-off calculation. Not connected yet. Removed 
+   old (unused) routing code.
+
+2005-01-12 Ian Rutt
+ * Restored .in files and generate_ncvars.py, but not as part of build
+   structure, to enable system to still be used for development, but not as
+   part of build
+ * Adjusted Makefiles to reflect machine-independence in GENIE build (i.e. added 
+   $(OBJ_EXT), etc)
+
+2005-01-11 Ian Rutt
+ * Completed first stage changes to Glimmer structure for the new mass-balance model. 
+ * Also minor formatting/organisational changes.
+ * Removed auto-generation of NetCDF handling code - using latest build, but hardwired
+ * Made formatting changes to NetCDF routines
+ * Updated build routine to take account of NetCDF changes
+
+2005-01-07 Ian Rutt
+ * Made substantial changes to structure to enable to begin process of allowing the 
+   Energy-balance mass-balance model to be used in Glimmer. Needs testing, though.
+
+2004-11-10 Ian Rutt
+ * Changed scale_factor_at_projection_origin to scale_factor_at_proj_origin, to comply
+   with f95 standard - identifiers must be 31 characters or less.
+
+2004-11-08 Ian Rutt
+ * Added loading of standard deviation field into glimmer (not used yet).
+ * Added subroutine to define CF projection by hand, if necessary
+ * Update input2ncdf.f90 to allow projection definition.
+
+2004-11-04 Ian Rutt
+ * Added area considerations of mean_to_local subroutine in glimmer_interp.f90 (not used
+   in glimmer itself).
+
+2004-10-21 Ian Rutt
+ * Sorted out water budgeting. This is something of a fudge, for although
+   melt and run-off maps are determined reasonably well, an overall constant
+   is added to ablation to account for any non-conservation of mass in the dynamics.
+ * Also adjusted ablation calculations so as not to remove more mass than is present.
+
+2004-10-14 Ian Rutt
+ * Fixed problem with coverage map normalisation
+
+2004-10-13 Ian Rutt
+ * Reorganised upscaling and field splicing to enable easy output of 
+   initial fields to global model at initialisation time.
+
+2004-09-20 Ian Rutt
+ * Updated f90_dependencies.py to Magi's latest version - handles more
+ than one module per file.
+
+2004-09-16 Ian Rutt
+ * Added Tony's physics documentation to main docs.
+ * Patched netcdf I/O as per Magi's email
+ * Added if block round velocity calculation so they're not
+   done if whichevol=2 (when they are redundant).
+	
+2004-09-14 Ian Rutt
+ * Finished updating user documentation.
+
+2004-09-10 Ian Rutt
+ * Continued to update documentation.
+
+2004-08-26 Ian Rutt
+ * More documentation updating - also changed font size
+
+2004-08-25 Ian Rutt
+ * Fixed problem with reading arrays from config files in
+   glimmer_setup.f90
+ * Replaced top-level glimmer namelist with new-style configuration file.
+ * Began updating documentation
+ * Added character array handling to glimmer_config.f90
+	
+2004-08-24 Ian Rutt
+ * Added user input to determine length of glimmer_example run
+
+2004-08-23 Ian Rutt
+ * Finished replacing namelist input with Magi's config-type parameter
+   file format. Removed old namelist code.
+ * Added two new functions (for reading real(dp) variables and arrays) to
+   glimmer_config.f90.
+
+2004-08-19 Ian Rutt
+ * Moved PDD and precip forcing parameters into the namelist, and slightly
+   reorganized glimmer_paramets.f90 and glimmer_physcon.f90. Would like to
+   get rid of both these files eventually.
+ * Removed redundant nout and nstr parameters from model
+ * Expanded test_config, and added it to build/install in makefile
+ * Began work to replace namelist input with Magi's config-type file
+ * Added functions to glimmer_config.f90 to check whether section/value
+   names are in a prescribed list or not.
+	
+2004-08-18 Magnus Hagdorn
+ * Brown Paper Back: only applied half the patch to glimmer_thck.f90
+   derivatives should be devided by 2*grid_length rather than multiplied
+
+2004-08-18 Ian Rutt
+ * Formatting and documentation of glimmer_thck.f90
+ * Changes to g_land.gln to be compatible with changes to option handling
+ * Added upper-surface calculation after isostasy calc
+
+2004-08-17 Ian Rutt
+ * Added unrecognised option handling for whichevol and whichwvel
+ * Improved formatting of line numbers in glide_messages.f90
+ * Reformatted glimmer_thck.f90
+
+2004-08-16 Ian Rutt
+ * Tidied up unrecognised option handling in a few places
+ * Minor formatting changes
+ * Removed unused option whichstrs
+
+2004-08-13 Ian Rutt
+ * Updated documentation a little
+ * Minor formatting changes
+ * Changes to some constants to conform with EISMINT-1. These should be
+   moved to the configuration files at some point.
+ 
+2004-08-13 Magnus Hagdorn
+ * fixed bug in glimmer_thck.f90: size of opvrew,opvrns is different from ipvr so where
+   construct cannot be used
+ * fixed bug in glimmer_velo.f90: last row/column of calculations was missed
+ * fixed bug where constant was only set on first pass (glimmer_temp.f90, glimmer_modu.f90)
+ * fixed bug in glide_pdd.f90: sp is already loaded
+	
+2004-08-12 Ian Rutt
+ * Added comments to several files: glide_pdd.f90, glimmer_CFproj.f90,
+   glimmer_config.f90, glimmer_example.f90.
+ * Corrected passing of temperature range within model - should be the
+   half-range, so divided range by two in glimmer.f90
+
+2004-08-10 Ian Rutt
+ * Updated top-level information files
+ * Cleared out unneccessary variables and things from makefile.arc files
+
+2004-08-04 Ian Rutt
+ * Completed new PDD code, with Romberg integration from a
+   ACM public domain routine (Algorithm 60). This has been tested, and
+   should work. Removed glimmer_degd.f90, since this is now redundant.
+ * Updated Unix build system to deal with new file.
+
+2004-07-18 Ian Rutt
+ * Added new coding of PDD routines, without any NR code,
+   (glide_pdd.f90), but not "plumbed in" yet.
+
+2004-07-01 Ian Rutt
+ * Added documentation comments to glide_messages.f90
+
+2004-06-30 Ian Rutt
+ * Completed standardisation of message system - six levels are provided,
+ from 'diagnostics' to 'fatal errors'. The overall message level can be
+ set by calling glide_set_msg_level. Two output subroutines are provided:
+ glide_msg and glide_stars; the latter prints a line of 70 stars across
+ the screen. 
+	
+2004-06-30 Ian Rutt
+ * Fixed Linux build system after my changes yesterday (the problems of
+ doing development under Windows...)
+
+2004-06-29 Ian Rutt
+ * Began standardisation of GLIMMER's use of standard output, using new module
+ called glide_messages. NetCDF usage of this not completed yet.
+
+2004-06-28 Ian Rutt
+ * Changed relaxed.f90 so that the relaxed topography is set to just below
+ zero in masked areas.
+
+2004-06-18 Ian Rutt
+ * Added possibility of reading in fields from netcdf file scaled or
+   unscaled
+ * Added code to calculate relaxed bedrock and add it to netcdf input file
+   (relaxed.f90)
+
+2004-06-18 Magnus Hagdorn
+ * glimmer_CFproj.f90: make a distinction between polar_stereographic and 
+   general stereographic projections. Add a standard parallel to 
+   polar_stereographic
+
+2004-06-16 Magnus Hagdorn
+ * minor documentation fixes
+
+2004-06-15 Magnus Hagdorn
+ * fixed doc Makefile
+
+2004-06-15 Magnus Hagdorn
+ * input2ncdf.f90: work out node spacing 
+ * new build system
+	
+2004-06-14 Magnus Hagdorn
+ * fixed problems in input CF file (g_land.input.nc)
+ * work out node spacing and removed unused tensor quantities (bin2ncdf.f90)
+ * fixed dependencies of bin2ncdf.f90 (Makefile)
+
+2004-06-13 Magnus Hagdorn
+ * add mapping info (g_land.input.nc)
+ * added files to doc which I had forgotton before (Makefile, varlist.tex.in)
+ * added longitudes (glimmer_modu.f90, glimmer_setup.f90, ncdf_vars.def)
+ * added CF projections (Makefile, glimmer_CFproj.f90, ncdf_file.f90.in, ncdf_infile.f90.in, generate_ncvars.py)
+ * glimmer_object.f90: initialise output later so it gets projections from input
+ * ncdf.f90.in: moved error handle out of module
+	
+2004-06-11 Ian Rutt
+ * Extended GMT projections code to allow the specification of a
+   standard parallel when using the polar stereographic projection
+
+2004-06-09 Ian Rutt
+ * Added up/downscaling mask to netcdf IO, and removed redundent code
+ * Added this to input2ncdf.f90
+ * Changed allocatable arrays to pointers in input2ncdf.f90, as the Compaq compiler
+   has problems passing arrays arguments with the allocatable attribute out of
+   subroutines
+ * Re-distributed initialisation code to avoid trying to calculate temperatures when
+   the model has no information about them.
+
+2004-06-09 Magnus Hagdorn
+ * initialised pointers in glimmer_proj.f90 with NULL()
+   (fixes bug)
+	
+2004-06-08 Ian Rutt
+ * Merged netCDF_IO branch into main trunk - seems to work OK. 
+   *** NB *** The new capability to mask out some parts of the domain
+   was developed in parallel with the netCDF stuff, and hasn't yet
+   been fully integrated into the netcdf structure. That's the next step -
+   I thought it wise not to attempt too much at once!
+ * The previous unmerged version of the HEAD is tagged as PRE_NETCDF_IO
+ * Added informative comment to glimmer_thck.f90
+	
+2004-06-04 Magnus Hagdorn
+ * made variable names case sensitive (g_land.glw, generate_ncvars.py)
+ * split up user guide into individual sections
+ * added netCDF and config file documentation
+	
+2004-06-03 Magnus Hagdorn
+ * found some more unused filenames and removed out_stem with ncfile
+
+2004-06-03 Magnus Hagdorn
+ * removed unused filenames for namelists and structures
+   usrffile, topgfile, relxfile, prcpfile, presusrffile, latifile
+
+2004-06-03 Ian Rutt
+ * Added dependency of f90_dep.mak on the Makefile and makefile.arc
+ * Cancelled implicit rule that tries to make .o files out of .mod files
+ using the MODULA-2 compiler (m2c), which sometimes causes build problems.
+
+2004-06-01 Magnus Hagdorn
+ * new documentation structure
+	
+2004-05-27 Ian Rutt
+ * Fixed problems with polar stereographic projection and interpolation routines.
+
+2004-05-25 Ian Rutt
+ * Added comment to main glimmer subroutine
+
+2004-05-24 Magnus Hagdorn
+ * added some standard name attributes (ncdf_file.f90.in, ncdf_vars.def)
+	
+2004-05-24 Magnus Hagdorn
+ * g_land.gln: removed outs namelist
+ * glimmer_global.f90: added version string
+ * ncdf_file.f90.in, generate_ncvars.py: renamed loop index sp to spot
+ * glimmer_config.f90: fixed silly bug
+ * added global meta data to netCDF output (g_land.glw, ncdf.f90.in, ncdf_file.f90.in, ncdf_params.f90.in)
+
+2004-05-24 Ian Rutt
+ * Sorted out input and output arrays of water flux, and added diagnostic
+	outputs of total water fluxes and ice sheet volume.
+ * Fixed ice model so that ice thickness isn't accumulated twice on first time-step.
+
+2004-05-19 Ian Rutt
+ * Fixed problem with array sizes in glimmer.f90. Here, the size of
+	temporary arrays was based on the size of optional arguments,
+	which isn't allowed. Replaced them will allocatable arrays.
+ * Fixed problem with build system - added glimmer_global_grid.f90
+	
+2004-05-18 Magnus Hagdorn
+ * added integer and real array parameters (test_config.conf, glimmer_config.f90, test_config.f90)
+ * removed indices0dx and indices0dy (glimmer_setup.f90, glimmer_restart.f90, glimmer_modu.f90)
+ * fully implemented spot variables (ncdf.f90.in, ncdf_file.f90.in, ncdf_params.f90.in, ncdf_vars.def, generate_ncvars.py)
+	
+2004-05-18 Magnus Hagdorn
+ * initialised pointers to NULL() to fix segfault with NAG compiler (ncdf_params.f90.in)
+ * added debug flags to makefile.nag
+
+2004-05-17 Magnus Hagdorn
+ * working around silly problem with Intel compiler. I am still not quite sure what the problem is,
+   but config reader API had to be changed from functions to subroutines
+   (glimmer_config.f90, test_config.f90, ncdf_params.f90.in)
+ * makefile.ifc: added DEBUG flags, renamed compiler to ifort
+ * replaced binary input files g20lati, g20prcp, g20relx, g20surf, g20thck, g20topg with netCDF input
+   file g_land.input.nc. This is also reflected in netCDF control file (g_land.glw)
+
+2004-05-17 Ian Rutt
+ * Added copy_global_grid subroutine to glimmer_global_grid.f90
+ * Added capability to specify grid-box boundaries when initialising model,
+ 	using optional arguments in initialise_glimmer().
+ * Updated documentation.
+ * Corrected instance namelist read - forc was absent.
+
+2004-05-14 Magnus Hagdorn
+ netCDF input, Round 1
+ * add netCDF input capabilities, removed old I/O bits
+	
+2004-05-14 Magnus Hagdorn
+ netCDF output, Round 1
+ * glimmer/data: output file configuration format changed to something similar to Windows .ini files (g_land.glw)
+                 added a new directory containg test data files (test/test_config.conf)
+ * new configuration file parser (glimmer_config.f90/test_config.f90)
+ * glimmer_interp.f90: SUN compiler complains about a functions passed as dummy arguments which are not declared external
+ * ncdf_params.f90.in, generate_ncvars.py: netCDF output file configuration reader
+ * ncdf.f90.in: initialise variables to sensible defaults
+ * ncdf_file.f90.in: added subroutines openall_out and writeall
+ * glimmer_modu.f90, glimmer_object.f90: hooked up netCDF output
+
+2004-05-14 Ian Rutt
+ * Added output-masking capability to enable overlapping domains to be
+	more easily dealt with.
+ * Fixed polar stereographic projection. However, the stereographic
+	projections still fail if the pole is in the domain - not sure why.
+ * Implemented new, better downscaling-interpolation scheme, which handles
+	the presence of a pole better, and take into account the irregular
+	shape of the interpolation domain.
+ * Added proper default initialisation of top-level glimmer type.
+	
+2004-05-12 Ian Rutt
+ * Removed redundant re_alloc flag argument from proj_allocate subroutine
+	in glimmer_project.f90
+
+2004-05-11 Ian Rutt
+ * Removed redundant xscale and yscale components from projection type, 
+	which were originally set equal to dx and dy. All references to
+	them have been changed accordingly.
+
+2004-05-10 Magnus Hagdorn
+ * input2ncdf.f90: actually does what it is supposed to
+ * ncdf_vars.def: added presusrf, present day surface of the ice-sheet
+ * generate_ncvars.py: don't write variables associated with spots if no spots are selected
+
+2004-05-10 Magnus Hagdorn
+ * added spot variables (generate_ncvars.py, ncdf_vars.def, ncdf.f90.in, ncdf_file.f90.in)
+ * bin2ncdf.f90: does 3D now as well, there is a bug with the 0D time series.
+ * input2ncdf.f90: start of a tool to convert glimmer input files to netCDF file
+
+2004-05-08 Magnus Hagdorn
+ * first round of netCDF stuff
+   generate_ncvars.py: code generator taking netCDF file description
+	(ncdf_vars.def) to produce f90 files from inputfiles .f90.in
+	ncdf.f90.in basic data structures
+	ncdf_file.f90.in file I/O operations
+ * bin2ncdf.f90: testing netCDF stuff and converting old datafiles 
+	(2D only at the moment) to new netCDF
+
+2004-05-06 Ian Rutt
+ * Rationalisation of calc_coverage (glimmer_object.f90), with 
+	global grid objects.
+ * Minor formatting changes.
+ * Completed adding initialisation to derived types and rejigging
+	namelist reads to avoid confusion about default values.
+ * Coded alternative, hopefully faster calc_coverage routine.
+ * Made efficiency alterations to new_upscale code.
+ * Duplicated mean_to_global (glimmer_interp.f90) in single and
+	double precision copies (in terms of array local) and
+	added appropriate aliasing interface block. This was to
+	allow the addition of a compile flag to invoke a single-precision
+	interface (compile with GLIMMER_SP defined).
+ * Corrected error in GMT code - sines and cosines being taken without 
+	converting from degrees to radians!
+
+2004-05-05 Ian Rutt
+ * Realised several crucial aspects of the orography output were
+	missing, so added them. Produces orography as expected now,
+	but some structural changes are needed, I think.
+ * Restructured code so that global grid definitions have their own 
+	derived type, which simplifies things. However, more rationalisation 
+	and simplification still possible
+ * Minor formatting, and removal of redundant stress arrays
+
+2004-05-04 Ian Rutt
+ * Added upscale type to glimmer_interp.f90 and adjusted code 
+  	accodingly. This was to enable the output of orography 
+	at any resolution, as needed by the IGCM. 
+ * ***NB*** This hasn't been tested properly yet, and the
+	restarts have been broken by it, as there wasn't time
+ 	to add routine writing the upscaling to a restart file
+ * Other minor formating changes, and addition of null pointer
+	initialisation in some places
+
+2004-04-27 Ian Rutt
+ * Added doc comments to gmt.f90
+ * Updated return value documentation throughout to !*RV
+ * Other minor documentation and formatting changes
+ * Moved glimmer_params initialisation to type definition
+	in line with move to f95, and added null 
+	initialisation for pointer arrays. (glimmer.f90)
+ * Checked all elements of glimmer_params correctly
+	included in restart routines and in consistent
+	order. This should work OK, but hasn't been tested...
+
+2004-04-26 Ian Rutt
+ * Merged port_to_nag branch into HEAD
+ * Extended interpolation routines (glimmer_interp.f90) to include 
+	averaging high-resolution global field onto local
+	grid. Also generalised find_ll_index somewhat to cope 
+	with longitudes that have limits other than 0->360 
+	(e.g. 180->360, 0->180). This may need more work, though.
+ * Added matlab visualisation routines to the repository.
+
+2004-04-19 Magnus Hagdorn
+ * added ChangeLog
+ * added NAG f95 makros
+ * new build system (using Python script to work out module dependencies)
+ * reduced number of time slices in example code to 10000yrs
+ * made kind rk=dp (rather than 8)
+ * (glimmer_outp.f90) integer array index
+ * added SUN WS f95 makros
+ * (glimmer_restart.f90, glimmer_interp.f90) workaround for SUN WS compiler bug
+ * (glimmer.f90, glimmer_velo.f90) avoid division by zero
+ * removed unused symbols and unused module symbols
