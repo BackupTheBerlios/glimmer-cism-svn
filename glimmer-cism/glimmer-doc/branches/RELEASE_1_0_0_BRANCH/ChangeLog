@@ -2,6 +2,7 @@
  * Checked through User Guide, and expanded/corrected various parts
  * Bumped version for release 1.0.0
  * Updated NEWS
+ * Bumped version to 1.0.1 un bugfix branch
 
 2007-03-16 Ian Rutt
  * Fixed some underscore bugs.
