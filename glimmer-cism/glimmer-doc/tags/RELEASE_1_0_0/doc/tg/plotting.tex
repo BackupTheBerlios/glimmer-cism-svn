@@ -1,0 +1,44 @@
+\section{Visualising GLIMMER Output}
+All PyCF tools share some of the options. You can select a variable to be processed with the \texttt{-v} switch. A time slice is selected using the \texttt{-t} or \texttt{-T} switch. The difference between the two switches is that you select a time (in ka) with the \texttt{-t} switch and a time slice (a number starting at 0) with the \texttt{-T} switch. You can also use negative numbers for the \texttt{-T} switch to start counting at the end, e.g. \texttt{-T-1} selects the last time slice.
+
+Variables to be plotted are selected with the \texttt{-v} switch. The name of the variable is the same as in the netCDF file (see Appendix \ref{ug.sec.varlist}). There are some additional variables which are calculated from the variables stored in the netCDF file (see Table \ref{tg.tab.extra_vars}). If you select a three--dimensional variable, such as the ice temperature \texttt{temp}, then you can also specify which $\sigma$--level you want to plot using the \texttt{-l} option.
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{|p{0.1\textwidth}|p{0.8\textwidth}|}
+    \hline
+    \texttt{is} & ice surface, $h+H$ \\
+    \texttt{vel} & magnitude of horizontal velocity field, $\sqrt{u_x^2+u_y^2}$ \\
+    \texttt{bvel} & magnitude of horizontal basal velocities \\
+    \texttt{bvel\_tavg} & magnitude of horizontal basal velocities overaged over time.\\
+    \texttt{\_avg} & append \texttt{\_avg} to 3D variables to calculate the vertical average of the variable.\\
+    \hline
+  \end{tabular}
+  \caption{Additional variables calculated from variables in netCDF file.}
+  \label{tg.tab.extra_vars}
+\end{table}
+
+For some plots you can select more than one variable or time or use a number of input files. You can change the width of a plot with the \texttt{--width} switch. This is particularly useful if you are plotting more than one variable/time/file with \texttt{plotCFvar.py}.
+
+All PyCF tools produce postscript files. You can send these files straight to a postscript printer. If you want to include images in a {\LaTeX} document you need to convert them to an encapsulated postscript file. \texttt{ps2epsi} is such a utility and is used for the examples shown here. You can also use \texttt{convert} which is part of \href{http://www.imagemagick.org/script/index.php}{ImageMagick} to convert the resulting postscript files to any other graphics format such as \texttt{PNG}.
+
+You can always use the switch \texttt{-h} or \texttt{--help} to get some documentation of the switches. Some of the options have no effect or do not behave as you would expect. Please expirment with the tools and report bugs and make suggestions for improvement. 
+
+\input{\dir/plotcfvar.tex}
+\input{\dir/plotstreams.tex}
+\input{\dir/plotextent.tex}
+\input{\dir/plotprofile.tex}
+\input{\dir/plotprofilets.tex}
+\input{\dir/plotspot.tex}
+\input{\dir/plotcfstats.tex}
+\input{\dir/plotcfdiff.tex}
+\input{\dir/rsl.tex}
+
+\subsection{Producing Animations}
+PyCF includes a program which can be used to produce an animation. Any PyCF program that uses the \texttt{-T} option to select a time slice can be animated with \texttt{make\_anim.py}. \texttt{make\_anim.py} uses \href{http://www.mplayerhq.hu/homepage/design7/news.html}{\texttt{mencoder}} to combine the individual frames to an animation. You will also need ImageMagick to convert the postscript files to PNG files.
+
+For example, the command
+\begin{verbatim}
+make_anim.py -t 0 120 "plotCFvar.py -vis -cthk -iis --land fenscan.nc"
+\end{verbatim}
+will produce an animation called \texttt{anim.avi} (you can override the output file name with the \texttt{-o} option) of the ice surface evolution. The \texttt{-t} option selects the range of time slices to be processed. The frame rate of the animation can be changed with the \texttt{-f} option. A different CODEC can be selected using \texttt{-c}. \texttt{mencoder} might fail to produce an animation. This is usually due to the fact that the CODEC can only handle certain size frames. It is therefore advisable to first tryout a short animation with 5 frames or so and to change the size with \texttt{-s} option if it fails. You can pass further options to \texttt{convert} using the \texttt{--convert\_options} option.
