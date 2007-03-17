@@ -1,0 +1,30 @@
+\subsection{Using \texttt{plotCFvar.py}}
+\texttt{plotCFvar.py} is used to plot a time slice of a 2D variable, such as ice thickness or basal velocities. Furthermore, a vertical slice can be specified if the field is three--dimensional such as the temperature or full velocity field. The displayed data can be clipped to the ice extent or area above sea--level. A three--dimensional effect can be created by illuminating the result.
+
+PyCF comes with a set of colourmaps for some variables, like ice thickness, topography, temperatures, etc. With the \texttt{--colourmap} option you can specify a custom colourmap. You can use any GMT colour map. You can automatically calculate a rainbow colourmap with the option \texttt{--colourmap=None}.
+
+\begin{pycf}{plotCFvar.py -vtopg fenscan.nc topo.ps}{\dir/figures/topo.eps}
+plots the bedrock topgraphy. The \texttt{-v} switch selects the variable. The first time slice is processed if no time slice is specified on the command line. 
+
+The GMT coastline database is used to add present--day coastlines. The colourmap is selected for a set of predefined colourmaps.
+\end{pycf}
+
+\begin{pycf}{plotCFvar.py -vis -cthk -iis -t -17 --land fenscan.nc is.ps}{\dir/figures/is.eps}
+plots the ice surface which is calculated from the variables \texttt{topg} and \texttt{thk}. The switch \texttt{-t} select a time slice at -17ka. The data is clipped to the area covered by ice with the \texttt{-c} switch. \texttt{-i} adds illumination. The \texttt{--land} switch colours areas above sea--level in grey.
+\end{pycf}
+
+\begin{pycf}{plotCFvar.py -vthk -cthk -t-17 --land --contours=0/4000/500/1000 fenscan.nc is.ps}{\dir/figures/thk.eps}
+plots ice thicknesses with custom contours. The \texttt{--contours} option takes 3 or 4 values separated with a \texttt{/}. The first two values give start and end contour value. The third value the contour interval and optionally, the forth value sets the annotation interval.
+\end{pycf}
+
+\begin{pycf}{plotCFvar.py -vbtemp -cthk -gbvel --pmt -t -17 --land fenscan.nc btemp.ps}{\dir/figures/btemp.eps}
+plots the basal temperatures adjusted for its dependance on pressure (\texttt{--pmt}) and adds glyphs for the basal velocity directions with the \texttt{-g} switch. The density of glyphs is automatically adjusted to the size of the plot. Glyphs only indicate direction. If you want magnitudes as well you should just plot the basal velocity field with \texttt{-vbvel}.
+\end{pycf}
+
+\begin{pycf}{plotCFvar.py -vbvel --urg=20 60 -t -17 fenscan.nc bvel.ps}{\dir/figures/bvel.eps}
+plots an enlargement of the basal velocity field. You can specify the geographic coordinates of the lower--left corner (\texttt{--llg}) and/or upper--right corner (\texttt{--urg}) to define the region to be plotted. Alternatively, you can also specify the corners in the projected coordinate system using \texttt{--llx} and \texttt{--urx}.
+\end{pycf}
+
+\begin{pycf}{plotCFvar.py -vbvel -cthk -t -17 --land -pprof --not\_p fenscan.nc bvel.ps}{\dir/figures/bvelp.eps}
+plots a 2D field with a profile line. The \texttt{-p} selects a file containing coordinates of the profile. This option can be repeated to have more than one line. The \texttt{--not\_p} is short for \texttt{--not\_projected} and indicates that the coordinates have to be projected to the map coordinate system. Profile lines are labeled automatically, starting with A.
+\end{pycf}

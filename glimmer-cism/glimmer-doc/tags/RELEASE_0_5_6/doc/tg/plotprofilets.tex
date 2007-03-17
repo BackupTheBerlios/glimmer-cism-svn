@@ -1,0 +1,8 @@
+\subsection{Using \texttt{plotProfileTS.py}}
+\begin{pycf}{plotProfileTS.py -t -30 0 -vbtemp --pmt -cthk -p prof --not\_p fenscan.nc td1.ps}{\dir/figures/time_dist1.eps}
+plots a time--distance diagram of the variable selected with \texttt{-v}. You can specify the time interval with \texttt{-t}. All time slices are processed if you do not specify a time interval. As before the variable is clipped to the area covered by ice.
+\end{pycf}
+
+\begin{pycf}{plotProfileTS.py -e stages --profvar is -vbtemp --pmt -cthk -p prof --not\_p $\backslash$ \newline fenscan.nc td2.ps}{\dir/figures/time_dist2.eps}
+You can specify a variable to be plotted at the beginning and end of the time interval using the \texttt{--profvar} option. With the \texttt{-e} option you can plot the time scale on the right. The \texttt{stages} file contains 4 comma--separated columns. The first column contains the name, second and thrid column start and end time in years, and the last column a R/G/B triplet for the background colour. 
+\end{pycf}

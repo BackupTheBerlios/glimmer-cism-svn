@@ -1,0 +1,47 @@
+2005-12-19 Magnus Hagdorn
+ * Makefile.ams: fixed list of distributed files so that documentation can
+   be built for tar ball by just running latex
+ * make_doc.rules: fixed rule to build gnuplot plots
+ * definitions.tex: today's date
+ * configure.in: bump version to 0.5.6
+ * NEWS: update
+
+2005-12-16 Magnus Hagdorn
+ * plotting.tex: update make_anim doc
+
+2005-12-13 Magnus Hagdorn
+ * configure.in: use AM_PATH_GLIMMER to set up GLIMMER
+ * bootstrap: look for glimmer.m4
+ * Makefile.am: add rule to regenerate aclocal.m4
+
+2005-12-09 Magnus Hagdorn
+ * document recent changes in PyCF
+
+2005-11-30 Magnus Hagdorn
+ * non_graphical.tex: update doc for construct_field.py
+
+2005-11-28 Magnus Hagdorn
+ * add more PyCF documentation
+
+2005-11-25 Magnus Hagdorn
+ * fix some TeX4ht issues
+
+2005-11-25 Magnus Hagdorn
+ * definitions.tex: use \url instead of \texttt
+ * packages.tex: load url style
+ * configure.in: check if RSL database is present
+ * loads of PyCF docs
+
+2005-11-23 Magnus Hagdorn
+ * configure.in: look for glimmer-tests and use it as a data source for
+   PyCF documentation
+ * definitions.tex: new environment for PyCF documentation
+ * visualisation.tex, ug.tex: move old PyCF documentation to new tree
+ * lots of new files documenting various PyCF programs
+
+2005-11-18 Magnus Hagdorn
+ * added AUTHORS
+
+2005-11-18 Magnus Hagdorn
+ * started ChangeLog
+ * added automake support

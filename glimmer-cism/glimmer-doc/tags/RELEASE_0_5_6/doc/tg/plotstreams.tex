@@ -1,0 +1,10 @@
+\subsection{Using \texttt{plotStreams.py}}
+\texttt{plotStreams.py} is similar to \texttt{plotCFvar.py} with the only difference that it plots areas where the ice base is sliding over a given time interval. The time interval can be set with the \texttt{--deltat} option. Basal velocities are processed for the time interval centred at the time slice selected with \texttt{-t} or \texttt{-T}.
+
+\begin{pycf}{plotStreams.py -t-10 --deltat=10000 --legend fenscan.nc streams1.ps}{\dir/figures/streams1.eps}
+plots relative time an area is occupied by sliding ice during the interval -20ka to 0ka, i.e. a value of 1 indicates that the cell was sliding and a value of 0 indicates that ice was frozen to the bed  through out the interval. The \texttt{--legend} switch adds the colour legend.
+\end{pycf}
+
+\begin{pycf}{plotStreams.py -t-10 --deltat=10000 --velocity fenscan.nc streams2.ps}{\dir/figures/streams2.eps}
+plots mean basal velocities during the interval -20ka to 0ka.
+\end{pycf}
