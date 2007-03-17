@@ -31,7 +31,7 @@ appropriate). This is illustrated schematically in figure~\ref{ug.fig.glint_time
 %
 \subsubsection{Prerequisites}
 %
-In order to use GLIMMER, the following should be borne in mind:
+If you plan to use GLINT, the following should be borne in mind:
 %
 \begin{itemize}
 \item Global input fields must be supplied on a latitude-longitude
@@ -115,7 +115,7 @@ section below. The compulsory arguments are:
 \end{itemize}
 %
 Two mass-balance schemes, both based on the positive degree day (PDD) method,
-are supplied with Glimmer. One of these calculates the mass-balance for the
+are supplied with GLIMMER, and are available through GLINT. One of these calculates the mass-balance for the
 whole year (the \emph{Annual PDD scheme}), while the other calculates on a
 daily basis (the \emph{Daily PDD scheme}). The annual scheme incorporates a
 stochastic temperature variation to account for diurnal and other variations,
@@ -246,61 +246,67 @@ floating-point value in years.
 \end{enumerate}
 
 The interaction of these two parameters is fairly complex, and permits a 
-reasonably sophisticated control of how the ice sheet model is forced. I've 
-added various checks to make sure sensible/possible values are selected. Most 
+reasonably sophisticated control of how the ice sheet model is forced. 
+Various checks are made at run-time to make sure sensible/possible values are selected. Most 
 importantly, all relevant time-steps must divide into one another 
 appropriately - the model will (should\ldots) stop if an un-sensible combination 
 of values is detected.
 
 \subsubsection{GLINT timestepping --- further examples}
 
-\emph{(The following is lifted verbatim from an email to the glimmer-discuss
-mailing list)}
+To aid understanding of the time-stepping controls, here are some examples. First, suppose we have these time-step values:
 
-\begin{verbatim}
-Suppose we have these time-step values:
-
-forcing time-step:      6 hours
-mass-balance time-step: 1 day
-ice time-step:          0.5 year
+\vspace{0.5cm}
+\begin{tabular}{ll}
+forcing time-step: & 6 hours \\
+mass-balance time-step: & 1 day \\
+ice time-step: & 0.5 year
+\end{tabular}
+\vspace{0.5cm}
 
 By default, the model will accumulate 6 months' worth of mass-balance 
 calculations, and force the ice sheet model based on that. This might not be 
 desirable, so you could set:
 
-mbal_accum_time = 1.0
+\begin{verbatim}
+    mbal_accum_time = 1.0
+\end{verbatim}
 
 This would make GLINT accumulate 1 year's worth of mass-balance output before 
-forcing the ice sheet (at which point it would execute _two_ ice sheet 
+forcing the ice sheet (at which point it would execute \emph{two} ice sheet 
 time-steps of 0.5 years each).
 
 Having done that, you could accelerate the ice model by a factor of ten, by 
 setting:
 
-ice_tstep_multiply = 10
+\begin{verbatim}
+    ice_tstep_multiply = 10
+\end{verbatim}
 
 In this scenario, 20 ice sheet time-steps of 0.5 years each would be done 
 after each 12-month accumulation of mass-balance data.
 
-EXAMPLE 2:
-----------
-
-By contrast, there can be situations where we don't want to calculate a 
-mass-balance on all the available data (perhaps to save time?). Consider 
+For the second example, we consider the contrasting situation where we don't want to calculate a 
+mass-balance on all the available data (perhaps to save time). Consider 
 these time-step values:
 
-forcing time-step:      6 hours
-mass-balance time-step: 1 day
-ice time-step:          10 years
+\vspace{0.5cm}
+\begin{tabular}{ll}
+forcing time-step:   &   6 hours \\
+mass-balance time-step: & 1 day \\
+ice time-step:       &   10 years
+\end{tabular}
+\vspace{0.5cm}
 
-(Clearly this a fairly numerically stable and/or low-res ice sheet).
+(Clearly this a fairly numerically stable and/or low-resolution ice sheet).
 
-To avoid running the daily PDD scheme ~3600 times (depending on the value of 
-days_in_year), we can set to only use the first two years of data:
+To avoid running the daily PDD scheme c.3600 times (depending on the value of 
+\texttt{days\_in\_year}), we can set to only use the first two years of data:
 
-mbal_accum_time = 2.0
+\begin{verbatim}
+    mbal_accum_time = 2.0
+\end{verbatim}
 
 GLINT accumulates mass-balance for 2 years, then waits for 8 years (incoming 
 data are ignored during this time), before calling the ice sheet. Ice sheet 
-acceleration may be enabled with ice_tstep_multiply as before.
-\end{verbatim}
+acceleration may be enabled with \texttt{ice\_tstep\_multiply} as before.

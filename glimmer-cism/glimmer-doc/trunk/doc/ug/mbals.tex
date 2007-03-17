@@ -193,3 +193,53 @@ Palaeoclimatology, Palaeoecology (Global and Planetary Change)}
 
 \noindent Letreguilly, Huybrechts  and  Reeh (1991) \emph{Journal of
 Glaciology} \textbf{37}, 149-157.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Daily PDD scheme
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+\subsection{Daily PDD scheme}
+\label{ug.mbal.daily_pdd_scheme}
+The other PDD scheme supplied with GLIMMER is a daily scheme. This is simpler than the annual scheme in that it does not incorporate any stochastic variations. The mass-balance is calculated on a daily basis, given the daily mean temperature and half-range, and assuming a sinusoidal diurnal cycle. Consequently, the firn model is more sophisticated than with the annual scheme, and includes a snow-densification parameterization.
+%
+\subsubsection{Configuration}
+The daily PDD scheme is configured using a single section in the configuration file:
+\begin{center}
+  \tablefirsthead{%
+    \hline
+  }
+  \tablehead{%
+    \hline
+    \multicolumn{2}{|p{0.98\textwidth}|}{\emph{\small continued from previous page}}\\
+    \hline
+  }
+  \tabletail{%
+    \hline
+    \multicolumn{2}{|r|}{\emph{\small continued on next page}}\\
+    \hline}
+  \tablelasttail{\hline}
+  \begin{supertabular}{|l|p{11cm}|}
+%%%% 
+    \hline
+    \multicolumn{2}{|l|}{\texttt{[GLIMMER daily pdd]}}\\
+    \hline
+    \multicolumn{2}{|p{0.98\textwidth}|}{Specifies parameters for the PDD
+    table and mass-balance calculation}\\
+    \hline
+    \texttt{wmax} & Fraction of melted snow that refreezes (default=0.6) \\
+    \texttt{pddfac\_ice} & PDD factor for ice (m day$^{-1}\,^{\circ}$C$^{-1}$)
+    (default=0.008)\\
+    \texttt{pddfac\_snow} & PDD factor for snow (m day$^{-1}\,^{\circ}$C$^{-1}$) (default=0.003)\\
+    \texttt{rain\_threshold} & Temperature above which precipitation is held to be rain ($^{\circ}$C) (default=1.0)\\
+    \texttt{whichrain} & {\raggedright
+      Which method to use to partition precipitation into rain and snow:\\
+      \begin{tabular}{lp{7cm}}
+        {\bf 1} & Use sinusoidal diurnal temperature variation \\
+        2 & Use mean temperature only\\
+      \end{tabular}}\\
+    \texttt{tau0} & Snow densification timescale (s) (default=10 years)\\
+    \texttt{constC} & Snow density profile factor C (m$^{-1}$) (default=0.0165)\\
+    \texttt{firnbound} & Ice-firn boundary as fraction of density of ice (default=0.872)\\
+    \texttt{snowdensity} & Density of fresh snow ($\mathrm{kg}\,\mathrm{m}^{-3}$) (default=300.0)\\
+  \end{supertabular}
+\end{center}
