@@ -14,3 +14,5 @@ eis_varlist.tex:	@GLIMMER_PREFIX@/share/glimmer/eis_vars.def varlist.tex.in
 			$(PYTHON) @GLIMMER_PREFIX@/bin/generate_ncvars.py $^
 glint_varlist.tex:	@GLIMMER_PREFIX@/share/glimmer/glint_vars.def varlist.tex.in
 			$(PYTHON) @GLIMMER_PREFIX@/bin/generate_ncvars.py $^
+glint_mbal_varlist.tex:	@GLIMMER_PREFIX@/share/glimmer/glint_mbal_vars.def varlist.tex.in
+			$(PYTHON) @GLIMMER_PREFIX@/bin/generate_ncvars.py $^

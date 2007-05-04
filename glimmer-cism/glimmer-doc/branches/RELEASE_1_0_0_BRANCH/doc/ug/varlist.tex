@@ -5,4 +5,14 @@ The following list shows all the variable names used by GLIMMER. Only variables 
 \section{EIS Variables}
 \input{\dir/eis_varlist.tex}
 \section{GLINT Variables}
+\subsection{Variables for \texttt{[CF output]}}
+The following variables are available for output at each GLIDE
+timestep, and represent the fields as they relate to the icesheet
+timestep. They should be included in a \texttt{[CF output]} section.
 \input{\dir/glint_varlist.tex}
+\subsection{Variables for \texttt{[GLINT output]}}
+The following variables are available for output each time GLINT is
+called, including at intervals shorter than the icesheet timestep. The
+represent instantaneous fields in the coupling scheme, and should be
+included in a \texttt{[GLINT output]} section.
+\input{\dir/glint_mbal_varlist.tex}

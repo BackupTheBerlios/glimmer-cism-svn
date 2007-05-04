@@ -222,6 +222,19 @@ GLINT are as follows:
     default is equal to mass-balance timestep).  See below for full explanation of GLINT
     time-stepping. \\
     \hline
+%%%% 
+    \hline
+    \multicolumn{2}{|l|}{\texttt{[GLINT output]}}\\
+    \hline
+    \multicolumn{2}{|p{0.98\textwidth}|}{Specifies output files in a
+    similar way to the main GLIDE output section, \texttt{[CF
+    output]}. A separate method of handling GLINT output is necessary
+    because of the decoupling of timekeeping between GLINT and
+    GLIDE. Specifying a \texttt{[GLINT output]} config section allows
+    the output of instantaneous fields at intervals shorter than the
+    GLIDE timestep. All the same values may be specified as for a \texttt{[CF
+    output]} section. The possible fields are given in appendix \ref{ug.sec.varlist}}\\
+    \hline
   \end{supertabular}
 \end{center}
 
