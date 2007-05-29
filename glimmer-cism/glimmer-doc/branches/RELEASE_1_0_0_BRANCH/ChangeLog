@@ -1,6 +1,7 @@
 2007-05-29 Ian Rutt
  * Bumped version for release 1.0.4
  * Updated NEWS
+ * Bumped version to 1.0.5 in bugfix branch
 
 2007-05-04 Ian Rutt
  * Updated description of GLINT output file handling
