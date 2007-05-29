@@ -1,3 +1,8 @@
+Changes in Version 1.0.4
+========================
+* Some updating for equivalent version of Glimmer,
+  notably the [GLINT output] config section
+
 Changes in Version 1.0.0
 ========================
 * Substantial updating of all sections
