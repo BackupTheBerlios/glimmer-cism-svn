@@ -1,3 +1,6 @@
+2007-07-10 Ian Rutt
+ * Removed redundant options from EISMINT-1 config files
+
 2006-10-25 Ian Rutt
  * Updated EISMINT-3-GL data to reflect changes in driver
 
