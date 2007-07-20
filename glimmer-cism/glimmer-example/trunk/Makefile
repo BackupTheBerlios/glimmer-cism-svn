@@ -23,7 +23,7 @@ example:	example.o
 # stuff below here is not too interesting. You might as well ignore it...
 # build a distribution
 DIST_FILES = ChangeLog example.config example.f90 Makefile README
-VERSION = 0.4
+VERSION = 0.6
 DIST_NAME = glimmer-example-$(VERSION)
 dist::
 	mkdir $(DIST_NAME)

@@ -1,3 +1,7 @@
+2007-07-20 Ian Rutt
+ * Bumped version to 0.6 for release. Having changed the example to use
+ the EISMINT-1 code, I'm a bit unsure whether we need this example...?
+
 2007-2-5 Felix Hebeler
  * Updated example.config to use EISMINT 1 binary so no -m flag is needed
  
