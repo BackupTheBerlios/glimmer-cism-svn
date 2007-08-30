@@ -1,3 +1,6 @@
+2007-08-29 Ian Rutt
+ * Corrected error in glint docs - conflicting units specified for precip.
+
 2007-05-30 Ian Rutt
  * Added enmabal build option to install instructions
 
