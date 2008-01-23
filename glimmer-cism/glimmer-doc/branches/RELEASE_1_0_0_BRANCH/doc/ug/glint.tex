@@ -1,8 +1,9 @@
 \newpage
-\subsection{GLINT driver}
-\subsubsection{Overview}
+\section{GLINT driver}
+\label{ug.sec.glint}
+\subsection{Overview}
 %
-GLINT is the most complex of the drivers supplied as part of GLIMMER. It was
+GLINT is the most complex of the drivers supplied as part of Glimmer. It was
 originally developed as an interface between GLIDE and the GENIE Earth-system
 model, but is designed to be flexible enough to be used with a wide range of
 global climate models. Perhaps the most distinctive feature of GLINT is the
@@ -23,20 +24,20 @@ appropriate). This is illustrated schematically in figure~\ref{ug.fig.glint_time
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.6\textwidth]{\dir/figs/glint_timesteps.eps}
-  \caption{Relationship between the timesteps in GLINT. The filled circles
-  represent timesteps, the rectangles represent averaging/accumulation, and the arrows,
+  \caption{Relationship between the time-steps in GLINT. The filled circles
+  represent time-steps, the rectangles represent averaging/accumulation, and the arrows,
   flow of coupling fields.}
   \label{ug.fig.glint_timesteps}
 \end{figure}
 %
-\subsubsection{Prerequisites}
+\subsection{Prerequisites}
 %
 If you plan to use GLINT, the following should be borne in mind:
 %
 \begin{itemize}
 \item Global input fields must be supplied on a latitude-longitude
   grid. The grid does not have to be uniform in latitude, meaning that
-  Gaussian grids may be used. Irregular grids (e.g. icosahedral grids) are not
+  Gaussian grids may be used. Non-rectangular grids (e.g. icosahedral grids) are not
   supported currently. The boundaries of the grid boxes may be specified; if
   not, they are assumed to lie half-way between the grid-points in lat-lon space.
 \item In the global field arrays, latitude must be indexed from north to south
@@ -48,10 +49,10 @@ If you plan to use GLINT, the following should be borne in mind:
   fractionally short of the pole (e.g. at 89.9$^{\circ}$ and -89.9$^{\circ}$).
 \end{itemize}
 %
-\subsubsection{Initialising and calling}
+\subsection{Initialising and calling}
 
 The easiest way to learn how GLINT is used is by way of an
-example. GLINT should be built automatically as part of GLIMMER, and we assume
+example. GLINT should be built automatically as part of Glimmer, and we assume
 here that this has been achieved successfully.
 
 Typically, GLINT will be called from the main program body of a
@@ -86,8 +87,8 @@ In this call, the arguments are as follows:
 \item \texttt{lats} and \texttt{lons} are one-dimensional arrays giving the
   locations of the global grid-points in latitude and longitude, respectively;
 \item \texttt{time\_step} is the intended interval between calls to GLINT, in
-hours. This is known as the \emph{forcing timestep}. 
-\item \texttt{paramfile} is the name of the GLINT configuration file.
+hours. This is known as the \emph{forcing time-step}. 
+\item \texttt{paramfile} an array of GLINT configuration filenames.
 \end{itemize}
 %
 The contents of the configuration file will be dealt with later. Having
@@ -110,22 +111,22 @@ section below. The compulsory arguments are:
   $^{\circ}\mathrm{C}$;
 \item \texttt{precip} is the global precipitation rate,
   in $\mathrm{mm/s}$ (water equivalent, making no distinction
-  between rain, snow, etc.);
+  between rain, snow, etc.). Depending on the details of your climate
+  model, and the mass-balance you select, it may be appropriate to
+  supply precipitation minus evaporation instead.
 \item \texttt{orog} is the global orography field, in $\mathrm{m}$.
 \end{itemize}
 %
 Two mass-balance schemes, both based on the positive degree day (PDD) method,
-are supplied with GLIMMER, and are available through GLINT. One of these calculates the mass-balance for the
+are supplied with Glimmer, and are available through GLINT. One of these calculates the mass-balance for the
 whole year (the \emph{Annual PDD scheme}), while the other calculates on a
-daily basis (the \emph{Daily PDD scheme}). The annual scheme incorporates a
-stochastic temperature variation to account for diurnal and other variations,
-which means that if this scheme is to be used, GLINT should be called such
-that it sees a seasonal temperature variation which has had those variations
-removed. In practice, this means calling GLINT on a monthly basis, with
-monthly mean temperatures. For the daily scheme, no such restriction exists,
-and the scheme should be called at least every 6 hours.
+daily basis (the \emph{Daily PDD scheme}). Both mass-balance schemes
+calculate melt based on a sinusoidal cycle (annual and diurnal,
+respectively). The amplitude and mean value of the cycle is determined
+from the input temperature field: a spectral method is used to fit a
+sinusoidal wave thought the supplied data. 
 %
-\subsubsection{Finishing off}
+\subsection{Finishing off}
 %
 After the desired number of time-steps have been run, GLINT may have some
 tidying up to do. To accomplish this, the subroutine \texttt{end\_glint}
@@ -135,13 +136,13 @@ must be called:
   call end_glint(ice_sheet)
 \end{verbatim}
 %
-\subsubsection{API}
+\subsection{API}
 %
 A detailed description of the GLINT API may be found in the appendices.
 %
-\subsubsection{Configuration}
+\subsection{Configuration}
 %
-GLINT uses the same configuration file format as the rest of GLIMMER. In the
+GLINT uses the same configuration file format as the rest of Glimmer. In the
 case where only one GLIDE instance is used, all the configuration data for
 GLINT and GLIDE can reside in the same file. Where two or more instances are
 used, a top-level file specifies the number of model instances and the name of
@@ -151,15 +152,8 @@ GLINT are as follows:
   \tablefirsthead{%
     \hline
   }
-  \tablehead{%
-    \hline
-    \multicolumn{2}{|p{0.98\textwidth}|}{\emph{\small continued from previous page}}\\
-    \hline
-  }
-  \tabletail{%
-    \hline
-    \multicolumn{2}{|r|}{\emph{\small continued on next page}}\\
-    \hline}
+  \tablehead{\hline}
+  \tabletail{\hline}
   \tablelasttail{\hline}
   \begin{supertabular}{|l|p{11cm}|}
 %%%% 
@@ -178,7 +172,7 @@ GLINT are as follows:
     instance-specific configuration file. Unnecessary if we only have one
     instance whose configuration data is in the main config file.}\\
     \hline
-    \texttt{name} & Name of instance-sepcific config file (required).\\
+    \texttt{name} & Name of instance-specific config file (required).\\
     \hline
 %%%% 
     \hline
@@ -197,8 +191,8 @@ GLINT are as follows:
       \begin{tabular}{lp{7cm}}
         {\bf 1} & Annual PDD mass-balance model (see section \ref{ug.mbal.pdd_scheme}) \\
         2 & Annual accumulation only\\
-        3 & Hourly energy-balance model (RAPID - not yet available) \\
-        4 & Daily PDD mass-balance model (no docs yet)\\
+        3 & Hourly energy-balance model (from RAPID - not yet available) \\
+        4 & Daily PDD mass-balance model\\
       \end{tabular}}\\
     \texttt{ice\_albedo} & Albedo of ice --- used for coupling to climate
     model (default=0.4) \\
@@ -219,7 +213,7 @@ GLINT are as follows:
     time-stepping. (default = 1) \\
     %%%%%%%%%%%%%%
     \texttt{mbal\_accum\_time} & Mass-balance accumulation time (in years,
-    default is equal to mass-balance timestep).  See below for full explanation of GLINT
+    default is equal to mass-balance time-step).  See below for full explanation of GLINT
     time-stepping. \\
     \hline
 %%%% 
@@ -232,15 +226,26 @@ GLINT are as follows:
     because of the decoupling of timekeeping between GLINT and
     GLIDE. Specifying a \texttt{[GLINT output]} config section allows
     the output of instantaneous fields at intervals shorter than the
-    GLIDE timestep. All the same values may be specified as for a \texttt{[CF
+    GLIDE time-step. All the same values may be specified as for a \texttt{[CF
     output]} section. The possible fields are given in appendix \ref{ug.sec.varlist}}\\
     \hline
-  \end{supertabular}
+%%%% 
+    \hline
+    \multicolumn{2}{|l|}{\texttt{[GLINT maxmin-arng]}}\\
+    \hline
+    \multicolumn{2}{|p{0.98\textwidth}|}{Specifies that annual or
+    diurnal temperature cycles used for mass-balance calculations
+    should be obtained from the maximum and minimum values of the data,
+    rather than by fitting a sinusoidal variation through the
+    data. This section title, if present, must be in the top-level
+    configuration file.}\\
+    \hline  
+    \end{supertabular}
 \end{center}
 
-\subsubsection{GLINT timestepping --- an explanation}
+\subsection{GLINT time-stepping}
 
-By default, the model accepts input on each forcing timestep (as specified in 
+By default, the model accepts input on each forcing time-step (as specified in 
 the call to \texttt{initialise\_glint}, above). These are accumulated over the course 
 of a mass-balance time-step, whereupon the mass-balance model is called. The 
 output from the mass-balance model is accumulated over the course of an ice 
@@ -249,7 +254,7 @@ model time-step, and finally the ice model is called.
 This default behaviour can be altered, in two ways:
 \begin{enumerate}
 \item The number of ice sheet time-steps executed for each accumulated 
-mass-balance field may be increased - thus accelerating the icesheet relative 
+mass-balance field may be increased - thus accelerating the ice sheet relative 
 to the forcing. To do this, set \texttt{ice\_tstep\_multiply} in the \texttt{[GLINT climate]} 
 config section - must be an integer. This is only possible if the 
 mass-balance is accumulated over an integer number of years.
@@ -265,7 +270,7 @@ importantly, all relevant time-steps must divide into one another
 appropriately - the model will (should\ldots) stop if an un-sensible combination 
 of values is detected.
 
-\subsubsection{GLINT timestepping --- further examples}
+\subsubsection{Examples}
 
 To aid understanding of the time-stepping controls, here are some examples. First, suppose we have these time-step values:
 

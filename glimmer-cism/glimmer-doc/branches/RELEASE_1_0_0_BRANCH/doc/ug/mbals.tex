@@ -1,16 +1,15 @@
 \section{Supplied mass-balance schemes}
 \subsection{Overview}
 The user is, of course, free to supply their own mass-balance model for use
-with GLIDE. However, GLIMMER includes within it a annual positive-degree-day model
-for mass balance, shortly to be augmented by a similar daily model and an
-hourly energy balance model. This section gives details of how to configure
-and call these models.
+with GLIDE. However, Glimmer includes within it two positive-degree-day models
+for mass balance, one formulated on an annual basis, and one on a
+daily basis.
 \subsection{Annual PDD scheme}
 \label{ug.mbal.pdd_scheme}
 The annual PDD scheme is contained in the f90 module \texttt{glimmer\_pdd},
 and the model parameters are contained in the derived type
 \texttt{glimmer\_pdd\_params}. Configuration data is contained in a standard
-GLIMMER config file, which needs to be read from file before initialising the
+Glimmer config file, which needs to be read from file before initialising the
 mass-balance model. The model is initialised by calling the subroutine
 \texttt{glimmer\_pdd\_init}, and the mass-balance may be calculated annually
 by calling \texttt{glimmer\_pdd\_mbal}. 
@@ -23,7 +22,7 @@ by calling \texttt{glimmer\_pdd\_mbal}.
   ...
 
   type(glimmer_pdd_params) :: pdd_scheme
-  type(ConfigSection),pointer :: config
+  type(ConfigSection),pointer :: config => null()
 
   ...
 
@@ -183,15 +182,16 @@ configuration file:
 
 \noindent Bauer (1961) \emph{Comm. ACM} \textbf{4}, 255.
 
-\noindent Huybrechts, Letreguilly and Reeh (1991) \emph{Palaeogeography,
-Palaeoclimatology, Palaeoecology (Global and Planetary Change)}
+\noindent Huybrechts, Letreguilly and Reeh (1991) The Greenland
+ice-sheet and greenhouse warming. \emph{Global and Planetary Change}, 
 \textbf{89}, 399-412.
 
-\noindent Letreguilly, Reeh and  Huybrechts (1991) \emph{Palaeogeography,
-Palaeoclimatology, Palaeoecology (Global and Planetary Change)}
+\noindent Letreguilly, Reeh and  Huybrechts (1991) The Greenland
+ice-sheet through the last glacial-interglacial cycle. \emph{Global and Planetary Change},
 \textbf{90}, 385-394.
 
-\noindent Letreguilly, Huybrechts  and  Reeh (1991) \emph{Journal of
+\noindent Letreguilly, Huybrechts  and  Reeh (1991) Steady-state
+characteristics of the Greenland ice-sheet under different climates. \emph{Journal of
 Glaciology} \textbf{37}, 149-157.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -200,7 +200,7 @@ Glaciology} \textbf{37}, 149-157.
 %
 \subsection{Daily PDD scheme}
 \label{ug.mbal.daily_pdd_scheme}
-The other PDD scheme supplied with GLIMMER is a daily scheme. This is simpler than the annual scheme in that it does not incorporate any stochastic variations. The mass-balance is calculated on a daily basis, given the daily mean temperature and half-range, and assuming a sinusoidal diurnal cycle. Consequently, the firn model is more sophisticated than with the annual scheme, and includes a snow-densification parameterization.
+The other PDD scheme supplied with Glimmer is a daily scheme. This is simpler than the annual scheme in that it does not incorporate any stochastic variations. The mass-balance is calculated on a daily basis, given the daily mean temperature and half-range, and assuming a sinusoidal diurnal cycle. Consequently, the firn model is more sophisticated than with the annual scheme, and includes a snow-densification parameterization.
 %
 \subsubsection{Configuration}
 The daily PDD scheme is configured using a single section in the configuration file:
