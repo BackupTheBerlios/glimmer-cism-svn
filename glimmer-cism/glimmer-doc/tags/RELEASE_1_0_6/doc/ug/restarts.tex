@@ -1,0 +1,96 @@
+\section{Restarting the model}
+%
+This section describes the optional part of the Glimmer model code
+that can be used to write a snapshot of the complete model state to
+file on demand, and then restart the model from that state.
+
+Users should note that while this code works to the best of my
+knowledge, I would {\bf strongly advise} that you evaluate it with
+some thoroughness before using it in `production' situations.
+%
+\subsection{Building the restart code}
+%
+Generation/compilation of the code is optional. To enable it, you need 
+to run configure with \texttt{--enable-restarts}, as described in
+section \ref{ug.sec.tarball} above.
+
+When building the restart code, a Python program analyses the Fortran
+code, and generates two files: \texttt{glimmer\_rst\_body.inc}  and 
+\texttt{glimmer\_rst\_head.inc}. These contain all the code needed to
+perform restarts on all model variables.
+%
+\subsection{Writing restart files}
+%
+Here's how to write a restart file:
+\begin{enumerate}
+\item Each restart file can (at present) only store one time-slice of data. This 
+could be changed relatively easily, if that was desired.
+\item To write a restart file, you first need to declare and open it, using these 
+fortran commands (placed in the appropriate places):
+\begin{verbatim}
+  use glimmer_restart_common
+
+  type(restart_file) :: restart
+
+  restart=open_restart_file(<filename>,RESTART_CREATE)
+\end{verbatim}
+Here, \texttt{<filename>} is the name of the file you want to
+create. The form
+\texttt{<something>.restart.nc} is
+recommended. \texttt{RESTART\_CREATE} is a module-defined parameter
+that tells \texttt{open\_restart\_file} to create a new file, rather
+than opening an existing file for reading.
+
+\item Writing the data to file is accomplished with a single subroutine call. For 
+GLINT, this is:
+\begin{verbatim}
+  call glint_write_restart(ice_sheet,restart)
+\end{verbatim}
+Here, \texttt{ice\_sheet} is the glint instance, and \texttt{restart} is the file opened above. 
+For GLIDE, you need:
+\begin{verbatim}
+  call glide_write_restart(model,restart)
+\end{verbatim}
+where model is the GLIDE instance, and restart is the restart file instance.
+
+\item Finally, you should close the restart file, like this:
+\begin{verbatim}
+  call close_restart_file(restart)
+\end{verbatim}
+\end{enumerate}
+%
+\subsection{Reading restart files}
+%
+Reading back the file is similarly straightforward. For GLINT, this is what 
+you need:
+\begin{verbatim}
+  restart=open_restart_file(<filename>,RESTART_READ)
+  call glint_read_restart(ice_sheet,restart)
+  call close_restart_file(restart)
+\end{verbatim}
+Whereas, with GLIDE, you need:
+\begin{verbatim}
+  restart=open_restart_file(<filename>,RESTART_READ)
+  call glide_read_restart(model,restart)
+  call close_restart_file(restart)
+\end{verbatim}
+\texttt{<filename>}, \texttt{model}, \texttt{ice\_sheet} and restart are all as above. Note that the 
+contents of the model instance variables \texttt{model} and \texttt{ice\_sheet} are 
+overwritten by whatever is in the restart file.
+%
+\subsection{Dealing with restarted output files}
+%
+In implementing restarts, a decision had to be made about how to deal with 
+output files from the restarted model. The restart file contains details of 
+the output netcdf files that the model was configured to write, but the 
+restarted model would need new output files opening. It was decided to use the 
+information from the restart data to open a new set of output files, but with 
+the prefix `\texttt{RESTART\_}' added to the filenames. Thus, the output files from the 
+restarted model contain all the same fields as the old output files, 
+beginning from the point where the restart file was written. If desired, the 
+output prefix can be changed from `\texttt{RESTART\_}' by the specification of an 
+optional third argument in \texttt{glint\_read\_restart} and \texttt{glide\_read\_restart}, e.g.:
+\begin{verbatim}
+  call glint_read_restart(ice_sheet,restart,'NEW_PREFIX_')
+  call glide_read_restart(model,restart,'NEW_PREFIX_')
+\end{verbatim}

@@ -1,0 +1,20 @@
+Changes in Version 1.0.6
+========================
+* Various minor changes to correspond to new release of Glimmer.
+
+Changes in Version 1.0.4
+========================
+* Some updating for equivalent version of Glimmer,
+  notably the [GLINT output] config section
+
+Changes in Version 1.0.0
+========================
+* Substantial updating of all sections
+* New tutorial section (Felix)
+* Developer Guide (Ian)
+* Improved explanation of GLINT timestepping
+
+Changes in Version 0.5.6
+========================
+* New module for documentation
+* Added documentation for Python tools

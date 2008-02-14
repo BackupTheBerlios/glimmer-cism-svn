@@ -1,0 +1,31 @@
+\section{Glimmer configuration files}
+\label{ug.sec.cfile}
+%
+All Glimmer components are configured using a common file
+format. While the format was developed specifically for Glimmer, it
+has similarities to Windows \texttt{.ini} files. The code used to read
+Glimmer configuration files is self-contained within the model, and
+could easily be used elsewhere.
+
+Configuration files are plain text files; by convention, they are
+identified by the \texttt{.config} filename extension
+(e.g. \texttt{greenland.config}). The file is divided into named
+sections, which begin with the name of the section in square brackets
+(e.g. \texttt{[grid]}). Each section contains a number of key-value
+pairs. Keys are separated from their associated values by a \texttt{=}
+or \texttt{:}. Note that lines, or lines starting with a \texttt{\#},
+\texttt{;} or \texttt{!} are ignored.
+
+An example section with some keys and values might be as follows:
+%
+\begin{verbatim}
+[grid]
+ewn = 76 
+nsn = 141
+upn = 11
+\end{verbatim}
+
+Sections and keys are case sensitive and may contain white
+space. However, the configuration parser is very simple and thus the
+number of spaces within a key or section name also matters. Sensible
+defaults are used when a specific key is not found. 
