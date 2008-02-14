@@ -1,16 +1,20 @@
 
 \section{EISMINT: using \texttt{glimmer-example}}
-As you hopefully already know, the heart of GLIMMER is the actual ice sheet model
-GLIDE. This is where ice physics are resolved etc. To model an ice sheet using
+As you hopefully already know, the heart of Glimmer is the actual ice sheet model
+GLIDE. This is where ice physics are resolved, etc. To model an ice sheet using
 GLIDE, you at least need to provide it with information about the 
 mass balance. To get you started with a real simple example climate driver,
-download \texttt{glimmer-example} from the project homepage or via CVS, cd into
-the directory and type
+download \texttt{glimmer-example} from the project homepage or via CVS, \texttt{cd} into
+the directory and type:
 \begin{verbatim}
 glide_launch.py example.config
 \end{verbatim}
-this will kick off a simple EISMINT-1 moving margin type model run. The results
-are written to \texttt{example.nc}, use a viewer like ncview to visualise them.
+this will kick off a simple EISMINT-1 moving margin type model
+run\footnote{If this doesn't work, make sure you have set the
+  \texttt{GLIMMER\_PREFIX} environment variable to point to the
+  installation directory, as described in section \ref{ug.sec.dirs},
+  make sure the \texttt{bin} directory is in your \texttt{PATH}}. The results
+are written to \texttt{example.nc}, use a viewer like \texttt{ncview} to visualise them.
 Take a look at the \texttt{example.config} file printed below and read the documentation on
 the EISMINT type climate driver (section \ref{driver:eismint}) to better understand what is happening:\\
 
@@ -59,7 +63,7 @@ variables: thk uflx vflx bmlt temp
 uvel vvel wvel
 \end{verbatim}
 
-The line \texttt{[EISMINT-1 moving margin]} sets the model type for this run to be EISMINT (simple\_glide binary).
+The line \texttt{[EISMINT-1 moving margin]} sets the model type for this run to be EISMINT (\texttt{simple\_glide} binary).
 This can also be achieved by specifying the correct binary using the \texttt{-m} flag, e.g.
 \begin{verbatim}
 glide_launch.py -m simple_glide example.config
@@ -69,7 +73,7 @@ keyterm, as this will only work for EIS and EISMINT model types. For ease of use
 in the config file for this example. 
 
 The \texttt{[grid]} section sets up the topography for the model run.\\
-As this is an EISMINT testcase, there is no 'real' input topography, but ice is building up on a
+As this is an EISMINT testcase, there is no `real' input topography, but ice is building up on a
 flat surface, which is why nothing more but the grid dimensions need to be specified. Be aware that
 this only works for EISMINT type model runs using simple\_glide.
 In this case, the mass balance is parameterised as a function of distance
@@ -100,5 +104,5 @@ modelling timesteps.
 
 You might want to try and change some of the parameters, e.g. speed up ice flow by 
 increasing the flow factor, and re-run the model to see what happens.
-This is fairly simple and straight forward example of how to get GLIMMER to do some 
-basic modelling. If you want to see a bit more of what GLIMMER can do, try the next section.
+This is fairly simple and straight forward example of how to get Glimmer to do some 
+basic modelling. If you want to see a bit more of what Glimmer can do, try the next section.

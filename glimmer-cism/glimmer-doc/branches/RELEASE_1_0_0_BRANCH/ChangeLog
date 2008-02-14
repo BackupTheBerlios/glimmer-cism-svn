@@ -1,6 +1,9 @@
 2008-02-14 Ian Rutt
  * Added section on using restarts to User Guide - adapted from post to
    glimmer-discuss.
+ * Various minor edits to tutorial and numerics sections. 
+ * Updated structure diagrams in developers guide. 
+ * Removed very incomplete and confusing physics documentation.
 
 2008-01-23 Ian Rutt
  * Numerous changes to User Guide, in preparation for 1.0.6 release.

@@ -1,16 +1,16 @@
 \section{Introduction}
 
 Everyone with an interest in ice sheet modelling is encouraged to contribute
-to GLIMMER. However, the structure of the model is complex, and the coding
+to Glimmer. However, the structure of the model is complex, and the coding
 style is more object-oriented than is generally common in geosciences
 models. The aim of this chapter is to introduce these characteristics of the
-model and to suggest some approaches to GLIMMER development. Detail is then
-provided on some of the modules present within the GLIMMER code base.
+model and to suggest some approaches to Glimmer development. Detail is then
+provided on some of the modules present within the Glimmer code base.
 
 In developing new code, several important principles should be borne in
 mind. These are useful ideas when developing any code, but are especially
 important when contributing to an established collaborative project like
-GLIMMER:
+Glimmer:
 \begin{itemize}
 \item \textbf{Modularise/objectify.} Divide the code up into logically self-contained
   tasks. In a numerical model of a set of physical processes, this usually
@@ -66,7 +66,7 @@ GLIMMER:
   to use a version control system, it really does make life easier. If you've
   ever got confused about which version of the code you or your collaborators
   have, or wished you could revert the changes you've just made, then you need
-  version control. We use CVS for GLIMMER, but other systems are available. Of
+  version control. We use CVS for Glimmer, but other systems are available. Of
   these, Subversion is generally seen as a promising alternative and successor
   to CVS.
 \end{itemize}
@@ -74,9 +74,9 @@ The sections that follow cover some of these topics in more detail, but much
 that passes for good-practice in code development is best learnt from
 experience, and by looking at existing code.
 %
-\section{Introduction to GLIMMER programming techniques}
+\section{Introduction to Glimmer programming techniques}
 %
-Although GLIMMER is written in Fortran, a very widely used language in the
+Although Glimmer is written in Fortran, a very widely used language in the
 geosciences, many of the techniques employed in the model will be unfamiliar
 to even seasoned Fortran programmers. What follows is a brief description of
 some of these more advanced techniques. For further information about the
@@ -86,7 +86,7 @@ topics covered, the reader is directed to \cite{Metcalf1999} and \cite{Decyk1997
 %
 \subsubsection{Module definition}
 %
-The basic building block of the GLIMMER structure is the Fortran 90/95 module,
+The basic building block of the Glimmer structure is the Fortran 90/95 module,
 which is a way of collecting together subroutines, functions type definitions
 and variables into a single scope\footnote{A \emph{scope} or \emph{namespace}
  is the term for the program unit where a given \emph{name}, such as a variable
@@ -217,7 +217,7 @@ necessary to write a function to do so, so that you would, for example, write
 the \texttt{+} operator so that it uses the function \texttt{typename\_add} to
 perform the addition (a process known as \emph{operator overloading}), but
 describing how is beyond the scope of this document. In any case, derived types
-in GLIMMER are not generally used in a way such that arithmetic operations
+in Glimmer are not generally used in a way such that arithmetic operations
 would make sense.
 
 Usually, derived type definitions are put into modules (before
@@ -238,8 +238,9 @@ are part of a class).
 Explaining OOP with examples is notoriously tricky because the easiest
 examples of classes are those that mirror classes of objects in the real
 world, but this inevitably seems a bit contrived. So, although it seems a bit
-ridiculous, here's one such example\ldots Imagine a class which describes a
-domestic oven. What are the attributes of an oven, that differentiate one oven
+ridiculous, here's one such example\ldots In the `real world', there
+exists a class of objects called domestic ovens. What are the
+attributes of an individual oven (an instance of the class), that differentiate one oven
 from another? These could be the size of the oven, it's type (electric or
 gas), as well those things that describe its present state: the thermostat
 setting, the actual oven temperature, whether the heating element is on or
@@ -247,7 +248,7 @@ off, and whether the door is open or not
 
 Secondly, what kind of actions can we perform on the oven? Most likely, we
 want to be able to open and close the oven door, check the present
-temperature, and set the thermostat. These actions are the methods.
+temperature, and set the thermostat. In programming terms, these actions are the methods.
 
 In terms of Fortran 90, we can use the mechanism of modules and derived types
 to implement a somewhat limited form of OOP:
@@ -285,15 +286,15 @@ this case, you would expect to be able to specify the size of the oven, its
 type, initial temperature, etc.
 
 So much for computer models of domestic ovens; what use is OOP to ice
-modellers? Well, using the technique described above is what allows GLIMMER to
+modellers? Well, using the technique described above is what allows Glimmer to
 be used to run several regional ice models simultaneously. It also makes
 adding new mass-balance models to GLINT much easier. In fact, the principles
-of OOP are used all over the GLIMMER code, so it is worth getting to grips
+of OOP are used all over the Glimmer code, so it is worth getting to grips
 with them.
 %
 \subsection{Example of OOP in Glimmer}
 %
-A good, self-contained example of GLIMMER programming style, and the use of
+A good, self-contained example of Glimmer programming style, and the use of
 OOP is the way that the daily PDD mass-balance scheme (in
 \texttt{glimmer\_daily\_pdd.F90}) has been implemented. Here, the parameters
 of the scheme are stored in the derived type
@@ -301,8 +302,8 @@ of the scheme are stored in the derived type
 is limited to this derived type, and two subroutines
 (\texttt{glimmer\_daily\_pdd\_init} and
 \texttt{glimmer\_daily\_pdd\_mbal}). Everything else is kept private within
-the module. The initialisation subroutine uses the standard GLIMMER configuration
-file reader to get input parameters, and the GLIMMER logging mechanism to
+the module. The initialisation subroutine uses the standard Glimmer configuration
+file reader to get input parameters, and the Glimmer logging mechanism to
 output data to the screen and/or file. The object-like structure means that it
 is easy to use the daily PDD model within some other piece of code: all one
 needs to do is declare an instance of \texttt{glimmer\_daily\_pdd\_params},
@@ -473,17 +474,17 @@ of the list. Describing how to implement subroutines and functions to
 construct, read and modify the list is beyond the scope of this document, but
 a full example is provided in \cite{Metcalf1999}.
 
-GLIMMER makes several uses of linked lists and pointer techniques, most
+Glimmer makes several uses of linked lists and pointer techniques, most
 notably in the handling of configuration and output files.
 %
-\section{GLIMMER structure and design}
+\section{Glimmer structure and design}
 %
 \subsection{Overview}
 %
-The `design' of GLIMMER is a consequence of the way it has been
+The `design' of Glimmer is a consequence of the way it has been
 developed. Initially, as a stand-alone model with a single domain, module
 variables were used to hold all model fields and parameters. With the move to
-use GLIMMER as the ice model component within GENIE, and the desire to enable
+use Glimmer as the ice model component within GENIE, and the desire to enable
 several active regions to be run simultaneously, the module variables were
 converted into components of derived types, and an extra layer added on top of
 the existing structure to deal with global fields and parameters, and deal
@@ -493,43 +494,43 @@ again, and the present GLINT-GLIDE structure was born. Doubtlessly, the
 resulting structure is more complex than necessary, but hopefully it is still
 reasonably logical.
 
-Currently (July 2006), the \texttt{fortran} directory in the GLIMMER source
-tree contains 83 \texttt{.F90} files, including automatically generated
+Currently (February 2008), the \texttt{fortran} directory in the Glimmer source
+tree contains 95 \texttt{.F90} files, including automatically generated
 NetCDF IO files (more on this below). Figure~\ref{ug.fig.glimmer} indicates
-the general relationship between the various parts of GLIMMER; a more
+the general relationship between the various parts of Glimmer; a more
 comprehensive overview, with filename patterns, is shown in
 figure~\ref{dg.fig.glimmer_structure}. 
 %
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.85\textwidth]{\dir/figures/glimmer_structure.eps}
-  \caption{Relationship between the various GLIMMER components, giving
+  \caption{Relationship between the various Glimmer components, giving
   filenames and dependencies. The modules in GLUM are used by all other
   elements of the diagram.}
   \label{dg.fig.glimmer_structure}
 \end{figure}
 %
-The various parts of GLIMMER shown in the diagram are as follows:
+The various parts of Glimmer shown in the diagram are as follows:
 %
 \begin{itemize}
-\item \textbf{GLIDE} (\textbf{GL}IMMER \textbf{I}ce \textbf{D}ynamics
+\item \textbf{GLIDE} (\textbf{Gl}immer \textbf{I}ce \textbf{D}ynamics
   \textbf{E}lement). This is the core ice model, whose core interface consists
   of a derived type definition, and a small number of subroutines to
   initialise the model, perform time steps and tidy up at the end. In the most
   basic set up, all that needs to be supplied to GLIDE is the surface
   mass-balance and surface air temperature fields.
-\item \textbf{GLUM} (\textbf{GL}IMMER \textbf{U}seful \textbf{M}odules). These
+\item \textbf{GLUM} (\textbf{Gl}immer \textbf{U}seful \textbf{M}odules). These
   are modules that contain code which is used by all the other parts of
-  GLIMMER. Some of these (for instance, the configuration parser, NetCDF IO
+  Glimmer. Some of these (for instance, the configuration parser, NetCDF IO
   and logging system) are of general use to any model built on top of
-  GLIMMER.
+  Glimmer.
 \item \textbf{Isostasy model.} Although currently only used by GLIDE, the
   isostasy model is written in such a way as to be easily coupled to another
   ice model if necessary. Probably this should be moved to within GLUM,
   though?
-\item \textbf{Climate drivers.} The flexibility of GLIMMER comes from the ease
+\item \textbf{Climate drivers.} The flexibility of Glimmer comes from the ease
   with which GLIDE may be coupled to a custom climate driver. A number of
-  these are provided as part of the GLIMMER code base:
+  these are provided as part of the Glimmer code base:
 \begin{itemize}
 \item \textbf{Simple driver.} This is essentially an example driver, almost as simple
   as possible in design. It is used to implement the idealised EISMINT 1
@@ -539,7 +540,7 @@ The various parts of GLIMMER shown in the diagram are as follows:
 \item \textbf{EISMINT 3 Greenland.} This driver implements the Greenland test
   cases from the second phase of the EISMINT project (termed EISMINT 3 to
   distinguish it from the second part of the first EISMINT project\ldots)
-\item \textbf{GLINT} (\textbf{GL}IMMER \textbf{Int}erface). This complex
+\item \textbf{GLINT} (\textbf{Gl}immer \textbf{Int}erface). This complex
   driver is designed to form an interface between GLIDE and a global climate
   model. Originally developed for the GENIE project, it can be used in
   conjunction with any global model defined on a lat-lon grid. GLINT has its
@@ -550,7 +551,7 @@ The various parts of GLIMMER shown in the diagram are as follows:
 %
 \subsection{GLIDE structure}
 %
-GLIDE is the heart of GLIMMER, the ice dynamics model. The top-level class or
+GLIDE is the heart of Glimmer, the ice dynamics model. The top-level class or
 derived type is \texttt{glide\_global\_type}, and this contains instances of
 other derived types, some defined within GLIDE, others within GLUM. The
 situation is summarised in figure~\ref{dg.fig.glide_class_diagram}. All GLIDE
@@ -644,7 +645,7 @@ A brief description of the modules and files that comprise GLIDE is given here:
 
 \subsection{GLINT structure}
 %
-As the most complex of the driver programs supplied as part of GLIMMER, the
+As the most complex of the driver programs supplied as part of Glimmer, the
 structure of GLINT is described next. As with GLIDE, on which it is built, the
 GLINT structure uses a hierarchy of derived types, shown in
 figure~\ref{dg.fig.glint_class_diagram}. The most significant aspect of this
@@ -671,7 +672,8 @@ coordination between the two sets of information.
 \includegraphics[width=\textwidth]{\dir/figures/class_diagram_glint.eps}
 \caption{GLINT `class diagram', in quasi-UML notation. Only derived type components which
   are themselves derived types are shown; intrinsic type components are
-  omitted. The top-level GLIDE type is shown in yellow.}
+  omitted. The top-level GLIDE type is shown in yellow. Other types
+  which are used by GLIDE are ommitted.}
 \label{dg.fig.glint_class_diagram}
 \end{figure}
 
@@ -710,8 +712,6 @@ The modules comprising GLINT are as follows:
     \texttt{glint\_global\_interp} & \texttt{glint\_global\_interp.F90} &
     Utility code to regrid data from one global grid to another, taking into
     account spherical geometry. \\
-    \texttt{glint\_gmt} & \texttt{glint\_gmt.F90} & Code adapted from the
-    Generic Mapping Tools (GMT), used for map projection handling.\\
     \texttt{glint\_initialise} & \texttt{glint\_initialise.F90} & Module used
     to initialise a GLINT instance (type \texttt{glint\_instance}). \\
     \texttt{glint\_interp} & \texttt{glint\_interp.F90} & Code to upscale and
@@ -724,10 +724,10 @@ The modules comprising GLINT are as follows:
     mass-balance schemes --- gives them a common interface. \\
     \texttt{glint\_mbal\_io} & \texttt{glint\_mbal\_io.F90} & Auto-generated
     NetCDF IO routines for GLINT mass-balance calculations. \\
+    \texttt{mpinterp} & \texttt{glint\_mpinterp} & Code for
+    mean-preserving interpolation.\\
     \texttt{glint\_precip\_param} & \texttt{glint\_precip\_param.F90} & Implementation of the
     precipitation downscaling parameterization of Roe \& Lindzen. \\
-    \texttt{glint\_proj} & \texttt{glint\_proj.F90} & Derived type definition
-    and handling code for map projections. \\
     \texttt{smb\_dummy} & \texttt{glint\_smb.F90} & Dummy module in place of
     externally-connected RAPID energy-balance mass-balance model. \\
     \texttt{glint\_timestep} & \texttt{glint\_timestep.F90} & GLINT instance
@@ -738,6 +738,7 @@ The modules comprising GLINT are as follows:
 \end{center}
 
 
-\input{\dir/physics.tex}
+%%%\input{\dir/physics.tex}
+%%% Removed for the present as incomplete
 \input{\dir/config_file.tex}
 \input{\dir/netcdf.tex}
