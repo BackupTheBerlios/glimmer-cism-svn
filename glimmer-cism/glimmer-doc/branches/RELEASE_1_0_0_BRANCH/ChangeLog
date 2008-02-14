@@ -1,4 +1,8 @@
 2008-02-14 Ian Rutt
+ * Bumped version for release 1.0.6
+ * Updated NEWS
+
+2008-02-14 Ian Rutt
  * Added section on using restarts to User Guide - adapted from post to
    glimmer-discuss.
  * Various minor edits to tutorial and numerics sections. 
