@@ -162,10 +162,10 @@ available for feedback.
     \texttt{ice\_frac(:,:)} & \texttt{real(rk)} & \texttt{intent(inout)} &
     Fractional ice coverage \\
     \texttt{water\_in(:,:)} & \texttt{real(rk)} & \texttt{intent(inout)} & The
-    input fresh-water flux (mm, over ice time-step). Essentially precip, but
+    input fresh-water flux (ms$^{-1}$). Essentially precip, but
     provided for consistency.\\
     \texttt{water\_out(:,:)} & \texttt{real(rk)} & \texttt{intent(inout)} & The
-    output fresh-water flux (mm, over ice time-step). This is simply the ablation calculated by
+    output fresh-water flux (ms$^{-1}$). This is simply the ablation calculated by
     the model, scaled up to the global grid. It is up to the global model to
     then  deal with it (route it to the oceans, land scheme, etc.) Note that
     the precipitation fed to the model but which doesn't get incorporated into
