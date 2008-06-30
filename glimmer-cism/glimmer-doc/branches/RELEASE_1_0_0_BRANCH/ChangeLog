@@ -1,3 +1,6 @@
+2008-06-30 Ian Rutt
+ * Added beginnings of better temperature solver documentation
+
 2008-04-03 Ian Rutt
  * Fixed bug in GLINT API docs - incorrect units for water_in and
  water_out. Spotted by Jeremy Fyke.

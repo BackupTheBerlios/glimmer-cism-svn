@@ -1,0 +1,133 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% This is a new description of the temperature solver
+% Not yet integrated into the main docs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[10pt,english,a4paper]{article}
+\usepackage[intlimits]{amsmath}
+\usepackage{amsthm}
+\begin{document}
+\title{GLIDE Temperature Solver}
+\author{Ian Rutt}
+\maketitle
+
+\section{Basic equations}
+The basic temperature equation to be solved is:
+%
+\begin{equation}
+  \frac{\partial T}{\partial t} = \frac{k}{\rho_I c_I}\left(\nabla^2 T
+  +\frac{\partial^2 T}{\partial z^2}\right)
+  -\mathbf{u}\cdot\nabla T
+  -w\frac{\partial T}{\partial z}
+  +\frac{\Phi}{\rho_I c_I}
+\end{equation}
+%
+The first term on the lefthand side is conduction, the second and
+third are horizontal advection, the fourth is heat production due to
+deformation. A very important simplification is to ignore horizontal
+diffusion of heat (the $\nabla^2 T$ term):
+%
+\begin{equation}
+  \frac{\partial T}{\partial t} = \frac{k}{\rho_I c_I}\frac{\partial^2 T}{\partial z^2}
+  -\mathbf{u}\cdot\nabla T
+  -w\frac{\partial T}{\partial z}
+  +\frac{\Phi}{\rho_I c_I}
+\end{equation}
+
+%
+\begin{equation}
+\frac{\partial T}{\partial t} = \frac{k}{\rho_I c_I H^2}\frac{\partial^2 T}{\partial \sigma^2}+\frac{w_{\mathrm{eff}}}{H}\frac{\partial T}{\partial \sigma}
+\end{equation}
+%
+with effective vertical velocity given by:
+%
+\begin{equation}
+w_{\mathrm{eff}}=w-w_{\mathrm{grid}}
+\end{equation}
+%
+and the grid velocity:
+%
+\begin{equation}
+w_{\mathrm{grid}} = \frac{\partial s}{\partial t}+\mathbf{u}\cdot\nabla s - \sigma \left(\frac{\partial H}{\partial t}+\mathbf{u}\cdot\nabla H \right) 
+\end{equation}
+%
+\section{Vertical discretization: individual derivatives}
+%
+The grid is irregular, so define
+%
+\begin{eqnarray}
+\Delta\sigma_{+} & = & \sigma_{i+1}-\sigma_{i}\\
+\Delta\sigma_{-} & = & \sigma_{i}-\sigma_{i-1}\\
+\Delta\sigma_{0} & = & \sigma_{i+1}-\sigma_{i-1}
+\end{eqnarray}
+%
+First-order centred difference (first-order accurate):
+%
+\begin{equation}
+\frac{\partial T}{\partial \sigma} = \frac{T_{i+1}-T_{i-1}}{\Delta \sigma_0}
+\end{equation}
+%
+Second-order centred difference (second-order accurate):
+%
+\begin{equation}
+\frac{1}{2}\frac{\partial^2 T}{\partial \sigma^2} = \frac{T_{i+1}}{\Delta \sigma_{+}\Delta \sigma_{0}}
+-\frac{T_{i}}{\Delta \sigma_{-}\Delta \sigma_{+}}
++\frac{T_{i-1}}{\Delta \sigma_{-}\Delta \sigma_{0}}
+\end{equation}
+%
+Time discretization:
+%
+\begin{equation}
+\frac{\partial T}{\partial t}=\frac{T_{i}^{n+1}-T_{i}^{n}}{\Delta t}
+\end{equation}
+%
+\section{Combining things together}
+%
+Substituting the discrete forms:
+%
+\begin{multline}
+\frac{T_{i}^{n+1}-T_{i}^{n}}{\Delta t}=\frac{2k}{\rho c H^2}\left[\frac{T_{i+1}}{\Delta \sigma_{+}\Delta \sigma_{0}}
+-\frac{T_{i}}{\Delta \sigma_{-}\Delta \sigma_{+}}
++\frac{T_{i-1}}{\Delta \sigma_{-}\Delta \sigma_{0}}\right]\\
++\frac{w_{\mathrm{eff}}}{H}\left[\frac{T_{i+1}-T_{i-1}}{\Delta \sigma_0}\right]
+\end{multline}
+%
+Solve semi-implicitly, so that $T_i=\frac{1}{2}(T_i^{n+1}+T_i^{n})$.
+%
+\begin{multline}
+\frac{T_{i}^{n+1}-T_{i}^{n}}{\Delta t}=
+\frac{k}{\rho c H^2}\left[\frac{T^{n+1}_{i+1}+T^{n}_{i+1}}{\Delta \sigma_{+}\Delta \sigma_{0}}
+-\frac{T^{n+1}_{i}+T^{n}_{i}}{\Delta \sigma_{-}\Delta \sigma_{+}}
++\frac{T^{n+1}_{i-1}+T^n_{i-1}}{\Delta \sigma_{-}\Delta \sigma_{0}}\right]\\
++\frac{w_{\mathrm{eff}}}{2H}\left[\frac{T^{n+1}_{i+1}+T^{n}_{i+1}-T^{n+1}_{i-1}-T^{n}_{i-1}}{\Delta \sigma_0}\right]
+\end{multline}
+%
+Collecting terms of knowns and unknowns:
+%
+\begin{multline}
+\left[-\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{+}\Delta\sigma_{0}}-\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n+1}_{i+1}
++\left[1+\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{-}\Delta\sigma_{+}}\right]T^{n+1}_i\\
++\left[-\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{-}\Delta\sigma_{0}}+\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n+1}_{i-1}=
+\left[\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{+}\Delta\sigma_{0}}+\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n}_{i+1}\\
++\left[1-\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{-}\Delta\sigma_{+}}\right]T^{n}_i
++\left[\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{-}\Delta\sigma_{0}}-\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n}_{i-1}
+\end{multline}
+%
+The middle term of the second-order differential is split (I think this is for computational efficiency), so that:
+%
+\begin{equation}
+\frac{1}{\Delta\sigma_{-}\Delta\sigma_{+}}=\frac{1}{\Delta\sigma_{0}\Delta\sigma_{+}}+\frac{1}{\Delta\sigma_{0}\Delta\sigma_{-}}
+\end{equation}
+%
+Giving finally:
+%
+\begin{multline}
+\left[-\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{+}\Delta\sigma_{0}}-\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n+1}_{i+1}
++\left[1+\frac{k\Delta t}{\rho c H^2}\left(\frac{1}{\Delta\sigma_{0}\Delta\sigma_{+}}+\frac{1}{\Delta\sigma_{0}\Delta\sigma_{-}}\right)\right]T^{n+1}_i\\
++\left[-\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{-}\Delta\sigma_{0}}+\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n+1}_{i-1}=
+\left[\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{+}\Delta\sigma_{0}}+\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n}_{i+1}\\
++\left[1-\frac{k\Delta t}{\rho c H^2}\left(\frac{1}{\Delta\sigma_{0}\Delta\sigma_{+}}+\frac{1}{\Delta\sigma_{0}\Delta\sigma_{-}}\right)\right]T^{n}_i
++\left[\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{-}\Delta\sigma_{0}}-\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n}_{i-1}
+\end{multline}
+%
+\end{document}
