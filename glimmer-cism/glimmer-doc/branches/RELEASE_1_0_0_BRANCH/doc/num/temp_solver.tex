@@ -5,13 +5,19 @@
 
 \documentclass[10pt,english,a4paper]{article}
 \usepackage[intlimits]{amsmath}
-\usepackage{amsthm}
+\usepackage{amsthm,natbib}
+\newcommand{\diffn}[2]{\ensuremath{\frac{\partial #1}{\partial #2}}}
+\newcommand{\diffnsq}[2]{\ensuremath{\frac{\partial^2 #1}{\partial #2^2}}}
+\newcommand{\diffnx}[3]{\ensuremath{\frac{\partial^2 #1}{\partial #2
+      \partial #3}}}
+
 \begin{document}
 \title{GLIDE Temperature Solver}
 \author{Ian Rutt}
 \maketitle
 
-\section{Basic equations}
+\section{Basic equation}
+%
 The basic temperature equation to be solved is:
 %
 \begin{equation}
@@ -32,23 +38,66 @@ diffusion of heat (the $\nabla^2 T$ term):
   -\mathbf{u}\cdot\nabla T
   -w\frac{\partial T}{\partial z}
   +\frac{\Phi}{\rho_I c_I}
-\end{equation}
-
-%
-\begin{equation}
-\frac{\partial T}{\partial t} = \frac{k}{\rho_I c_I H^2}\frac{\partial^2 T}{\partial \sigma^2}+\frac{w_{\mathrm{eff}}}{H}\frac{\partial T}{\partial \sigma}
+\label{eqn.temp_eqn}
 \end{equation}
 %
-with effective vertical velocity given by:
+\section{Coordinate transformation}
+%
+To solve these equations, we transform the coordinate system
+$(x,y,z,t)\rightarrow (x',y',\sigma,t')$, with $\sigma$ defined
 %
 \begin{equation}
-w_{\mathrm{eff}}=w-w_{\mathrm{grid}}
+\sigma = \frac{s-z}{H}
+\label{eqn.defn_sigma}
 \end{equation}
 %
-and the grid velocity:
+Applying the methods of \citet{Hindmarsh1988}, we obtain the following
+expressions for the various derivatives in the new coordinate system:
+%
+\begin{eqnarray}
+\diffn{}{x} &=& \diffn{}{x'}+\frac{1}{H}\left(\diffn{s}{x}-\sigma\diffn{H}{x}\right)\diffn{}{\sigma}\\
+\diffn{}{y} &=& \diffn{}{y'}+\frac{1}{H}\left(\diffn{s}{y}-\sigma\diffn{H}{y}\right)\diffn{}{\sigma}\\
+\diffn{}{t} &=& \diffn{}{t'}+\frac{1}{H}\left(\diffn{s}{t}-\sigma\diffn{H}{t}\right)\diffn{}{\sigma}\\
+\diffn{}{z} &=& -\frac{1}{H}\diffn{}{\sigma}\\
+\diffnsq{}{z} &=& \frac{1}{H^2}\diffnsq{}{\sigma}\\
+\end{eqnarray}
+%
+Using these expressions, we write the transformed temperature equation
+(\ref{eqn.temp_eqn}) as follows:
+%
+\begin{multline}
+\diffn{T}{t'}+\frac{1}{H}\left(\diffn{s}{t}-\sigma\diffn{H}{t}\right)\diffn{T}{\sigma}
+= \frac{k}{\rho_I c_I H^2}\diffnsq{T}{\sigma} -
+\mathbf{u}\cdot\hat{\nabla}T\\ 
+- \left(\frac{\mathbf{u}\cdot \nabla s
+  -\sigma \mathbf{u}\cdot\nabla H}{H}\right)\diffn{T}{\sigma} +\frac{w}{H}\diffn{T}{\sigma}+\frac{\Phi}{\rho_I c_I},
+\end{multline}
+%
+with $\hat{nabla}$ being the derivative on $(x',y')$. Grouping
+together terms in $\partial T/\partial \sigma$, we can write:
+%
+\begin{multline}
+\diffn{T}{t'} = \frac{k}{\rho_I c_I H^2}\diffnsq{T}{\sigma} -
+\mathbf{u}\cdot\hat{\nabla}T\\
++\frac{1}{H}\left(w-\diffn{s}{t}-\mathbf{u}\cdot \nabla s + \sigma
+\left( \diffn{H}{t} +\mathbf{u}\cdot\nabla H \right) \right)\diffn{T}{\sigma}+\frac{\Phi}{\rho_I c_I}.
+\end{multline}
+%
+We can define a vertical grid velocity $w_{\mathrm{grid}}$,
 %
 \begin{equation}
-w_{\mathrm{grid}} = \frac{\partial s}{\partial t}+\mathbf{u}\cdot\nabla s - \sigma \left(\frac{\partial H}{\partial t}+\mathbf{u}\cdot\nabla H \right) 
+w_{\mathrm{grid}}=\diffn{s}{t}+\mathbf{u}\cdot \nabla s - \sigma
+\left( \diffn{H}{t} +\mathbf{u}\cdot\nabla H \right),
+\end{equation}
+%
+and an effective vertical velocity $w_{\mathrm{eff}}=w-w_{\mathrm{grid}}$, allowing the temperature equation to be simplified as follows:
+%
+\begin{equation}
+\frac{\partial T}{\partial t'} = \frac{k}{\rho_I c_I
+  H^2}\frac{\partial^2 T}{\partial \sigma^2}
+  - \mathbf{u}\cdot\hat{\nabla}T
+  + \frac{w_{\mathrm{eff}}}{H}\frac{\partial T}{\partial
+  \sigma}+\frac{\Phi}{\rho_I c_I}, 
 \end{equation}
 %
 \section{Vertical discretization: individual derivatives}
@@ -130,4 +179,12 @@ Giving finally:
 +\left[\frac{k\Delta t}{\rho c H^2}\frac{1}{\Delta\sigma_{-}\Delta\sigma_{0}}-\frac{w_{\mathrm{eff}}\Delta t}{2H\Delta\sigma_0}\right]T^{n}_{i-1}
 \end{multline}
 %
+\begin{thebibliography}{99}
+\bibitem[Hindmarsh and Hutter(1988)Hindmarsh and
+  Hutter]{Hindmarsh1988}
+  Hindmarsh R.C.A., Hutter K. (1988) Numerical fixed domain mapping
+  solution of free-surface flows coupled with an evolving interior
+  field. {\it Int. J. for Numerical and Analytical Methods in
+  Geomechanics}, {\bf 12}, 437--459
+\end{thebibliography}
 \end{document}
