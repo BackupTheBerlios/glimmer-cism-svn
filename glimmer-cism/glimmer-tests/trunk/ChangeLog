@@ -1,3 +1,7 @@
+2009-03-10 Magnus Hagdorn
+ * EISMINT-3-GL/EISMINT3GL.input.nc: fixed false easting/northing,
+   see: http://forge.nesc.ac.uk/pipermail/glimmer-discuss/2009-February/000319.html
+
 2007-07-10 Ian Rutt
  * Removed redundant options from EISMINT-1 config files
 
