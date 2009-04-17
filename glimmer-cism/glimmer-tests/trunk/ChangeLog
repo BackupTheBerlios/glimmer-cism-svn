@@ -1,3 +1,16 @@
+2009-04-17 Magnus Hagdorn
+ * Makefile.am: add new recursive targets
+ * bootstrap: make sure GLIMMER_PREFIX environment variable is set
+ * configure.in: add option to use SGE to start model runs
+ * make.rules: new targets; handle SGE options
+ * EISMINT-1/Makefile.am: do not run models and visualisation when
+   make all is run
+ * EISMINT-2/Makefile.am: ditto
+ * PyCF/Makefile.am: ditto
+ * benchmarks/Makefile.am: ditto
+ * isos/Makefile.am: ditto
+ * lin-non_lin/Makefile.am: ditto
+
 2009-03-10 Magnus Hagdorn
  * EISMINT-3-GL/EISMINT3GL.input.nc: fixed false easting/northing,
    see: http://forge.nesc.ac.uk/pipermail/glimmer-discuss/2009-February/000319.html

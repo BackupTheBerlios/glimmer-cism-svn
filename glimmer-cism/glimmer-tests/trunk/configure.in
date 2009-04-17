@@ -40,6 +40,17 @@ AC_ARG_ENABLE(graphics, AS_HELP_STRING([--enable-graphics],[Run PyCF scripts]),
 esac],[AC_MSG_RESULT([no])])
 AM_CONDITIONAL([BUILD_GRAPHICS], [test "$enable_graphics" == "yes"])
 
+dnl checking if model runs should be submitted to SGE
+SGE_OPTS=""
+AC_MSG_CHECKING([whether model runs should be submitted to SGE])
+AC_ARG_WITH(sge-jobs,AS_HELP_STRING([--with-sge-jobs],[use Sun Grid Engine to run models]),[
+  SGE_OPTS="-s"
+  if test x"$with_sge_jobs"x != xyesx; then
+    SGE_OPTS="$SGE_OPTS -o \"$with_sge_jobs\""
+  fi 
+  AC_MSG_RESULT([$withval])],[AC_MSG_RESULT([no])])
+AC_SUBST(SGE_OPTS)
+
 dnl checking if the RSL data base is present
 AC_CHECK_FILE($GLIMMER_PREFIX/share/PyCF/rsl.db,have_rsl_db="yes",have_rsl_db="no")
 AM_CONDITIONAL([HAVE_RSL_DB], [test "$have_rsl_db" == "yes"])

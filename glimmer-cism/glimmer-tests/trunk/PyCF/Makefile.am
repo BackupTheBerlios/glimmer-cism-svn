@@ -10,7 +10,7 @@ if BUILD_GRAPHICS
   graphics = test1 test2 test3 test4 test5 test6 test8 test9 $(rsl_runs)
 endif
 
-BUILT_SOURCES = $(graphics)
+BUILT_SOURCES = 
 
 EXTRA_DIST = fenscan.data fenscan.prof eismint.prof
 
@@ -101,3 +101,5 @@ test9:
 	echo "Test 9"
 	echo "Plotting ice sheet extent"
 	@GLIMMER_PREFIX@/bin/plot_extent.py -t -17 ../eis/fenscan.nc ../eis/fenscan-gthf.nc  fenscan.extent.ps
+
+include $(top_srcdir)/make.rules

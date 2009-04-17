@@ -40,6 +40,11 @@ if test x$AUTOMAKE != x; then
     check_version $VER $AUTOMAKE_REQUIRED_VERSION
 fi
 
+if test x"$GLIMMER_PREFIX"x == "xx"; then
+   echo "Environment variable GLIMMER_PREFIX is not set"
+   DIE=1
+fi
+
 if test "$DIE" -eq 1; then
     echo
     echo "Please install/upgrade the missing tools and call me again."
