@@ -1,3 +1,7 @@
+2009-04-21 Magnus Hagdorn
+ * eis/Makefile.am: do not run models and visualisation when
+   make all is run
+
 2009-04-17 Magnus Hagdorn
  * Makefile.am: add new recursive targets
  * bootstrap: make sure GLIMMER_PREFIX environment variable is set
