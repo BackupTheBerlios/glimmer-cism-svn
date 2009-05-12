@@ -1,3 +1,7 @@
+2009-05-12 Magnus Hagdorn
+ * make.rules: add a variable for setting launch option at run time
+ * *.config: remove obsolete option
+
 2009-04-21 Magnus Hagdorn
  * eis/Makefile.am: do not run models and visualisation when
    make all is run
