@@ -1,3 +1,6 @@
+2009-07-30 Magnus Hagdorn
+ * configure.in: point to berliOS
+
 2009-07-28 Ian Rutt
  * Tagged RELEASE_1_0 version for Portland Summer School
  * Various updates to bootstrap to correct for problems detecting tool versions

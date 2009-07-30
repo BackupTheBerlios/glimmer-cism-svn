@@ -6,7 +6,7 @@ m4_define([glimmer_tests_minor_version], [0])
 m4_define([glimmer_tests_version],
 	[glimmer_tests_major_version.glimmer_tests_minor_version])
 
-AC_INIT([glimmer-tests],[glimmer_tests_version],[glimmer-discuss@forge.nesc.ac.uk])
+AC_INIT([glimmer-tests],[glimmer_tests_version],[glimmer-cism-devel@lists.berlios.de])
 AM_INIT_AUTOMAKE
 
 GLIMMER_TESTS_MAJOR_VERSION=glimmer_tests_major_version
