@@ -1,3 +1,7 @@
+2009-07-28 Ian Rutt
+ * Tagged RELEASE_1_0 version for Portland Summer School
+ * Various updates to bootstrap to correct for problems detecting tool versions
+	
 2009-05-12 Magnus Hagdorn
  * make.rules: add a variable for setting launch option at run time
  * *.config: remove obsolete option
