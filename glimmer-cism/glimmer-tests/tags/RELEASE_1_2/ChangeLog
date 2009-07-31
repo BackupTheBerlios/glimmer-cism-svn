@@ -1,0 +1,150 @@
+2009-07-31 Magnus Hagdorn
+ * configure.in: bump to 1.2
+
+2009-07-30 Magnus Hagdorn
+ * configure.in: point to berliOS
+
+2009-07-28 Ian Rutt
+ * Tagged RELEASE_1_0 version for Portland Summer School
+ * Various updates to bootstrap to correct for problems detecting tool versions
+	
+2009-05-12 Magnus Hagdorn
+ * make.rules: add a variable for setting launch option at run time
+ * *.config: remove obsolete option
+
+2009-04-21 Magnus Hagdorn
+ * eis/Makefile.am: do not run models and visualisation when
+   make all is run
+
+2009-04-17 Magnus Hagdorn
+ * Makefile.am: add new recursive targets
+ * bootstrap: make sure GLIMMER_PREFIX environment variable is set
+ * configure.in: add option to use SGE to start model runs
+ * make.rules: new targets; handle SGE options
+ * EISMINT-1/Makefile.am: do not run models and visualisation when
+   make all is run
+ * EISMINT-2/Makefile.am: ditto
+ * PyCF/Makefile.am: ditto
+ * benchmarks/Makefile.am: ditto
+ * isos/Makefile.am: ditto
+ * lin-non_lin/Makefile.am: ditto
+
+2009-03-10 Magnus Hagdorn
+ * EISMINT-3-GL/EISMINT3GL.input.nc: fixed false easting/northing,
+   see: http://forge.nesc.ac.uk/pipermail/glimmer-discuss/2009-February/000319.html
+
+2007-07-10 Ian Rutt
+ * Removed redundant options from EISMINT-1 config files
+
+2006-10-25 Ian Rutt
+ * Updated EISMINT-3-GL data to reflect changes in driver
+
+2006-10-16 Ian Rutt
+ * Minor tweaking of EISMINT-3-GL. 
+
+2006-10-10 Ian Rutt
+ * Further improvements to EISMINT-3-GL
+
+2006-06-09 Ian Rutt
+ * Corrected EISMINT-3 Greenland input file - precipitation now
+   water-equivalent
+
+2006-04-27 Ian Rutt
+ * Added files for EISMINT-3 Greenland steady-state scenario
+
+2005-12-19 Magnus Hagdorn
+ * configure.in: bump version
+ * NEWS: update
+
+2005-12-13 Magnus Hagdorn
+ * configure.in: use AM_PATH_GLIMMER to set up GLIMMER
+ * bootstrap: look for glimmer.m4
+ * Makefile.am: add rule to regenerate aclocal.m4
+
+2005-10-06 Magnus Hagdorn
+ * configure.in: bump version
+ * Makefile.am: fix minor bug
+ * NEWS: update NEWS
+
+2005-10-04 Magnus Hagdorn
+ * PyCF/Makefile.am: more plots
+ * new forcing for European runs
+ * fenscan-gthf.config: new run with GTHF calcs enabled
+ * Makefile.am hook up new files
+ * configure.in: require glimmer-0.5.3
+
+2005-07-07 Magnus Hagdorn
+ * PyCF/Makefile.am: add more RSL plotting tests
+
+2005-04-18 Magnus Hagdorn
+ * configure.in: bump version to 0.4, make rsl plot dependent on
+   presence of rsl database
+ * PyCF/Makefile.am: make rsl plot dependent on presence of rsl
+   database, fix options of plotSpot.py
+ * isos/Makefile.am: fix options of plotSpot.py
+ * updated NEWS
+
+2005-03-14 Magnus Hagdorn
+ * added benchmarks
+
+2005-03-12 Magnus Hagdorn
+ * fixed minor bug
+
+2005-03-11 Magnus Hagdorn
+ * Makefile.ams: tell automake which files to delete on
+   make clean and make mostlyclean
+
+2005-03-11 Magnus Hagdorn
+ * configure.in: honour GLIMMER microversion, fix bug with 
+   checking
+
+2005-03-08 Magnus Hagdorn
+ * added basal variables
+
+2005-03-07 Magnus Hagdorn
+ * more fixes
+
+2005-03-05 Magnus Hagdorn
+ * fixed minor bugs in build system
+
+2005-03-05 Magnus Hagdorn
+ * add some missing config files
+ * tweak build system
+
+2005-03-04 Magnus Hagdorn
+ * forgot make.rules.in
+
+2005-03-04 Magnus Hagdorn
+ * forgot configure.in
+
+2005-03-03 Magnus Hagdorn
+ * change build-system to autotools
+
+2005-02-28 Magnus Hagdorn
+ * renamed io sections to include CF
+
+2004-12-01 Magnus Hagdorn
+ * changed ice thickness solver to linear and enforced upper
+   kinetic BC
+ * EISMINT-2/Makefile: added new plots comparing results with published ones
+ * eismint.prof: only from centre to right margin
+ * new set of tests for linear/non-linear solver
+
+2004-11-04 Magnus Hagdorn
+ * fixed Makefile and added target plots for EISMINT-[12]
+
+2004-11-02 Magnus Hagdorn
+ * hooked up eis dir to Makefiles
+
+2004-10-22 Magnus Hagdorn
+ * added test configuration for European run using eis_glide
+ * added some more tests
+	
+2004-10-22 Magus Hagdorn
+ * started PyCF testing framework
+
+2004-09-21 Magnus Hagdorn
+ * e2.l.config: fixed wrong output file
+
+2004-09-17 Magnus Hagdorn
+ * uploaded EISMINT 1 and 2 test cases
