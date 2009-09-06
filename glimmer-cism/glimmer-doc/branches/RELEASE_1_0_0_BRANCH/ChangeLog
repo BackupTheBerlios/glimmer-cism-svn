@@ -1,3 +1,6 @@
+2009-09-06 Ian Rutt
+ * Adapted build for higher version numbers of autotools
+
 2008-07-03 Ian Rutt
  * More temperature docs
 
