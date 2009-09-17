@@ -1,0 +1,184 @@
+2009-09-17 Magnus Hagdorn
+ * tests/exact-isothermal/scripts/run_verif.py: handle commandline similarly
+   to glide_lauch.py
+ * tests/exact-isothermal/tests/Makefile.am: specify what binary to use
+
+2009-09-17 Magnus Hagdorn
+ * configure.in: add new Makefile
+ * example-drivers/Makefile.am: add a data target
+ * example-drivers/EISMINT-3/Makefile.am: ditto
+ * example-drivers/eis/Makefile.am: ditto
+ * example-drivers/EISMINT-3/EISMINT-3/Makefile.am: new - run example
+ * example-drivers/EISMINT-3/EISMINT-3/e3gl_steady.config: rename output file
+   so make can figure out if it needs to do something
+ * example-drivers/eis/fenscan/Makefile.am: specify binary to run
+
+2009-09-16 Magnus Hagdorn
+ * tests/Makefile.am: decent into subdirs when generating data
+ * tests/exact-isothermal/Makefile.am: decent into subdirs
+ * tests/exact-isothermal/scripts/run_verif.py: updated script to be analogous
+   to glide_launch.py
+ * tests/exact-isothermal/src/verif_glide.F90: use glimmer commandline parser
+   and glimmer timer
+ * tests/exact-isothermal/tests/Makefile.am: fix Makefile
+
+2009-09-16 Magnus Hagdorn
+ * configure.in: user can specify if they want to use the SGE to submit jobs
+   when running tests/examples
+ * make.rules: find the correct model to run
+ * scripts/glide_launch.py: simplify selection of model
+ * scripts/qsub_glide.sh: pass environment to SGE job
+ * tests/EISMINT/EISMINT-1/Makefile.am: select simple_glide binary
+ * tests/EISMINT/EISMINT-2/Makefile.am: ditto
+ * tests/EISMINT/benchmarks/Makefile.am: ditto
+ * tests/EISMINT/isos/Makefile.am: ditto
+ * tests/EISMINT/lin-non_lin/Makefile.am: ditto
+
+2009-09-15 Magnus Hagdorn
+ * convert some more comments in another bunch of files to doxygen strings
+ * libglimmer/glimmer_ncdf.F90: move second module to glimmer_scales.F90
+
+2009-09-15 Magnus Hagdorn
+ * convert comments in a bunch of files to doxygen strings
+
+2009-09-14 Magnus Hagdorn
+ * README: document new make target to build tar-ball of html docs
+ * doc/Makefile.am: new target to build tar-ball of html docs which
+   can be uploaded to berliOS (or elsewhere)
+
+2009-09-10 Magnus Hagdorn
+ * libglimmer/glimmer_ts.F90: change documentation strings to doxygen
+
+2009-09-10 Magnus Hagdorn
+ * README: document documentation build
+ * bootstrap: don't warn about possible incompatibilities in Makefiles
+ * configure.in: find doxygen
+ * doc/Makefile.am: add targets for doxygen 
+ * doc/glimmer-cism.cfg.in: added template doxygen configuration
+ * m4macros/amdoxygen.am: makefile snippet for doxygen
+ * m4macros/ax_prog_doxygen.m4: autoconf macro for handling doxygen
+
+2009-09-08 Magnus Hagdorn
+ * libglimmer/glimmer_vers.F90.in.in: fix fortran error
+
+2009-09-07 Magnus Hagdorn
+ * libglimmer/glimmer_vers.F90.in.in: version numbers are no longer stored in
+   a module, but accessed through accessors to avoid unnessary recompilations
+ * libglide/glide.F90: call new accessor to get version
+ * libglide/glimmer_ncparams.F90: ditto
+ * libglimmer/Makefile.am: pass top source directory to version script
+ * libglimmer/createSVNVersion.sh: run svnversion on top source dir
+ * libglimmer/glimmer_global.F90: do not load version numbers
+
+2009-09-07 Magnus Hagdorn
+ * doc/common/Makefile.am: forgot to distribute file
+ * doc/num/figs/Makefile.am: ditto
+ * doc/ug/varlist.tex: include list of variables
+
+2009-09-07 Magnus Hagdorn
+ * Makefile.am: forgot sub directory
+ * configure.in: rename package to glimmer-cism
+ * doc/Makefile.am: do not distribute generated docs
+ * doc/dg/figures/Makefile.am: do not distribute images
+ * doc/num/figs/Makefile.am: ditto
+ * doc/num/gnu/Makefile.am: ditto
+ * doc/ug/figs/Makefile.am: ditto
+ * doc/ug/Makefile.am: fix paths
+ * example-drivers/glint/src/Makefile.am: fix bug
+ * tests/exact-isothermal/src/Makefile.am:  rename installation directory
+
+2009-09-04 Magnus Hagdorn
+ * Makefile.am: add new subdirectory
+ * configure.in: handle new directories
+ * libglint/Makefile.am: forgot a file
+ * add glint examples
+
+2009-09-04 Magnus Hagdorn
+ * Makefile.am: add new subdirectory
+ * configure.in: handle new directories
+ * EISMINT-3/src/Makefile.am: link to the correct libs
+ * add libglint and EISMINT3 examples
+
+2009-09-04 Magnus Hagdorn
+ * added EISMINT-3 greenland example
+
+2009-09-04 Magnus Hagdorn
+ * Makefile.am: add new subdirectory
+ * configure.in: handle new directories
+ * libglimmer/Makefile.am: forgot a file
+ * add eis driver and example setups
+
+2009-09-04 Magnus Hagdorn
+ * Makefile.am: distribute new file
+ * configure.in: handle new directories
+ * tests/Makefile.am: ditto
+ * add EISMINT 1 and 2 tests
+
+2009-09-04 Magnus Hagdorn
+ * Makefile.am: add new subdirectory
+ * configure.in: create new Makefiles
+
+2009-09-04 Magnus Hagdorn
+ * configure.in: move internal blas around to libglimmer-solve
+ * libglide/Makefile.am: undo rearrangement since dep tracker is fixed
+ * libglimmer/Makefile.am: blas directory is removed
+ * libglimmer-solve/Makefile.am: optionally build internal blas and link to
+   libglimmer-solve.a
+ * libglimmer-solve/SLAP/Makefile.am: fix bug
+ * move libglimmer/blas to libglimmer-solve/blas
+
+2009-09-04 Magnus Hagdorn
+ * libglide/Makefile.am: tell the f90 dependency tracker to use libtool
+ * libglimmer/Makefile.am: fix bugs
+ * libglimmer-solve/Makefile.am: add dependency tracker
+ * scripts/f90_dependencies.py: add option to produce output for libtool
+
+2009-09-04 Magnus Hagdorn
+ * Makefile.am: add new directory
+ * bootstrap: look for libtool
+ * configure.in: use libtool to build libraries
+ * libglide/Makefile.am: use libtool
+ * libglimmer/Makefile.am: ditto
+ * move libglimmer/solve to libglimmer-solve
+
+2009-09-04 Magnus Hagdorn
+ * Makefile.am: add new subdirectory
+ * configure.in: create new Makefile
+ * libglide: populate libglide
+
+2009-09-04 Magnus Hagdorn
+ * doc/Makefile.am: only build figures if documentation is built
+ * libglimmer/Makefile.am: forgot to the ncdf template
+ * libglimmer/solve/Makefile.am: add sparse matrix handler
+
+2009-09-03 Magnus Hagdorn
+ * libglimmer/Makefile.am: add targets for libglimmer-IO.a
+
+2009-09-03 Magnus Hagdorn
+ * configure.in: add new subdirectory
+ * libglimmer/Makefile.am: handle new subdirectory
+ * libglimmer/solve/SLAP/Makefile.am: handle dependencies, run SLAP test
+ * libglimmer/blas: added reference implementation of BLAS required for
+   SLAP from netlib
+
+2009-09-03 Magnus Hagdorn
+ * configure.in: add new directories
+ * libglimmer/Makefile.am: decent into new subdirectory
+ * add vanilla SLAP library
+
+2009-09-03 Magnus Hagdorn
+ * Makefile.am: add new sub-directories
+ * configure.in: uncomment restart facility, handle new directories
+ * add scripts
+ * add files for libglimmer
+
+2009-09-02 Magnus Hagdorn
+ * Makefile.am: decent into documentation directory
+ * configure.in: make documentation builds configure option
+ * doc/glimmer.tex: no longer autogenerated
+ 
+2009-09-02 Magnus Hagdorn
+ * copy documentation and get it to compile
+
+2009-09-02 Magnus Hagdorn
+ * populate project with basic files to get autotools to work
