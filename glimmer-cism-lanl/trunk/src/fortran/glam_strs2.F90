@@ -283,8 +283,14 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                       umask,pcgsize(1))
 
   !!!!!!!!! *sfp* start debugging !!!!!!!!!!!!!!!!!!!!!!!!
+!  do ew = 1, 15; do ns = 16, 30     !*sfp* hack of mask for Ross exp.
+!    if( umask(ew,ns) == 41 )then
+!        umask(ew,ns) = 105
+!    end if
+!  end do; end do
 !  print *, 'mask = '
-!  print *, umask(1:5,27:31)
+!  print *, umask(1:18,17:35)
+!  print *, umask(1:18,100:115)
 !  print *, ' '
 !  pause
 !  print *, 'uindx = '
@@ -432,7 +438,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     counter = counter + 1
 
     ! *sfp** output status of iteration: iteration number, max residual, and location of max residual
-!    print '(i3,3g20.6)', counter, resid(1), resid(2), minres
+    print '(i3,3g20.6)', counter, resid(1), resid(2), minres
 
 !whl - write this info to the log file
 !    write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
@@ -940,7 +946,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
     usav(:,:,:,pt) = vel
 
-  print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))
+!  print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
 
   return
 
@@ -1107,7 +1113,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elseif ( GLIDE_IS_CALVING( mask(ew,ns) ) .and. .not. &
-             GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns) ) ) &
+             GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns) ) .and. .not. &
+             GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) ) &
     then
 !    print *, 'At a SHELF boundary ... ew, ns = ', ew, ns
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
