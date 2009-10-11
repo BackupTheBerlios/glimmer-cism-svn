@@ -197,7 +197,7 @@ contains
     
         !umfpack is a direct method, so the iters and err returns mean nothing
         err = 0
-        niters = 0
+        niters = 1
     end function umf_solve
 
     subroutine umf_solver_postprocess(matrix, options, workspace)

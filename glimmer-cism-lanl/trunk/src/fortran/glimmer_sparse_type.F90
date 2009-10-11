@@ -46,20 +46,20 @@
 
 module glimmer_sparse_type
   use glimmer_global, only:dp
+
+  !*FD sparse matrix type
   type sparse_matrix_type
-     !*FD sparse matrix type
-     integer :: nonzeros                                    !*FD number of nonzero elements currently stored
-     integer :: order                                       !*FD order of the matrix (e.g. number of rows)
-     logical :: symmetric                                   !*FD True if only one triangle of the symmetric matrix is stored
+     integer :: nonzeros  !*FD number of nonzero elements currently stored
+     integer :: order     !*FD order of the matrix (e.g. number of rows)
+     logical :: symmetric !*FD True only if triangle of the symmetric matrix stored
      integer, dimension(:), pointer :: col => NULL()        !*FD column index
      integer, dimension(:), pointer :: row => NULL()        !*FD row index
      real(kind=dp), dimension(:), pointer :: val => NULL()  !*FD values
-
   end type sparse_matrix_type
 
   type sparse_solver_options_base
         real(kind=dp) :: tolerance !*FD Error tolerance
-        integer :: maxiters !*FD Max iterations before giving up
+        integer :: maxiters        !*FD Max iterations before giving up
         integer :: method
   end type
 
@@ -84,7 +84,7 @@ contains
   subroutine new_sparse_matrix(order,n,mat)
     !*FD create a new sparse matrix
     implicit none
-    integer, intent(in) :: n          !*FD initial size of matrix
+    integer, intent(in) :: n          !*FD initial size of matrix (non-zeros)
     type(sparse_matrix_type) :: mat   !*FD matrix
     integer, intent(in) :: order      !*FD Order (number of rows and columns) of the matrix
     
@@ -226,9 +226,42 @@ contains
     type(sparse_matrix_type) :: matrix
     logical :: is_triad_format
 
-    is_triad_format = .not. is_column_format(matrix)
-
+    is_triad_format = .not. is_column_format(matrix) .and. .not.  is_row_format(matrix)
   end function
+
+  function is_row_format(matrix)
+    type(sparse_matrix_type) :: matrix
+    logical :: is_row_format
+
+    is_row_format = matrix%row(matrix%order + 1) == matrix%nonzeros + 1
+  end function
+
+  subroutine to_row_format(matrix)
+    implicit none
+    type(sparse_matrix_type) :: matrix
+    integer,dimension(matrix%order + 1) :: IA
+    integer :: i,cur_row
+    ! In terms of the PARDISO manual (page 6) the compressed row 
+    ! format will have the following correspondense with glimmer_spare_type
+    ! IA -> matrix%row
+    ! JA -> matrix%column
+    ! A  -> matrix%value
+    ! 
+    ! JA and A do not require changes. 
+    ! IA will be created and then replace matrix%row
+    if(is_triad_format(matrix)) then
+        cur_row =  1
+        IA(1) = 1
+        do i = 1,matrix%nonzeros
+            if (matrix%row(i) /= cur_row) then
+                cur_row = matrix%row(i)
+                IA(cur_row) = i
+            end if
+        end do 
+        IA(matrix%order + 1) = matrix%nonzeros + 1
+        matrix%row = IA
+    end if
+  end subroutine
 
   function is_column_format(matrix)
     type(sparse_matrix_type) :: matrix
@@ -251,35 +284,51 @@ contains
     !*FD (e.g. those used in SLAP), but it *is* necessary in some other libraries
     !*FD (e.g. UMFPACK).  For this reason, it is not done automatically in
     !*FD to_column_format.
+    implicit none
     type(sparse_matrix_type) :: matrix
     integer :: i
+
     do i=1,matrix%order !Loop through each column index
-      call sort_column(matrix%val, matrix%row, matrix%col(i), matrix%col(i+1)-1)
+      call sort(matrix%val, matrix%row, matrix%col(i), matrix%col(i+1)-1)
     end do
   end subroutine
 
-  subroutine sort_column(values, row_indices, startindex, endindex)
-    real(dp),dimension(:) :: values
-    integer,dimension(:) :: row_indices
-    integer :: startindex
-    integer :: endindex
+  subroutine sort_row_format(matrix)
+    !*FD Takes a row format matrix and sorts the column indices within each row
+    !*FD SLAP doesn't expect this, but PARDISO does.
+    implicit none
+    type(sparse_matrix_type) :: matrix
+    integer :: i
+
+    do i=1,matrix%order !Loop through each row index
+      call sort(matrix%val, matrix%col, matrix%row(i), matrix%row(i+1)-1)
+    end do
+  end subroutine
+
+  subroutine sort(values, indices, startindex, endindex)
+    implicit none
+    real(dp),dimension(:),intent(inout) :: values
+    integer,dimension(:),intent(inout) :: indices
+    integer, intent(in) :: startindex
+    integer, intent(in) :: endindex
+    integer :: currentindex
+    real(dp) :: currentvalue
+    integer :: i,j
     
-    !Insertion Sort
-    !TODO: something faster?
+    !Insertion Sort TODO: Something faster?
     do i=startindex+1,endindex
-        currentrowindex = row_indices(i)
+        currentindex = indices(i)
         currentvalue = values(i)
 
         j = i-1
-        do while (j >= startindex .and. row_indices(j) > currentrowindex)
-            row_indices(j+1) = row_indices(j)
+        do while (j >= startindex .and. indices(j) > currentindex)
+            indices(j+1) = indices(j)
             values(j+1) = values(j)
             j = j - 1
         end do
-        row_indices(j+1) = currentrowindex
+        indices(j+1) = currentindex
         values(j+1) = currentvalue
     end do
-    
   end subroutine
 
 end module glimmer_sparse_type

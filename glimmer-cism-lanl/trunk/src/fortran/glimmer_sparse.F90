@@ -8,23 +8,27 @@ module glimmer_sparse
     use glimmer_sparse_type
     use glimmer_sparse_slap
     use glimmer_sparse_umfpack
+    use glimmer_sparse_pardiso
     implicit none
 
     type sparse_solver_options
         type(sparse_solver_options_base) :: base
         type(slap_solver_options) :: slap
         type(umf_solver_options)  :: umf
+        type(pardiso_solver_options)  :: pardiso
     end type
 
     type sparse_solver_workspace
         type(slap_solver_workspace), pointer :: slap => null()
         type(umf_solver_workspace),  pointer :: umf  => null()
+        type(pardiso_solver_workspace),  pointer :: pardiso  => null()
     end type
 
 
     integer, parameter :: SPARSE_SOLVER_BICG = 0
     integer, parameter :: SPARSE_SOLVER_GMRES = 1
     integer, parameter :: SPARSE_SOLVER_UMF = 2
+    integer, parameter :: SPARSE_SOLVER_PARDISO = 3
 
 contains
     subroutine sparse_solver_default_options(method, opt)
@@ -79,7 +83,9 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             allocate(workspace%umf)
             call umf_allocate_workspace(matrix, options%umf, workspace%umf, max_nonzeros)
-
+        else if (options%base%method == SPARSE_SOLVER_PARDISO) then
+            allocate(workspace%pardiso)
+            call pardiso_allocate_workspace(matrix, options%pardiso, workspace%pardiso, max_nonzeros)
         end if
     end subroutine sparse_allocate_workspace
 

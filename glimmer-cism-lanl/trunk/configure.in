@@ -180,7 +180,7 @@ AC_LANG_POP(C)
 #UMFPACK
 if test "$ac_cv_umfpack_prefix" != ""; then
         AC_MSG_RESULT([Using Umfpack to solve sparse linear systems (located at $ac_cv_umfpack_prefix)])
-        LDFLAGS="$LDFLAGS -L$ac_cv_umfpack_prefix/lib"
+        LDFLAGS="$LDFLAGS -L$ac_cv_umfpack_prefix/Lib"
         FCFLAGS="$FCFLAGS -DHAVE_UMFPACK" 
         
         if test "$ac_cv_haveblas" == 0; then
@@ -201,14 +201,14 @@ If you are not sure what to do here but have BLAS installed in a standard locati
         #that will be resolved below.
         AC_LANG_PUSH(C)
         AC_CHECK_LIB([amd], [amd_l_valid], , 
-                     AC_MSG_ERROR([Libamd not found. required to use --with-umfpack.  See http://www.cise.ufl.edu/research/sparse/umfpack]), [-lblas])
+                     AC_MSG_ERROR([Libamd not found. required to use --with-umfpack.  See http://www.cise.ufl.edu/research/sparse/umfpack]))
                     
-        AC_CHECK_LIB([umfpack], [main], ,  AC_MSG_ERROR([Libumfpack not found.]), [-lblas -lamd])
+        AC_CHECK_LIB([umfpack], [main], ,  AC_MSG_ERROR([Libumfpack not found.]), [-lamd])
         AC_LANG_POP(C)
 
         #A peculiarity of UMFPACK is that we need an *object* file (not a library) with the fortran77 bindings.  I'm going to say
         #that this should be placed in the same directory as libumfpack (e.g. in the lib directory).  Check for that.
-        LDFLAGS="$LDFLAGS $ac_cv_umfpack_prefix/lib/umf4_f77wrapper.o"
+        LDFLAGS="$LDFLAGS $ac_cv_umfpack_prefix/Lib/umf4_f77wrapper.o"
         AC_MSG_CHECKING(for UMFPACK F77 bindings)
         AC_LINK_IFELSE(AC_LANG_PROGRAM([],[]), AC_MSG_RESULT(yes), 
                        [AC_MSG_RESULT(no)
@@ -248,8 +248,8 @@ If the following Pardiso check fails, please use the --with-gomp flag and try ag
 
             AC_MSG_CHECKING(for Pardiso)
             FCFLAGS="$FCFLAGS -DHAVE_PARDISO"
-            LDFLAGS="$LDFLAGS -lpardiso"
-            AC_CHECK_LIB([pardiso],[pardiso], , AC_MSG_ERROR([Libpardiso not found.]),[-lblas])
+            LDFLAGS="$LDFLAGS -L$ac_cv_pardiso_prefix -lpardiso"
+            AC_CHECK_LIB([pardiso],[pardiso], , AC_MSG_ERROR([Libpardiso not found.]))
 fi
 
 AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
