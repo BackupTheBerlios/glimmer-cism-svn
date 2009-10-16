@@ -39,6 +39,7 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_daily_pdd.F90 glint_global_interp.F90 \
                        glimmer_sparse_type.F90 glimmer_sparse.F90 \
                        glimmer_sparse_umfpack.F90 \
+                       glimmer_sparse_trilinos.F90 \
                        glimmer_sparse_slap.F90 \
 		       glimmer_coordinates.F90 \
                        glimmer_integrate.F90 ncdf_utils.F90 \
