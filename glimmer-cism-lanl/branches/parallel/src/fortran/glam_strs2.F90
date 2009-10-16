@@ -192,6 +192,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  whichbabc,              &
                                  whichefvs,              &
                                  whichresid,             &
+                                 whichsparse,            &
                                  periodic_ew,periodic_ns,&
                                  beta,                   & 
                                  uvel,     vvel,         &
@@ -226,6 +227,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer, intent(in) :: whichbabc
   integer, intent(in) :: whichefvs
   integer, intent(in) :: whichresid
+  integer, intent(in) :: whichsparse
   logical, intent(in) :: periodic_ew, periodic_ns
 
   real (kind = dp), dimension(:,:,:), intent(out) :: uvel, vvel

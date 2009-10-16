@@ -319,6 +319,7 @@ module glide_types
     !*FD \item[0] Biconjugate Gradient, Incomplete LU Preconditioner
     !*FD \item[1] GMRES, Incomplete LU Preconditioner
     !*FD \item[2] Unsymmetric multifrontal direct solver
+    !*FD \item[3] interface to Trilinos
     !*FD \end{description}
 
     integer :: which_ho_sparse_fallback = -1

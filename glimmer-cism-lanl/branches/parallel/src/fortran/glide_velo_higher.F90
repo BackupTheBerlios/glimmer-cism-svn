@@ -192,6 +192,7 @@ contains
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &
+                                        model%options%which_ho_sparse,                               &
                                         model%options%periodic_ew,                                  &
                                         model%options%periodic_ns,                                  &
                                         model%velocity_hom%beta,                                    & 
