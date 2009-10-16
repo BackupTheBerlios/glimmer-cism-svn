@@ -155,8 +155,6 @@ contains
         !*FD Sparse matrix to solve.  This is inout because the trilinos solver
         !*FD may have to do some re-arranging of the matrix.
         
-        write(*,*)"TRILINOS: in trilinos_solve"
-
         real(kind=dp), dimension(:), intent(in) :: rhs 
         !*FD Right hand side of the solution vector
         
@@ -186,6 +184,7 @@ contains
         integer :: sys
 
         sys=0
+        write(*,*)"TRILINOS: in trilinos_solve"
        
         call check_trilinos()
 #ifdef HAVE_UMFPACK
