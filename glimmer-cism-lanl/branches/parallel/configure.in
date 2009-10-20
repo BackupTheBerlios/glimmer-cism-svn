@@ -88,6 +88,14 @@ if test "$fs" != "" ; then
   f95v="Portland pgf90"
   f95_preprocessor="-Mpreprocess"
   CFORTRAN_CFLAGS=-DpgiFortran
+# testing for Cray xt wrappers to Portland group
+  f95string=`$FC -V 2>&1`
+  fs=`echo $f95string |$EGREP "cray"`
+ if test "$fs" != "" ; then
+  f95v="Cray ftn wrapper"
+  f95_preprocessor="-Mpreprocess"
+  CFORTRAN_CFLAGS=-DpgiFortran
+ fi
 fi
 AC_SUBST(CFORTRAN_CFLAGS)
 

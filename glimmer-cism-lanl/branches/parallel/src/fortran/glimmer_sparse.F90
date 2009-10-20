@@ -78,7 +78,7 @@ contains
             max_nonzeros = matrix%nonzeros
         end if
 
-        if (options%base%method == SPARSE_SOLVER_BICG .or. \
+        if (options%base%method == SPARSE_SOLVER_BICG .or. &
             options%base%method == SPARSE_SOLVER_GMRES) then
             allocate(workspace%slap)
             call slap_allocate_workspace(matrix, options%slap, workspace%slap, max_nonzeros)
@@ -111,7 +111,7 @@ contains
         type(sparse_solver_options) :: options
         type(sparse_solver_workspace) :: workspace
 
-        if (options%base%method == SPARSE_SOLVER_BICG .or. \
+        if (options%base%method == SPARSE_SOLVER_BICG .or. &
             options%base%method == SPARSE_SOLVER_GMRES) then
             call slap_solver_preprocess(matrix, options%slap, workspace%slap)
 
@@ -167,7 +167,7 @@ contains
             verbose_var = verbose
         end if
 
-        if (options%base%method == SPARSE_SOLVER_BICG .or. \
+        if (options%base%method == SPARSE_SOLVER_BICG .or. &
             options%base%method == SPARSE_SOLVER_GMRES) then
             sparse_solve = slap_solve(matrix, rhs, solution, options%slap, workspace%slap, err, niters, verbose_var)
 
@@ -188,7 +188,7 @@ contains
         type(sparse_solver_options) :: options
         type(sparse_solver_workspace) :: workspace
 
-        if (options%base%method == SPARSE_SOLVER_BICG .or. \
+        if (options%base%method == SPARSE_SOLVER_BICG .or. &
             options%base%method == SPARSE_SOLVER_GMRES) then
             call slap_solver_postprocess(matrix, options%slap, workspace%slap)
 
@@ -210,7 +210,7 @@ contains
         type(sparse_solver_options) :: options
         type(sparse_solver_workspace) :: workspace
         
-        if (options%base%method == SPARSE_SOLVER_BICG .or. \
+        if (options%base%method == SPARSE_SOLVER_BICG .or. &
             options%base%method == SPARSE_SOLVER_GMRES) then
             call slap_destroy_workspace(matrix, options%slap, workspace%slap)
             deallocate(workspace%slap)
@@ -237,7 +237,7 @@ contains
         character(*), optional, intent(out) :: error_string
         character(256) :: tmp_error_string
         
-        if (options%base%method == SPARSE_SOLVER_BICG .or. \
+        if (options%base%method == SPARSE_SOLVER_BICG .or. &
             options%base%method == SPARSE_SOLVER_GMRES) then
             call slap_interpret_error(error_code, tmp_error_string)
 
