@@ -16,9 +16,7 @@ module glimmer_sparse_pardiso
     type pardiso_solver_workspace
         !*FD Memory addresses used internally by PARDISO
         integer(kind=parint), dimension(64) :: pt
-        !*FD Storage for passing parameters to and getting info from PARDISO
-        integer(kind=parint), dimension(64) :: iparm
-        !*FD Error messages from pardisoinit: 0 no error, -10 no license, -11
+       !*FD Error messages from pardisoinit: 0 no error, -10 no license, -11
         !*FD licence expired (?), -12 wrong user or hostname.
         integer(kind=parint) :: error
         !*FD Work array for multi-recursive solver only
@@ -31,11 +29,14 @@ module glimmer_sparse_pardiso
         !*FD Solver, sparse direct is 0. If we ever have symmetric indefinate
         !*FD matrices, we might try 1; 'multi-recusive iterative'
         integer(kind=parint) :: solver
+        !*FD Storage for passing parameters to and getting info from PARDISO
+        integer(kind=parint), dimension(64) :: iparm
+        ! Tolerance only needed in multirecursive solver
         real(kind=dp) :: tolerance
     end type pardiso_solver_options
 
 contains
-    subroutine pardiso_solver_default_options(opt)
+    subroutine pardiso_default_options(opt)
         !*FD Populates a sparse_solver_options (defined above) with default
         !*FD options.  This is necessary because different solvers may define
         !*FD different options beyond the required fields defined above.
@@ -43,9 +44,44 @@ contains
         !*FD values in a generic way.
         implicit none
         type(pardiso_solver_options), intent(inout) :: opt
+        logical :: TUNED
+
         opt%mtype = 11
         opt%solver = 0
-    end subroutine pardiso_solver_default_options
+        opt%tolerance = 1.d-6
+        ! These are options, which are passed to PARDISO.
+        ! The array is also used to return values. 
+        TUNED = .true.
+        if (.true.) then
+            opt%iparm(1) = 1   ! No defaults (1)
+            opt%iparm(2) = 2   ! Use Metis reordering (2)
+            opt%iparm(3) = 8   ! Number of processors
+            opt%iparm(4) = 61  ! LU CGS iteration (1) to 10^-6 (60)
+            opt%iparm(5) = 0   ! 0 Do not use permution 
+            opt%iparm(6) = 0   ! Write solution to seperate vector, not RHS
+            opt%iparm(8) = 0   ! Max iterative refinement steps
+            opt%iparm(10) = 13 ! eps pivot, 13 for non-symmetric, 8 symmetric
+            opt%iparm(11) = 1  ! Use non-symmetric scaling vector (1)
+            opt%iparm(12) = 0  ! Do not transpose matrix (0)
+            opt%iparm(13) = 1  ! Non-symmetric matrices
+            opt%iparm(18) = -1 ! Determine the number of non-zeros in LU (-1)
+            opt%iparm(19) = -1 ! Determine the Mflops for LU fact. (-1)
+            opt%iparm(21) = 1  ! Pivoting  1x1 and 2x2 Bunch-Kaufman
+            opt%iparm(24) = 1  ! Parallel numerical factor. (two level=1)
+            opt%iparm(25) = 1  ! Parallel solve (1)
+            opt%iparm(26) = 0  ! Use LU for solve (0)
+            opt%iparm(28) = 1  ! Parallel Metis (1)
+            opt%iparm(29) = 0  ! 64 bit accuracy (0)
+            opt%iparm(30) = 0  ! Default supernodes (0)
+            opt%iparm(31) = 0  ! No partial solutions using permute (0)
+            opt%iparm(32) = 0  ! Use sparse direct solver (0)
+            opt%iparm(33) = 0  ! Do not compute determinite (0) 
+            opt%iparm(34) = 0  ! Do not require identical parallel results(0)
+        else
+            opt%iparm(3) = 8   ! Number of processors
+        endif
+
+    end subroutine pardiso_default_options
 
     subroutine pardiso_allocate_workspace(matrix, options, workspace, max_nonzeros_arg)
         !*FD Allocate solver workspace.  This needs to be done once
@@ -54,117 +90,100 @@ contains
         !*FD the current number of nonzeroes must be used.
         implicit none
         type(sparse_matrix_type) :: matrix
-        type(pardiso_solver_options) :: options
-        type(pardiso_solver_workspace) :: workspace
+        type(pardiso_solver_options),intent(in) :: options
+        type(pardiso_solver_workspace),intent(inout) :: workspace
         integer, optional :: max_nonzeros_arg
+
         !...Check license of the solver and initialize the solver
         call pardisoinit(workspace%pt, options%mtype, options%solver,&
-                         workspace%iparm, workspace%dparm, workspace%error)
-    
+                         options%iparm, workspace%dparm, workspace%error)
     end subroutine pardiso_allocate_workspace
 
     subroutine pardiso_solver_preprocess(matrix, options, workspace)
-        !*FD Performs any preprocessing needed to be performed on the sparse
-        !*FD matrix.  Workspace must have already been allocated. 
-        !*FD This function should be safe to call more than once.
-        !*FD 
-        !*FD It is an error to call this function on a workspace without already
-        !*FD allocated memory.
-        !*FD
-        !*FD In general sparse_allocate_workspace should perform any actions
-        !*FD that depend on the *size* of the sparse matrix, and
-        !*FD sprase_solver_preprocess should perform any actions that depend
-        !*FD upon the *contents* of the sparse matrix.
-        type(sparse_matrix_type) :: matrix
-        type(pardiso_solver_options) :: options
-        type(pardiso_solver_workspace) :: workspace
+        type(sparse_matrix_type),intent(inout) :: matrix
+        type(pardiso_solver_options),intent(in) :: options
+        type(pardiso_solver_workspace),intent(in) :: workspace
+
+        ! To compressed row is not in place, need to create storage
+        integer,dimension(matrix%order+1) :: iao
+        integer,dimension(matrix%nonzeros) :: jao
+        real(kind=dp),dimension(matrix%nonzeros) :: ao
+        integer :: phase,pardiso_solve,msglvl
+        real(kind=dp), dimension(matrix%order) :: dummy
 
         ! PARDISO is looking for a compressed row format for the matrix.
-        call to_row_format(matrix)
+        ! Covervt triad to compressed row format
+        call coocsr(matrix%order,matrix%nonzeros,matrix%val,matrix%row,&
+                    matrix%col,ao,jao,iao)
 
-        !Sort by row within each column in the column format.
-        !to_column_format does not necessarily do this
+        ! Place new sparse matrix into appropriate fields.
+        matrix%row(1:matrix%order+1) = iao(:)
+        matrix%col(1:matrix%nonzeros) = jao(:)
+        matrix%val(1:matrix%nonzeros) = ao(:)
+
+        ! Sort the column entries, needed by PARDISO
         call sort_row_format(matrix)
-
     end subroutine pardiso_solver_preprocess
 
-    function pardiso_solve(matrix, rhs, solution, options, workspace,err,niters, verbose)
-        !*FD Solves the sparse linear system, and reports status information.
-        !*FD This function returns an error code that should be zero if the
-        !*FD call succeeded and nonzero if it failed.  No additional error codes
-        !*FD are defined.  Although this function reports back the final error
-        !*FD and the number of iterations needed to converge, these should *not*
-        !*FD be relied upon as not every sparse linear solver may report them.
+    function pardiso_solve(matrix, rhs, solution,options ,workspace ,err ,niters ,verbose)
         implicit none
-        type(sparse_matrix_type), intent(inout) :: matrix 
-        !*FD Sparse matrix to solve.  This is inout because the sparse solver
-        !*FD may have to do some re-arranging of the matrix.
-        
+        type(sparse_matrix_type), intent(in) :: matrix 
         real(kind=dp), dimension(:), intent(in) :: rhs 
-        !*FD Right hand side of the solution vector
-        
         real(kind=dp), dimension(:), intent(inout) :: solution 
-        !*FD Solution vector, containing an initial guess.
 
         type(pardiso_solver_options), intent(in) :: options
-        !*FD Options such as convergence criteria
-        
         type(pardiso_solver_workspace), intent(inout) :: workspace
-        !*FD Internal solver workspace
-        
-        real(kind=dp), intent(out) :: err
-        !*FD Final solution error
-        
         integer, intent(out) :: niters
-        !*FD Number of iterations required to reach the solution
-
+        real(kind=dp),intent(out) :: err
         logical, optional, intent(in) :: verbose
-        !*FD If present and true, this argument may cause diagnostic information
-        !*FD to be printed by the solver (not every solver may implement this).
+
+        integer(kind=parint), dimension(64):: opts
         
-        integer :: sparse_solve
         integer :: pardiso_solve
+        integer :: phase,mesglvl
 
-        integer :: iunit !Unit number to print verbose output to (6=stdout, 0=no output)
-        integer :: mtype
+        opts=options%iparm
+        opts(4)=61
 
-        iunit=0
-        if (present(verbose)) then
-            if(verbose) then
-                iunit=1
-                write(*,*),"Tolerance=",options%tolerance
-            end if
-        end if
-
-
-        !Detect symmetric matrix
-        if (matrix%symmetric) then
-            mtype = 1
+        if (verbose) then 
+           mesglvl = 6
         else
-            mtype = 11
+           mesglvl = 0
         end if
-        
-        !PARDISO arguments
-        write(*,*) "PARDISO Begin!"
 
-        !CALL PARDISO(PT, MAXFCT, MNUM, MTYPE, PHASE, N, A, IA, JA,
-        !PERM, NRHS, IPARM, MSGLVL, B, X, ERROR, DPARM)
+        mesglvl = 0
+        opts=options%iparm
+        opts(4)=61
 
-        call pardiso(workspace%pt, 1, 1, mtype, 13, matrix%order, matrix%val, &
-                     matrix%col, matrix%row, 0, matrix%order, workspace%iparm, &
-                     iunit, rhs, solution, sparse_solve)
-        write(*,*) "PARDISO End!"
+        ! Symbolic factorization only done at the outset
+        phase = 11
+        if (workspace%pt(1) == 0) then
+            call pardiso(workspace%pt, 1, 1, options%mtype, phase, matrix%order,&
+                         matrix%val(1:matrix%nonzeros),&
+                         matrix%row(1:matrix%order+1),&
+                         matrix%col(1:matrix%nonzeros),&
+                         1, 1, opts, &
+                         mesglvl, rhs, solution, pardiso_solve,workspace%dparm)
+        endif 
 
-        pardiso_solve = sparse_solve
+        ! Numeric factorization and solution
+        phase = 23
+        call pardiso(workspace%pt, 1, 1, options%mtype, phase, matrix%order,&
+                     matrix%val(1:matrix%nonzeros),&
+                     matrix%row(1:matrix%order+1),&
+                     matrix%col(1:matrix%nonzeros),&
+                     1, 1, opts, &
+                     mesglvl, rhs, solution, pardiso_solve,workspace%dparm)
 
-        err = 0
-        niters = 1
+        niters = options%iparm(20) ! Direct methods report zeros iterations
+        err=1.0
     end function pardiso_solve
 
     subroutine pardiso_solver_postprocess(matrix, options, workspace)
         type(sparse_matrix_type) :: matrix
         type(pardiso_solver_options) :: options
         type(pardiso_solver_workspace) :: workspace
+
     end subroutine
 
     subroutine pardiso_destroy_workspace(matrix, options, workspace)
@@ -175,7 +194,7 @@ contains
         type(pardiso_solver_options) :: options
         type(pardiso_solver_workspace) :: workspace
 
-        !TODO: Call pardiso with flag to delete
+        ! I believe that all memory clearing has been accomplised in the solve.
 
     end subroutine pardiso_destroy_workspace
 
@@ -207,6 +226,20 @@ contains
                 tmp_error_string = "Diagonal matrix problem"
             case (-8)
                 tmp_error_string = "32-bit integer overflow problem"
+            case (-10)
+                tmp_error_string = "No license file pardiso.lic found"
+            case (-11)
+                tmp_error_string = "License expired."
+            case (-12)
+                tmp_error_string = "Wrong username or hostname."
+            case (-100)
+                tmp_error_string = "Maximum Krylov iterations reached."
+            case (-101)
+                tmp_error_string = "Insufficient convergence in Krylov subspace iteration in 25 iterations."
+            case (-102)
+                tmp_error_string = "Error in Krylov-subspace iteration."
+            case (-103)
+                tmp_error_string = "Break down in Krylov-subspace iteration."
         end select
 
         if (present(error_string)) then

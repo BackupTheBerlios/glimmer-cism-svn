@@ -153,6 +153,7 @@ contains
         !*FD are defined.  Although this function reports back the final error
         !*FD and the number of iterations needed to converge, these should *not*
         !*FD be relied upon as not every umf linear solver may report them.
+
         type(sparse_matrix_type), intent(inout) :: matrix 
         !*FD Sparse matrix to solve.  This is inout because the umf solver
         !*FD may have to do some re-arranging of the matrix.
@@ -197,7 +198,7 @@ contains
     
         !umfpack is a direct method, so the iters and err returns mean nothing
         err = 0
-        niters = 1
+        niters = 0
     end function umf_solve
 
     subroutine umf_solver_postprocess(matrix, options, workspace)

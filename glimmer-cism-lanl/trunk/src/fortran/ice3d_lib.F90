@@ -365,9 +365,14 @@ contains
 
         logical :: cont = .true.
 
-        type(sparse_matrix_type) :: matrix
-        type(sparse_solver_workspace) :: matrix_workspace
-        type(sparse_solver_options) :: matrix_options
+        type(sparse_matrix_type) :: matrix_u
+        type(sparse_solver_workspace) :: matrix_workspace_u
+        type(sparse_solver_options) :: matrix_options_u
+
+        type(sparse_matrix_type) :: matrix_v
+        type(sparse_solver_workspace) :: matrix_workspace_v
+        type(sparse_solver_options) :: matrix_options_v
+
 
 #ifdef OUTPUT_PARTIAL_ITERATIONS 
         integer :: ncid_debug
@@ -397,15 +402,21 @@ contains
         correction_vec = 0
         tot = 0
         !Set up sparse matrix options
-        call sparse_solver_default_options(options%which_ho_sparse, matrix_options)
-        matrix_options%base%tolerance=TOLER
-        matrix_options%base%maxiters  = 1000
+        call sparse_solver_default_options(options%which_ho_sparse, matrix_options_u)
+        call sparse_solver_default_options(options%which_ho_sparse, matrix_options_v)
+        matrix_options_u%base%tolerance=TOLER
+        matrix_options_u%base%maxiters  = 150
+        matrix_options_v%base%tolerance=TOLER
+        matrix_options_v%base%maxiters  = 150
 
         !Create the sparse matrix
-        call new_sparse_matrix(ijktot, ijktot*STENCIL_SIZE, matrix)
-        call sparse_allocate_workspace(matrix, matrix_options, matrix_workspace, ijktot*STENCIL_SIZE)
+        call new_sparse_matrix(ijktot, ijktot*STENCIL_SIZE, matrix_u)
+        call sparse_allocate_workspace(matrix_u, matrix_options_u, matrix_workspace_u, ijktot*STENCIL_SIZE)
 
-        write(*,*)"flwa", minval(flwa), maxval(flwa)
+        call new_sparse_matrix(ijktot, ijktot*STENCIL_SIZE, matrix_v)
+        call sparse_allocate_workspace(matrix_v, matrix_options_v, matrix_workspace_v, ijktot*STENCIL_SIZE)
+
+
         call write_xls("h.txt",h)
         call write_xls_3d("flwa.txt",flwa)
 
@@ -521,9 +532,10 @@ contains
                 uvel,vvel,dudx,dudy,dudz,dvdx,dvdy,dvdz,&
                 ustar,vstar,tau,dhbdx,dhbdy,ijktot,MAXY,&
                 MAXX,NZETA,TOLER, options, delta_x, delta_y, zeta, point_mask, &
-                geometry_mask,matrix, matrix_workspace, matrix_options, &
+                geometry_mask,matrix_u, matrix_workspace_u, matrix_options_u, &
+                matrix_v, matrix_workspace_v, matrix_options_v, &
                 kinematic_bc_u, kinematic_bc_v, &
-                marine_bc_normal,direction_x,direction_y, STAGGERED)
+                marine_bc_normal,direction_x,direction_y, STAGGERED,l)
 
             !Apply periodic boundary conditions to the computed velocity
             call write_xls("ustar_beforebc.txt", ustar(1,:,:))
@@ -563,8 +575,10 @@ contains
       call end_debug_iteration(ncid_debug)
 #endif
       
-      call sparse_destroy_workspace(matrix, matrix_options, matrix_workspace)
-      call del_sparse_matrix(matrix) 
+      call sparse_destroy_workspace(matrix_u, matrix_options_u, matrix_workspace_u)
+      call sparse_destroy_workspace(matrix_v, matrix_options_v, matrix_workspace_v)
+      call del_sparse_matrix(matrix_u) 
+      call del_sparse_matrix(matrix_v) 
 
       call cpu_time(solve_end_time)
 
@@ -791,11 +805,14 @@ contains
         return
     end subroutine
 
-    function sparuv(efvs,dzdx,dzdy,ax,ay,bx,by,cxy,h,uvel,vvel,dudx,dudy,dudz,dvdx,dvdy,dvdz,&
-                    ustar,vstar,beta,dhbdx,dhbdy,&
-                    IJKTOT,MAXY,MAXX,NZETA,TOLER,options,GRIDX,GRIDY,zeta, point_mask, geometry_mask,&
-                    matrix, matrix_workspace, matrix_options, kinematic_bc_u, kinematic_bc_v,latbc_normal, &
-                    direction_x, direction_y, STAGGERED)
+    function sparuv(efvs,dzdx,dzdy,ax,ay,bx,by,cxy,h,uvel,vvel,dudx,dudy,dudz,&
+                    dvdx,dvdy,dvdz,ustar,vstar,beta,dhbdx,dhbdy,IJKTOT,MAXY,  &
+                    MAXX,NZETA,TOLER,options,GRIDX,GRIDY,zeta, point_mask,    & 
+                    geometry_mask, matrix_u, matrix_workspace_u,              &
+                    matrix_options_u, matrix_v, matrix_workspace_v,           &
+                    matrix_options_v,kinematic_bc_u, kinematic_bc_v,          &
+                    latbc_normal, direction_x, direction_y, STAGGERED,l)
+
         INTEGER IJKTOT,MAXY,MAXX,NZETA
         real(dp), dimension(:,:,:), intent(in) :: efvs
         real(dp), dimension(:,:), intent(in) :: dzdx
@@ -825,12 +842,17 @@ contains
         real(dp), intent(in) :: gridx
         real(dp), intent(in) :: gridy
         real(dp), dimension(:,:), intent(in) :: direction_x,direction_y
+        integer, intent(in) :: l
 
         !Sparse matrix variables.  These are passed in so that allocation can be
         !done once per velocity solve instead of once per iteration
-        type(sparse_matrix_type), intent(inout) :: matrix
-        type(sparse_solver_workspace), intent(inout) :: matrix_workspace
-        type(sparse_solver_options), intent(inout) :: matrix_options
+        type(sparse_matrix_type), target, intent(inout) :: matrix_u,matrix_v
+
+        type(sparse_solver_workspace), target,intent(in):: matrix_workspace_u,&
+                                                           matrix_workspace_v
+
+        type(sparse_solver_options), target,intent(in)  :: matrix_options_u,  & 
+                                                           matrix_options_v
 
         type(glide_options), intent(in) :: options
         logical, intent(in)::STAGGERED
@@ -844,6 +866,10 @@ contains
         integer :: stencil_center_idx
         integer :: si, sj, sk
         real(dp), dimension(:,:,:), pointer :: velpara, velperp, velpara_star, kinematic_bc_para
+        type(sparse_matrix_type), pointer :: matrix
+        type(sparse_solver_workspace), pointer :: matrix_workspace
+        type(sparse_solver_options), pointer :: matrix_options
+
         integer :: whichcomponent
         character(1) :: componentstr
 #ifdef DEBUG_FIELDS
@@ -857,17 +883,24 @@ contains
                 velpara_star => ustar
                 componentstr = "u"
                 kinematic_bc_para => kinematic_bc_u
+                matrix => matrix_u
+                matrix_workspace => matrix_workspace_u
+                matrix_options => matrix_options_u
             else !Compute v component
                 velpara => vvel
                 velperp => uvel
                 velpara_star => vstar
                 componentstr = "v"
                 kinematic_bc_para => kinematic_bc_v
+                matrix => matrix_v
+                matrix_workspace => matrix_workspace_v
+                matrix_options => matrix_options_v
             end if
             !Initialize sparse matrix & vectors
             d=0
             x=0
-            call sparse_clear(matrix)
+            call sparse_clear(matrix_u)
+            call sparse_clear(matrix_v)
 #ifdef VERY_VERBOSE
             write(*,*)"Begin Matrix Assembly"
 #endif
@@ -901,12 +934,13 @@ contains
                                 pointtype(i,j) = 2
 #endif
                             else if ((i.eq.1).or.(i.eq.MAXX).or.(j.eq.1).or.(j.eq.MAXY)) then
-                                !Boundary condition at the edges of the domain.
-                                !If we don't have a kinematic boundary already
-                                !specified, we just "pass through" the initial
-                                !guess.  If this lies on a periodic boundary, 
-                                !enforce it in the sparse matrix (which means we need to do some
-                                !insertions ourselves...)
+                                ! Boundary condition at the edges of the domain.
+                                ! If we don't have a kinematic boundary already
+                                ! specified, we just "pass through" the initial
+                                ! guess.  If this lies on a periodic boundary, 
+                                ! enforce it in the sparse matrix 
+                                ! (which means we need to do some insertions 
+                                ! ourselves...)
                                 rhs=velpara(k,i,j)
  
 #ifdef ENFORCE_PBC
@@ -1011,9 +1045,9 @@ contains
 #ifdef DEBUG_FIELDS
             call write_xls_int("point_type.txt", pointtype)
 #endif
-
-            call sparse_solver_preprocess(matrix, matrix_options, matrix_workspace)        
+            call sparse_solver_preprocess(matrix, matrix_options, matrix_workspace)             
             ierr = sparse_solve(matrix, d, x, matrix_options, matrix_workspace,  err, iter, verbose=sparverbose)
+
             sparuv = sparuv + iter
        
             if (ierr /= 0) then

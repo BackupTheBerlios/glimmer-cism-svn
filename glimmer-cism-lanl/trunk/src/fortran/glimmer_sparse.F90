@@ -24,7 +24,6 @@ module glimmer_sparse
         type(pardiso_solver_workspace),  pointer :: pardiso  => null()
     end type
 
-
     integer, parameter :: SPARSE_SOLVER_BICG = 0
     integer, parameter :: SPARSE_SOLVER_GMRES = 1
     integer, parameter :: SPARSE_SOLVER_UMF = 2
@@ -37,7 +36,7 @@ contains
 
         opt%base%method = method
         opt%base%tolerance  = 5e-5
-        opt%base%maxiters = 2000
+        opt%base%maxiters = 200
 
         !Solver specific options
         if (method == SPARSE_SOLVER_BICG) then
@@ -50,6 +49,8 @@ contains
         else if (method == SPARSE_SOLVER_UMF) then
             call umf_default_options(opt%umf)
 
+        else if (method == SPARSE_SOLVER_PARDISO) then
+            call pardiso_default_options(opt%pardiso)
         else 
             !call glide_finalise_all(.true.)
             call write_log("Invalid sparse matrix option used.", GM_FATAL)
@@ -112,12 +113,14 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             call umf_solver_preprocess(matrix, options%umf, workspace%umf)
 
+        else if (options%base%method == SPARSE_SOLVER_PARDISO) then
+            call pardiso_solver_preprocess(matrix, options%pardiso, workspace%pardiso)
         end if
 
     end subroutine sparse_solver_preprocess
 
     function sparse_solve(matrix, rhs, solution, options, workspace,err,niters, verbose)
-        !*FD Solves the slap linear system, and reports status information.
+        !*FD Solves the linear system, and reports status information.
         !*FD This function returns an error code that should be zero if the
         !*FD call succeeded and nonzero if it failed.  No additional error codes
         !*FD are defined.  Although this function reports back the final error
@@ -165,10 +168,10 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             sparse_solve = umf_solve(matrix, rhs, solution, options%umf, workspace%umf, err, niters, verbose_var)
 
-
+        else if (options%base%method == SPARSE_SOLVER_PARDISO) then
+            sparse_solve = pardiso_solve(matrix, rhs, solution, options%pardiso,&
+                                         workspace%pardiso, err,niters, verbose_var)
         end if
-
-
     end function sparse_solve
 
     subroutine sparse_solver_postprocess(matrix, options, workspace)
@@ -183,8 +186,10 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             call umf_solver_postprocess(matrix, options%umf, workspace%umf)
 
-        end if
+        else if (options%base%method == SPARSE_SOLVER_PARDISO) then
+            call pardiso_solver_postprocess(matrix, options%pardiso, workspace%pardiso)
 
+        end if
     end subroutine
 
     subroutine sparse_destroy_workspace(matrix, options, workspace)
@@ -204,6 +209,9 @@ contains
             call umf_destroy_workspace(matrix, options%umf, workspace%umf)
             deallocate(workspace%umf)
 
+        else if (options%base%method == SPARSE_SOLVER_PARDISO) then
+            call pardiso_destroy_workspace(matrix, options%pardiso, workspace%pardiso)
+            deallocate(workspace%pardiso)
         end if
 
     end subroutine sparse_destroy_workspace
@@ -225,6 +233,8 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             call umf_interpret_error(error_code, tmp_error_string)
 
+        else if (options%base%method == SPARSE_SOLVER_PARDISO) then
+            call pardiso_interpret_error(error_code, tmp_error_string)
         end if
 
 

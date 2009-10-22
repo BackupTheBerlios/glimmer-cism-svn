@@ -235,34 +235,74 @@ contains
 
     is_row_format = matrix%row(matrix%order + 1) == matrix%nonzeros + 1
   end function
-
-  subroutine to_row_format(matrix)
-    implicit none
-    type(sparse_matrix_type) :: matrix
-    integer,dimension(matrix%order + 1) :: IA
-    integer :: i,cur_row
-    ! In terms of the PARDISO manual (page 6) the compressed row 
-    ! format will have the following correspondense with glimmer_spare_type
-    ! IA -> matrix%row
-    ! JA -> matrix%column
-    ! A  -> matrix%value
-    ! 
-    ! JA and A do not require changes. 
-    ! IA will be created and then replace matrix%row
-    if(is_triad_format(matrix)) then
-        cur_row =  1
-        IA(1) = 1
-        do i = 1,matrix%nonzeros
-            if (matrix%row(i) /= cur_row) then
-                cur_row = matrix%row(i)
-                IA(cur_row) = i
-            end if
-        end do 
-        IA(matrix%order + 1) = matrix%nonzeros + 1
-        matrix%row = IA
-    end if
-  end subroutine
-
+!----------------------------------------------------------------------- 
+      subroutine coocsr(nrow,nnz,a,ir,jc,ao,jao,iao)
+      integer, intent(in) :: nrow,nnz
+      real(kind=dp),dimension(:),intent(in) :: a
+      integer, dimension(:),intent(in) :: ir,jc
+      real(kind=dp),dimension(:),intent(out) :: ao
+      integer, dimension(:),intent(out) :: jao,iao
+      real(kind=dp) :: x
+!-----------------------------------------------------------------------
+!  Coordinate to Compressed Sparse Row 
+!----------------------------------------------------------------------- 
+! converts a matrix that is stored in coordinate format
+!  a, ir, jc into a row general sparse ao, jao, iao format.
+!
+! on entry:
+!--------- 
+! nrow	= dimension of the matrix 
+! nnz	= number of nonzero elements in matrix
+! a,
+! ir, 
+! jc    = matrix in coordinate format. a(k), ir(k), jc(k) store the nnz
+!         nonzero elements of the matrix with a(k) = actual real value of
+! 	  the elements, ir(k) = its row number and jc(k) = its column 
+!	  number. The order of the elements is arbitrary. 
+!
+! on return:
+!----------- 
+! ir 	is destroyed
+!
+! ao, jao, iao = matrix in general sparse matrix format with ao 
+! 	continung the real values, jao containing the column indices, 
+!	and iao being the pointer to the beginning of the row, 
+!	in arrays ao, jao.
+!
+! Notes:
+!------ This routine is NOT in place.  See coicsr
+!
+!------------------------------------------------------------------------
+      iao = 0
+! determine row-lengths.
+      do k=1, nnz
+         iao(ir(k)) = iao(ir(k))+1
+      end do
+! starting position of each row..
+      k = 1
+      do j=1,nrow+1
+         k0 = iao(j)
+         iao(j) = k
+         k = k+k0
+      end do
+! go through the structure  once more. Fill in output matrix.
+      do k=1, nnz
+         i = ir(k)
+         j = jc(k)
+         x = a(k)
+         iad = iao(i)
+         ao(iad) =  x
+         jao(iad) = j
+         iao(i) = iad+1
+      end do
+! shift back iao
+      do j=nrow,1,-1
+         iao(j+1) = iao(j)
+      end do
+      iao(1) = 1
+      return
+      end subroutine
+!------------- end of coocsr ------------------------------------------- 
   function is_column_format(matrix)
     type(sparse_matrix_type) :: matrix
     logical :: is_column_format
@@ -295,15 +335,18 @@ contains
 
   subroutine sort_row_format(matrix)
     !*FD Takes a row format matrix and sorts the column indices within each row
-    !*FD SLAP doesn't expect this, but PARDISO does.
+    !*FD This is not strictly needed in some compressed-row matrices
+    !*FD (e.g. those used in SLAP), but it *is* necessary in some other libraries
+    !*FD (e.g. PARDISO).  
     implicit none
-    type(sparse_matrix_type) :: matrix
+    type(sparse_matrix_type),intent(inout) :: matrix
     integer :: i
 
-    do i=1,matrix%order !Loop through each row index
+    do i=1,matrix%order !Loop through each column index
       call sort(matrix%val, matrix%col, matrix%row(i), matrix%row(i+1)-1)
     end do
   end subroutine
+
 
   subroutine sort(values, indices, startindex, endindex)
     implicit none
@@ -315,7 +358,7 @@ contains
     real(dp) :: currentvalue
     integer :: i,j
     
-    !Insertion Sort TODO: Something faster?
+    !Insertion Sort 
     do i=startindex+1,endindex
         currentindex = indices(i)
         currentvalue = values(i)
@@ -330,5 +373,4 @@ contains
         values(j+1) = currentvalue
     end do
   end subroutine
-
 end module glimmer_sparse_type
