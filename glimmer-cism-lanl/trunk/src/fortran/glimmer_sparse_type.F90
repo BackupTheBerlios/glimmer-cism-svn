@@ -243,8 +243,12 @@ contains
       real(kind=dp),dimension(:),intent(out) :: ao
       integer, dimension(:),intent(out) :: jao,iao
       real(kind=dp) :: x
-!-----------------------------------------------------------------------
+!----------------------j-------------------------------------------------
 !  Coordinate to Compressed Sparse Row 
+!  Written by Yousef Saad as part of SparseKit2
+!  Released under the LGPL
+! 
+! Converted to F90 by JVJ -- 10/21/09
 !----------------------------------------------------------------------- 
 ! converts a matrix that is stored in coordinate format
 !  a, ir, jc into a row general sparse ao, jao, iao format.
@@ -268,10 +272,6 @@ contains
 ! 	continung the real values, jao containing the column indices, 
 !	and iao being the pointer to the beginning of the row, 
 !	in arrays ao, jao.
-!
-! Notes:
-!------ This routine is NOT in place.  See coicsr
-!
 !------------------------------------------------------------------------
       iao = 0
 ! determine row-lengths.

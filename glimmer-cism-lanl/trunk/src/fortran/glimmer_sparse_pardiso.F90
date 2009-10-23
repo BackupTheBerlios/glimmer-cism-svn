@@ -33,6 +33,10 @@ module glimmer_sparse_pardiso
         integer(kind=parint), dimension(64) :: iparm
         ! Tolerance only needed in multirecursive solver
         real(kind=dp) :: tolerance
+        ! Tell PARDISO to use the hybrid iterative/direct CGS method
+        logical :: iterative
+        ! Number of processors
+        integer :: processors
     end type pardiso_solver_options
 
 contains
@@ -44,43 +48,13 @@ contains
         !*FD values in a generic way.
         implicit none
         type(pardiso_solver_options), intent(inout) :: opt
-        logical :: TUNED
 
+        ! TODO: bring these in from configuration
         opt%mtype = 11
         opt%solver = 0
         opt%tolerance = 1.d-6
-        ! These are options, which are passed to PARDISO.
-        ! The array is also used to return values. 
-        TUNED = .true.
-        if (.true.) then
-            opt%iparm(1) = 1   ! No defaults (1)
-            opt%iparm(2) = 2   ! Use Metis reordering (2)
-            opt%iparm(3) = 8   ! Number of processors
-            opt%iparm(4) = 61  ! LU CGS iteration (1) to 10^-6 (60)
-            opt%iparm(5) = 0   ! 0 Do not use permution 
-            opt%iparm(6) = 0   ! Write solution to seperate vector, not RHS
-            opt%iparm(8) = 0   ! Max iterative refinement steps
-            opt%iparm(10) = 13 ! eps pivot, 13 for non-symmetric, 8 symmetric
-            opt%iparm(11) = 1  ! Use non-symmetric scaling vector (1)
-            opt%iparm(12) = 0  ! Do not transpose matrix (0)
-            opt%iparm(13) = 1  ! Non-symmetric matrices
-            opt%iparm(18) = -1 ! Determine the number of non-zeros in LU (-1)
-            opt%iparm(19) = -1 ! Determine the Mflops for LU fact. (-1)
-            opt%iparm(21) = 1  ! Pivoting  1x1 and 2x2 Bunch-Kaufman
-            opt%iparm(24) = 1  ! Parallel numerical factor. (two level=1)
-            opt%iparm(25) = 1  ! Parallel solve (1)
-            opt%iparm(26) = 0  ! Use LU for solve (0)
-            opt%iparm(28) = 1  ! Parallel Metis (1)
-            opt%iparm(29) = 0  ! 64 bit accuracy (0)
-            opt%iparm(30) = 0  ! Default supernodes (0)
-            opt%iparm(31) = 0  ! No partial solutions using permute (0)
-            opt%iparm(32) = 0  ! Use sparse direct solver (0)
-            opt%iparm(33) = 0  ! Do not compute determinite (0) 
-            opt%iparm(34) = 0  ! Do not require identical parallel results(0)
-        else
-            opt%iparm(3) = 8   ! Number of processors
-        endif
-
+        opt%iterative = .TRUE.  ! true for iterative/hybrid method
+        opt%processors = 8   ! Number of processors
     end subroutine pardiso_default_options
 
     subroutine pardiso_allocate_workspace(matrix, options, workspace, max_nonzeros_arg)
@@ -90,13 +64,46 @@ contains
         !*FD the current number of nonzeroes must be used.
         implicit none
         type(sparse_matrix_type) :: matrix
-        type(pardiso_solver_options),intent(in) :: options
+        type(pardiso_solver_options),intent(inout) :: options
         type(pardiso_solver_workspace),intent(inout) :: workspace
         integer, optional :: max_nonzeros_arg
 
         !...Check license of the solver and initialize the solver
         call pardisoinit(workspace%pt, options%mtype, options%solver,&
                          options%iparm, workspace%dparm, workspace%error)
+
+        ! These are options passed to PARDISO.
+        ! However, they are reset by pardisoinit, so I set them here.
+        ! This array is also used to return values. 
+        if (options%iterative) then
+            options%iparm(1) = 1   ! No defaults (1)
+            options%iparm(2) = 2   ! Use Metis reordering (2)
+            options%iparm(3) = options%processors   ! Number of processors
+            ! LU CGS iteration (1) to 10^-6 (61)
+            options%iparm(4) = int(-log10(options%tolerance) * 10 + 1)
+            options%iparm(5) = 0   ! 0 Do not use permution 
+            options%iparm(6) = 0   ! Write solution to seperate vector, not RHS
+            options%iparm(8) = 0   ! Max iterative refinement steps
+            options%iparm(10) = 13 ! eps pivot, 13 for non-symmetric, 8 symmetric
+            options%iparm(11) = 1  ! Use non-symmetric scaling vector (1)
+            options%iparm(12) = 0  ! Do not transpose matrix (0)
+            options%iparm(13) = 1  ! Non-symmetric matrices
+            options%iparm(18) = -1 ! Determine the number of non-zeros in LU (-1)
+            options%iparm(19) = -1 ! Determine the Mflops for LU fact. (-1)
+            options%iparm(21) = 1  ! Pivoting  1x1 and 2x2 Bunch-Kaufman
+            options%iparm(24) = 1  ! Parallel numerical factor. (two level=1)
+            options%iparm(25) = 1  ! Parallel solve (1)
+            options%iparm(26) = 0  ! Splitting of basckward/forward solve (0)
+            options%iparm(28) = 1  ! Parallel Metis (1)
+            options%iparm(29) = 0  ! 64 bit accuracy (0)
+            options%iparm(30) = 0  ! Default supernodes (0)
+            options%iparm(31) = 0  ! No partial solutions using permute (0)
+            options%iparm(32) = 0  ! Use sparse direct solver (0)
+            options%iparm(33) = 0  ! Do not compute determinite (0) 
+            options%iparm(34) = 0  ! Do not require identical parallel results(0)
+        else
+            options%iparm(3) = options%processors   ! Number of processors
+        endif
     end subroutine pardiso_allocate_workspace
 
     subroutine pardiso_solver_preprocess(matrix, options, workspace)
@@ -136,14 +143,8 @@ contains
         integer, intent(out) :: niters
         real(kind=dp),intent(out) :: err
         logical, optional, intent(in) :: verbose
-
-        integer(kind=parint), dimension(64):: opts
-        
         integer :: pardiso_solve
         integer :: phase,mesglvl
-
-        opts=options%iparm
-        opts(4)=61
 
         if (verbose) then 
            mesglvl = 6
@@ -152,27 +153,26 @@ contains
         end if
 
         mesglvl = 0
-        opts=options%iparm
-        opts(4)=61
 
-        ! Symbolic factorization only done at the outset
-        phase = 11
+        ! This is a hack, needed to check the state of the solver, seems
+        ! to work, but the behavior of workspace%pt is undocumented.
         if (workspace%pt(1) == 0) then
+            ! Symbolic factorization only done on the first call to solver
+            phase = 11
             call pardiso(workspace%pt, 1, 1, options%mtype, phase, matrix%order,&
                          matrix%val(1:matrix%nonzeros),&
                          matrix%row(1:matrix%order+1),&
                          matrix%col(1:matrix%nonzeros),&
-                         1, 1, opts, &
-                         mesglvl, rhs, solution, pardiso_solve,workspace%dparm)
+                         1, 1, options%iparm, mesglvl, rhs, solution,&
+                         pardiso_solve,workspace%dparm)
         endif 
-
         ! Numeric factorization and solution
         phase = 23
         call pardiso(workspace%pt, 1, 1, options%mtype, phase, matrix%order,&
                      matrix%val(1:matrix%nonzeros),&
                      matrix%row(1:matrix%order+1),&
                      matrix%col(1:matrix%nonzeros),&
-                     1, 1, opts, &
+                     1, 1, options%iparm, &
                      mesglvl, rhs, solution, pardiso_solve,workspace%dparm)
 
         niters = options%iparm(20) ! Direct methods report zeros iterations

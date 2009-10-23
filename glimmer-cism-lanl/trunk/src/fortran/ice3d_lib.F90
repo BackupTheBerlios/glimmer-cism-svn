@@ -549,27 +549,27 @@ contains
             call iteration_debug_step(ncid_debug, l, efvs, ustar, vstar, geometry_mask)
 #endif
 
-            !Apply unstable manifold correction.  This function returns
-            !true if we need to keep iterating, false if we reached convergence
-            cont = umc_correct_vels(ustar, uvel, &
-                                        vstar, vvel, correction_vec, &
-                                        maxy, maxx, nzeta, error, &
-                                        tot, teta)    
+    !Apply unstable manifold correction.  This function returns
+    !true if we need to keep iterating, false if we reached convergence
+    cont = umc_correct_vels(ustar, uvel, &
+            vstar, vvel, correction_vec, &
+            maxy, maxx, nzeta, error, &
+            tot, teta)    
 
-            call cpu_time(iter_end_time)
+call cpu_time(iter_end_time)
 
-            max_vel = maxval(sqrt(ustar**2 + vstar**2))
+max_vel = maxval(sqrt(ustar**2 + vstar**2))
 
-            print "(i5,10x,i5,7x,es10.3,5x,f10.2,5x,f8.3)", l, iter, tot, max_vel, iter_end_time - iter_start_time
+    print "(i5,10x,i5,7x,es10.3,5x,f10.2,5x,f8.3)", l, iter, tot, max_vel, iter_end_time - iter_start_time
 
-            l = l + 1
-            
-     end do nonlinear_iteration
+    l = l + 1
 
-     if ( l >= MAXITER) then
-        !call write_log("Maximum iterations exceeded in Pattyn velocity solve", GM_FATAL)
-        write(*,*) "Maximum iterations exceeded. Moving on"
-     end if
+    end do nonlinear_iteration
+
+    if ( l >= MAXITER) then
+    !call write_log("Maximum iterations exceeded in Pattyn velocity solve", GM_FATAL)
+    write(*,*) "Maximum iterations exceeded. Moving on"
+    end if
 
 #ifdef OUTPUT_PARTIAL_ITERATIONS
       call end_debug_iteration(ncid_debug)
