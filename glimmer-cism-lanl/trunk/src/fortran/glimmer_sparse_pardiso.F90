@@ -67,11 +67,11 @@ contains
         type(pardiso_solver_options),intent(inout) :: options
         type(pardiso_solver_workspace),intent(inout) :: workspace
         integer, optional :: max_nonzeros_arg
-
+#ifdef HAVE_PARDISO
         !...Check license of the solver and initialize the solver
         call pardisoinit(workspace%pt, options%mtype, options%solver,&
                          options%iparm, workspace%dparm, workspace%error)
-
+#endif
         ! These are options passed to PARDISO.
         ! However, they are reset by pardisoinit, so I set them here.
         ! This array is also used to return values. 
@@ -153,7 +153,7 @@ contains
         end if
 
         mesglvl = 0
-
+#ifdef HAVE_PARDISO
         ! This is a hack, needed to check the state of the solver, seems
         ! to work, but the behavior of workspace%pt is undocumented.
         if (workspace%pt(1) == 0) then
@@ -174,7 +174,7 @@ contains
                      matrix%col(1:matrix%nonzeros),&
                      1, 1, options%iparm, &
                      mesglvl, rhs, solution, pardiso_solve,workspace%dparm)
-
+#endif
         niters = options%iparm(20) ! Direct methods report zeros iterations
         err=1.0
     end function pardiso_solve
