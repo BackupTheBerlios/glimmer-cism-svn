@@ -294,11 +294,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                       umask,pcgsize(1))
 
   !!!!!!!!! *sfp* start debugging !!!!!!!!!!!!!!!!!!!!!!!!
-  do ew = 1, 15; do ns = 16, 30     !*sfp* hack of mask for Ross exp.
-    if( umask(ew,ns) == 41 )then
-        umask(ew,ns) = 105
-    end if
-  end do; end do
+!  do ew = 1, 15; do ns = 16, 30     !*sfp* hack of mask for Ross exp.
+!    if( umask(ew,ns) == 41 )then
+!        umask(ew,ns) = 105
+!    end if
+!  end do; end do
 !  print *, 'mask = '
 !  print *, umask(1:18,17:35)
 !  print *, umask(1:18,100:115)
