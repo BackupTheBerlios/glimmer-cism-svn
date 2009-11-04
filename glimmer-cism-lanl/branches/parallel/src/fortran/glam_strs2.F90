@@ -24,6 +24,9 @@ use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, tau0, lamb
 use glimmer_log,      only : write_log
 use glide_mask
 
+use glimmer_sparse_type
+use glimmer_sparse
+
 implicit none
 
 !whl - The following were moved up from glam_strs2 subroutines
@@ -89,6 +92,7 @@ implicit none
   integer, parameter :: unin = 90
 
 
+
 !***********************************************************************
 
 contains
@@ -97,9 +101,9 @@ contains
 !whl - added a subroutine to be called at initialization (in lieu of 'first')
 
 
-subroutine glam_velo_fordsiapstr_init (ewn,   nsn,   upn,    &
+subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
                                        dew,   dns,           &
-                                       sigma, stagsigma)
+                                       sigma, stagsigma )
 
 ! Allocate arrays and initialize variables.
 
@@ -239,11 +243,18 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: minres = 1.0d-4 
   real (kind = dp), save, dimension(2) :: resid  
 
-  integer, parameter :: cmax = 100 
+  integer, parameter :: cmax = 50
    
   integer :: counter, linit 
 
   character(len=100) :: message
+
+!*sfp* needed to incorporate generic wrapper to solver
+  type(sparse_matrix_type) :: matrix
+  real (kind = dp), dimension(:), allocatable :: answer
+  real (kind = dp) :: err
+  integer :: iter
+
 
 !whl - Moved initialization stuff to glam_velo_fordsiapstr_init
 
@@ -302,17 +313,24 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   allocate(tvel(upn,ewn-1,nsn-1)) 
 
-  tvel = 0.0_dp 
-  
+  tvel = 0.0_dp
+ 
   ! *sfp** allocate space for variables used by 'mindcrash' function
   allocate(corr(upn,ewn-1,nsn-1,2,2),usav(upn,ewn-1,nsn-1,2))
 
   ! *sfp** an initial guess at the size of the sparse matrix
-  pcgsize(2) = pcgsize(1) * 19
+  pcgsize(2) = pcgsize(1) * 20
 
   ! *sfp** allocate space matrix variables
   allocate (pcgrow(pcgsize(2)),pcgcol(pcgsize(2)),rhsd(pcgsize(1)), &
             answ(pcgsize(1)),pcgval(pcgsize(2)))
+
+  ! *sfp* allocation for variables needed by "sparse_easy_solve" wrapper 
+  allocate(matrix%row(pcgsize(2)))
+  allocate(matrix%col(pcgsize(2)))
+  allocate(matrix%val(pcgsize(2)))
+  allocate(answer(pcgsize(1)))       ! note that there will be a redundant "answ" above when easy solve works and
+                                     ! explicit calls to slap are removed ...
 
   !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
   
@@ -360,8 +378,16 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, counter )
 
     ! *sfp** solve 'Ax=b' for the across-flow velocity component
-    tvel = slapsolvstr(ewn,  nsn,   upn,  &
-                       vvel, uindx, linit)
+!    tvel = slapsolvstr(ewn,  nsn,   upn,  &
+!                       vvel, uindx, linit)
+
+
+    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
+
+    call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
+
+    call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
+
 
 ! implement periodic boundary conditions in V (if flagged)
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -409,8 +435,16 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, counter )
 
     ! *sfp** solve 'Ax=b' for along-flow velocity component
-    uvel = slapsolvstr(ewn,  nsn,   upn,  &
-                       uvel, uindx, linit)
+!    uvel = slapsolvstr(ewn,  nsn,   upn,  &
+!                       uvel, uindx, linit)
+
+
+    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel )
+
+    call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
+
+    call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
+
 
     ! *sfp** correct the velocity estimates using the "unstable manifold" correction scheme
     uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
@@ -464,6 +498,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   deallocate(tvel)
   deallocate(uindx,corr,usav)
   deallocate(pcgval,pcgrow,pcgcol,rhsd,answ)
+
+  ! *sfp* de-allocation ofr variables needed by "sparse_easy_solve" wrapper 
+  deallocate(matrix%row)
+  deallocate(matrix%col)
+  deallocate(matrix%val)
+  deallocate(answer) 
 
   return
 
@@ -747,6 +787,79 @@ end function getlocationarray
 
 !***********************************************************************
 
+subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
+
+  !*sfp* This subroutine puts sparse matrix variables in SLAP triad format into 
+  ! "matrxi" derived type, so that it can be passed to generic solver wrapper
+  ! "sparse_easy_solve". To take the place of explicit solver interface to SLAP.
+
+  implicit none
+
+  integer, intent(in) :: ewn, nsn, upn
+  real (kind = dp), dimension(:,:,:), intent(in) :: vel
+  integer, dimension(:,:), intent(in) :: uindx
+  type(sparse_matrix_type), intent(inout) :: matrix
+  real (kind = dp), dimension(:), intent(out) :: answer
+
+  integer :: ew, ns
+  integer, dimension(2) :: loc
+
+  pcgsize(2) = ct - 1
+
+  matrix%order = pcgsize(1) 
+  matrix%nonzeros = pcgsize(2)
+  matrix%symmetric = .false.
+
+  matrix%row = pcgrow
+  matrix%col = pcgcol
+  matrix%val = pcgval
+
+  !! *sfp** initial estimate for vel. field; take from 3d array and put into
+  !! format of a solution vector.
+  do ns = 1,nsn-1
+    do ew = 1,ewn-1
+        if (uindx(ew,ns) /= 0) then
+            loc = getlocrange(upn, uindx(ew,ns))
+            answer(loc(1):loc(2)) = vel(:,ew,ns)
+            answer(loc(1)-1) = vel(1,ew,ns)
+            answer(loc(2)+1) = vel(upn,ew,ns)
+        end if
+    end do
+  end do
+
+end subroutine solver_preprocess
+
+!***********************************************************************
+
+subroutine solver_postprocess( ewn, nsn, upn, uindx, answrapped, ansunwrapped )
+
+! This unwraps the vels from the solution vector into a 3d array.
+
+  implicit none
+
+  integer, intent(in) :: ewn, nsn, upn
+  integer, dimension(:,:), intent(in) :: uindx
+  real (kind = dp), allocatable, dimension(:), intent(in) :: answrapped
+  real (kind = dp), dimension(upn,ewn-1,nsn-1), intent(out) :: ansunwrapped 
+
+  integer, dimension(2) :: loc
+  integer :: ew, ns
+
+  do ns = 1,nsn-1
+      do ew = 1,ewn-1
+          if (uindx(ew,ns) /= 0) then
+            loc = getlocrange(upn, uindx(ew,ns))
+            ansunwrapped(:,ew,ns) = answrapped(loc(1):loc(2))
+          else 
+            ansunwrapped(:,ew,ns) = 0.0d0
+          end if
+      end do
+  end do
+
+end subroutine solver_postprocess
+
+!***********************************************************************
+
 function slapsolvstr(ewn, nsn, upn, &
                      vel, uindx, its)
 
@@ -778,11 +891,12 @@ function slapsolvstr(ewn, nsn, upn, &
 
   pcgsize(2) = ct - 1
 
-  call ds2y(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym)                   
-!** plot the matrix to check that it has the correct form
-!*sfp** this outputs a .txt file of sparse matrixes
+!!** plot the matrix to check that it has the correct form
+!!*sfp** this outputs a .txt file of sparse matrixes. NOTE: ds2y 
+!! is NOT needed for coverting format of input vectors
+!  call ds2y(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym)                   
+!  call dcpplt(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym,glimmer_get_logunit())
 
-!call dcpplt(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym,glimmer_get_logunit())
   mxnelt = 60 * pcgsize(1); allocate(rwork(mxnelt),iwork(mxnelt))
 
 !**     solve the problem using the SLAP package routines     
@@ -841,6 +955,14 @@ function slapsolvstr(ewn, nsn, upn, &
   end do
 
   its = its + iter
+
+!    print *, 'vvel (old) = '
+!    print *, answ
+!    print *, 'size vvel = '
+!    print *, size( answ(:) )
+!  pause
+!    print *, 'vvel (new post) = '
+!    print *, slapsolvstr
 
   return
 
@@ -1015,7 +1137,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer, dimension(3) :: shift
   integer :: ew, ns, up
 
-  ct = 1        ! *sfp* this index used when placing coeffs. in sparse matrix format
+  ct = 1        ! *sfp* this index count non-zero entries into the sparse matrix
 
   ! *sfp** 'localplusup' is used to find locations in the sparse matrix relative to
   ! the present location. In general, it is approx. the number of grid cells in 
@@ -3197,14 +3319,24 @@ subroutine putpcgc(value,col,row)
  
   integer, intent(in) :: row, col 
   real (kind = dp), intent(in) :: value 
- 
-  if (value /= 0.0d0) then
-     pcgval(ct) = value
-     pcgcol(ct) = col
-     pcgrow(ct) = row
-     ct = ct + 1
-  end if
- 
+
+!    if( whichsparse /= 3 )then     !*sfp* If NOT using Trilinos 
+      if (value /= 0.0d0) then
+        pcgval(ct) = value
+        pcgcol(ct) = col
+        pcgrow(ct) = row
+        ct = ct + 1
+      end if
+!    end if
+
+!    !!!! ifdef needed here (IF Trilinos linked)   
+!        if( whichsparse /=3 )then      !*sfp* if using Trilinos
+!
+!        !! calls to C code / Trilinos interface here
+!
+!        end if
+!    !!!! ifdef needed here (IF Trilinos linked)   
+
   return
  
 end subroutine putpcgc 
