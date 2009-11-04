@@ -95,8 +95,8 @@ contains
                                "modifying size_t in glimmer_global to a larger size and recompiling Glimmer.", GM_FATAL)
             end if
 
-            write(*,*) "MAX NONZEROS",max_nonzeros
-            write(*,*) "ALLOCATING WORKSPACE",lenrw,leniw 
+            !write(*,*) "MAX NONZEROS",max_nonzeros
+            !write(*,*) "ALLOCATING WORKSPACE",lenrw,leniw 
             allocate(workspace%rwork(lenrw))
             allocate(workspace%iwork(leniw))
             !Recored the number of nonzeros so we know whether to allocate more
