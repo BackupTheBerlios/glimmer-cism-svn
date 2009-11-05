@@ -1044,6 +1044,7 @@ max_vel = maxval(sqrt(ustar**2 + vstar**2))
 
 #ifdef DEBUG_FIELDS
             call write_xls_int("point_type.txt", pointtype)
+
 #endif
             call sparse_solver_preprocess(matrix, matrix_options, matrix_workspace)             
             ierr = sparse_solve(matrix, d, x, matrix_options, matrix_workspace,  err, iter, verbose=sparverbose)

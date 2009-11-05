@@ -236,13 +236,131 @@ contains
     is_row_format = matrix%row(matrix%order + 1) == matrix%nonzeros + 1
   end function
 !----------------------------------------------------------------------- 
+      subroutine coicsr (n,nnz,job,a,ja,ia,iwk)
+          use glimmer_global, only : dp
+          implicit none
+          integer,intent(in) :: n,nnz,job
+          real(dp),dimension(:),intent(inout) :: a
+          integer, dimension(:),intent(inout) :: ja,ia
+          integer, dimension(:),intent(inout) :: iwk
+
+          !Local
+          real(kind=dp) :: t,tnext
+          logical :: values
+          integer :: i,j,k,init,ipos,inext,jnext
+
+!------------------------------------------------------------------------
+! IN-PLACE coo-csr conversion routine.
+!------------------------------------------------------------------------
+! this subroutine converts a matrix stored in coordinate format into 
+! the csr format. The conversion is done in place in that the arrays 
+! a,ja,ia of the result are overwritten onto the original arrays.
+!------------------------------------------------------------------------
+! on entry:
+!--------- 
+! n	= integer. row dimension of A.
+! nnz	= integer. number of nonzero elements in A.
+! job   = integer. Job indicator. when job=1, the real values in a are
+!         filled. Otherwise a is not touched and the structure of the
+!         array only (i.e. ja, ia)  is obtained.
+! a	= real array of size nnz (number of nonzero elements in A)
+!         containing the nonzero elements 
+! ja	= integer array of length nnz containing the column positions
+! 	  of the corresponding elements in a.
+! ia	= integer array of length nnz containing the row positions
+! 	  of the corresponding elements in a.
+! iwk	= integer work array of length n+1 
+! on return:
+!----------
+! a
+! ja 
+! ia	= contains the compressed sparse row data structure for the 
+!         resulting matrix.
+! Note: 
+!-------
+!         the entries of the output matrix are not sorted (the column
+!         indices in each are not in increasing order) use coocsr
+!         if you want them sorted.
+!----------------------------------------------------------------------c
+!  Coded by Y. Saad, Sep. 26 1989                                      c
+!  Released under the LGPL   
+!       
+! Converted to F90 by JVJ -- 11/3/09
+!----------------------------------------------------------------------c
+!----------------------------------------------------------------------- 
+      values = (job .eq. 1) 
+! find pointer array for resulting matrix. 
+      do i=1,n+1
+         iwk(i) = 0
+      end do
+      do k=1,nnz
+         i = ia(k)
+         iwk(i+1) = iwk(i+1)+1
+      end do 
+!------------------------------------------------------------------------
+      iwk(1) = 1 
+      do i=2,n
+         iwk(i) = iwk(i-1) + iwk(i)
+      end do 
+!
+!     loop for a cycle in chasing process. 
+!
+      init = 1
+      k = 0
+ 5    if (values) t = a(init)
+      i = ia(init)
+      j = ja(init)
+      ia(init) = -1
+!------------------------------------------------------------------------
+ 6    k = k+1
+!     current row number is i.  determine  where to go. 
+      ipos = iwk(i)
+!     save the chased element. 
+      if (values) tnext = a(ipos)
+      inext = ia(ipos)
+      jnext = ja(ipos)
+!     then occupy its location.
+      if (values) a(ipos)  = t
+      ja(ipos) = j
+!     update pointer information for next element to come in row i. 
+      iwk(i) = ipos+1
+!     determine  next element to be chased,
+      if (ia(ipos) .lt. 0) goto 65
+      t = tnext
+      i = inext
+      j = jnext 
+      ia(ipos) = -1
+      if (k .lt. nnz) goto 6
+      goto 70
+ 65   init = init+1
+      if (init .gt. nnz) goto 70
+      if (ia(init) .lt. 0) goto 65
+!     restart chasing --	
+      goto 5
+ 70   do i=1,n 
+         ia(i+1) = iwk(i)
+      end do 
+      ia(1) = 1
+      return
+  end subroutine
+!----------------- end of coicsr ----------------------------------------
+
+
+!----------------------------------------------------------------------- 
       subroutine coocsr(nrow,nnz,a,ir,jc,ao,jao,iao)
-      integer, intent(in) :: nrow,nnz
-      real(kind=dp),dimension(:),intent(in) :: a
-      integer, dimension(:),intent(in) :: ir,jc
-      real(kind=dp),dimension(:),intent(out) :: ao
-      integer, dimension(:),intent(out) :: jao,iao
-      real(kind=dp) :: x
+          use glimmer_global, only : dp
+          implicit none
+          integer, intent(in) :: nrow,nnz
+          real(dp),dimension(:),intent(in) :: a
+          integer,dimension(:),intent(in) :: ir
+          integer,dimension(:),intent(in) :: jc
+          real(dp),dimension(:),intent(out) :: ao
+          integer, dimension(:),intent(out) :: jao
+          integer, dimension(:),intent(out) :: iao
+
+          ! Local
+          real(dp) :: x
+          integer :: i,k,j,k0,iad
 !----------------------j-------------------------------------------------
 !  Coordinate to Compressed Sparse Row 
 !  Written by Yousef Saad as part of SparseKit2

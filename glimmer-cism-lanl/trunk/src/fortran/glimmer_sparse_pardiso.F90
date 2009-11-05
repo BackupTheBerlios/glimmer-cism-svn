@@ -111,12 +111,10 @@ contains
         type(pardiso_solver_options),intent(in) :: options
         type(pardiso_solver_workspace),intent(in) :: workspace
 
-        ! To compressed row is not in place, need to create storage
+        ! To compressed row method is not in place, need to create storage
         integer,dimension(matrix%order+1) :: iao
         integer,dimension(matrix%nonzeros) :: jao
-        real(kind=dp),dimension(matrix%nonzeros) :: ao
-        integer :: phase,pardiso_solve,msglvl
-        real(kind=dp), dimension(matrix%order) :: dummy
+        real(dp),dimension(matrix%nonzeros) :: ao
 
         ! PARDISO is looking for a compressed row format for the matrix.
         ! Covervt triad to compressed row format

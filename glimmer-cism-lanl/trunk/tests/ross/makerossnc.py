@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/opt/epd-5.0.0-rh5-x86_64/bin/python
 import numpy
 import pycdf
 from pycdf import NC
@@ -83,6 +83,7 @@ kinematic_bc_mask = numpy.zeros(shape, dtype='i')
 #We need this to determine whether a boundary condition that is unspecified
 #should be treated as a 0-kinematic boundary or as a shelf front.
 land_ice_mask = numpy.where(rhoi/rhow*thickness > seabed_depth, 1, 0)
+land_ice_mask = numpy.array(land_ice_mask,dtype='int32')
 
 shelf_front_mask = newfield(0, dtype='i')
 
@@ -134,6 +135,7 @@ inputfile = open("inlets.dat")
 for line in inputfile:
     i, j, mag, azimuth = line.strip().split()
     kinematic_bc_mask[i,j] = 1
+    kinematic_bc_mask = numpy.array(kinematic_bc_mask,'int32')
     ice_vel_azimuth[i,j] = azimuth
     ice_vel_magnitude[i,j] = mag
 
@@ -276,4 +278,4 @@ vvel_var[0,:,:,:] = numpy.array([vvel[:rows-1, :cols-1]]*nlevels)
 
 kinbcmask_var = glimcdf.setup_variable(nc, "kinbcmask", type=NC.INT)
 kinbcmask_var[:] = 1
-kinbcmask_var[0, :rows-1, :cols-1] = numpy.where(uvelbc[0,:,:] == uvelbc[0,:,:], 1, 0)
+kinbcmask_var[0, :rows-1, :cols-1] = numpy.array(numpy.where(uvelbc[0,:,:] == uvelbc[0,:,:], 1, 0),dtype='int32')
