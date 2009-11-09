@@ -821,7 +821,7 @@ subroutine solver_postprocess( ewn, nsn, upn, uindx, answrapped, ansunwrapped )
 
   integer, intent(in) :: ewn, nsn, upn
   integer, dimension(:,:), intent(in) :: uindx
-  real (kind = dp), allocatable, dimension(:), intent(in) :: answrapped
+  real (kind = dp), dimension(:), intent(in) :: answrapped
   real (kind = dp), dimension(upn,ewn-1,nsn-1), intent(out) :: ansunwrapped 
 
   integer, dimension(2) :: loc
