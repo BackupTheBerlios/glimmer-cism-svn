@@ -821,7 +821,7 @@ subroutine solver_postprocess( ewn, nsn, upn, uindx, answrapped, ansunwrapped )
 
   integer, intent(in) :: ewn, nsn, upn
   integer, dimension(:,:), intent(in) :: uindx
-  real (kind = dp), allocatable, dimension(:), intent(in) :: answrapped
+  real (kind = dp), dimension(:), intent(in) :: answrapped
   real (kind = dp), dimension(upn,ewn-1,nsn-1), intent(out) :: ansunwrapped 
 
   integer, dimension(2) :: loc
@@ -3191,12 +3191,24 @@ subroutine putpcgc(value,col,row)
   integer, intent(in) :: row, col 
   real (kind = dp), intent(in) :: value 
 
+#ifdef HAVE_TRILINOS
+! if Trilinos is in the build, call Trilinos (if that option specified)
+
+    if( whichsparse == SPARSE_SOLVER_TRILINOS )then
+        !! calls to "puttrilinos" go here !!
+    end if
+
+#else   
+! call something other than Trilinos
+
       if (value /= 0.0d0) then
         pcgval(ct) = value
         pcgcol(ct) = col
         pcgrow(ct) = row
         ct = ct + 1
       end if
+
+#endif
 
   return
  
