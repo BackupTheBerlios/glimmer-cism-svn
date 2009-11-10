@@ -1,0 +1,31 @@
+This contains a unit test for interfacing with Trilinos solvers. The unit
+test includes the following files:
+./TrilinosSolversUnitTest.F90
+./strat1.xml
+../../src/fortran/sparse_type.F90
+../../src/fortran/sparse_trilinos.F90
+../../src/cpp/call_trilinos.cpp
+./Makefile
+
+----------
+
+1. TrilinosSolversUnitTest.F90 is a simple routine, creating a matrix
+and a rhs.
+
+2. strat1.xml contains a parameter list for Trilinos linear solvers.
+
+3. sparse_type.F90 defines a simple sparse matrix type.
+
+4. sparse_trilinos.F90 is a simple version of
+glimmer_sparse_trilinos.F90, which is a Fortran interface to Trilinos
+solvers.
+
+5. call_trilinos.cpp first converts the matrix in triad format to
+Epetra_CrsMatrix format, creates Stratimikos and Thyra objects and
+performs linear solves.
+
+6. Makefile probably works (with minor modifications) once the auto
+conf business is done, and at the moment it is configured for the case
+with all the files above being put in the same directory.
+
+RN_20091110
