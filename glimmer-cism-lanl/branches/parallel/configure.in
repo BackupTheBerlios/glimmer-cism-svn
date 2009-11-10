@@ -32,6 +32,7 @@ glimmer_FCFLAGS=$FCFLAGS
 glimmer_FFLAGS=$FFLAGS
 AC_DEFINE_UNQUOTED(GLIMMER_FCFLAGS,"${glimmer_FCFLAGS}",[fortran compiler flags the model is configured with])
 
+AC_PROG_CXX
 AC_PROG_CC
 AC_PROG_FC
 AC_PROG_F77
@@ -179,6 +180,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[use netcdf])],AC_MSG_RESULT([yes]),AC_MSG
 #Checking for alternate linear solvers
 AC_ARG_WITH(umfpack,AS_HELP_STRING([--with-umfpack],[Optional location of umfpack linear solver]),[ac_cv_umfpack_prefix=$withval])
 AC_ARG_WITH(pardiso,AS_HELP_STRING([--with-pardiso],[Optional location of pardiso linear solver]),[ac_cv_pardiso_prefix=$withval])
+AC_ARG_WITH(trilinos,AS_HELP_STRING([--with-trilinos],[Optional location of trilinos solvers]),[ac_cv_trilinos_prefix=$withval])
 
 #Call AC_CHECK_LIB for C librarieswith no arguments so the macro gets expanded here
 AC_LANG_PUSH(C)
@@ -232,7 +234,7 @@ fi
 
 #PARDISO
 if test "$ac_cv_pardiso_prefix" != ""; then
-            AC_MSG_RESULT([Using Pardiso to solve sparse linear systems, (located at $ac_cv_pardiso_prefix)])
+            AC_MSG_RESULT([Using Pardiso to solve sparse linear systems, (located at $ac_cv_pardiso:_prefix)])
             if test "$ac_cv_haveblas" == 0; then
                 AC_MSG_ERROR([
 Using Pardiso requires use of an external BLAS library.  
@@ -260,8 +262,39 @@ If the following Pardiso check fails, please use the --with-gomp flag and try ag
             AC_CHECK_LIB([pardiso],[pardiso], , AC_MSG_ERROR([Libpardiso not found.]),[-lblas])
 fi
 
+#AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
+#AM_CONDITIONAL(PARDISO, test "$ac_cv_pardiso_prefix" != "")
+
+#TRILINOS
+if test "$ac_cv_trilinos_prefix" != ""; then
+        AC_MSG_RESULT([Using Trilinos to solve sparse linear systems, (located at $ac_cv_trilinos_prefix)])
+
+            if test "$ac_cv_haveblas" == 0; then
+                AC_MSG_ERROR([
+Using Trilinos requires use of an external BLAS library.  
+Please use the --with-blas flag and try again.
+If you are not sure what to do here but have BLAS installed in a standard location, try --with-blas=-lblas])
+            fi
+
+            if test "$ac_cv_havelapack" == 0; then
+                AC_MSG_ERROR([
+Using Trilinos requires use of an external LAPACK library.  
+Please use the --with-blas flag and try again.
+If you are not sure what to do here but have LAPACK installed in a standard location, try --with-lapack=-llapack])
+            fi
+
+
+            AC_MSG_CHECKING(for Trilinos Test)
+            FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_trilinos_prefix/include -I../cpp"
+            CXXFLAGS="$FCFLAGS -DHAVE_TRILINOS -I$ac_cv_trilinos_prefix/include"
+            LDFLAGS="$LDFLAGS -L$ac_cv_trilinos_prefix/lib" 
+	    LIBS="$LIBS -lepetra -lstdc++" #-lgfortranbegin -lgfortran
+	    #LIBS="$LIBS $EPETRA_LIBRARIES -lstdc++"
+fi
+
 AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
 AM_CONDITIONAL(PARDISO, test "$ac_cv_pardiso_prefix" != "")
+AM_CONDITIONAL(TRILINOS, test "$ac_cv_trilinos_prefix" != "")
 
 #AC_LANG_POP(Fortran)
 
@@ -335,5 +368,5 @@ fi
 AC_SUBST(GLIMMER_CVS_VERS)
 AM_CONDITIONAL([HAVE_CVS],[test "$have_cvs_entries" == "yes"])
 
-AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile])
+AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/cpp/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile])
 AC_OUTPUT([glimmer-config src/fortran/glimmer_vers.F90.in])

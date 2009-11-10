@@ -1,1 +1,1 @@
-SUBDIRS = python fortran
+SUBDIRS = python cpp fortran
