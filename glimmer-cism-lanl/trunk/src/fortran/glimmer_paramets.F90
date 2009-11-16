@@ -75,9 +75,12 @@ module glimmer_paramets
   real(dp), parameter :: acc0 = thk0 * vel0 / len0  ! m s^{-1} 
   ! ** for zero order model real(dp), parameter :: tim0 = thk0 / acc0      ! s
   real(dp), parameter :: tim0 = len0 / vel0      ! s
-  real(dp) :: tau0                        ! Pa note cannot define here as f90 wont allow
-                                          ! parameters with noninteger powers in - look
-                                          ! in initial in blah.f90 (not sure this applies now...)
+  real(dp), parameter :: tau0 = (vel0/(vis0*len0))**(1.0/gn) ! Pa note cannot define here as f90 wont allow
+                                                             ! parameters with noninteger powers in - look
+                                                             ! in initial in blah.f90 (not sure this applies now...)
+
+                                                             ! *sfp* moved this back from glide_setup for successful
+                                                             ! ifort build
 
 !whl - to do - remove lambda0
   real(dp), parameter :: lambda0 = 80.0d3 / len0    ! basal topo/friction parameter for ismip-hom tests 
