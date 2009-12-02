@@ -107,16 +107,43 @@ program simple
     call initialize(bandwidth, matrix%nnz, matrix%order, matrix%row, &
 	matrix%col, matrix%val)
 
-    ! Update the matrix
+    ! Update the matrix -- sparsity pattern is the same
+    rowInd = 6
+    colInd = 6
+    entry = -90.3943434353
+    call update(rowInd, colInd, entry)
+
+    ! Update the matrix -- sparsity pattern changes
     rowInd = 5
     colInd = 10
     entry = -9.3943434353
     call update(rowInd, colInd, entry)
 
-    ! Update the matrix
+    ! Update the matrix -- sparsity pattern changes
+    rowInd = 4
+    colInd = 9
+    entry = -70.3943434353
+    call update(rowInd, colInd, entry)
+
+    ! Make a call to Trilinos solvers
+    call solve(rhs, solution)
+
+    ! Update the matrix -- sparsity pattern is the same
+    rowInd = 7
+    colInd = 7
+    entry = -50.3943434353
+    call update(rowInd, colInd, entry)
+
+    ! Update the matrix -- sparsity pattern changes
     rowInd = 6
-    colInd = 6
-    entry = -90.3943434353
+    colInd = 2
+    entry = -20.3943434353
+    call update(rowInd, colInd, entry)
+
+    ! Update the matrix -- sparsity pattern changes
+    rowInd = 6
+    colInd = 3
+    entry = -10.3943434353
     call update(rowInd, colInd, entry)
 
     ! Make a call to Trilinos solvers

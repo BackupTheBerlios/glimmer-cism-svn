@@ -22,15 +22,18 @@ public:
   ~Simple_Interface();
 
   // Accessors
+  int fill() {return fill_;};
   const int bandwidth() const {return bandwidth_;};
   const int matrixOrder() const {return matrixOrder_;};
   const Epetra_Map& getMap() const {return *globalMap_;};
   Teuchos::RCP<Epetra_CrsMatrix> getOperator() {return operator_;};
 
   // Mutator
+  void updateFill(int fill);
   void updateOperator(Teuchos::RCP<Epetra_CrsMatrix> newOperator);
 
 private:
+  int fill_; // to indicate if operator_ is "FillComplete()"ed
   const int bandwidth_;
   int matrixOrder_;
   const Epetra_Comm& comm_;

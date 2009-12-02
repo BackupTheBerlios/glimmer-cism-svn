@@ -6,10 +6,16 @@ Simple_Interface::Simple_Interface(int bandwidth, int matrixSize, const Epetra_C
   globalMap_ =  Teuchos::rcp(new Epetra_Map(matrixSize, 0, comm) );
   
   operator_ = Teuchos::rcp(new Epetra_CrsMatrix(Copy, *globalMap_, bandwidth) );
+  fill_ = 0;
 }
 
 // Destructor
 Simple_Interface::~Simple_Interface() {
+}
+
+// Update the value of fill_
+void Simple_Interface::updateFill(int fill) {
+  fill_ = fill;
 }
 
 // Update the operator and also the corresponding global map.
