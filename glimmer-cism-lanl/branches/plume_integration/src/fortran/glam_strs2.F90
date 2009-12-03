@@ -15,12 +15,12 @@ module glam_strs2
 
 !!use glam_general, only : dp, in, sprs2_dp
 !!use glam_physcon, only : gn, rhoi, rhoo, grav, pi, scyr
-!!use glam_paramets, only : thk0, len0, vel0, vis0, tim0, tau0, lambda0, evs0
+!!use glam_paramets, only : thk0, len0, vel0, vis0, tim0, lambda0, evs0
 !!use glam_funits, only : ulog, unin, betafile
 
 use glimmer_paramets, only : dp
 use glimmer_physcon,  only : gn, rhoi, rhoo, grav, pi, scyr
-use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, tau0, lambda0, evs0, tau0_glam
+use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, lambda0, evs0, tau0_glam
 use glimmer_log,      only : write_log
 use glide_mask
 
