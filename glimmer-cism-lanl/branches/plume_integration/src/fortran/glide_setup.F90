@@ -524,10 +524,10 @@ contains
          'vertically explicit     ', &
          'shelf front disabled    '/)
     character(len=*), dimension(0:3), parameter :: ho_whichsparse = (/ &
-         'BiCG with LU precondition  ', &
-         'GMRES with LU precondition ', &
-         'UMFPACK Unsymmetric Multifrontal   ',&
-         'PARDISO Parllel Direct Method'/)
+         'BiCG with LU precondition         ', &
+         'GMRES with LU precondition        ', &
+         'UMFPACK Unsymmetric Multifrontal  ',&
+         'PARDISO Parllel Direct Method     '/)
     call write_log('GLIDE options')
     call write_log('-------------')
     write(message,*) 'I/O parameter file      : ',trim(model%funits%ncfile)
