@@ -39,12 +39,7 @@ module glimmer_sparse_trilinos
 
 contains
     subroutine check_trilinos()
-#ifndef HAVE_UMFPACK
-        write(*,*)"ERROR: Unsymmetric multifrontal method has been requested but CISM"
-        write(*,*)"       was not compiled with UMFPACK support."
-        stop
-#endif
-        write(*,*)"TRILINOS: in check_trilinos"
+        !write(*,*)"TRILINOS: in check_trilinos"
     end subroutine
 
     subroutine trilinos_default_options(opt)
@@ -57,7 +52,7 @@ contains
         opt%tolerance  = 1e-5
         opt%maxiters = 2000
         opt%use_iterative_refinement = .true.
-        write(*,*)"TRILINOS: in trilinos_default_options"
+        !write(*,*)"TRILINOS: in trilinos_default_options"
     end subroutine trilinos_default_options
 
     subroutine trilinos_allocate_workspace(matrix, options, workspace, max_nonzeros_arg)
@@ -77,7 +72,7 @@ contains
         workspace%alloc = .false.
     
         call check_trilinos()
-        write(*,*)"TRILINOS: in trilinos_allocate_workspace"
+        !write(*,*)"TRILINOS: in trilinos_allocate_workspace"
     
     end subroutine trilinos_allocate_workspace
 
@@ -96,52 +91,18 @@ contains
         type(sparse_matrix_type) :: matrix
         type(trilinos_solver_options) :: options
         type(trilinos_solver_workspace) :: workspace
+        integer :: i, max
         call check_trilinos()
 
-        write(*,*)"TRILINOS: in trilinos_solver_preprocess"
-#ifdef HAVE_UMFPACK
         !Check if we have previously allocated TRILINOS storage
         if (workspace%alloc) then
             call trilinos_destroy_workspace(matrix, options, workspace)
         end if
 
-        !Set default control parameters
-        call umf4def(workspace%control)
-
-        !Convert to the TRILINOS format.
-        !Move from triad format to column format
-        call to_column_format(matrix)
-
-        !Sort by row within each column in the column format.
-        !to_column_format does not necessarily do this
-        call sort_column_format(matrix)
-
-        !Move from 1-based to 0-based indexing
         matrix%row = matrix%row - 1
         matrix%col = matrix%col - 1
 
-        !Pre-order and symbolic analysis
-        call umf4sym(matrix%order, matrix%order, matrix%col, matrix%row, matrix%val,  &
-                     workspace%symbolic, workspace%control, workspace%info)
-        if (workspace%info(1) < 0) then
-            write(*,*)"Error occurred in umf4sym: ", workspace%info(1)
-            call trilinos_interpret_error(int(workspace%info(1)))
-            write(*,*) matrix%row
-            write(*,*) matrix%col
-            write(*,*) matrix%val
-            stop
-        end if
-
-        !Numeric factorization
-        call umf4num(matrix%col, matrix%row, matrix%val, &
-                     workspace%symbolic, workspace%numeric, workspace%control, workspace%info)
-        if (workspace%info(1) < 0) then
-            write(*,*)"Error occured in umf4num: ", workspace%info(1)
-            call trilinos_interpret_error(int(workspace%info(1)))
-        end if
-
-        workspace%alloc=.true.
-#endif
+        !write(*,*)"TRILINOS: in trilinos_solver_preprocess"
     end subroutine trilinos_solver_preprocess
 
     function trilinos_solve(matrix, rhs, solution, options, workspace,err,niters, verbose)
@@ -181,18 +142,15 @@ contains
 
         integer :: iunit !Unit number to print verbose output to (6=stdout, 0=no output)
         integer :: isym !Whether matrix is symmetric
-        integer :: sys
+        integer :: sys,i
 
         sys=0
-        write(*,*)"TRILINOS: in trilinos_solve"
+        !write(*,*)"TRILINOS: in trilinos_solve"
+        call solve (matrix%nonzeros, matrix%order, matrix%row, matrix%col, &
+                    matrix%val, rhs, solution)
        
         call check_trilinos()
-#ifdef HAVE_UMFPACK
-        
-        call umf4solr(sys, matrix%col, matrix%row, matrix%val, solution, rhs, &
-                     workspace%numeric, workspace%control, workspace%info)
-#endif
-        trilinos_solve = workspace%info(1) 
+        trilinos_solve = 0; !workspace%info(1) 
     
         !trilinos is a direct method, so the iters and err returns mean nothing
         err = 0
@@ -203,7 +161,9 @@ contains
         type(sparse_matrix_type) :: matrix
         type(trilinos_solver_options) :: options
         type(trilinos_solver_workspace) :: workspace
-        write(*,*)"TRILINOS: in trilinos_solver_postprocess"
+        !write(*,*)"TRILINOS: in trilinos_solver_postprocess"
+        matrix%row = matrix%row + 1
+        matrix%col = matrix%col + 1
     end subroutine
 
     subroutine trilinos_destroy_workspace(matrix, options, workspace)
@@ -215,13 +175,8 @@ contains
         type(trilinos_solver_workspace) :: workspace
         !Deallocate all of the working memory
         !Free the Umfpack symbolic analysis
-#ifdef HAVE_UMFPACK
-        call umf4fsym(workspace%symbolic)
-        !Free the Umfpack numeric factorization
-        call umf4fnum(workspace%numeric)
-#endif
         workspace%alloc = .false.
-        write(*,*)"TRILINOS: in trilinos_destroy_wprkspace"
+        !write(*,*)"TRILINOS: in trilinos_destroy_wprkspace"
     end subroutine trilinos_destroy_workspace
 
     subroutine trilinos_interpret_error(error_code, error_string)

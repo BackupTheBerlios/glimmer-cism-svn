@@ -1,4 +1,7 @@
 SUBDIRS = SLAP_library
+#if TRILINOS
+#include $(TRILINOS_PREFIX)/include/Makefile.export.NOX
+#endif TRILINOS
 RESTART_STEM=glimmer_rst
 RESTART_INC_INS=$(RESTART_STEM)_body.inc.in $(RESTART_STEM)_head.inc.in
 RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
@@ -39,7 +42,6 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_daily_pdd.F90 glint_global_interp.F90 \
                        glimmer_sparse_type.F90 glimmer_sparse.F90 \
                        glimmer_sparse_umfpack.F90 \
-                       glimmer_sparse_trilinos.F90 \
                        glimmer_sparse_slap.F90 \
 		       glimmer_coordinates.F90 \
                        glimmer_integrate.F90 ncdf_utils.F90 \
@@ -51,6 +53,9 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        $(RESTART_INCS) glimmer_restart.F90 glimmer_filenames.F90 \
                        glimmer_writestats.F90 writestats.c writestats.h
 nodist_libglimmer_a_SOURCES = glimmer_vers.F90
+if TRILINOS
+libglimmer_a_LIBADD = ../cpp/call_trilinos.o
+endif TRILINOS
 
 libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \
                      glide_bwater.F90 glide_deriv.F90 xls.F90 ice3d_lib.F90 \
@@ -89,10 +94,15 @@ endif PARDISO
 
 eismint3_glide_SOURCES = eismint3_glide.F90
 eismint3_glide_LDADD = libclimate.a libglide.a libglimmer.a \
-                       SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+                       SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) 
 simple_glide_SOURCES = simple_glide.F90 
 simple_glide_LDADD = libclimate.a libglide.a libglimmer.a \
                      SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+if TRILINOS
+libglimmer_a_SOURCES += glimmer_sparse_trilinos.F90
+#simple_glide_LDADD += ../cpp/interface_modCXX.o ../cpp/helloCXX.o ../cpp/call_trilinos.o $(NOX_LIBRARIES)
+#simple_glide_LDADD += ../cpp/call_trilinos.o $(NOX_LIBRARIES)
+endif TRILINOS
 eis_glide_SOURCES = eis_glide.F90
 eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 spin_glide_SOURCES = spin_glide.F90

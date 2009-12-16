@@ -40,18 +40,41 @@ extern "C" {
     Epetra_SerialComm Comm;
 #endif
     
-    int i, j, ierr;
+    int i, j, ierr, maxID, max;
     //    int MyPID = Comm.MyPID();
     //    bool verbose = (MyPID == 0);
-    Epetra_Map Map(order, 0, Comm);
-    int NumMyElements = Map.NumMyElements();
+    Epetra_Map RowMap(order, 0, Comm);
+    int NumMyElements = RowMap.NumMyElements();
     int *MyGlobalElements = new int[NumMyElements];
-    Map.MyGlobalElements(&MyGlobalElements[0]);
+    RowMap.MyGlobalElements(&MyGlobalElements[0]);
+    Epetra_Map ColMap(order, 0, Comm);
+    ColMap.MyGlobalElements(&MyGlobalElements[0]);
 
+    // E>> trying to make NumEntriesPerRow array
+    int *NumEntriesPerRow = new int[NumMyElements];
+    for (i=0; i<NumMyElements; i++) { NumEntriesPerRow[i] = 0;}
+    //NumEntriesPerRow = 0;
+    maxID= 0; max = 1;
+    for (i=0; i<nnz; i++) {	
+	if ( row[i] >= 0) {
+	    NumEntriesPerRow[row[i]] += 1;
+	    if ( NumEntriesPerRow[row[i]] > max) max = NumEntriesPerRow[row[i]];
+	    if ( row[i] > maxID) maxID = row[i];
+	}
+    }
+
+    maxID = 0;
+    for (i=0; i<nnz; i++) {	
+	    if ( col[i] > maxID) maxID = col[i];
+    }
+    delete[] NumEntriesPerRow;
+
+    // the number of entries per row in the matrix
     int two = 2;
-    Epetra_CrsMatrix A(Copy, Map, two);
-    Epetra_Vector b(Copy, Map, rhs);
-    Epetra_Vector x(Map);
+    //Epetra_CrsMatrix A(Copy, RowMap, ColMap, NumEntriesPerRow);
+    Epetra_CrsMatrix A(Copy, RowMap, max);
+    Epetra_Vector b(Copy, RowMap, rhs);
+    Epetra_Vector x(RowMap);
 
     Teuchos::ParameterList paramList;
 
@@ -115,7 +138,7 @@ extern "C" {
     //    cout << "b: " << b << endl;
     //    cout << "x: " << x << endl;
 
-    //    Epetra_Vector temp(Map);
+    //    Epetra_Vector temp(RowMap);
     //    double residualNorm;
     //    A.Multiply(false, x, temp);
     //    temp.Update(-1, b, 1);
