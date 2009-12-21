@@ -11,6 +11,8 @@
 #include "Epetra_Version.h"
 #include "Epetra_ConfigDefs.h"
 #include "Epetra_Map.h"
+#include "Epetra_LocalMap.h"
+#include "Epetra_Import.h"
 #include "Epetra_Time.h"
 #include "Epetra_Vector.h"
 #include "Epetra_CrsMatrix.h"
@@ -69,20 +71,18 @@ extern "C" {
     }
     delete[] NumEntriesPerRow;
 
+    //-------------------------------------------------------------------------
+    // RN_20091221: Taking care of the matrix
+    //-------------------------------------------------------------------------
     // the number of entries per row in the matrix
     int two = 2;
     //Epetra_CrsMatrix A(Copy, RowMap, ColMap, NumEntriesPerRow);
-    Epetra_CrsMatrix A(Copy, RowMap, max);
-    Epetra_Vector b(Copy, RowMap, rhs);
-    Epetra_Vector x(RowMap);
-
-    Teuchos::ParameterList paramList;
-
-    Teuchos::RCP<Teuchos::ParameterList>
-      paramList1 = Teuchos::rcp(&paramList, false);
-    Teuchos::updateParametersFromXmlFile("strat1.xml", paramList1.get() );
+    //Epetra_CrsMatrix A(Copy, RowMap, max);
+    int hundred = 1000;
+    Epetra_CrsMatrix A(Copy, RowMap, hundred);
 
     // Inserting values into the matrix    
+    /*
     for (i=0; i<NumMyElements; ++i) {
       for (j=0; j<nnz; ++j) {
 	if (MyGlobalElements[i] == row[j]) {
@@ -92,10 +92,42 @@ extern "C" {
 	}
       }
     }
+    */
+    for (j=0; j<nnz; ++j) {
+      if (RowMap.MyGID(row[j]) ) {
+	ierr = A.InsertGlobalValues(row[j], 1, &(val[j]), &(col[j]) );
+	assert(ierr == 0);
+      }
+    }
 
     ierr = A.FillComplete();
     assert(ierr == 0);
     
+    //-------------------------------------------------------------------------
+    // RN_20091221: Taking care of the rhs
+    //-------------------------------------------------------------------------
+    //Epetra_Vector b(Copy, RowMap, rhs);
+    Epetra_Vector b(RowMap);
+
+    // Inserting values into the rhs
+    double *MyGlobalValues = new double[NumMyElements];
+    for (j=0; j<NumMyElements; ++j) {
+      MyGlobalValues[j] = rhs[MyGlobalElements[j] ];
+    }
+    ierr = b.ReplaceGlobalValues(NumMyElements, &MyGlobalValues[0],
+				 &MyGlobalElements[0]);
+
+    //-------------------------------------------------------------------------
+    // RN_20091221: Taking care of the solution
+    //-------------------------------------------------------------------------
+    Epetra_Vector x(RowMap);
+
+    Teuchos::ParameterList paramList;
+
+    Teuchos::RCP<Teuchos::ParameterList>
+      paramList1 = Teuchos::rcp(&paramList, false);
+    Teuchos::updateParametersFromXmlFile("strat1.xml", paramList1.get() );
+
     // For debugging =)
     //    cout << "A: " << A << endl;
     //    cout << "b: " << b << endl;
@@ -146,7 +178,18 @@ extern "C" {
 
     //    cout << "Residual Norm: " << residualNorm << endl;
 
-    x.ExtractCopy(solution);
+    Epetra_LocalMap localMap(order, 0, Comm);
+    Epetra_Vector xExtra(localMap); // local vector in each processor
+
+    // RN_20091218: Create an import map and then import the data to the
+    // local vector.
+    Epetra_Import import(localMap, RowMap);
+
+    xExtra.Import(x, import, Add);
+    xExtra.ExtractCopy(solution);
+
+    delete[] MyGlobalElements;
+    delete[] MyGlobalValues;
   }
 
 } // extern "C"
