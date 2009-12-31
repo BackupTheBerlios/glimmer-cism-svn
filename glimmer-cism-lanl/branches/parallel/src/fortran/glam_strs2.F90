@@ -3191,13 +3191,13 @@ subroutine putpcgc(value,col,row)
   integer, intent(in) :: row, col 
   real (kind = dp), intent(in) :: value 
 
-#ifdef HAVE_TRILINOS
+#ifdef TRILINOS
 ! if Trilinos is in the build, call Trilinos (if that option specified)
-
-    if( whichsparse == SPARSE_SOLVER_TRILINOS )then
-        !! calls to "puttrilinos" go here !!
-    end if
-
+!
+!    if( whichsparse == SPARSE_SOLVER_TRILINOS )then
+!        !! calls to "puttrilinos" go here !!
+!    end if
+!
 #else   
 ! call something other than Trilinos
 

@@ -36,7 +36,7 @@ extern "C" {
   void solve_(int& nnz, int& order, int* row, int* col, double* val,
 	      double* rhs, double* solution) {
     
-#ifdef EPETRA_MPI
+#ifdef HAVE_MPI
     Epetra_MpiComm Comm(MPI_COMM_WORLD);
 #else
     Epetra_SerialComm Comm;

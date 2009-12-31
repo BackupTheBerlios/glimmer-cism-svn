@@ -56,12 +56,28 @@ program simple_glide
   use glimmer_writestats_module
   implicit none
 
+#ifdef GPTL
+#include <gptl.inc>
+#endif
+#ifdef PAPI
+#include <f90papi.h>
+#endif
+
   type(glide_global_type) :: model        ! model instance
   type(simple_climate) :: climate         ! climate
   type(ConfigSection), pointer :: config  ! configuration stuff
   real(kind=rk) time
   real(kind=dp) t1,t2
-  integer clock,clock_rate
+  integer clock,clock_rate,ret
+
+  ! start gptl
+#ifdef GPTL
+  ret = gptlsetoption (gptlprint_method,gptlfull_tree)
+  ret = gptlsetoption (PAPI_FP_OPS, 1)
+  ret = gptlsetutr (gptlnanotime)
+  ret = gptlinitialize ()
+  ret = gptlstart ('total')
+#endif
 
   call glimmer_GetCommandline()
   
@@ -105,4 +121,11 @@ program simple_glide
   call glimmer_writestats(commandline_resultsname,commandline_configname,t2-t1)
   call close_log
 
+  ! stop gptl
+#ifdef GPTL
+  ret = gptlstop ('total')
+  ret = gptlpr (0)
+  ret = gptlfinalize ()
+#endif
+  
 end program simple_glide

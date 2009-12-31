@@ -162,6 +162,40 @@ if test "$ac_cv_gomp" != ""; then
 fi
 AM_CONDITIONAL(EXT_GOMP,test "$ac_cv_havegomp" == 1)
 
+# checking for gptl
+AC_ARG_WITH(gptl,AS_HELP_STRING([--with-gptl],[location where gptl timing library is installed]),[ac_cv_gptl_prefix=$withval])
+if test "$ac_cv_gptl_prefix" != ""; then
+  AC_MSG_RESULT(gptl location: $ac_cv_gptl_prefix)
+  if test "$f95v" == "gfortran"; then
+    F77="$F77 -finstrument-functions"
+    FCFLAGS="$FCFLAGS -DGPTL"
+    FC="$FC -finstrument-functions"
+    FFLAGS="$FFLAGS -finstrument-functions"
+  elif test "$f95v" == "Portland pgf90"; then
+    F77="$F77 -Minstrument:functions"
+    FCFLAGS="$FCFLAGS -DGPTL"
+    FC="$FC -Minstrument:functions"
+    FFLAGS="$FFLAGS -Minstrument:functions"
+  elif test "$f95v" == "Cray ftn wrapper"; then
+    F77="$F77 -Minstrument:functions"
+    FCFLAGS="$FCFLAGS -DGPTL"
+    FC="$FC -Minstrument:functions"
+    FFLAGS="$FFLAGS -Minstrument:functions"
+  else 
+    AC_MSG_ERROR([Cannot configure --with-gptl: Selected compiler not supported.])
+  fi
+  FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_gptl_prefix/include"
+  LDFLAGS="$LDFLAGS -L$ac_cv_gptl_prefix/lib -Minstrument:functions"
+  LIBS="$LIBS -L$ac_cv_gptl_prefix/lib -lgptl"
+fi
+
+# checking for papi
+AC_ARG_WITH(papi,AS_HELP_STRING([--with-papi],[location where papi is installed]),[ac_cv_papi_prefix=$withval])
+if test "$ac_cv_papi_prefix" != ""; then
+  FCFLAGS="$FCFLAGS -DPAPI $ax_cv_f90_modflag$ac_cv_papi_prefix/include"
+  LDFLAGS="$LDFLAGS -L$ac_cv_papi_prefix/lib"
+  LIBS="$LIBS -L$ac_cv_papi_prefix/lib -lpapi -L$ac_cv_papi_prefix/lib -lpfm" 
+fi
 
 # checking for netCDF
 AC_ARG_WITH(netcdf,AS_HELP_STRING([--with-netcdf],[location where netCDF is installed]),[ac_cv_netcdf_prefix=$withval])
@@ -285,10 +319,11 @@ If you are not sure what to do here but have LAPACK installed in a standard loca
 
             TRILINOS_PREFIX="$ac_cv_trilinos_prefix"
             AC_MSG_CHECKING(for Trilinos Test)
-            FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_trilinos_prefix/include -I../cpp"
-            CXXFLAGS="$FCFLAGS -DHAVE_TRILINOS -I$ac_cv_trilinos_prefix/include"
+            FCFLAGS="$FCFLAGS -DHAVE_MPI -DTRILINOS $ax_cv_f90_modflag$ac_cv_trilinos_prefix/include -I../cpp"
+            CXXFLAGS="$FCFLAGS -DTRILINOS -I$ac_cv_trilinos_prefix/include"
             LDFLAGS="$LDFLAGS -L$ac_cv_trilinos_prefix/lib" 
-	    LIBS="$LIBS -llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos -lstdc++" #-lgfortranbegin -lgfortran
+	    #LIBS="$LIBS -llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos -lmpichcxx -lstd -lC" 
+	    LIBS="$LIBS -llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos -lstdc++ #-lgfortranbegin -lgfortran"
 	    #LIBS="$LIBS $EPETRA_LIBRARIES -lstdc++"
 fi
 
