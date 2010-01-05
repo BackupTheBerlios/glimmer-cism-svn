@@ -35,6 +35,8 @@ extern "C" {
   //	      double* rhs, double* solution, double err, int niters) {
   void solve_(int& nnz, int& order, int* row, int* col, double* val,
 	      double* rhs, double* solution) {
+
+    try{
     
 #ifdef HAVE_MPI
     Epetra_MpiComm Comm(MPI_COMM_WORLD);
@@ -190,6 +192,20 @@ extern "C" {
 
     delete[] MyGlobalElements;
     delete[] MyGlobalValues;
+    }
+  
+    catch (std::exception& e) {
+      cout << e.what() << endl;
+    }
+    catch (string& s) {
+      cout << s << endl;
+    }
+    catch (char *s) {
+      cout << s << endl;
+    }
+    catch (...) {
+      cout << "Caught unknown exception!" << endl;
+    }
   }
 
 } // extern "C"
