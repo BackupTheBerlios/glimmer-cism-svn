@@ -63,6 +63,12 @@ program simple_glide
 #include <f90papi.h>
 #endif
 
+#ifdef HAVE_MPI
+#include <mpif.h>
+
+  integer npes,ierr,iam
+#endif
+
   type(glide_global_type) :: model        ! model instance
   type(simple_climate) :: climate         ! climate
   type(ConfigSection), pointer :: config  ! configuration stuff
@@ -77,6 +83,12 @@ program simple_glide
   ret = gptlsetutr (gptlnanotime)
   ret = gptlinitialize ()
   ret = gptlstart ('total')
+#endif
+
+#ifdef HAVE_MPI
+ call MPI_Init(ierr)
+ call MPI_Comm_size(MPI_COMM_WORLD,npes,ierr)
+ call MPI_Comm_rank(MPI_COMM_WORLD,iam,ierr)
 #endif
 
   call glimmer_GetCommandline()
@@ -120,6 +132,10 @@ program simple_glide
   t2 = real(clock,kind=dp)/real(clock_rate,kind=dp)
   call glimmer_writestats(commandline_resultsname,commandline_configname,t2-t1)
   call close_log
+
+#ifdef HAVE_MPI
+ call MPI_Finalize(ierr)
+#endif
 
   ! stop gptl
 #ifdef GPTL

@@ -1,5 +1,5 @@
 #ifdef HAVE_MPI
-#include "mpi.h"
+//#include "mpi.h"
 #include "Epetra_MpiComm.h"
 #else
 #include "Epetra_SerialComm.h"
@@ -45,8 +45,8 @@ extern "C" {
 #endif
     
     int i, j, ierr, maxID, max;
-    //    int MyPID = Comm.MyPID();
-    //    bool verbose = (MyPID == 0);
+        int MyPID = Comm.MyPID();
+        bool verbose = (MyPID == 0);
     Epetra_Map RowMap(order, 0, Comm);
     int NumMyElements = RowMap.NumMyElements();
     int *MyGlobalElements = new int[NumMyElements];
@@ -77,7 +77,7 @@ extern "C" {
     // RN_20091221: Taking care of the matrix
     //-------------------------------------------------------------------------
     // the number of entries per row in the matrix
-    int two = 2;
+    //int two = 2;
     //Epetra_CrsMatrix A(Copy, RowMap, ColMap, NumEntriesPerRow);
     //Epetra_CrsMatrix A(Copy, RowMap, max);
     int hundred = 1000;
