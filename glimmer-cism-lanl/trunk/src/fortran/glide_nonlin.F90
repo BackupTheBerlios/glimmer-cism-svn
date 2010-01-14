@@ -141,6 +141,9 @@ contains
         real(dp) :: theta
         real(dp) :: alpha
         integer :: i
+        real(dp) :: vmean
+        real(dp) :: vstd
+
         real(dp), dimension(vec_size) :: vec_correction_new
 
         !Assume we need to iterate again until proven otherwise
@@ -154,10 +157,23 @@ contains
 
         vec_correction_new = vec_new(1:vec_size) - vec_old(1:vec_size)
 
+        do i = 1, vec_size
+            vmean = vmean + abs(vec_correction_new(i))
+        end do
+        vmean = vmean / vec_size
+
+        do i = 1, vec_size
+            vstd = vstd + (vec_correction_new(i) - vmean)**2
+        end do
+        vstd = sqrt(vstd/vec_size)
+
         do i = 1,vec_size
             norm1 = norm1 + (vec_correction_new(i) - vec_correction(i)) ** 2
             norm2 = norm2 + vec_correction(i) ** 2
-            norm3 = norm3 + vec_correction_new(i) ** 2
+            if (abs(vec_correction_new(i)) > vmean * 4. * vstd) then
+            else
+                norm3 = norm3 + vec_correction_new(i) ** 2
+            endif
             norm4 = norm4 + vec_correction(i) * vec_correction_new(i)
             norm5 = norm5 + vec_new(i) ** 2
         end do

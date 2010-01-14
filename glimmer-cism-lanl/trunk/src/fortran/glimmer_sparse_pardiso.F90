@@ -54,7 +54,7 @@ contains
         opt%solver = 0
         opt%tolerance = 1.d-6
         opt%iterative = .TRUE.  ! true for iterative/hybrid method
-        opt%processors = 8   ! Number of processors
+        opt%processors = 12  ! Number of processors
     end subroutine pardiso_default_options
 
     subroutine pardiso_allocate_workspace(matrix, options, workspace, max_nonzeros_arg)
@@ -150,7 +150,6 @@ contains
            mesglvl = 0
         end if
 
-        mesglvl = 0
 #ifdef HAVE_PARDISO
         ! This is a hack, needed to check the state of the solver, seems
         ! to work, but the behavior of workspace%pt is undocumented.
