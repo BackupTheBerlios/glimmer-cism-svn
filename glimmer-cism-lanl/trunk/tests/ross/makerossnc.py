@@ -1,4 +1,4 @@
-#!/opt/epd-5.0.0-rh5-x86_64/bin/python
+#!/usr/bin/env python
 import numpy
 import pycdf
 from pycdf import NC
@@ -162,20 +162,20 @@ kinbc_var = glimcdf.setup_variable(nc, "kinematic_bc_mask", type=NC.INT)
 land_ice_mask_var = glimcdf.setup_variable(nc, "land_ice_mask", type=NC.INT)
 shelf_front_mask_var = glimcdf.setup_variable(nc, "shelf_front_mask", type=NC.INT)
 
-existency_var[0,:,:] = existency
-azimuth_var[0,:,:] = ice_vel_azimuth
-magnitude_var[0,:,:] = ice_vel_magnitude
-thck_var[0,:,:] = thickness
-topg_var[0,:,:] = seabed_depth
-fake_shelf_var[0,:,:] = fake_shelf_mask
-acab_var[0,:,:] = accumulation
-bbar_var[0,:,:] = bbar
-surface_temp_var[0,:,:] = surface_temp
-kinbc_var[0,:,:] = kinematic_bc_mask
-land_ice_mask_var[0,:,:] = land_ice_mask
-shelf_front_mask_var[0,:,:] = shelf_front_mask
-real_shelf_mask_var[0,:,:] = real_shelf_mask
-reliable_var[0,:,:] = vel_is_reliable
+existency_var[0,:,:] = existency.tolist()
+azimuth_var[0,:,:] = ice_vel_azimuth.tolist()
+magnitude_var[0,:,:] = ice_vel_magnitude.tolist()
+thck_var[0,:,:] = thickness.tolist()
+topg_var[0,:,:] = seabed_depth.tolist()
+fake_shelf_var[0,:,:] = fake_shelf_mask.tolist()
+acab_var[0,:,:] = accumulation.tolist()
+bbar_var[0,:,:] = bbar.tolist()
+surface_temp_var[0,:,:] = surface_temp.tolist()
+kinbc_var[0,:,:] = kinematic_bc_mask.tolist()
+land_ice_mask_var[0,:,:] = land_ice_mask.tolist()
+shelf_front_mask_var[0,:,:] = shelf_front_mask.tolist()
+real_shelf_mask_var[0,:,:] = real_shelf_mask.tolist()
+reliable_var[0,:,:] = vel_is_reliable.tolist()
 nc.close()
 
 #Now, we can actually start processing the data so it's suitable for use
@@ -246,21 +246,21 @@ glimcdf.setup_dimensions(nc, cols, rows, nlevels, 6822, 6822)
 
 #Thickness
 thk_var = glimcdf.setup_variable(nc, "thk", type=NC.DOUBLE)
-thk_var[0,:,:] = thickness
+thk_var[0,:,:] = thickness.tolist()
 
 #Topography
 #This is specified as "depth" in the input rather that "elevation", so
 #we need to negate it.
 topg_var = glimcdf.setup_variable(nc, "topg", type=NC.DOUBLE)
-topg_var[0,:,:] = -seabed_depth
-topg_var[0,:,:] = -10000
+topg_var[0,:,:] = (-seabed_depth).tolist()
+#topg_var[0,:,:] = -10000
 
 #Kinematic boundary conditions
 uvelbc_var = glimcdf.setup_variable(nc, "uvelbc", type=NC.DOUBLE, staggered=True, useZ=True)
 vvelbc_var = glimcdf.setup_variable(nc, "vvelbc", type=NC.DOUBLE, staggered=True, useZ=True)
 
-uvelbc_var[0,:,:,:] = uvelbc
-vvelbc_var[0,:,:,:] = vvelbc
+uvelbc_var[0,:,:,:] = uvelbc.tolist()
+vvelbc_var[0,:,:,:] = vvelbc.tolist()
 
 #Run everything on 0 basal traction
 beta_var = glimcdf.setup_variable(nc, "beta", staggered=True)
@@ -273,9 +273,12 @@ vvel_var = glimcdf.setup_variable(nc, "vvelhom", type=NC.DOUBLE, staggered=True,
 uvel[:rows-1, :cols-1] = numpy.where(uvelbc[0,:,:] == uvelbc[0,:,:], uvel[:rows-1, :cols-1], 0)
 vvel[:rows-1, :cols-1] = numpy.where(vvelbc[0,:,:] == vvelbc[0,:,:], vvel[:rows-1, :cols-1], 0)
 
-uvel_var[0,:,:,:] = numpy.array([uvel[:rows-1, :cols-1]]*nlevels)
-vvel_var[0,:,:,:] = numpy.array([vvel[:rows-1, :cols-1]]*nlevels)
+ut = numpy.array([uvel[:rows-1, :cols-1]]*nlevels) 
+uvel_var[0,:,:,:] = ut.tolist()
+
+vt = numpy.array([vvel[:rows-1, :cols-1]]*nlevels)
+vvel_var[0,:,:,:] = vt.tolist()
 
 kinbcmask_var = glimcdf.setup_variable(nc, "kinbcmask", type=NC.INT)
 kinbcmask_var[:] = 1
-kinbcmask_var[0, :rows-1, :cols-1] = numpy.array(numpy.where(uvelbc[0,:,:] == uvelbc[0,:,:], 1, 0),dtype='int32')
+kinbcmask_var[0, :rows-1, :cols-1] = numpy.array(numpy.where(uvelbc[0,:,:] == uvelbc[0,:,:], 1, 0),dtype='int32').tolist()

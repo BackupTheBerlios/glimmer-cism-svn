@@ -175,11 +175,11 @@ def setup_dimensions_gridded(nc,xgrid,ygrid, nlevels=1, temps = None, sealevel =
     timevar[0] = 0.
 
     # Note type coersion
-    x0var[:] = numpy.asarray((xgrid[0:-1,0] + xgrid[1:,0]) / 2.,dtype='float32')
-    y0var[:] = numpy.asarray((ygrid[0,0:-1] + ygrid[0,1:]) / 2.,dtype='float32')
+    x0var = numpy.asarray((xgrid[0:-1,0] + xgrid[1:,0]) / 2.,dtype='float32')
+    y0var = numpy.asarray((ygrid[0,0:-1] + ygrid[0,1:]) / 2.,dtype='float32')
 
-    x1var[:] = numpy.asarray(xgrid[:,0],dtype='float32')
-    y1var[:] = numpy.asarray(ygrid[0,:],dtype='float32')
+    x1var = numpy.asarray(xgrid[:,0],dtype='float32')
+    y1var = numpy.asarray(ygrid[0,:],dtype='float32')
 
 def set_global_attribute(nc, name, text):
     attr = nc.attr(name)
