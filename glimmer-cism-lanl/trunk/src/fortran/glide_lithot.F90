@@ -92,7 +92,7 @@ contains
     model%lithot%zfactors(:,k) = 0.5*model%lithot%diffu*tim0*model%numerics%dt / &
          (model%lithot%deltaz(k)-model%lithot%deltaz(k-1))**2
 
-    !if (model%options%hotstart.ne.1) then
+    if (model%options%hotstart.ne.1) then
        ! set initial temp distribution to thermal gradient
        
        where (model%temper%bheatflx .ne. 0.)
@@ -104,7 +104,7 @@ contains
        do k=1,model%lithot%nlayer
           model%lithot%temp(:,:,k) = model%lithot%surft+model%lithot%deltaz(k)*factor
        end do
-    !end if
+    end if
 
 
     if (model%lithot%num_dim.eq.1) then
