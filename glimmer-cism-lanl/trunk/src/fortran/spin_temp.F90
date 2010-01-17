@@ -244,7 +244,7 @@ subroutine spin_temp_config(config,temp)
       end where 
     
       !calculate the temperature half-range
-      arng = 30.38 - 0.006277 * glandhinv - 0.3262 * lati - artm + 2.0*tperturb 
+      arng = 30.78 - 0.006277 * usrf - 0.3262 * lati - artm + 2.0*tperturb 
     end select 
   
   
@@ -289,7 +289,7 @@ subroutine spin_temp_config(config,temp)
     
       !calculate the temperature half range by subtracting the artm from the 
       !summer temperature
-      arng = 16.81 - 0.00692*usrf + 0.27937*lati - artm + 2.0*tperturb 
+      arng = 16.81 - 0.00692*usrf + 0.27937*lati - artm + tperturb 
     case(1) !Greenland Temp Model model_type 1 and 2
       !Huybrecht's temperature method for Greenland
       !create and calculate the inversion temperature elevation
@@ -304,8 +304,8 @@ subroutine spin_temp_config(config,temp)
       end where 
       
       !calculate the temperature half-range
-      arng = 30.78  - 0.006277 * usrf - 0.3262 * lati - artm + 2.0*tperturb 
-    
+      arng = 30.78  - 0.006277 * usrf - 0.3262 * lati - artm + tperturb 
+      
     case(2) !Fausto Temperature 
     
     
@@ -320,7 +320,7 @@ subroutine spin_temp_config(config,temp)
 
       !with land stations
       artm = 41.83 - (6.309*usrf/1000.0) - 0.7189*lati + 0.0672*(-loni) + tperturb
-      arng = 14.70 - (5.426*usrf/1000.0) - 0.1585*lati + 0.0518*(-loni) - artm + 2.0* tperturb
+      arng = 14.70 - (5.426*usrf/1000.0) - 0.1585*lati + 0.0518*(-loni) - artm +  tperturb
     end select
   end subroutine spin_surftemp
 
