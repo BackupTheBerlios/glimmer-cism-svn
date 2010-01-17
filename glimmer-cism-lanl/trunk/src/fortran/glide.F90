@@ -426,6 +426,10 @@ contains
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
 
 
+    !calculate the grounding line flux after the mask is correct
+    call calc_gline_flux(model%geomderv%stagthck,model%velocity%surfvel, &
+    model%geometry%thkmask,model%ground%gline_flux, model%velocity%ubas, &
+    model%velocity%vbas, model%numerics%dew)
    ! ------------------------------------------------------------------------ 
     ! Remove ice which is either floating, or is present below prescribed
     ! depth, depending on value of whichmarn
@@ -458,9 +462,6 @@ contains
     call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
-    !calculate the grounding line flux after the mask is correct
-    call calc_gline_flux(model%geometry%thck,model%velocity%surfvel, &
-    model%geometry%thkmask,model%ground%gline_flux)
     ! ------------------------------------------------------------------------
     ! update ice/water load if necessary
     ! ------------------------------------------------------------------------

@@ -187,6 +187,9 @@ contains
        case(1)
           
        end select
+  
+       !      model%temper%temp = -10.0
+   
   end subroutine init_temp
     
 
@@ -836,7 +839,7 @@ contains
     end do
     !the compensatory heating(compheat) is initialized to zero and allows
     !for modifying the calculated dissip.  This is needed for exact verification tests,
-    model%tempwk%dissip = model%tempwk%dissip + model%tempwk%compheat 
+    !model%tempwk%dissip = model%tempwk%dissip + model%tempwk%compheat 
 !   case(1)
     !*sfp* 1st-order, depth-integrated  SIA case only (SSA model) 
     ! NOTE: this needs tau and efvs (3d arrays), which are the eff. stress and the eff. visc. calculated

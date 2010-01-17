@@ -216,6 +216,8 @@ subroutine spin_temp_config(config,temp)
     real, intent(in) :: tperturb !*FD temperature forcing over time
     integer, intent(in) :: ewn, nsn !*FD # of grid points 
     real, dimension(ewn, nsn) :: glandhinv
+    
+    
     select case(model_type)
     
     case(0) !Antarctica Temperature Model, model_type = 0
@@ -271,11 +273,11 @@ subroutine spin_temp_config(config,temp)
                                         !*FD at the site of the ice core
     real, intent(in) :: ele_correction
     !make adjustments for elevation changes at the core site here
+    
     if (ele_correction .ne. 0.0) then
       call calc_elevation_change(ele_correction, temp_ele,model_type)
       tperturb = tperturb + temp_ele
     end if
-
     select case(model_type)
     case(0) !Antarctica Temperature Model, model_type = 0
       !calculate the artm for Antarctica following Huybrechts method

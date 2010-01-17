@@ -455,14 +455,15 @@ contains
          'local + const flux ', &
          'flux calculation   ', &
          'none               ' /)
-    character(len=*), dimension(0:6), parameter :: marine_margin = (/ &
+    character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
          'ignore            ', &
          'no ice shelf      ', &
          'threshold         ', &
          'const calving rate', &
          'edge threshold    ', &
          'van der Veen      ', &
-         'Pattyn Grnd Line  '/)
+         'Pattyn Grnd Line  ', &
+         'Huybrechts Greenland'/)
     character(len=*), dimension(0:5), parameter :: slip_coeff = (/ &
          'zero        ', &
          'const       ', &

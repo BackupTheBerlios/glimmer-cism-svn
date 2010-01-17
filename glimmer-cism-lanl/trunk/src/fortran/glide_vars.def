@@ -341,6 +341,15 @@ data:          data%geomderv%dusrfdtm
 factor:        scale2d_f1
 coordinates:   lon lat
 
+[dthckdtm]
+dimensions:    time, y1,x1
+units:         meter/year
+long_name:     tendency of ice thickness
+data:          data%geomderv%dthckdtm
+factor:        scale2d_f1
+coordinates:   lon lat
+
+
 [uvel]
 dimensions:    time, level, y0, x0
 units:         meter/year
@@ -424,7 +433,7 @@ factor:        scale3d_f7
 coordinates:   lon lat
 
 [surfvel]
-dimensions:    time, level, y1, x1
+dimensions:    time, level, y0, x0
 units:         meter/year
 long_name:     ice surface velocity 
 data:          data%velocity%surfvel(up,:,:)

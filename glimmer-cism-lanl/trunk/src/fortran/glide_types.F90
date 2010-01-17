@@ -676,7 +676,7 @@ module glide_types
   type glide_grnd
     real(dp),dimension(:,:),pointer :: gl_ew => null()
     real(dp),dimension(:,:),pointer :: gl_ns => null()
-    real(sp),dimension(:,:),pointer :: gline_flux => null() !*FD flux at the
+    real(dp),dimension(:,:),pointer :: gline_flux => null() !*FD flux at the
                                                             !grounding line
   end type glide_grnd
   
