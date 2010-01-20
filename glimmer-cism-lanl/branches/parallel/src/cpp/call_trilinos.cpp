@@ -44,7 +44,7 @@ extern "C" {
     Epetra_SerialComm Comm;
 #endif
     
-    int i, j, ierr, nPEs;
+    int i, j, ierr;
     int MyPID = Comm.MyPID();
     bool verbose = (MyPID == 0);
     Epetra_Map RowMap(order, 0, Comm);
@@ -52,7 +52,10 @@ extern "C" {
     int *MyGlobalElements = new int[NumMyElements];
     RowMap.MyGlobalElements(&MyGlobalElements[0]);
 
+#ifdef HAVE_MPI
+    int nPEs;
     MPI_Comm_size(MPI_COMM_WORLD, &nPEs);
+#endif
 
     //-------------------------------------------------------------------------
     // RN_20100120: Counting non-zero entries per row and determining the max
@@ -88,6 +91,7 @@ extern "C" {
     }
 
     // Determine globalmax.
+#ifdef HAVE_MPI
     if (MyPID == 0) {
       int *MaxFromProcessors = new int[nPEs];
       MPI_Status status;
@@ -123,6 +127,9 @@ extern "C" {
       // Receive globalmax.
       MPI_Bcast(&globalmax, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
+#else
+    globalmax = localmax;
+#endif
 
     delete[] NumEntriesPerRow;
 
