@@ -1,5 +1,5 @@
 #ifdef HAVE_MPI
-//#include "mpi.h"
+#include "mpi.h"
 #include "Epetra_MpiComm.h"
 #else
 #include "Epetra_SerialComm.h"
@@ -44,44 +44,95 @@ extern "C" {
     Epetra_SerialComm Comm;
 #endif
     
-    int i, j, ierr, maxID, max;
-        int MyPID = Comm.MyPID();
-        bool verbose = (MyPID == 0);
+    int i, j, ierr, nPEs;
+    int MyPID = Comm.MyPID();
+    bool verbose = (MyPID == 0);
     Epetra_Map RowMap(order, 0, Comm);
     int NumMyElements = RowMap.NumMyElements();
     int *MyGlobalElements = new int[NumMyElements];
     RowMap.MyGlobalElements(&MyGlobalElements[0]);
-    Epetra_Map ColMap(order, 0, Comm);
-    ColMap.MyGlobalElements(&MyGlobalElements[0]);
 
-    // E>> trying to make NumEntriesPerRow array
-    int *NumEntriesPerRow = new int[NumMyElements];
-    for (i=0; i<NumMyElements; i++) { NumEntriesPerRow[i] = 0;}
-    //NumEntriesPerRow = 0;
-    maxID= 0; max = 1;
-    for (i=0; i<nnz; i++) {	
-	if ( row[i] >= 0) {
-	    NumEntriesPerRow[row[i]] += 1;
-	    if ( NumEntriesPerRow[row[i]] > max) max = NumEntriesPerRow[row[i]];
-	    if ( row[i] > maxID) maxID = row[i];
+    MPI_Comm_size(MPI_COMM_WORLD, &nPEs);
+
+    //-------------------------------------------------------------------------
+    // RN_20100120: Counting non-zero entries per row and determining the max
+    //-------------------------------------------------------------------------
+    int *NumEntriesPerRow = new int[order]; // a cheap solution for now
+    int localmax = 0;
+    int globalmax = 0;
+
+    for (j=0; j<order; ++j) {
+      NumEntriesPerRow[j] = 0;
+    }
+
+    // Count non-zero entries per row.
+    for (j=0; j<nnz; ++j) {
+      if (RowMap.MyGID(row[j]) ) {
+	NumEntriesPerRow[row[j] ] += 1;
+      }
+    }
+    
+    /*
+    // Debug
+    cout << "Non-zero counts from " << MyPID << endl;
+    for (j=0; j<order; ++j) {
+      cout << NumEntriesPerRow[j] << endl;
+    }    
+    */
+
+    // Determine localmax.
+    for (j=0; j<order; ++j) {
+      if (NumEntriesPerRow[j] > localmax) {
+	localmax = NumEntriesPerRow[j];
+      }
+    }
+
+    // Determine globalmax.
+    if (MyPID == 0) {
+      int *MaxFromProcessors = new int[nPEs];
+      MPI_Status status;
+      MaxFromProcessors[0] = localmax;
+      for (j=1; j<nPEs; ++j) {
+	// Receive localmax.
+	MPI_Recv(&MaxFromProcessors[j], 1, MPI_INT, j, 1, MPI_COMM_WORLD,
+		 &status);
+      }
+
+      /*
+      // Debug
+      cout << "Maxes from all the processors:" << endl;
+      for (j=0; j<nPEs; ++j) {
+	cout << MaxFromProcessors[j] << endl;
+      }
+      */
+
+      // Find globalmax.
+      for (j=0; j<nPEs; ++j) {
+	if (MaxFromProcessors[j] > globalmax) {
+	  globalmax = MaxFromProcessors[j];
 	}
+      }
+      // Broadcast globalmax.
+      MPI_Bcast(&globalmax, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+      delete[] MaxFromProcessors;
+    }
+    else {
+      // Send localmax.
+      MPI_Send(&localmax, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
+      // Receive globalmax.
+      MPI_Bcast(&globalmax, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
 
-    maxID = 0;
-    for (i=0; i<nnz; i++) {	
-	    if ( col[i] > maxID) maxID = col[i];
-    }
     delete[] NumEntriesPerRow;
 
     //-------------------------------------------------------------------------
     // RN_20091221: Taking care of the matrix
     //-------------------------------------------------------------------------
-    // the number of entries per row in the matrix
-    //int two = 2;
+    //cout << "global max: " << globalmax << endl;
+
     //Epetra_CrsMatrix A(Copy, RowMap, ColMap, NumEntriesPerRow);
-    //Epetra_CrsMatrix A(Copy, RowMap, max);
-    int hundred = 1000;
-    Epetra_CrsMatrix A(Copy, RowMap, hundred);
+    Epetra_CrsMatrix A(Copy, RowMap, globalmax);
 
     // Inserting values into the matrix    
     /*
@@ -128,10 +179,10 @@ extern "C" {
 
     Teuchos::RCP<Teuchos::ParameterList>
       paramList1 = Teuchos::rcp(&paramList, false);
-    Teuchos::updateParametersFromXmlFile("strat1.xml", paramList1.get() );
+    Teuchos::updateParametersFromXmlFile("./strat1.xml", paramList1.get() );
 
     // For debugging =)
-    //    cout << "A: " << A << endl;
+    //cout << "A: " << A << endl;
     //    cout << "b: " << b << endl;
     //    cout << "x: " << x << endl;
 
