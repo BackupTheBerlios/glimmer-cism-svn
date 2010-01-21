@@ -917,116 +917,113 @@ contains
     real(dp), dimension(size(model%numerics%sigma)) :: pmptemp
     real(dp) :: slterm, newmlt
 
- 
+
     integer :: ewp, nsp,up,ew,ns
 
     do ns = 2, model%general%nsn-1
        do ew = 2, model%general%ewn-1
-          if (thck(ew,ns) > model%numerics%thklim .and. .not. floater(ew,ns)) then
+
+          if (floater(ew,ns) .and. (model%options%which_bmlt .eq. 1)) then
+             !use plume
+          else 
 
              call calcpmpt(pmptemp,thck(ew,ns),model%numerics%sigma)
 
-             if (abs(temp(model%general%upn,ew,ns)-pmptemp(model%general%upn)) .lt. 0.001) then
+             if ((thck(ew,ns) .le. model%numerics%thklim) .or. &
+                  floater(ew,ns) .or. &
+                  (abs(temp(model%general%upn,ew,ns)-pmptemp(model%general%upn)) .ge. 0.001)) then
 
-                slterm = 0.0d0
-
-!                case select( whichstrs )    !*sfp* added for calculating differently based on model physics
-
-!                case( 0 )                   ! 0-order SIA approx. --> Tau_d = Tau_b                                     
-
-                do nsp = ns-1,ns
-                   do ewp = ew-1,ew
-                      slterm = slterm - stagthck(ewp,nsp) * &
-                           (dusrfdew(ewp,nsp) * ubas(ewp,nsp) + dusrfdns(ewp,nsp) * vbas(ewp,nsp))
-                   end do
-                end do
-
-                !*sfp* NOTE that multiplication by this term has been moved up from below
-                slterm = model%tempwk%f(4) * slterm 
-
-
-!                case( 1 )                   ! 1st-order SIA approx. (HO model)
-!                                            ! NOTE: need to pass 2d basal shear stress arrays from HO model 
-!                do nsp = ns-1,ns 
-!                    do ewp = ew-1,ew
-!                        slterm = slterm - &
-!                            ( tauxz(upn,ewp,nsp) * ubas(ewp,nsp) + tauyz(upn,ewp,nsp) * vbas(ewp,nsp))
-!                    end do
-!                end do
-!
-!                slterm = model%tempwk%f(5) * slterm
-
-!                case( 2 )                   ! 1st-order, depth-integrated approx. (SSA) 
-!                                            ! NOTE: need to pass 2d basal shear stress arrays from SSA model
-!                do nsp = ns-1,ns 
-!                    do ewp = ew-1,ew
-!                        slterm = slterm - &
-!                            ( taubxs(upn,ewp,nsp) * ubas(ewp,nsp) + taubys(upn,ewp,nsp) * vbas(ewp,nsp))
-!                    end do
-!                end do
-!
-!                slterm = model%tempwk%f(5) * slterm
-!
-!                end select
-
-
-                bmlt(ew,ns) = 0.0d0
-
-                !*sfp* changed this so that 'slterm' is multiplied by f(4) const. above ONLY for the 0-order SIA case,
-                ! since for the HO and SSA cases a diff. const. needs to be used
-
-                ! OLD version
-!                newmlt = model%tempwk%f(4) * slterm - model%tempwk%f(2)*model%temper%bheatflx(ew,ns) + model%tempwk%f(3) * &
-!                     model%tempwk%dupc(model%general%upn) * &
-!                     thck(ew,ns) * model%tempwk%dissip(model%general%upn,ew,ns)
-
-                ! NEW version
-                newmlt = slterm - model%tempwk%f(2)*model%temper%bheatflx(ew,ns) + model%tempwk%f(3) * &
-                     model%tempwk%dupc(model%general%upn) * &
-                     thck(ew,ns) * model%tempwk%dissip(model%general%upn,ew,ns)
-
-                up = model%general%upn - 1
-
-                do while (abs(temp(up,ew,ns)-pmptemp(up)) .lt. 0.001 .and. up .ge. 3)
-                   bmlt(ew,ns) = bmlt(ew,ns) + newmlt
-                   newmlt = model%tempwk%f(3) * model%tempwk%dupc(up) * thck(ew,ns) * model%tempwk%dissip(up,ew,ns)
-                   up = up - 1
-                end do
-
-                up = up + 1
-
-                if (up == model%general%upn) then
-                   bmlt(ew,ns) = newmlt - &
-                        model%tempwk%f(1) * ( (temp(up-2,ew,ns) - pmptemp(up-2)) * model%tempwk%dupa(up) &
-                        + (temp(up-1,ew,ns) - pmptemp(up-1)) * model%tempwk%dupb(up) ) / thck(ew,ns) 
-                else
-                   bmlt(ew,ns) = bmlt(ew,ns) + max(0.0d0, newmlt - &
-                        model%tempwk%f(1) * ( (temp(up-2,ew,ns) - pmptemp(up-2)) * model%tempwk%dupa(up) &
-                        + (temp(up-1,ew,ns) - pmptemp(up-1)) * model%tempwk%dupb(up) ) / thck(ew,ns)) 
-                end if
-
-             else
-
-                bmlt(ew,ns) = 0.0d0
-
-             end if
-
+             bmlt(ew,ns) = 0.0
           else
+             slterm = 0.0d0
+
+             ! case select( whichstrs )    !*sfp* added for calculating differently based on model physics
+             !         case( 0 )                   ! 0-order SIA approx. --> Tau_d = Tau_b                      
+
+             do nsp = ns-1,ns
+                do ewp = ew-1,ew
+                   slterm = slterm - stagthck(ewp,nsp) * &
+                        (dusrfdew(ewp,nsp) * ubas(ewp,nsp) + dusrfdns(ewp,nsp) * vbas(ewp,nsp))
+                end do
+             end do
+
+             !*sfp* NOTE that multiplication by this term has been moved up from below
+             slterm = model%tempwk%f(4) * slterm 
+
+
+             !                case( 1 )                   ! 1st-order SIA approx. (HO model)
+             !                                            ! NOTE: need to pass 2d basal shear stress arrays from HO model 
+             !                do nsp = ns-1,ns 
+             !                    do ewp = ew-1,ew
+             !                        slterm = slterm - &
+             !                            ( tauxz(upn,ewp,nsp) * ubas(ewp,nsp) + tauyz(upn,ewp,nsp) * vbas(ewp,nsp))
+             !                    end do
+             !                end do
+             !
+             !                slterm = model%tempwk%f(5) * slterm
+
+             !                case( 2 )                   ! 1st-order, depth-integrated approx. (SSA) 
+             !                                            ! NOTE: need to pass 2d basal shear stress arrays from SSA model
+             !                do nsp = ns-1,ns 
+             !                    do ewp = ew-1,ew
+             !                        slterm = slterm - &
+             !                            ( taubxs(upn,ewp,nsp) * ubas(ewp,nsp) + taubys(upn,ewp,nsp) * vbas(ewp,nsp))
+             !                    end do
+             !                end do
+             !
+             !                slterm = model%tempwk%f(5) * slterm
+             !
+             !                end select
+
 
              bmlt(ew,ns) = 0.0d0
 
-          end if
-       end do
-    end do
+             !*sfp* changed this so that 'slterm' is multiplied by f(4) const. above ONLY for the 0-order SIA case,
+             ! since for the HO and SSA cases a diff. const. needs to be used
 
-    ! apply periodic BC
-    if (model%options%periodic_ew) then
-       do ns = 2,model%general%nsn-1
-          bmlt(1,ns) = bmlt(model%general%ewn-1,ns)
-          bmlt(model%general%ewn,ns) = bmlt(2,ns)
-       end do
-    end if
-  end subroutine calcbmlt
+             ! OLD version
+             !                newmlt = model%tempwk%f(4) * slterm - model%tempwk%f(2)*model%temper%bheatflx(ew,ns) + model%tempwk%f(3) * &
+             !                     model%tempwk%dupc(model%general%upn) * &
+             !                     thck(ew,ns) * model%tempwk%dissip(model%general%upn,ew,ns)
+
+             ! NEW version
+             newmlt = slterm - model%tempwk%f(2)*model%temper%bheatflx(ew,ns) + model%tempwk%f(3) * &
+                  model%tempwk%dupc(model%general%upn) * &
+                  thck(ew,ns) * model%tempwk%dissip(model%general%upn,ew,ns)
+
+             up = model%general%upn - 1
+
+             do while (abs(temp(up,ew,ns)-pmptemp(up)) .lt. 0.001 .and. up .ge. 3)
+                bmlt(ew,ns) = bmlt(ew,ns) + newmlt
+                newmlt = model%tempwk%f(3) * model%tempwk%dupc(up) * thck(ew,ns) * model%tempwk%dissip(up,ew,ns)
+                up = up - 1
+             end do
+
+             up = up + 1
+
+             if (up == model%general%upn) then
+                bmlt(ew,ns) = newmlt - &
+                     model%tempwk%f(1) * ( (temp(up-2,ew,ns) - pmptemp(up-2)) * model%tempwk%dupa(up) &
+                     + (temp(up-1,ew,ns) - pmptemp(up-1)) * model%tempwk%dupb(up) ) / thck(ew,ns) 
+             else
+                bmlt(ew,ns) = bmlt(ew,ns) + max(0.0d0, newmlt - &
+                     model%tempwk%f(1) * ( (temp(up-2,ew,ns) - pmptemp(up-2)) * model%tempwk%dupa(up) &
+                     + (temp(up-1,ew,ns) - pmptemp(up-1)) * model%tempwk%dupb(up) ) / thck(ew,ns)) 
+             end if
+
+          end if
+       end if
+    end do
+ end do
+
+ ! apply periodic BC
+ if (model%options%periodic_ew) then
+    do ns = 2,model%general%nsn-1
+       bmlt(1,ns) = bmlt(model%general%ewn-1,ns)
+       bmlt(model%general%ewn,ns) = bmlt(2,ns)
+    end do
+ end if
+end subroutine calcbmlt
 
 !-------------------------------------------------------------------
   subroutine corrpmpt(temp,thck,bwat,sigma,upn)
