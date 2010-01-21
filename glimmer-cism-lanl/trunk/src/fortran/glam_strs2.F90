@@ -166,7 +166,7 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     allocate(umask(ewn-1,nsn-1)) ! this will be moved to main
 
 !whl - moved from findefvsstr
-    allocate(flwafact(1:upn-1,ewn,nsn))
+    allocate(flwafact(1:upn,ewn,nsn))   !*sfp* changed vert dim from 1:upn-1 to 1:upn, to agree w/ dims of efvs
     flwafact = 0.0_dp
 
 ! *sfp** determine constants used in various FD calculations associated with 'findcoefst'   
@@ -578,7 +578,10 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     do ns = 2,nsn-1; do ew = 2,ewn-1
     if (thck(ew,ns) > 0.0_dp) then
       ! *sfp** term: 1/2*A^(-1/n)
-      forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
+!      forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
+     !*sfp* changed this calc from above to reflect the fact that efvs has vert dim of 1:upn, so the
+     ! multiplier flwfact should also have vert dims of 1:upn
+      forall (up = 1:upn) flwafact(up,ew,ns) = 0.5_dp * flwa(up,ew,ns)**p1
     end if; end do; end do
   end if
 
