@@ -57,6 +57,7 @@ extern "C" {
     MPI_Comm_size(MPI_COMM_WORLD, &nPEs);
 #endif
 
+    /*
     //-------------------------------------------------------------------------
     // RN_20100120: Counting non-zero entries per row and determining the max
     //-------------------------------------------------------------------------
@@ -75,14 +76,6 @@ extern "C" {
       }
     }
     
-    /*
-    // Debug
-    cout << "Non-zero counts from " << MyPID << endl;
-    for (j=0; j<order; ++j) {
-      cout << NumEntriesPerRow[j] << endl;
-    }    
-    */
-
     // Determine localmax.
     for (j=0; j<order; ++j) {
       if (NumEntriesPerRow[j] > localmax) {
@@ -101,14 +94,6 @@ extern "C" {
 	MPI_Recv(&MaxFromProcessors[j], 1, MPI_INT, j, 1, MPI_COMM_WORLD,
 		 &status);
       }
-
-      /*
-      // Debug
-      cout << "Maxes from all the processors:" << endl;
-      for (j=0; j<nPEs; ++j) {
-	cout << MaxFromProcessors[j] << endl;
-      }
-      */
 
       // Find globalmax.
       for (j=0; j<nPEs; ++j) {
@@ -132,6 +117,7 @@ extern "C" {
 #endif
 
     delete[] NumEntriesPerRow;
+    */
 
     //-------------------------------------------------------------------------
     // RN_20091221: Taking care of the matrix
@@ -139,8 +125,11 @@ extern "C" {
     //cout << "global max: " << globalmax << endl;
 
     //Epetra_CrsMatrix A(Copy, RowMap, ColMap, NumEntriesPerRow);
-    Epetra_CrsMatrix A(Copy, RowMap, globalmax);
-
+    //Epetra_CrsMatrix A(Copy, RowMap, globalmax);
+    
+    int anEst = nnz / order + 1;
+    Epetra_CrsMatrix A(Copy, RowMap, anEst);
+    
     // Inserting values into the matrix    
     /*
     for (i=0; i<NumMyElements; ++i) {
@@ -156,7 +145,7 @@ extern "C" {
     for (j=0; j<nnz; ++j) {
       if (RowMap.MyGID(row[j]) ) {
 	ierr = A.InsertGlobalValues(row[j], 1, &(val[j]), &(col[j]) );
-	assert(ierr == 0);
+	assert(ierr >= 0);
       }
     }
 
