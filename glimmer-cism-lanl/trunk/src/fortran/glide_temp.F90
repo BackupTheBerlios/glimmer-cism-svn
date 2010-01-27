@@ -188,7 +188,7 @@ contains
           
        end select
   
-       !      model%temper%temp = -10.0
+             model%temper%temp = -10.0
    
   end subroutine init_temp
     

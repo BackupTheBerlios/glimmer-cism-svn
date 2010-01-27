@@ -229,14 +229,14 @@ contains
     
     !Huybrechts grounding line scheme for Greenland initialization
     case(7)
-       if(eus > -80) then
-       where(relx <= 2*eus)
+       if(eus > -80.0) then
+       where(relx <= 2.0*eus)
       
           ablation_field=thck
           thck = 0.0d0
        end where
-       elseif(eus <= -80) then
-       where ( relx <= (2*eus - 0.25*(eus + 80)**2))
+       elseif(eus <= -80.0) then
+       where ( relx <= (2.0*eus - 0.25*(eus + 80.0)**2.0))
           ablation_field = thck
           thck = 0.0d0
        end where
