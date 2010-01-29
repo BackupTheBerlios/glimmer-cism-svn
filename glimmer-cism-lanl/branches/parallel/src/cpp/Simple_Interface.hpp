@@ -22,19 +22,20 @@ public:
   ~Simple_Interface();
 
   // Accessors
-  int fill() {return fill_;};
+  int isFillCompleted() {return isFillCompleted_;};
   const int bandwidth() const {return bandwidth_;};
   const int matrixOrder() const {return matrixOrder_;};
   const Epetra_Map& getMap() const {return *globalMap_;};
-  Teuchos::RCP<Epetra_CrsMatrix> getOperator() {return operator_;};
+  Teuchos::RCP<Epetra_CrsMatrix>& getOperator() {return operator_;};
 
-  // Mutator
+  // Mutators
   void updateFill(int fill);
+  void updateBandwidth(int bandwidth); // RN_20100121: probably not needed
   void updateOperator(Teuchos::RCP<Epetra_CrsMatrix> newOperator);
 
 private:
-  int fill_; // to indicate if operator_ is "FillComplete()"ed
-  const int bandwidth_;
+  int isFillCompleted_; // to indicate if operator_ is "FillComplete()"ed
+  int bandwidth_;
   int matrixOrder_;
   const Epetra_Comm& comm_;
   Teuchos::RCP<Epetra_CrsMatrix> operator_;

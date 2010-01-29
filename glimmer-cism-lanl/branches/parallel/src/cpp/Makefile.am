@@ -10,7 +10,7 @@ nodist_include_HEADERS := $(wildcard *.mod)
 BUILT_SOURCES = 
 CLEANFILES = $(BUILT_SOURCES) *.mod
 
-libcalltrilinos_a_SOURCES = call_trilinos.cpp
+libcalltrilinos_a_SOURCES = call_trilinos.cpp Simple_Interface.cpp SI_Drive.cpp
 
 #helloEpetra_SOURCES = helloCXX.cpp interface_modCXX.F90 helloF.F90 
 #helloEpetra_LDADD = $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)

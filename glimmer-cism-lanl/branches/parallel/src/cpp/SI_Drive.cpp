@@ -1,4 +1,7 @@
 #include <iostream>
+#include "Epetra_LocalMap.h"
+#include "Epetra_Import.h"
+#include "Epetra_CombineMode.h"
 #include "Simple_Interface.hpp"
 
 #include "Teuchos_ParameterList.hpp"
@@ -15,10 +18,10 @@ static Teuchos::RCP<Simple_Interface> interface;
 extern "C" {
 
   //================================================================
-  // RN_20091118: This needs to be called only once in the beginning
+  // RN_20091215: This needs to be called only once in the beginning
   // to set up the problem.
   //================================================================
-  void initialize_(int& bandwidth, int& nnz, int& size, int* rowInd, int* colInd, double* val) {
+  void initialize_(int& bandwidth, int& size) {
 #ifdef HAVE_MPI
     Epetra_MpiComm comm(MPI_COMM_WORLD);
 #else
@@ -28,38 +31,8 @@ extern "C" {
     cout << " ======================================" << endl;
     cout << " IN INITIALIZE()" << endl;
 
-    int i, j, ierr;
-    //int bandwidth = 5; // approximately number of entries per row
-
-    // Explicitly change from 1-based indexing to 0-based indexing
-    for (i=0; i<nnz; ++i) {
-      rowInd[i] = rowInd[i] - 1;
-      colInd[i] = colInd[i] - 1;
-    }
-
+    // Create an interface that holds a CrsMatrix instance.
     interface = Teuchos::rcp(new Simple_Interface(bandwidth, size, comm) );
-
-    const Epetra_Map& map = interface->getMap();
-    Teuchos::RCP<Epetra_CrsMatrix> matrix = interface->getOperator();
-
-    int numMyElements = map.NumMyElements();
-    int *myGlobalElements = new int[numMyElements];
-    map.MyGlobalElements(&myGlobalElements[0]);
-
-    // Inserting values into the matrix    
-    for (i=0; i<numMyElements; ++i) {
-      for (j=0; j<nnz; ++j) {
-	if (myGlobalElements[i] == rowInd[j]) {
-	  ierr = matrix->InsertGlobalValues(myGlobalElements[i],
-					   1, &(val[j]), &(colInd[j]));
-	  assert(ierr == 0);
-	}
-      }
-    }
-
-    //ierr = matrix->FillComplete();
-    //assert(ierr == 0);
-    //cout << "Matrix: " << endl << *matrix << endl;
 
     cout << " ======================================" << endl;
   }
@@ -68,49 +41,79 @@ extern "C" {
   // RN_20091118: This is to update the matrix with new entries.
   //============================================================
   void update_(int& rowInd, int& colInd, double& val) {
-    cout << " ======================================" << endl;
-    cout << " IN UPDATE()" << endl;
+    //cout << " ======================================" << endl;
+    //cout << " IN UPDATE()" << rowInd << endl;
 
-    int i, j, ierr = 0;
+    /*    
+#ifdef HAVE_MPI
+    Epetra_MpiComm comm(MPI_COMM_WORLD);
+#else
+    Epetra_SerialComm comm;
+#endif
+    */
+
+    //int i;
+    int j, ierr = 0;
+    int rowInd1 = rowInd - 1;
+    int colInd1 = colInd - 1;
 
     // Change from 1-based indexing to 0-based indexing
-    rowInd = rowInd - 1;
-    colInd = colInd - 1;
-    //cout << "A triplet: " << rowInd << " " << colInd << " " << val << endl;
+    //cout << "A triplet 1: " << rowInd << " " << colInd << " " << val << endl;
+    //cout << "A triplet 2: " << rowInd1 << " " << colInd1 << " " << val << endl;
 
-    int fill = interface->fill();
+    int fill = interface->isFillCompleted();
     Teuchos::RCP<Epetra_CrsMatrix> matrix = interface->getOperator();
-    ierr = matrix->ReplaceGlobalValues(rowInd, 1, &val, &colInd);
-    //    assert(ierr == 0);
+    Epetra_Map map = interface->getMap();
+    //cout << "GID: " << map.GID(2) << ", and LID: " << map.LID(2) << endl;
+    //cout << "And " << map.MyGID(2) << endl;
+    int numMyElements = map.NumMyElements();
+    //int *myGlobalElements = new int[numMyElements];
+    //map.MyGlobalElements(&myGlobalElements[0]);
 
+    /*
+    for (i=0; i<numMyElements; ++i) {
+      if (myGlobalElements[i] == rowInd1) {
+	ierr = matrix->ReplaceGlobalValues(rowInd1, 1, &val, &colInd1);
+	//assert(ierr == 0);
+	break;
+      }
+    }
+    */
+    int pidList, lidList, junk;
+    //junk = map.RemoteIDList(1, &rowInd1, &pidList, &lidList);
+    if (map.MyGID(rowInd1) ) {
+      ierr = matrix->ReplaceGlobalValues(rowInd1, 1, &val, &colInd1);
+    }
+    // Is there any way to improve this?
+    //    cout << "Damn MPI_Broadcast: " << ierr << ", "<< pidList << ", "
+    //	 << rowInd1 << endl;
+    
+    //MPI_Bcast(&ierr, 1, MPI_INT, pidList, MPI_COMM_WORLD);
+    //cout << "ierr" << ierr << endl;
+    //cout << "why did you stop?" << endl;
+
+    
     if (ierr != 0) { // Sparsity pattern has changed.
+      //cout << "i don't know" << endl;
       if (fill == 0) { // The matrix has not been "FillComplete()"ed.
-	cout << "This new entry (" << rowInd << ", " << colInd << ", "
-	     << val << ") did not exist before. No new matrix is formed!"
-	     << endl;
-	ierr = matrix->InsertGlobalValues(rowInd, 1, &val, &colInd);
-	assert(ierr == 0);
+	//	cout << "This new entry (" << rowInd1 << ", " << colInd1 << ", "
+	//   << val << ") did not exist before. No new matrix is formed!"
+	//   << endl;
+
+	if (map.MyGID(rowInd1) ) {
+	  ierr = matrix->InsertGlobalValues(rowInd1, 1, &val, &colInd1);
+	}
       }
       else { // The matrix is "FillComplete()"ed. A new matrix is needed.      
-	cout << "This new entry (" << rowInd << ", " << colInd << ", "
+	cout << "This new entry (" << rowInd1 << ", " << colInd1 << ", "
 	     << val << ") did not exist before. A new matrix will be formed!"
 	     << endl;
 
 	int matrixSize = interface->matrixOrder();
-	const int bandwidth = interface->bandwidth();
+	int bandwidth = interface->bandwidth();
 	
-#ifdef HAVE_MPI
-	Epetra_MpiComm comm(MPI_COMM_WORLD);
-#else
-	Epetra_SerialComm comm;
-#endif
-	
-	Epetra_Map map(matrixSize, 0, comm );
-	int numMyElements = map.NumMyElements();
-	int *myGlobalElements = new int[numMyElements];
-	map.MyGlobalElements(&myGlobalElements[0]);
-	
-	Teuchos::RCP<Epetra_CrsMatrix> newMatrix = Teuchos::rcp(new Epetra_CrsMatrix(Copy, map, bandwidth) );
+	Teuchos::RCP<Epetra_CrsMatrix> newMatrix =
+	  Teuchos::rcp(new Epetra_CrsMatrix(Copy, map, bandwidth) );
 	
 	//const int length = 10;
 	int numEntries;
@@ -118,26 +121,25 @@ extern "C" {
 	int *indices = new int[bandwidth];
 	
 	// Copy the old matrix to the new matrix.
-	for (i=0; i<numMyElements; ++i) {
-	  for (j=0; j<matrixSize; ++j) {
-	    if (myGlobalElements[i] == j) {
-	      ierr = matrix->ExtractGlobalRowCopy(j, bandwidth, numEntries, values, indices);
-	      assert(ierr == 0);
-	      ierr = newMatrix->InsertGlobalValues(myGlobalElements[i],
-						   numEntries, &(values[0]),
-						   &(indices[0]) );
-	      assert(ierr == 0);
-	    }
+	for (j=0; j<matrixSize; ++j) {
+	  if (map.MyGID(j) ) {
+	    int aNumber = 20;
+	    ierr = matrix->ExtractGlobalRowCopy(j, aNumber, numEntries,
+						values, indices);
+	    //ierr = matrix->ExtractGlobalRowCopy(j, bandwidth, numEntries,
+	    //				values, indices);
+	    cout << ierr << endl;
+	    assert(ierr >= 0);
+	    ierr = newMatrix->InsertGlobalValues(j, numEntries, &(values[0]),
+						 &(indices[0]) );
+	    cout << ierr << endl;
+	    assert(ierr >= 0);
 	  }
-	  
 	}
 	
 	// Insert the new entry.
-	for (i=0; i<numMyElements; ++i) {
-	  if (myGlobalElements[i] == rowInd) {
-	    ierr = newMatrix->InsertGlobalValues(rowInd, 1, &val, &colInd);
-	    assert(ierr == 0);
-	  }
+	if (map.MyGID(rowInd1) ) {
+	  ierr = newMatrix->InsertGlobalValues(rowInd1, 1, &val, &colInd1);
 	}
 
 	//ierr = newMatrix->FillComplete();
@@ -146,39 +148,71 @@ extern "C" {
 	
 	interface->updateOperator(newMatrix);
 	interface->updateFill(0);
+	
 	//Teuchos::RCP<Epetra_CrsMatrix> temp = interface->getOperator();
 	//cout << "Updated matrix: " << endl << *temp << endl;
 	
 	delete[] values;
 	delete[] indices;
       } // else
+    
     }
-    cout << " ======================================" << endl;
+    
+    //cout << " ======================================end" << endl;
   }
 
   //========================================================
   // RN_20091118: This is to make calls to Trilinos solvers.
   //========================================================
-  void solve_(double* rhs, double* solution) {
+  void differentsolve_(double* rhs, double* solution) {
+#ifdef HAVE_MPI
+    Epetra_MpiComm comm(MPI_COMM_WORLD);
+#else
+    Epetra_SerialComm comm;
+#endif
+
     cout << " ======================================" << endl;
     cout << " IN SOLVE()" << endl;
 
-    int ierr;
+    int j, ierr;
     Teuchos::RCP<Epetra_CrsMatrix> epetraOper = interface->getOperator();
-    int fill = interface->fill();
+
+    // For debugging =)
+    //cout << "A: " << *epetraOper << endl;
+
+    int fill = interface->isFillCompleted();
     if (fill == 0) {
       //cout << "fill" << fill << endl;
       ierr = epetraOper->FillComplete();
       assert(ierr == 0);
       interface->updateFill(1);
-      //fill = interface->fill();
+      //fill = interface->isFillCompleted();
       //cout << "fill" << fill << endl;
     }
 
+    // For debugging =)
+    //cout << "A: " << *epetraOper << endl;
+
     const Epetra_Map& map = epetraOper->RowMap();
     //const Epetra_Map& map = interface->getMap();
+    int numMyElements = map.NumMyElements();
+    int *myGlobalElements = new int[numMyElements];
+    map.MyGlobalElements(&myGlobalElements[0]);
 
-    Epetra_Vector b(Copy, map, rhs);
+    //Epetra_Vector b(Copy, map, rhs);
+    Epetra_Vector b(map);
+
+    // Inserting values into the rhs.
+    double *myGlobalValues = new double[numMyElements];
+    for (j=0; j<numMyElements; ++j) {
+      myGlobalValues[j] = rhs[myGlobalElements[j] ];
+    }
+    ierr = b.ReplaceGlobalValues(numMyElements, &myGlobalValues[0],
+				 &myGlobalElements[0]);
+
+    // For debugging =)
+    //cout << "b: " << b << endl;
+
     Epetra_Vector x(map);
 
     //cout << "rhs" << endl << b << endl;
@@ -221,9 +255,7 @@ extern "C" {
     thyraSol = Teuchos::null;
 
     // For debugging =)
-    //    cout << "A: " << *epetraOper << endl;
-    //    cout << "b: " << b << endl;
-    //    cout << "x: " << x << endl;
+    //cout << "x: " << x << endl;
 
     //    Epetra_Vector temp(rangeMap);
     //    double residualNorm;
@@ -233,7 +265,18 @@ extern "C" {
 
     //    cout << "Residual Norm: " << residualNorm << endl;
 
-    x.ExtractCopy(solution);
+    int matrixSize = interface->matrixOrder();
+    Epetra_LocalMap localMap(matrixSize, 0, comm);
+    Epetra_Vector xExtra(localMap); // local vector in each processor
+
+    // RN_20091218: Create an import map and then import the data to the
+    // local vector.
+    Epetra_Import import(localMap, map);
+
+    xExtra.Import(x, import, Add);
+    xExtra.ExtractCopy(solution);
+
+    delete[] myGlobalElements;
 
     cout << " ======================================" << endl;
   }
@@ -245,7 +288,19 @@ extern "C" {
     cout << " ======================================" << endl;
     cout << " IN FINALIZE()" << endl;
 
-    // Might want to shift back to 1-based indexing?
+    // The following is not essential, but only for completion.
+    int ierr;
+    Teuchos::RCP<Epetra_CrsMatrix> epetraOper = interface->getOperator();
+    int fill = interface->isFillCompleted();
+    if (fill == 0) {
+      //cout << "I am in here!" << endl;
+      ierr = epetraOper->FillComplete();
+      assert(ierr == 0);
+      interface->updateFill(1);
+      fill = interface->isFillCompleted();
+    }
+
+    //cout << "Matrix: " << endl << *epetraOper << endl;
 
     cout << " ======================================" << endl;
   }
