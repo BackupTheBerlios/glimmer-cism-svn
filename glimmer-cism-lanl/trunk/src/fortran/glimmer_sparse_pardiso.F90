@@ -172,7 +172,11 @@ contains
                      1, 1, options%iparm, &
                      mesglvl, rhs, solution, pardiso_solve,workspace%dparm)
 #endif
-        niters = options%iparm(20) ! Direct methods report zeros iterations
+        if (options%iparm(20) .GT. 0) then
+            niters = options%iparm(20) ! CGS iterations
+	else
+            niters = options%iparm(7) ! Direct iterations
+	endif
         err=1.0
     end function pardiso_solve
 
