@@ -4,33 +4,27 @@ module glimmer_sparse_pardiso
     
     use glimmer_sparse_type
     use glimmer_global, only: dp
+    use ISO_C_BINDING, only: C_INTPTR_T
     implicit none
-
-#ifdef PARDISO_64BIT
-        integer, parameter :: parint = 8       
-#else
-        integer, parameter :: parint = 4
-#endif
-
 
     type pardiso_solver_workspace
         !*FD Memory addresses used internally by PARDISO
-        integer(kind=parint), dimension(64) :: pt
+        integer(kind=C_INTPTR_T), dimension(64) :: pt
        !*FD Error messages from pardisoinit: 0 no error, -10 no license, -11
         !*FD licence expired (?), -12 wrong user or hostname.
-        integer(kind=parint) :: error
+        integer(kind=4) :: error
         !*FD Work array for multi-recursive solver only
         real(kind=dp) :: dparm(64)
     end type pardiso_solver_workspace
 
     type pardiso_solver_options
         !*FD Matrix type, we are generally real, non-symmetric (11)
-        integer(kind=parint) :: mtype
+        integer(kind=4) :: mtype
         !*FD Solver, sparse direct is 0. If we ever have symmetric indefinate
         !*FD matrices, we might try 1; 'multi-recusive iterative'
-        integer(kind=parint) :: solver
+        integer(kind=4) :: solver
         !*FD Storage for passing parameters to and getting info from PARDISO
-        integer(kind=parint), dimension(64) :: iparm
+        integer(kind=4), dimension(64) :: iparm
         ! Tolerance only needed in multirecursive solver
         real(kind=dp) :: tolerance
         ! Tell PARDISO to use the hybrid iterative/direct CGS method
