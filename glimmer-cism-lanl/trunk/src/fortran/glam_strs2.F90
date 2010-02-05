@@ -166,7 +166,7 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     allocate(umask(ewn-1,nsn-1)) ! this will be moved to main
 
 !whl - moved from findefvsstr
-    allocate(flwafact(1:upn,ewn,nsn))   !*sfp* changed vert dim from 1:upn-1 to 1:upn, to agree w/ dims of efvs
+    allocate(flwafact(1:upn-1,ewn,nsn))  !*sfp* Note that vert dim here must agree w/ that of efvs
     flwafact = 0.0_dp
 
 ! *sfp** determine constants used in various FD calculations associated with 'findcoefst'   
@@ -578,10 +578,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     do ns = 2,nsn-1; do ew = 2,ewn-1
     if (thck(ew,ns) > 0.0_dp) then
       ! *sfp** term: 1/2*A^(-1/n)
-!      forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
-     !*sfp* changed this calc from above to reflect the fact that efvs has vert dim of 1:upn, so the
-     ! multiplier flwfact should also have vert dims of 1:upn
-      forall (up = 1:upn) flwafact(up,ew,ns) = 0.5_dp * flwa(up,ew,ns)**p1
+      forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
     end if; end do; end do
   end if
 
@@ -629,7 +626,13 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
     ! *sfp** p2 = (1-n)/2n, where the factor of 1/2 comes from taking 
     !      the sqr root of the squared eff. strain rate ...
-    efvs(:,ew,ns) = flwafact(:,ew,ns) * effstr**p2
+
+    !*sfp* Note that I've made the vert dims explicit here, since glide_types defines this 
+    ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
+    ! should efvs exist at cell centroids in the vert as well as horiz, as in our code, or 
+    ! should we be doing some one-sided diffs at the boundaries so that it has vert dims of upn?
+    ! For now, we populate ONLY the first 1:upn-1 values of the efvs vector.
+    efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
 
     else  
       efvs(:,ew,ns) = effstrminsq

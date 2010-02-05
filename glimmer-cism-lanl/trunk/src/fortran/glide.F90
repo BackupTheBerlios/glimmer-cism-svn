@@ -361,6 +361,9 @@ contains
     ! *sfp** added for summer modeling school
     use fo_upwind_advect, only: fo_upwind_advect_driver
 
+    ! *sfp* added so that stress tensor is populated w/ HO stress fields
+    use stress_hom, only: glide_stress
+
     implicit none
 
     type(glide_global_type) :: model        !*FD model instance
@@ -402,6 +405,7 @@ contains
             ! (Temperature is advected by glide_temp)
 
        call inc_remap_driver( model )
+       call glide_stress( model )       !*sfp* added for populating stress tensor w/ HO fields
 
     ! *sfp** added for summer modeling school
     case(EVOL_FO_UPWIND) ! Use first order upwind scheme for mass transport
