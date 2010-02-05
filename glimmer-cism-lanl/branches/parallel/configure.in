@@ -42,6 +42,7 @@ FFLAGS=$glimmer_FFLAGS
 AC_LANG(Fortran)
 AC_FC_SRCEXT(f90)
 AX_F90_MODULE_FLAG
+EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
 
 # checking for f2003 command line parser
 AC_MSG_CHECKING([for f2003 command line parser])
