@@ -40,6 +40,12 @@
 !
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+! *sfp* this version contains hacks to replace SIA calc horiz vel fields 
+! with their higher-order counterparts. That is, all "velocity%uvel" and
+! "velocity%vvel" were replaced with "velocity_hom%uvel" and "velocity_hom%vvel".
+! Note that dissip and basal melt calcs still need to be updated to account for
+! higher-order stress and velocity fields.
+
 #ifdef HAVE_CONFIG_H
 #include "config.inc"
 #endif
@@ -188,7 +194,7 @@ contains
           
        end select
   
-             model%temper%temp = -10.0
+       !      model%temper%temp = -10.0
    
   end subroutine init_temp
     
@@ -282,8 +288,8 @@ contains
 
        call gridwvel(model%numerics%sigma,  &
             model%numerics%thklim, &
-            model%velocity%uvel,   &
-            model%velocity%vvel,   &
+            model%velocity_hom%uvel,   &
+            model%velocity_hom%vvel,   &
             model%geomderv,        &
             model%geometry%thck,   &
             model%velocity%wgrd)
@@ -295,8 +301,8 @@ contains
 
           ! Usual vertical integration
 
-          call wvelintg(model%velocity%uvel,                        &
-               model%velocity%vvel,                        &
+          call wvelintg(model%velocity_hom%uvel,                        &
+               model%velocity_hom%vvel,                        &
                model%geomderv,                             &
                model%numerics,                             &
                model%velowk,                               &
@@ -309,8 +315,8 @@ contains
 
           ! Vertical integration constrained so kinematic upper BC obeyed.
 
-          call wvelintg(model%velocity%uvel,                        &
-               model%velocity%vvel,                        &
+          call wvelintg(model%velocity_hom%uvel,                        &
+               model%velocity_hom%vvel,                        &
                model%geomderv,                             &
                model%numerics,                             &
                model%velowk,                               &
@@ -321,8 +327,8 @@ contains
 
           call chckwvel(model%numerics,                             &
                model%geomderv,                             &
-               model%velocity%uvel(1,:,:),                 &
-               model%velocity%vvel(1,:,:),                 &
+               model%velocity_hom%uvel(1,:,:),                 &
+               model%velocity_hom%vvel(1,:,:),                 &
                model%velocity%wvel,                        &
                model%geometry%thck,                        &
                model%climate% acab)
@@ -349,10 +355,10 @@ contains
        ! translate velo field
        do ns = 2,model%general%nsn-1
           do ew = 2,model%general%ewn-1
-             model%tempwk%hadv_u(:,ew,ns) = model%tempwk%advconst(1) * ( model%velocity%uvel(:,ew-1,ns-1) &
-                + model%velocity%uvel(:,ew-1,ns) + model%velocity%uvel(:,ew,ns-1) + model%velocity%uvel(:,ew,ns) )
-             model%tempwk%hadv_v(:,ew,ns) = model%tempwk%advconst(2) * ( model%velocity%vvel(:,ew-1,ns-1) &
-                + model%velocity%vvel(:,ew-1,ns) + model%velocity%vvel(:,ew,ns-1) + model%velocity%vvel(:,ew,ns) )
+             model%tempwk%hadv_u(:,ew,ns) = model%tempwk%advconst(1) * ( model%velocity_hom%uvel(:,ew-1,ns-1) &
+                + model%velocity_hom%uvel(:,ew-1,ns) + model%velocity_hom%uvel(:,ew,ns-1) + model%velocity_hom%uvel(:,ew,ns) )
+             model%tempwk%hadv_v(:,ew,ns) = model%tempwk%advconst(2) * ( model%velocity_hom%vvel(:,ew-1,ns-1) &
+                + model%velocity_hom%vvel(:,ew-1,ns) + model%velocity_hom%vvel(:,ew,ns-1) + model%velocity_hom%vvel(:,ew,ns) )
           end do
        end do
 
@@ -804,18 +810,18 @@ contains
     real(dp), dimension(:,:,:), intent(in) :: flwa, efvs
     integer, intent(in) :: whichdisp
 
-    integer, parameter :: p1 = gn + 1
+    integer, parameter :: p1 = gn + 1  
     integer :: ew, ns
     integer :: iew, ins    !*sfp* for HO and SSA dissip. calc.
 
-    real(dp) :: c2
+    real(dp) :: c2 
 
     !*sfp* The next 2 declarations needed for HO and SSA dissip. calc. ... only needed 
     ! for internal work, so not clear if it is necessary to declare/allocate them elsewhere 
-    real(dp) :: c4
-    real (kind = dp), dimension(model%general%upn) :: c5
+    real(dp) :: c4                         
+    real (kind = dp), dimension(model%general%upn) :: c5     
 
-    select case( whichdisp )
+    select case( whichdisp ) 
 
     case( SIA_DISP )
     !*sfp* 0-order SIA case only 
@@ -825,18 +831,18 @@ contains
     ! 2. works best for eismint divide (symmetry) but 1 likely to be better for full expts
 
     model%tempwk%dissip = 0.0d0
-
+    
     do ns = 2, model%general%nsn-1
        do ew = 2, model%general%ewn-1
           if (thck(ew,ns) > model%numerics%thklim) then
-
+             
              c2 = (0.25*sum(stagthck(ew-1:ew,ns-1:ns)) * dsqrt((0.25*sum(dusrfdew(ew-1:ew,ns-1:ns)))**2 &
                   + (0.25*sum(dusrfdns(ew-1:ew,ns-1:ns)))**2))**p1
-
+             
              model%tempwk%dissip(:,ew,ns) = c2 * model%tempwk%c1 * ( &
                   flwa(:,ew-1,ns-1) + flwa(:,ew-1,ns+1) + flwa(:,ew+1,ns+1) + flwa(:,ew+1,ns-1) + &
                   2*(flwa(:,ew-1,ns)+flwa(:,ew+1,ns)+flwa(:,ew,ns-1)+flwa(:,ew,ns+1)) + &
-                  4*flwa(:,ew,ns))
+                  4*flwa(:,ew,ns))             
           end if
        end do
     end do
@@ -846,18 +852,17 @@ contains
 
     case( FIRSTORDER_DISP )
     !*sfp* 1st-order, NON-depth integrated SIA case only (Pattyn, Payne-Price models) 
-    ! The dissip calc. below is Tau_ij * E_ij / (rho*c) * delta t (units of K / yr * yr = K) 
-    ! Note that all scalings, the rho*c, and the delta t terms are included in "model%tempwk%cans(5)"
-    ! The non-dim numerator calc, Tau_ij*E_ij is reduced to Tau_eff^2 / N_eff as follows:
-    ! Tau_ij * E_ij = 2*N_eff*E_ij * Eij = 2*N_eff * 2*E_eff^2, where E_eff^2 = ( Tau_eff / (2*N_eff) )^2
-    ! ... giving Tau_ij * E_ij = 4*N_eff * (Tau_eff/(2*N_eff))^2 = Tau_eff^2 / N_eff
+    ! NOTE: this needs tau and efvs (3d arrays), which are the eff. stress and the eff. visc. calculated
+    ! from and/or consistent with the HO model. For simplicity, tau can be calculated from: tau = 2*efvs*eps_eff,
+    ! where eps_eff is the eff. strain rate. Further, eps_eff can be calculated from the efvs according to a 
+    ! re-arrangement of: efvs = 1/2 * ( 1 / A(T) )^(1/n) * eps_eff^((1-n)/n), in which case only the efvs and rate
+    ! factor arrays need to be passed in for this calculation.
     model%tempwk%dissip = 0.0d0
-    do ns = 2, model%general%nsn-1
-       do ew = 2, model%general%ewn-1
+    do ns = 1, model%general%nsn
+       do ew = 1, model%general%ewn
           if (thck(ew,ns) > model%numerics%thklim) then
             c5 = 0.0d0
-            do ins = ns-1,ns; do iew = ew-1,ew
-                if ( sum( efvs(:,iew,ins) ) .ne. 0.0d0) then
+                if ( sum( efvs(:,ew,ns) ) .ne. 0.0d0) then
 
                 ! (1) use space in c5 vector to store dissip terms that actually apply at midpoints of vert coord vector 
                 ! (i.e. on staggered vertical grid) ...
@@ -865,14 +870,12 @@ contains
                 ! NOTE: efvs is defined w/ vert grid dims of upn, but in glam it only has vert dim of upn-1
                 ! because values apply at cell centers in vert. Need to rectify this w/ PB&J HO code, but for
                 ! now the simple fix is that we store efvs in only the first (1:upn-1,:,:) locations of the 3d array.
-                ! Because of this, however, this calc. scheme will not necessarily work right away for PB&J core, as 
-                ! they require that values going into this dissip. calc have vert dims upn.
-
+       
                 ! Note that this is also still a hack in that we only calc. dissip values for cells 2:upn-1, and
                 ! the dissip value at 1 and upn are obtained by extrapolation.           
 
-                    c5(2:model%general%upn) = c5(2:model%general%upn) + model%velocity_hom%tau%scalar(:,iew,ins)**2 / &
-                                              efvs(1:model%general%upn-1,iew,ins)
+                    c5(2:model%general%upn) = c5(2:model%general%upn) + model%velocity_hom%tau%scalar(:,ew,ns)**2 / &
+                                              efvs(1:model%general%upn-1,ew,ns)
 
                 ! (2) average these to points that correspond to vert grid spaces up(2:upn-1) ...  
                     c5(2:model%general%upn-1) = ( c5(3:model%general%upn) + c5(2:model%general%upn-1) ) / 2.0d0
@@ -886,10 +889,9 @@ contains
                     c5(model%general%upn) = c5(model%general%upn-1) + ( 3.0d0*c5(model%general%upn-1) - &
                                             4.0d0*c5(model%general%upn-2) + c5(model%general%upn-3) ) / 2.0d0
 
-                    if ( c5(1) .lt. 0.0d0 ) then; c5(1) = 0.0d0; end if ! gaurd against extrapolated dissip. term < 0 
+                    if ( c5(1) .lt. 0.0d0 ) then; c5(1) = 0.0d0; end if      ! gaurd against extrapolated dissip. term < 0 
 
                 end if
-            end do; end do
             model%tempwk%dissip(:,ew,ns) = c5 * model%tempwk%cons(5)
           end if
        end do
@@ -920,17 +922,17 @@ contains
 
   end subroutine finddisp
 
-!-----------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------------
 
   subroutine calcbmlt(model,whichbmelt,temp,thck,stagthck,dusrfdew,dusrfdns,ubas,vbas,bmlt,floater)
 
-    use glimmer_global, only : dp
+    use glimmer_global, only : dp 
 
-    implicit none
+    implicit none 
 
     type(glide_global_type) :: model
     real(dp), dimension(:,0:,0:), intent(in) :: temp
-    real(dp), dimension(:,:), intent(in) :: thck,  stagthck, dusrfdew, dusrfdns, ubas, vbas
+    real(dp), dimension(:,:), intent(in) :: thck,  stagthck, dusrfdew, dusrfdns, ubas, vbas  
     real(dp), dimension(:,:), intent(out) :: bmlt
     logical, dimension(:,:), intent(in) :: floater
     integer, intent(in) :: whichbmelt
@@ -938,7 +940,7 @@ contains
     real(dp), dimension(size(model%numerics%sigma)) :: pmptemp
     real(dp) :: slterm, newmlt
 
-
+ 
     integer :: ewp, nsp,up,ew,ns
 
     do ns = 2, model%general%nsn-1
@@ -963,11 +965,11 @@ contains
                     end do
 
                     !*sfp* NOTE that multiplication by this term has been moved up from below
-                    slterm = model%tempwk%f(4) * slterm
+                    slterm = model%tempwk%f(4) * slterm 
 
 
                 case( FIRSTORDER_BMELT )                   ! 1st-order SIA approx. (HO model)
-                    do nsp = ns-1,ns
+                    do nsp = ns-1,ns 
                         do ewp = ew-1,ew
                         !*sfp* Note that vel and stress arrays have diff vert dims (upn for vel, upn-1 for stress)
                         ! so that for now, basal vel at upn is multiplied by basal stress at upn-1 to get frictional
@@ -1001,8 +1003,7 @@ contains
                 ! since for the HO and SSA cases a diff. const. needs to be used
 
                 ! OLD version
-!                newmlt = model%tempwk%f(4) * slterm - model%tempwk%f(2)*model%temper%bheatflx(ew,ns) + &
-!                     model%tempwk%f(3) * &
+!                newmlt = model%tempwk%f(4) * slterm - model%tempwk%f(2)*model%temper%bheatflx(ew,ns) + model%tempwk%f(3) * &
 !                     model%tempwk%dupc(model%general%upn) * &
 !                     thck(ew,ns) * model%tempwk%dissip(model%general%upn,ew,ns)
 
@@ -1024,11 +1025,11 @@ contains
                 if (up == model%general%upn) then
                    bmlt(ew,ns) = newmlt - &
                         model%tempwk%f(1) * ( (temp(up-2,ew,ns) - pmptemp(up-2)) * model%tempwk%dupa(up) &
-                        + (temp(up-1,ew,ns) - pmptemp(up-1)) * model%tempwk%dupb(up) ) / thck(ew,ns)
+                        + (temp(up-1,ew,ns) - pmptemp(up-1)) * model%tempwk%dupb(up) ) / thck(ew,ns) 
                 else
                    bmlt(ew,ns) = bmlt(ew,ns) + max(0.0d0, newmlt - &
                         model%tempwk%f(1) * ( (temp(up-2,ew,ns) - pmptemp(up-2)) * model%tempwk%dupa(up) &
-                        + (temp(up-1,ew,ns) - pmptemp(up-1)) * model%tempwk%dupb(up) ) / thck(ew,ns))
+                        + (temp(up-1,ew,ns) - pmptemp(up-1)) * model%tempwk%dupb(up) ) / thck(ew,ns)) 
                 end if
 
              else
@@ -1053,7 +1054,6 @@ contains
        end do
     end if
   end subroutine calcbmlt
-
 
 !-------------------------------------------------------------------
   subroutine corrpmpt(temp,thck,bwat,sigma,upn)
