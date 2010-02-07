@@ -95,7 +95,7 @@ eismint3_glide_LDADD = libclimate.a libglide.a libglimmer.a \
 simple_glide_SOURCES = simple_glide.F90 
 simple_glide_LDADD = libclimate.a libglide.a libglimmer.a \
                      SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
-shelf_driver_SOURCES = shelf_driver.F90 shelf_forcing.F90
+shelf_driver_SOURCES = shelf_driver.F90 
 shelf_driver_LDADD = libclimate.a libglide.a libglimmer.a \
 	             SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) \
                      plume/libplume.a   
