@@ -234,7 +234,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer, intent(in) :: whichsparse
   logical, intent(in) :: periodic_ew, periodic_ns
 
-  real (kind = dp), dimension(:,:,:), intent(out) :: uvel, vvel
+  real (kind = dp), dimension(:,:,:), intent(inout) :: uvel, vvel
   real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx
   real (kind = dp), dimension(:,:,:), intent(out) :: efvs
 
