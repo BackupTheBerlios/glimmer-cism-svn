@@ -70,14 +70,14 @@ program shelf_driver
 
   call CheckSections(config)
 
-  !initialise glide
-  call glide_initialise(model)
-
   !initialise climate in model
   model%climate%acab(:,:) = climate_cfg%accumulation_rate
   model%climate%artm(:,:) = climate_cfg%artm
   model%climate%eus = climate_cfg%eus 
-  
+
+  !initialise glide
+  call glide_initialise(model)
+
   ! this just sets the ice column temperature to the ambient air temperature
   call timeevoltemp(model,0)
 
@@ -97,7 +97,8 @@ program shelf_driver
                            plume_suppress_ascii_output, &
                            plume_suppress_logging,&
                            model%geometry%lsrf * thk0,&
-                           GLIDE_IS_LAND(model%geometry%thkmask), &
+                           GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+                           GLIDE_IS_GROUND(model%geometry%thkmask), &
                            plume_imin,plume_imax,plume_kmin,plume_kmax)
      
      
@@ -109,6 +110,8 @@ program shelf_driver
      call plume_iterate(time, &
                         model%numerics%tinc*1.d0, &
                         model%geometry%lsrf * thk0, &
+                        GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+                        GLIDE_IS_GROUND(model%geometry%thkmask), &
                         model%temper%temp(model%general%upn-1,:,:), &
                         (model%numerics%sigma(model%general%upn) - model%numerics%sigma(model%general%upn -1)) * &
                         model%geometry%thck * thk0, &
@@ -146,6 +149,8 @@ program shelf_driver
           call plume_iterate(time, &
                     model%numerics%tinc*1.d0, &
                     model%geometry%lsrf(:,:) * thk0, &
+                     GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+                     GLIDE_IS_GROUND(model%geometry%thkmask), &                      
                     model%temper%temp(model%general%upn-1,:,:), &
                     (model%numerics%sigma(model%general%upn) - model%numerics%sigma(model%general%upn -1)) * &
                     model%geometry%thck(:,:) * thk0, &
