@@ -5,23 +5,13 @@
 #include "glide_mask.inc"
 
 program shelf_driver
-  !*FD This is a simple GLIDE driver. It can be used to run
-  !*FD a Petermann shelf simulation
-  use glimmer_global, only:rk,sp
-!  use glimmer_global, only : sp
-
+  
   use glide
   use glide_mask
- ! use shelf_forcing
- ! use glimmer_log
- ! use glimmer_config
   use glimmer_commandline
   use glimmer_writestats_module
-  use plume, only:plume_iterate,plume_initialise,plume_finalise
+  use plume
   use plume_io
-  
-
-  use plume_global, only: n_grid
 
   use glimmer_paramets, only: thk0
   use glide_temp, only: timeevoltemp
@@ -35,18 +25,21 @@ program shelf_driver
      real(kind=sp) :: eus = 0.0
   end type shelf_climate
 
+  !local variables
   type(glide_global_type) :: model        ! model instance
   type(shelf_climate) :: climate_cfg      ! climate configuration info
   type(ConfigSection), pointer :: config  ! configuration stuff
   real(kind=rk) :: time
   real(kind=dp) :: t1,t2
   integer :: clock,clock_rate
-  integer :: USE_PLUME = 1
+
+  !PLUME configuration values
   character(len=512) :: plume_nl,plume_output_nc_file,plume_output_prefix,plume_ascii_output_dir
   logical :: plume_suppress_ascii_output,plume_suppress_logging,plume_write_all_states
   real(kind=dp) :: plume_min_subcycle_time,plume_min_spinup_time,plume_steadiness_tol
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
-
+  integer,parameter :: USE_PLUME = 1
+  
   call glimmer_GetCommandline()
   
   ! start logging
@@ -69,7 +62,8 @@ program shelf_driver
                                plume_output_prefix, &
                                plume_output_nc_file, &
                                plume_suppress_ascii_output,&
-                               plume_suppress_logging)
+                               plume_suppress_logging, &
+                               plume_imin,plume_imax,plume_kmin,plume_kmax)
 
   ! config the [Peterman shelf] section of the config file
   call shelf_config_initialise(climate_cfg,config)
@@ -92,15 +86,9 @@ program shelf_driver
 
   time = model%numerics%tstart
 
- if (model%options%which_bmlt .eq. USE_PLUME) then
-    ! we are using the plume
-     
-	plume_kmin = 1
-	plume_kmax = model%general%nsn - 4  !hack for now 
-					    ! should figure this out from the thickness field
-	plume_imin = 1
-	plume_imax = model%general%ewn
-     
+  if (model%options%which_bmlt .eq. USE_PLUME) then
+     ! we are using the plume
+          
      call plume_logging_initialize(trim(plume_ascii_output_dir), &
                                    trim(plume_output_prefix), &
                                     plume_suppress_logging)
@@ -148,6 +136,13 @@ program shelf_driver
      
      if (model%options%which_bmlt .eq. USE_PLUME) then	
 	 
+          ! We would normally expect the plume to reach a steady state
+          ! with respect to the current ice after only a few days.
+          ! If necessary we run the plume over the entire ice timestep
+          ! but if the basal melt rate becomes constant to the specified
+          ! tolerance than we assume the plume melts the ice at the
+          ! steady rate for the rest of the ice timestep and we stop
+          ! timestepping the plume.
           call plume_iterate(time, &
                     model%numerics%tinc*1.d0, &
                     model%geometry%lsrf(:,:) * thk0, &
@@ -167,11 +162,11 @@ program shelf_driver
   ! finalise GLIDE
   call glide_finalise(model)
 
-    if (model%options%which_bmlt .eq. USE_PLUME) then 
-      call plume_finalise()	
-      call plume_io_finalize()
-      call plume_logging_finalize()
-    end if
+  if (model%options%which_bmlt .eq. USE_PLUME) then 
+    call plume_finalise()	
+    call plume_io_finalize()
+    call plume_logging_finalize()
+  end if
 
   call system_clock(clock,clock_rate)
   t2 = real(clock,kind=dp)/real(clock_rate,kind=dp)
@@ -181,20 +176,17 @@ program shelf_driver
 contains
 
   subroutine shelf_config_initialise(climate_cfg,config)
-    !*FD initialise shelf climate model
+    ! initialise shelf climate model
     
     use glimmer_paramets, only: thk0, acc0, scyr
     use glimmer_config
     use glimmer_log
-    
-implicit none
 
     type(shelf_climate) :: climate_cfg         !*FD structure holding climate info
     type(ConfigSection), pointer :: config  !*FD structure holding sections of configuration file   
     
     ! local variables
     type(ConfigSection), pointer :: section
-    real(kind=sp), dimension(:), pointer :: dummy
     character(len=100) :: message
 
     call GetSection(config,section,'Petermann shelf')
@@ -225,14 +217,14 @@ implicit none
                                     plume_output_prefix, &
                                     plume_output_nc_file, &
                                     plume_suppress_ascii_output,&
-                                    plume_suppress_logging)
+                                    plume_suppress_logging, &
+                                    plume_imin,plume_imax,&
+                                    plume_kmin,plume_kmax)
 
     !*FD read configuration file for plume-related things
 
     use glide_types
     use glimmer_config
-
-    implicit none
 
     type(glide_global_type) :: model       
     type(ConfigSection), pointer :: config 
@@ -240,6 +232,7 @@ implicit none
     character(len=*),intent(out) :: plume_nl_file,plume_output_nc_file, &
                                     plume_output_dir,plume_output_prefix
     logical,intent(out) :: plume_suppress_ascii_output,plume_suppress_logging
+    integer,intent(out) :: plume_imin,plume_imax,plume_kmin,plume_kmax
 
     ! local variables
     type(ConfigSection), pointer :: section
@@ -261,6 +254,10 @@ implicit none
     call GetValue(section, 'plume_min_spinup_time',plume_min_spinup_time)
     call GetValue(section, 'plume_min_subcycle_time',plume_min_subcycle_time)
     call GetValue(section, 'plume_steadiness_tol', plume_steadiness_tol)
+    call GetValue(section, 'plume_imin',plume_imin)
+    call GetValue(section, 'plume_imax',plume_imax)
+    call GetValue(section, 'plume_kmin',plume_kmin)
+    call GetValue(section, 'plume_kmax',plume_kmax)
 
     call write_log('Plume config')
     write(message,*) 'plume namelist file:', trim(plume_nl_file)
@@ -280,6 +277,8 @@ implicit none
     write(message,*) 'plume_min_spinup_time',plume_min_spinup_time
     call write_log(message)
     write(message,*) 'plume_min_subcycle_time', plume_min_subcycle_time
+    call write_log(message)
+    write(message,*) 'imin',plume_imin,'imax',plume_imax,'kmin',plume_kmin,'kmax',plume_kmax
     call write_log(message)
 
 	
