@@ -70,13 +70,17 @@ program shelf_driver
 
   call CheckSections(config)
 
-  !initialise climate in model
-  model%climate%acab(:,:) = climate_cfg%accumulation_rate
-  model%climate%artm(:,:) = climate_cfg%artm
+  !initialise sea level here so that ice mask get set correctly (ie floating)
   model%climate%eus = climate_cfg%eus 
 
   !initialise glide
   call glide_initialise(model)
+
+  !initialise climate in model
+  !these have to be done after since acab and artm are allocated space
+  !inside glide_initialise
+  model%climate%acab(:,:) = climate_cfg%accumulation_rate
+  model%climate%artm(:,:) = climate_cfg%artm
 
   ! this just sets the ice column temperature to the ambient air temperature
   call timeevoltemp(model,0)
