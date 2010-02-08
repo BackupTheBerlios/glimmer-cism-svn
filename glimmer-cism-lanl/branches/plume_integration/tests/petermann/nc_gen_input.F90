@@ -19,7 +19,7 @@ program nc_gen_input
   !get arguments from command line
   iarg_count = command_argument_count()
 
-  if (iarg_count < 10) then
+  if (iarg_count < 11) then
      write(*,*) "Usage: ", trim(usage)
      stop
   end if
@@ -143,11 +143,13 @@ contains
     !define thickness
     thck(:,1:glpos) = gldep 
     do j=glpos+1,ifpos
-       thck(:,j) = gldep + (ifdep - gldep)*(real(j-glpos)/real(ifpos-glpos))
+	if (ifpos /= glpos) then
+           thck(:,j) = gldep + (ifdep - gldep)*(real(j-glpos)/real(ifpos-glpos))
+        end if
     end do
     do i=1,nx
        thck(i,(glpos+1):ifpos) = thck(i,(glpos+1):ifpos) - &
-                                 0.5*chan_amp*(1 - cos((real(i)/real(nx))*2*pi*kx))
+                         0.5*chan_amp*(1-cos((real(i-1)/real(nx-1))*2*pi*kx))
     end do
     thck(1:2,:) = 0.d0
     thck((nx-1):nx,:) = 0.d0
