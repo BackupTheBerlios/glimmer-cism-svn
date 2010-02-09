@@ -55,8 +55,9 @@ program shelf_driver
   ! initialise GLIDE
   call glide_config(model,config)
 
-  ! read [plume] section of glimmer config file
-  call plume_read_print_config(model,config,&
+  if (model%options%which_bmlt == USE_PLUME) then
+    ! read [plume] section of glimmer config file
+      call plume_read_print_config(model,config,&
                                plume_nl,&
                                plume_ascii_output_dir, &
                                plume_output_prefix, &
@@ -64,6 +65,7 @@ program shelf_driver
                                plume_suppress_ascii_output,&
                                plume_suppress_logging, &
                                plume_imin,plume_imax,plume_kmin,plume_kmax)
+  end if
 
   ! config the [Peterman shelf] section of the config file
   call shelf_config_initialise(climate_cfg,config)
