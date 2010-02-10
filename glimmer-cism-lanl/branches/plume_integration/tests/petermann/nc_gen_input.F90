@@ -8,18 +8,22 @@ program nc_gen_input
   real,parameter :: rhoi_rhow = 1030.d0 / 920.d0
 
   integer :: iarg_count
-  character(len=512) :: usage = "nc_gen_input <nx> <ny> <hx> <hy> <glpos>  &
-                               & <glthk> <ifpos> <ifthk> <otopg> <ltopg> <kx> <chan_amp> <fname>"
+  character(len=512) :: usage = "nc_gen_input <nx> <ny> <hx> <hy> &
+                                <slope_start_pos> <grounded_ice_thk> &
+				<ice_front_pos> <ice_front_thick> &
+                                <ocean_topg> <land_topg> <k_x> & 
+ 				<chan_amp> <chan_init_length> & 
+				<file_name>"
   character(len=128) :: argstr
 
-  integer :: nx,ny,glpos,ifpos
-  real :: hx,hy,glthk,ifthk,kx,chan_amp,otopg,ltopg
+  integer :: nx,ny,startpos,ifpos
+  real :: hx,hy,githk,ifthk,kx,chan_amp,otopg,ltopg,chan_init_length
   character (len=512) :: fname
 
   !get arguments from command line
   iarg_count = command_argument_count()
 
-  if (iarg_count < 13) then
+  if (iarg_count < 14) then
      write(*,*) "Usage: ", trim(usage)
      stop
   end if
@@ -41,12 +45,12 @@ program nc_gen_input
   write(*,*) 'hy',hy
 
   call get_command_argument(5,argstr)
-  read(argstr,'(i5)') glpos
-  write(*,*) 'glpos',glpos
+  read(argstr,'(i5)') startpos
+  write(*,*) 'startpos',startpos
 
   call get_command_argument(6,argstr)
-  read(argstr,'(f8.2)') glthk
-  write(*,*) 'glthk',glthk
+  read(argstr,'(f8.2)') githk
+  write(*,*) 'githk',githk
 
   call get_command_argument(7,argstr)
   read(argstr,'(i5)') ifpos
@@ -71,28 +75,36 @@ program nc_gen_input
   call get_command_argument(12,argstr)
   read(argstr,'(f8.2)') chan_amp
   write(*,*) 'chan_amp',chan_amp
-  
+
   call get_command_argument(13,argstr)
+  read(argstr,'(f8.2)'), chan_init_length
+  write(*,*) 'chan_init_length',chan_init_length  
+
+  call get_command_argument(14,argstr)
   read(argstr,'(a512)') fname
   write(*,*) 'fname ',trim(fname)
 
-  call make_nc_file(nx,ny,hx,hy,glpos,glthk,ifpos,ifthk,kx,chan_amp,trim(fname))
-
+  call make_nc_file(nx,ny,hx,hy,startpos,githk, &
+	            ifpos,ifthk,kx,chan_amp,chan_init_length, &
+                    trim(fname))
 
 contains
 
-  subroutine make_nc_file(nx,ny,hx,hy,glpos,glthk,ifpos,ifthk,kx,chan_amp,fname)
+  subroutine make_nc_file(nx,ny,hx,hy,startpos,githk,&
+			  ifpos,ifthk,kx,chan_amp,chan_init_length,&
+			  fname)
 
     character(len=*),intent(in) :: fname
-    integer,intent(in) :: nx,ny,glpos,ifpos
-    real,intent(in) :: hx,hy,glthk,ifthk,kx,chan_amp
+    integer,intent(in) :: nx,ny,startpos,ifpos
+    real,intent(in) :: hx,hy,githk,ifthk,kx,chan_amp,chan_init_length
     
     ! local variables
     integer :: i,j,nc_id
     integer :: time_dimid,x_dimid,y_dimid,xstag_dimid,ystag_dimid
     integer :: x_varid,y_varid,time_varid,thck_varid,topog_varid,kinbcmask_varid
     integer :: xstag_varid,ystag_varid
-
+    real :: chan_depth
+	
     !data arrays
     real,dimension(nx) :: xs
     real,dimension(ny) :: ys
@@ -168,15 +180,20 @@ contains
     topog(:,1:2) = abs(ltopg)
     
     !define thickness
-    thck(:,1:glpos) = glthk 
-    do j=glpos+1,ifpos
-	if (ifpos /= glpos) then
-           thck(:,j) = glthk + (ifthk - glthk)*(real(j-glpos)/real(ifpos-glpos))
+    thck(:,1:startpos) = githk 
+    do j=startpos+1,ifpos
+	if (ifpos /= startpos) then
+           thck(:,j) = githk + &
+	        (ifthk -githk)*(real(j-startpos)/real(ifpos-startpos))
         end if
     end do
     do i=1,nx
-       thck(i,(glpos+1):ifpos) = thck(i,(glpos+1):ifpos) - &
-                         0.5*chan_amp*(1-cos((real(i-1)/real(nx-1))*2*pi*kx))
+      do j=startpos+1,ifpos
+          chan_depth = 	0.5 * chan_amp &
+                        * (1-exp(- real(j-startpos)*hy/chan_init_length))&
+                        * (1-cos((real(i-1)/real(nx-1))*2*pi*kx))
+          thck(i,j) = thck(i,j) - chan_depth
+      end do
     end do
     thck(1:2,:) = 0.d0
     thck((nx-1):nx,:) = 0.d0
