@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# edit this with the right compiler and netcdf installation areas
+FC=f90
+NETCDF=/home/gladish/installs/netcdf-4.0.1/
+INCFLAG=M
+BIN=/home/gladish/bin/
+ 
+$FC -o nc_gen_input -$INCFLAG $NETCDF/include -L $NETCDF/lib ./nc_gen_input.F90 -lnetcdf
+mv ./nc_gen_input $BIN/nc_gen_input
+
