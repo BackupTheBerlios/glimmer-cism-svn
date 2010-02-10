@@ -13,17 +13,17 @@ program nc_gen_input
 				<ice_front_pos> <ice_front_thick> &
                                 <ocean_topg> <land_topg> <k_x> & 
  				<chan_amp> <chan_init_length> & 
-				<file_name>"
+				<kinbc_width> <file_name>"
   character(len=128) :: argstr
 
-  integer :: nx,ny,startpos,ifpos
+  integer :: nx,ny,startpos,ifpos,kinbcw
   real :: hx,hy,githk,ifthk,kx,chan_amp,otopg,ltopg,chan_init_length
   character (len=512) :: fname
 
   !get arguments from command line
   iarg_count = command_argument_count()
 
-  if (iarg_count < 14) then
+  if (iarg_count < 15) then
      write(*,*) "Usage: ", trim(usage)
      stop
   end if
@@ -81,24 +81,29 @@ program nc_gen_input
   write(*,*) 'chan_init_length',chan_init_length  
 
   call get_command_argument(14,argstr)
+  read(argstr,'(i5)'), kinbcw
+  write(*,*) 'kinbc_width',kinbcw
+
+  call get_command_argument(15,argstr)
   read(argstr,'(a512)') fname
   write(*,*) 'fname ',trim(fname)
 
   call make_nc_file(nx,ny,hx,hy,startpos,githk, &
 	            ifpos,ifthk,kx,chan_amp,chan_init_length, &
-                    trim(fname))
+                    kinbcw,trim(fname))
 
 contains
 
   subroutine make_nc_file(nx,ny,hx,hy,startpos,githk,&
 			  ifpos,ifthk,kx,chan_amp,chan_init_length,&
-			  fname)
+			  kinbcw,fname)
 
     character(len=*),intent(in) :: fname
-    integer,intent(in) :: nx,ny,startpos,ifpos
+    integer,intent(in) :: nx,ny,startpos,ifpos,kinbcw
     real,intent(in) :: hx,hy,githk,ifthk,kx,chan_amp,chan_init_length
     
     ! local variables
+    integer :: landw = 2
     integer :: i,j,nc_id
     integer :: time_dimid,x_dimid,y_dimid,xstag_dimid,ystag_dimid
     integer :: x_varid,y_varid,time_varid,thck_varid,topog_varid,kinbcmask_varid
@@ -175,9 +180,9 @@ contains
     
     !define topg
     topog = -abs(otopg)
-    topog(1:2,:) = abs(ltopg)
-    topog((nx-1):nx,:) = abs(ltopg)
-    topog(:,1:2) = abs(ltopg)
+    topog(1:landw,:) = abs(ltopg)
+    topog((nx+1-landw):nx,:) = abs(ltopg)
+    topog(:,1:landw) = abs(ltopg)
     
     !define thickness
     thck(:,1:startpos) = githk 
@@ -195,15 +200,16 @@ contains
           thck(i,j) = thck(i,j) - chan_depth
       end do
     end do
-    thck(1:2,:) = 0.d0
-    thck((nx-1):nx,:) = 0.d0
-    thck(:,1:2) = 0.d0
+    thck(1:landw,:) = 0.d0
+    thck((nx+1-landw):nx,:) = 0.d0
+    thck(:,1:landw) = 0.d0
     thck(:,(ifpos+1):ny) = 0.d0 ! zero ahead of ice front position
     
     ! define kinbcmask
-    kinbcmask(1:3,:) = 1
-    kinbcmask(:,1:3) = 1
-    kinbcmask((nx-3):(nx-1),:) = 1
+    kinbcmask = 0
+    kinbcmask(1:kinbcw,:) = 1
+    kinbcmask(:,1:kinbcw) = 1
+    kinbcmask((nx-kinbcw):(nx-1),:) = 1
 
     ! write the arrays out to the netcdf file and close it
     call check( nf90_put_var(nc_id, thck_varid, thck) )
