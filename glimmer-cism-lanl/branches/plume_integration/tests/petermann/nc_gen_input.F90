@@ -5,118 +5,338 @@ program nc_gen_input
   implicit none
 
   real,parameter :: pi = 3.1415926
-  real,parameter :: rhoi_rhow = 1030.d0 / 920.d0
+  !real,parameter :: rhoi_rhow = 1030.d0 / 920.d0
 
-  integer :: iarg_count
-  character(len=512) :: usage = "nc_gen_input <nx> <ny> <hx> <hy> &
-                                &<slope_start_pos> <grounded_ice_thk> &
-				&<ice_front_pos> <ice_front_thick> &
-                                &<ocean_topg> <land_topg> <k_x> & 
- 				&<chan_amp> <chan_init_length> & 
-				&<kinbc_width> <file_name>"
+  character(len=512) :: gen_usage = "nc_gen_input <type_code> nc_filename [params]"
+  character(len=512) :: conf_shelf_params = "<nx> <ny> <hx> <hy> &
+                                <slope_start_pos> <grounded_ice_thk> &
+				<ice_front_pos> <ice_front_thick> &
+                                <ocean_topg> <land_topg> <k_x> & 
+ 				<chan_amp> <chan_init_length> & 
+				<kinbc_width>"
+
+  character (len=2) :: type_code
+
+  !variables to be used in all cases and in netcdf writing
   character(len=128) :: argstr
-
-  integer :: nx,ny,startpos,ifpos,kinbcw
-  real :: hx,hy,githk,ifthk,kx,chan_amp,otopg,ltopg,chan_init_length
   character (len=512) :: fname
+  integer :: nx,ny 
+
+  !data arrays
+  real,dimension(:),allocatable :: xs,ys,xstag,ystag
+  real,dimension(:,:),allocatable :: thck,topog
+  real,dimension(:,:),allocatable :: kinbcmask
 
   !get arguments from command line
-  iarg_count = command_argument_count()
 
-  if (iarg_count < 15) then
-     write(*,*) "Usage: ", trim(usage)
+  if (command_argument_count() < 1) then
+
+     write(*,*) "Usage: ", trim(gen_usage)
      stop
   end if
 
+  
   call get_command_argument(1,argstr)
-  read(argstr,'(i5)') nx
-  write(*,*) 'nx:',nx
+
+  if (trim(argstr) == '-h' .or. trim(argstr) == '--help') then
+	 write(*,*) "Usage: ", trim(gen_usage)
+         stop
+  end if
+  
+  if (command_argument_count() < 2) then
+	write(*,*) "Usage: ", trim(gen_usage)
+        stop
+  end if
+
+  type_code = argstr
 
   call get_command_argument(2,argstr)
-  read(argstr,'(i5)') ny
-  write(*,*) 'ny:',ny
-
-  call get_command_argument(3,argstr)
-  read(argstr,'(f8.2)') hx
-  write(*,*) 'hx',hx
-
-  call get_command_argument(4,argstr)
-  read(argstr,'(f8.2)') hy
-  write(*,*) 'hy',hy
-
-  call get_command_argument(5,argstr)
-  read(argstr,'(i5)') startpos
-  write(*,*) 'startpos',startpos
-
-  call get_command_argument(6,argstr)
-  read(argstr,'(f8.2)') githk
-  write(*,*) 'githk',githk
-
-  call get_command_argument(7,argstr)
-  read(argstr,'(i5)') ifpos
-  write(*,*) 'ifpos',ifpos
-
-  call get_command_argument(8,argstr)
-  read(argstr,'(f8.2)') ifthk
-  write(*,*) 'ifthk',ifthk
- 
-  call get_command_argument(9,argstr)
-  read(argstr,'(f8.2)') otopg
-  write(*,*) 'otopg', otopg
-
-  call get_command_argument(10,argstr)
-  read(argstr,'(f8.2)') ltopg
-  write(*,*) 'ltopg', ltopg
-
-  call get_command_argument(11,argstr)
-  read(argstr,'(f8.2)') kx
-  write(*,*) 'kx',kx
-  
-  call get_command_argument(12,argstr)
-  read(argstr,'(f8.2)') chan_amp
-  write(*,*) 'chan_amp',chan_amp
-
-  call get_command_argument(13,argstr)
-  read(argstr,'(f8.2)') chan_init_length
-  write(*,*) 'chan_init_length',chan_init_length  
-
-  call get_command_argument(14,argstr)
-  read(argstr,'(i5)') kinbcw
-  write(*,*) 'kinbc_width',kinbcw
-
-  call get_command_argument(15,argstr)
   read(argstr,'(a512)') fname
   write(*,*) 'fname ',trim(fname)
 
-  call make_nc_file(nx,ny,hx,hy,startpos,githk, &
-	            ifpos,ifthk,kx,chan_amp,chan_init_length, &
-                    kinbcw,trim(fname))
+  if (type_code == 'cs') then
 
+      call make_confined_shelf()
+
+  else if (type_code =='ts') then
+       call make_two_sided_shelf()
+
+  else
+    
+     write(*,*) "Unrecognized type_code: ", type_code
+
+   end if	
+   
 contains
 
-  subroutine make_nc_file(nx,ny,hx,hy,startpos,githk,&
-			  ifpos,ifthk,kx,chan_amp,chan_init_length,&
-			  kinbcw,fname)
 
-    character(len=*),intent(in) :: fname
-    integer,intent(in) :: nx,ny,startpos,ifpos,kinbcw
-    real,intent(in) :: hx,hy,githk,ifthk,kx,chan_amp,chan_init_length
-    
+subroutine make_confined_shelf()
+
     ! local variables
     integer :: landw = 2
-    integer :: i,j,nc_id
+    integer :: i,j
+    integer :: firstarg = 3
+    integer :: startpos,ifpos,kinbcw
+    real :: hx,hy,githk,ifthk,kx,chan_amp,chan_init_length
+    real :: chan_depth,otopg,ltopg
+
+   if (command_argument_count() /= 16) then
+	write(*,*)"Incorrect number of parameters. Confined shelf requires:  ",trim(conf_shelf_params)
+        stop
+   end if
+
+   call get_command_argument(firstarg, argstr)
+   read(argstr,'(i5)') nx
+   write(*,*) 'nx:',nx
+
+  call get_command_argument(firstarg + 1,argstr)
+  read(argstr,'(i5)') ny
+  write(*,*) 'ny:',ny
+
+  call get_command_argument(firstarg + 2,argstr)
+  read(argstr,'(f8.2)') hx
+  write(*,*) 'hx',hx
+
+  call get_command_argument(firstarg + 3,argstr)
+  read(argstr,'(f8.2)') hy
+  write(*,*) 'hy',hy
+
+  call get_command_argument(firstarg + 4,argstr)
+  read(argstr,'(i5)') startpos
+  write(*,*) 'startpos',startpos
+
+  call get_command_argument(firstarg + 5,argstr)
+  read(argstr,'(f8.2)') githk
+  write(*,*) 'githk',githk
+
+  call get_command_argument(firstarg + 6,argstr)
+  read(argstr,'(i5)') ifpos
+  write(*,*) 'ifpos',ifpos
+
+  call get_command_argument(firstarg + 7,argstr)
+  read(argstr,'(f8.2)') ifthk
+  write(*,*) 'ifthk',ifthk
+ 
+  call get_command_argument(firstarg + 8,argstr)
+  read(argstr,'(f8.2)') otopg
+  write(*,*) 'otopg', otopg
+
+  call get_command_argument(firstarg + 9,argstr)
+  read(argstr,'(f8.2)') ltopg
+  write(*,*) 'ltopg', ltopg
+
+  call get_command_argument(firstarg + 10,argstr)
+  read(argstr,'(f8.2)') kx
+  write(*,*) 'kx',kx
+  
+  call get_command_argument(firstarg + 11,argstr)
+  read(argstr,'(f8.2)') chan_amp
+  write(*,*) 'chan_amp',chan_amp
+
+  call get_command_argument(firstarg + 12,argstr)
+  read(argstr,'(f8.2)'), chan_init_length
+  write(*,*) 'chan_init_length',chan_init_length  
+
+  call get_command_argument(firstarg + 13,argstr)
+  read(argstr,'(i5)'), kinbcw
+  write(*,*) 'kinbc_width',kinbcw
+
+  allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
+  allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
+
+  !now populate the dimension variables
+  xs = (/ ( (i-1)*hx,i=1,nx ) /)
+  ys = (/ ( (j-1)*hy,j=1,ny ) /)
+  xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
+  ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+   
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!! define the topograph, thickness, kinbcmask       !!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
+    !define topg
+    topog = -abs(otopg)
+    topog(1:landw,:) = abs(ltopg)
+    topog((nx+1-landw):nx,:) = abs(ltopg)
+    topog(:,1:landw) = abs(ltopg)
+    
+    !define thickness
+    thck(:,1:startpos) = githk 
+    do j=startpos+1,ifpos
+	if (ifpos /= startpos) then
+           thck(:,j) = githk + &
+	        (ifthk -githk)*(real(j-startpos)/real(ifpos-startpos))
+        end if
+    end do
+    do i=1,nx
+      do j=startpos+1,ifpos
+          chan_depth = 	0.5 * chan_amp &
+                        * (1-exp(- real(j-startpos)*hy/chan_init_length))&
+                        * (1-cos((real(i-1)/real(nx-1))*2*pi*kx))
+          thck(i,j) = thck(i,j) - chan_depth
+      end do
+    end do
+
+    thck(1:landw,:) = 0.d0
+    thck((nx+1-landw):nx,:) = 0.d0
+    thck(:,1:landw) = 0.d0
+    thck(:,(ifpos+1):ny) = 0.d0 ! zero ahead of ice front position
+
+    ! define kinbcmask
+    kinbcmask = 0
+    kinbcmask(1:kinbcw,:) = 1
+    kinbcmask((nx-kinbcw):(nx-1),:) = 1
+
+    call write_nc_file()
+
+    deallocate(xs,ys,xstag,ystag,thck,topog,kinbcmask)
+
+end subroutine make_confined_shelf
+
+subroutine make_two_sided_shelf()
+ 
+    ! local variables
+    integer :: landw = 2
+    integer :: i,j
+    integer :: firstarg = 3
+    integer :: divpos,ifpos,kinbcw
+    real :: hx,hy,githk,ifthk,kx,chan_amp,chan_init_length
+    real :: chan_depth,otopg,ltopg
+
+   character(len=512) :: two_sided_shelf_params = "<nx> <ny> <hx> <hy> &
+						  <center_thk> <icefront_pos> &
+	 					  <icefront_thk> <otopg> <ltopg> &
+						  <kx> <chan_amp> <chan_init_l> <kinbcw>"
+
+   if (command_argument_count() /= 15) then
+      write(*,*)"Incorrect number of parameters. Two-sided shelf requires: ",&
+                trim(two_sided_shelf_params)
+      stop
+   end if
+
+   call get_command_argument(firstarg, argstr)
+   read(argstr,'(i5)') nx
+   write(*,*) 'nx:',nx
+
+  call get_command_argument(firstarg + 1,argstr)
+  read(argstr,'(i5)') ny
+  write(*,*) 'ny:',ny
+
+  call get_command_argument(firstarg + 2,argstr)
+  read(argstr,'(f8.2)') hx
+  write(*,*) 'hx',hx
+
+  call get_command_argument(firstarg + 3,argstr)
+  read(argstr,'(f8.2)') hy
+  write(*,*) 'hy',hy
+
+  call get_command_argument(firstarg + 4,argstr)
+  read(argstr,'(f8.2)') githk
+  write(*,*) 'githk',githk
+
+  call get_command_argument(firstarg + 5,argstr)
+  read(argstr,'(i5)') ifpos
+  write(*,*) 'ifpos',ifpos
+
+  call get_command_argument(firstarg + 6,argstr)
+  read(argstr,'(f8.2)') ifthk
+  write(*,*) 'ifthk',ifthk
+ 
+  call get_command_argument(firstarg + 7,argstr)
+  read(argstr,'(f8.2)') otopg
+  write(*,*) 'otopg', otopg
+
+  call get_command_argument(firstarg + 8,argstr)
+  read(argstr,'(f8.2)') ltopg
+  write(*,*) 'ltopg', ltopg
+
+  call get_command_argument(firstarg + 9,argstr)
+  read(argstr,'(f8.2)') kx
+  write(*,*) 'kx',kx
+  
+  call get_command_argument(firstarg + 10,argstr)
+  read(argstr,'(f8.2)') chan_amp
+  write(*,*) 'chan_amp',chan_amp
+
+  call get_command_argument(firstarg + 11,argstr)
+  read(argstr,'(f8.2)'), chan_init_length
+  write(*,*) 'chan_init_length',chan_init_length  
+
+  call get_command_argument(firstarg + 12,argstr)
+  read(argstr,'(i5)'), kinbcw
+  write(*,*) 'kinbc_width',kinbcw
+
+  allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
+  allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
+
+  !now populate the dimension variables
+  xs = (/ ( (i-1)*hx,i=1,nx ) /)
+  ys = (/ ( (j-1)*hy,j=1,ny ) /)
+  xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
+  ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+
+   
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!! define the topograph, thickness, kinbcmask       !!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  !define topg
+  topog = -abs(otopg)
+  topog(1:landw,:) = abs(ltopg)         !west wall
+  topog((nx+1-landw):nx,:) = abs(ltopg) !east wall
+    
+  !define thickness
+  thck = 0.d0
+  divpos = ny/2
+
+  do j=divpos,ifpos
+    do i=1,nx
+	thck(i,j) = githk + &
+                   (ifthk -githk)*(real(j-divpos)/real(ifpos-divpos))
+        chan_depth = 0.5 * chan_amp &
+                         * (1-exp(- real(j-divpos)*hy/chan_init_length))&
+                         * (1-cos((real(i-1)/real(nx-1))*2*pi*kx))
+       thck(i,j) = thck(i,j) - chan_depth
+    end do
+  end do
+
+  do j = (ny-ifpos+1),(divpos-1)
+    do i=1,nx
+	thck(i,j) = githk + &
+                   (ifthk -githk)*(real(divpos-j)/real(divpos-(ny-ifpos+1)))
+        chan_depth = 0.5 * chan_amp &
+                         * (1-exp(- real(divpos-j)*hy/chan_init_length))&
+                         * (1-cos((real(i-1)/real(nx-1))*2*pi*kx))
+
+       thck(i,j) = thck(i,j) - chan_depth
+    end do
+  end do
+
+  thck(1:landw,:) = 0.d0
+  thck((nx+1-landw):nx,:) = 0.d0
+  thck(:,1:landw) = 0.d0
+  thck(:,(ifpos+1):ny) = 0.d0 ! zero ahead of ice front position
+  thck(:,1:(ny-ifpos)) = 0.d0 !zero before south ice front
+
+  ! define kinbcmask
+  kinbcmask = 0
+  kinbcmask(1:kinbcw,:) = 1
+  kinbcmask((nx-kinbcw):(nx-1),:) = 1
+
+  call write_nc_file()
+
+  deallocate(xs,ys,xstag,ystag,thck,topog,kinbcmask)
+	
+
+end subroutine
+
+subroutine write_nc_file()
+    
+    !local variables
+    integer :: nc_id
     integer :: time_dimid,x_dimid,y_dimid,xstag_dimid,ystag_dimid
     integer :: x_varid,y_varid,time_varid,thck_varid,topog_varid,kinbcmask_varid
     integer :: xstag_varid,ystag_varid
-    real :: chan_depth
-	
-    !data arrays
-    real,dimension(nx) :: xs
-    real,dimension(ny) :: ys
-    real,dimension(nx-1) :: xstag
-    real,dimension(ny-1) :: ystag
-    real,dimension(nx,ny) :: thck,topog
-    real,dimension(nx-1,ny-1) :: kinbcmask
     
     call check( nf90_create(fname, NF90_CLOBBER, nc_id) )
 
@@ -126,7 +346,7 @@ contains
     call check( nf90_def_dim(nc_id,'y1',ny,y_dimid) )
     call check( nf90_def_dim(nc_id,'x0',nx-1,xstag_dimid) )
     call check( nf90_def_dim(nc_id,'y0',ny-1,ystag_dimid) )
-
+ 
     ! define variables
     call check( nf90_def_var(nc_id,'time',NF90_DOUBLE,(/time_dimid/),time_varid) )
     call check( nf90_put_att(nc_id, time_varid, 'long_name', 'time') )
@@ -161,55 +381,11 @@ contains
 
     call check( nf90_enddef(nc_id) )
 
-    !now populate the dimension variables
-    xs = (/ ( (i-1)*hx,i=1,nx ) /)
-    ys = (/ ( (j-1)*hy,j=1,ny ) /)
-    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
-    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
-    
     call check( nf90_put_var(nc_id,x_varid,xs) )
     call check( nf90_put_var(nc_id,y_varid,ys) )
     call check( nf90_put_var(nc_id,xstag_varid,xstag) )
     call check( nf90_put_var(nc_id,ystag_varid,ystag) )
     call check( nf90_put_var(nc_id,time_varid, (/ 1 /) ) )
-    
-   
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! define the topograph, thickness, kinbcmask       !!!
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    
-    !define topg
-    topog = -abs(otopg)
-    topog(1:landw,:) = abs(ltopg)
-    topog((nx+1-landw):nx,:) = abs(ltopg)
-    topog(:,1:landw) = abs(ltopg)
-    
-    !define thickness
-    thck(:,1:startpos) = githk 
-    do j=startpos+1,ifpos
-	if (ifpos /= startpos) then
-           thck(:,j) = githk + &
-	        (ifthk -githk)*(real(j-startpos)/real(ifpos-startpos))
-        end if
-    end do
-    do i=1,nx
-      do j=startpos+1,ifpos
-          chan_depth = 	0.5 * chan_amp &
-                        * (1-exp(- real(j-startpos)*hy/chan_init_length))&
-                        * (1-cos((real(i-1)/real(nx-1))*2*pi*kx))
-          thck(i,j) = thck(i,j) - chan_depth
-      end do
-    end do
-    thck(1:landw,:) = 0.d0
-    thck((nx+1-landw):nx,:) = 0.d0
-    thck(:,1:landw) = 0.d0
-    thck(:,(ifpos+1):ny) = 0.d0 ! zero ahead of ice front position
-    
-    ! define kinbcmask
-    kinbcmask = 0
-    kinbcmask(1:kinbcw,:) = 1
-    kinbcmask(:,1:kinbcw) = 1
-    kinbcmask((nx-kinbcw):(nx-1),:) = 1
 
     ! write the arrays out to the netcdf file and close it
     call check( nf90_put_var(nc_id, thck_varid, thck) )
@@ -218,7 +394,7 @@ contains
 
     call check( nf90_close(nc_id) )
 
-  end subroutine make_nc_file
+  end subroutine write_nc_file
 
   subroutine check(status_code)
 
