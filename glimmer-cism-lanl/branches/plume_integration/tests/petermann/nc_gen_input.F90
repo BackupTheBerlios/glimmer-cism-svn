@@ -9,11 +9,11 @@ program nc_gen_input
 
   integer :: iarg_count
   character(len=512) :: usage = "nc_gen_input <nx> <ny> <hx> <hy> &
-                                <slope_start_pos> <grounded_ice_thk> &
-				<ice_front_pos> <ice_front_thick> &
-                                <ocean_topg> <land_topg> <k_x> & 
- 				<chan_amp> <chan_init_length> & 
-				<kinbc_width> <file_name>"
+                                &<slope_start_pos> <grounded_ice_thk> &
+				&<ice_front_pos> <ice_front_thick> &
+                                &<ocean_topg> <land_topg> <k_x> & 
+ 				&<chan_amp> <chan_init_length> & 
+				&<kinbc_width> <file_name>"
   character(len=128) :: argstr
 
   integer :: nx,ny,startpos,ifpos,kinbcw
@@ -77,11 +77,11 @@ program nc_gen_input
   write(*,*) 'chan_amp',chan_amp
 
   call get_command_argument(13,argstr)
-  read(argstr,'(f8.2)'), chan_init_length
+  read(argstr,'(f8.2)') chan_init_length
   write(*,*) 'chan_init_length',chan_init_length  
 
   call get_command_argument(14,argstr)
-  read(argstr,'(i5)'), kinbcw
+  read(argstr,'(i5)') kinbcw
   write(*,*) 'kinbc_width',kinbcw
 
   call get_command_argument(15,argstr)
