@@ -91,6 +91,13 @@ implicit none
 !whl - The following is from glam_funits
   integer, parameter :: unin = 90
 
+!RN_20100125: The following are for Trilinos:
+  integer :: conversion = 0 ! whether triad-to-Crs is used
+  integer :: whatsparse ! needed for putpgcg()
+  integer :: ocn = 1 ! needed for putpgcg() - ordinal counting number
+  real (kind = dp) :: linearSolveTime = 0
+  real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
+
 
 
 !***********************************************************************
@@ -253,6 +260,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp) :: err
   integer :: iter
 
+! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
+  whatsparse = whichsparse
+
 
 !whl - Moved initialization stuff to glam_velo_fordsiapstr_init
 
@@ -318,6 +328,22 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! *sfp** an initial guess at the size of the sparse matrix
   pcgsize(2) = pcgsize(1) * 20
 
+!==============================================================================
+! RN_20100126: Non-matrix-conversion scheme
+!==============================================================================
+
+#ifdef TRILINOS
+  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
+     call initialize(20, pcgsize(1))
+     write(*,*) 'size of the matrix', pcgsize(1)
+     !write(*,*) 'Working on it!'
+  endif
+#endif
+
+!==============================================================================
+! RN_20100126: End of the block
+!==============================================================================
+
   ! *sfp** allocate space matrix variables
   allocate (pcgrow(pcgsize(2)),pcgcol(pcgsize(2)),rhsd(pcgsize(1)), &
             pcgval(pcgsize(2)))
@@ -338,6 +364,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   do while ( maxval(resid) > minres .and. counter < cmax)
 !  do while ( resid(1) > minres .and. counter < cmax)  ! *sfp** for 1d solutions (d*/dy=0) 
+
+  ! RN_20100129
+  ocn = counter
 
     ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
@@ -371,7 +400,31 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     ! *sfp** solve 'Ax=b' for the Y component of velocity
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
 
-    call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
+!==============================================================================
+! RN_20100129: Including non-matrix-conversion scheme
+!==============================================================================
+
+#ifdef TRILINOS
+  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
+     err = 0 		! RN_20100129: For now, these are not essential.
+     iter = 0		! Will find ways to retrieve these from Trilinos later.
+     call differentsolve(rhsd, answer, linearSolveTime)
+     totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
+     write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+     !write(*,*) 'Working on it!'
+  else
+     call sparse_easy_solve(matrix, rhsd, answer, err, iter, whichsparse)
+  endif
+#else
+  call sparse_easy_solve(matrix, rhsd, answer, err, iter, whichsparse)
+#endif
+
+!==============================================================================
+! RN_20100129: End of the block
+!==============================================================================
+
+    !write(*,*) 'whichsparse', whichsparse
+    !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
 
@@ -425,7 +478,31 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     ! *sfp** solve 'Ax=b' for the X component of velocity
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel )
 
-    call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
+!==============================================================================
+! RN_20100129: Including non-matrix-conversion scheme
+!==============================================================================
+
+#ifdef TRILINOS
+  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
+     err = 0 		! RN_20100129: For now, these are not essential.
+     iter = 0		! Will find ways to retrieve these from Trilinos later.
+     call differentsolve(rhsd, answer, linearSolveTime)
+     totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
+     write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+     !write(*,*) 'Working on it!'
+  else
+     !write(*,*) 'i am in here'
+     call sparse_easy_solve(matrix, rhsd, answer, err, iter, whichsparse)
+  endif
+#else
+  call sparse_easy_solve(matrix, rhsd, answer, err, iter, whichsparse)
+#endif
+
+!==============================================================================
+! RN_20100129: End of the block
+!==============================================================================
+
+    !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
@@ -3191,16 +3268,40 @@ subroutine putpcgc(value,col,row)
   integer, intent(in) :: row, col 
   real (kind = dp), intent(in) :: value 
 
-#ifdef HAVE_TRILINOS
+#ifdef TRILINOS
 ! if Trilinos is in the build, call Trilinos (if that option specified)
-!
-!    if( whichsparse == SPARSE_SOLVER_TRILINOS )then
-!        !! calls to "puttrilinos" go here !!
-!    end if
-!
-#else   
-! call something other than Trilinos
 
+!    integer :: flag = 0 ! to signal if the entry already exists.
+!    conversion = 1 ! RN_20100125: This should be an input.
+!    write(*,*), 'whatsparse ', whatsparse
+    if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
+	!write (*,*) 'Updating the matrix'
+!        if (ocn == 1) then
+            if (value /= 0.0d0) then
+                call update(row, col, value)
+            end if
+!        else
+!            if (value == 0.0d0) then
+!                call exist(row, col, flag)
+!                if (flag == 1) then
+!                    call update(row, col, value)
+!                end if
+!            else
+!                call update(row, col, value)
+!            end if
+!        end if
+    else
+	!write(*,*) 'I am in here'
+        if (value /= 0.0d0) then
+          pcgval(ct) = value
+          pcgcol(ct) = col
+          pcgrow(ct) = row
+          ct = ct + 1
+        end if	
+    end if
+
+#else ! call something other than Trilinos
+      !write(*,*) 'I am below'
       if (value /= 0.0d0) then
         pcgval(ct) = value
         pcgcol(ct) = col

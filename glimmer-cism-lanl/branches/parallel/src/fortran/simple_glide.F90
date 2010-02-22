@@ -66,7 +66,7 @@ program simple_glide
 #ifdef HAVE_MPI
 #include <mpif.h>
 
-  integer npes,ierr,iam
+  integer npes,ierr,iam,lengthofconfigname
 #endif
 
   type(glide_global_type) :: model        ! model instance
@@ -89,10 +89,31 @@ program simple_glide
  call MPI_Init(ierr)
  call MPI_Comm_size(MPI_COMM_WORLD,npes,ierr)
  call MPI_Comm_rank(MPI_COMM_WORLD,iam,ierr)
-#endif
 
+!! RN_20100115: An attempt to do MPI in Fortran
+!if (iam .eq. 0) then
+!  write(*,*), 'i am in here'
+!  call glimmer_GetCommandline()
+!  lengthofconfigname = len_trim(commandline_configname)
+!  write(*,*), 'configname: ', commandline_configname
+!  call MPI_Bcast(lengthofconfigname, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!  ! send commandline_configname
+!  call MPI_Bcast(commandline_configname, lengthofconfigname, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
+!else
+!  write(*,*) "hello from ", iam
+!! receive commandline_configname
+!  call MPI_Bcast(lengthofconfigname, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!  call MPI_Bcast(commandline_configname, lengthofconfigname, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
+!  write(*,*), 'configname: ', commandline_configname  
+!endif  
+!#else
+!  call glimmer_GetCommandline()
+
+#endif
   call glimmer_GetCommandline()
-  
+
+
+
   ! start logging
   call open_log(unit=50, fname=logname(commandline_configname))
   

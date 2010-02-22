@@ -6,6 +6,7 @@
 
 #include "Teuchos_ParameterList.hpp"
 #include "Teuchos_XMLParameterListHelpers.hpp"
+#include "Teuchos_Time.hpp"
 
 #include "Stratimikos_DefaultLinearSolverBuilder.hpp"
 #include "Thyra_LinearOpWithSolveFactoryHelpers.hpp"
@@ -35,6 +36,14 @@ extern "C" {
     interface = Teuchos::rcp(new Simple_Interface(bandwidth, size, comm) );
 
     cout << " ======================================" << endl;
+  }
+
+  //============================================================
+  // RN_20100201: This is to check if this entry already exists.
+  //============================================================
+  void exist_(int& rowInd, int& colInd, int& flag) {
+    // RN_20100201: This is not needed since the sparsity pattern
+    // does not change within a Picard iteration.
   }
 
   //============================================================
@@ -85,7 +94,7 @@ extern "C" {
       ierr = matrix->ReplaceGlobalValues(rowInd1, 1, &val, &colInd1);
     }
     // Is there any way to improve this?
-    //    cout << "Damn MPI_Broadcast: " << ierr << ", "<< pidList << ", "
+    //    cout << "MPI_Broadcast: " << ierr << ", "<< pidList << ", "
     //	 << rowInd1 << endl;
     
     //MPI_Bcast(&ierr, 1, MPI_INT, pidList, MPI_COMM_WORLD);
@@ -164,7 +173,7 @@ extern "C" {
   //========================================================
   // RN_20091118: This is to make calls to Trilinos solvers.
   //========================================================
-  void differentsolve_(double* rhs, double* solution) {
+  void differentsolve_(double* rhs, double* solution, double& elapsedTime) {
 #ifdef HAVE_MPI
     Epetra_MpiComm comm(MPI_COMM_WORLD);
 #else
@@ -173,6 +182,10 @@ extern "C" {
 
     cout << " ======================================" << endl;
     cout << " IN SOLVE()" << endl;
+
+    // RN_20100211: Start timing
+    Teuchos::Time linearTime("LinearTime");
+    linearTime.start();
 
     int j, ierr;
     Teuchos::RCP<Epetra_CrsMatrix> epetraOper = interface->getOperator();
@@ -277,6 +290,9 @@ extern "C" {
     xExtra.ExtractCopy(solution);
 
     delete[] myGlobalElements;
+
+    elapsedTime = linearTime.stop();
+    cout << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
 
     cout << " ======================================" << endl;
   }

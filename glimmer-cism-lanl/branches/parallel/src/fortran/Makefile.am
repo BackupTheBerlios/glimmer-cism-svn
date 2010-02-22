@@ -54,7 +54,7 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_writestats.F90 writestats.c writestats.h
 nodist_libglimmer_a_SOURCES = glimmer_vers.F90
 if TRILINOS
-libglimmer_a_LIBADD = ../cpp/call_trilinos.o
+libglimmer_a_LIBADD = ../cpp/call_trilinos.o ../cpp/Simple_Interface.o ../cpp/SI_Drive.o
 endif TRILINOS
 
 libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \

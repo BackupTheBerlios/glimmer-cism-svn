@@ -119,12 +119,13 @@ contains
     integer unit,ios,linenr
     character(len=linelen) :: line
     character(len=100) :: message
-
     inquire (exist=there,file=fname)
     if (.not.there) then
        call write_log('Cannot open configuration file '//trim(fname),GM_FATAL)
     end if
     
+write(*,*), 'filename: ', fname
+
     unit=99
     open(unit,file=trim(fname),status='old')
     ios=0
