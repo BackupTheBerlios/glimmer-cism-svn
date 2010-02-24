@@ -173,7 +173,7 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     allocate(umask(ewn-1,nsn-1)) ! this will be moved to main
 
 !whl - moved from findefvsstr
-    allocate(flwafact(1:upn-1,ewn,nsn))
+    allocate(flwafact(1:upn-1,ewn,nsn))  !*sfp* Note that vert dim here must agree w/ that of efvs
     flwafact = 0.0_dp
 
 ! *sfp** determine constants used in various FD calculations associated with 'findcoefst'   
@@ -304,11 +304,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                       umask,pcgsize(1))
 
   !!!!!!!!! *sfp* start debugging !!!!!!!!!!!!!!!!!!!!!!!!
-  do ew = 1, 15; do ns = 16, 30     !*sfp* hack of mask for Ross exp.
-    if( umask(ew,ns) == 41 )then
-        umask(ew,ns) = 105
-    end if
-  end do; end do
+!  do ew = 1, 15; do ns = 16, 30     !*sfp* hack of mask for Ross exp.
+!    if( umask(ew,ns) == 41 )then
+!        umask(ew,ns) = 105
+!    end if
+!  end do; end do
 !  print *, 'mask = '
 !  print *, umask(1:18,17:35)
 !  print *, umask(1:18,100:115)
@@ -693,17 +693,29 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! *sfp** eff. strain rate (squared)
     effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
              0.25_dp * (vgradew + ugradns)**2 + &
-             f1 * (ugradup**2 + vgradup**2)
+             f1 * (ugradup**2 + vgradup**2) + effstrminsq   !*sfp* added this, r.e. discussion below
 
     ! *sfp** set eff. strain rate (squared) to some min value where
     !      it falls below some threshold value, 'effstrminsq'
-    where (effstr < effstrminsq)
-      effstr = effstrminsq
-    end where
+    ! ... commented out this version, which "caps" the min eff strain rate
+    ! (and thus the max eff visc) in favor of a version that leads to a "smooth"
+    ! description of eff strain rate (and eff visc) for eff strain rate ---> 0
+    ! (capping version has a discontinuity in this function (e.g. Lemieux and Tremblay,
+    ! JGR, VOL. 114, C05009, doi:10.1029/2008JC005017, 2009)  
+
+!    where (effstr < effstrminsq)
+!      effstr = effstrminsq
+!    end where
 
     ! *sfp** p2 = (1-n)/2n, where the factor of 1/2 comes from taking 
     !      the sqr root of the squared eff. strain rate ...
-    efvs(:,ew,ns) = flwafact(:,ew,ns) * effstr**p2
+
+    !*sfp* Note that I've made the vert dims explicit here, since glide_types defines this 
+    ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
+    ! should efvs exist at cell centroids in the vert as well as horiz, as in our code, or 
+    ! should we be doing some one-sided diffs at the boundaries so that it has vert dims of upn?
+    ! For now, we populate ONLY the first 1:upn-1 values of the efvs vector.
+    efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
 
     else  
       efvs(:,ew,ns) = effstrminsq

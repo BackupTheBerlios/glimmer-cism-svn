@@ -141,15 +141,25 @@ module glide_types
   integer, parameter :: HO_EFVS_FULL = 0
   integer, parameter :: HO_EFVS_CONSTANT = 1
   integer, parameter :: HO_EFVS_MINIMUM = 2
-
-  integer, parameter :: HO_SOURCE_AVERAGED = 0
-  integer, parameter :: HO_SOURCE_EXPLICIT = 1
-  integer, parameter :: HO_SOURCE_DISABLED = 2
     !*FD Flag that indicates how effective viscosity is computed
     !*FD \begin{description}
     !*FD \item[0] compute from effective strain rate
     !*FD \item[1] constant value
     !*FD \item[2] minimum value
+
+  !*sfp* added the next two groups for HO T calcs.
+  integer, parameter :: SIA_DISP = 0
+  integer, parameter :: FIRSTORDER_DISP = 1
+  integer, parameter :: SSA_DISP = 2
+
+  integer, parameter :: SIA_BMELT = 0
+  integer, parameter :: FIRSTORDER_BMELT = 1
+  integer, parameter :: SSA_BMELT = 2
+
+  integer, parameter :: HO_SOURCE_AVERAGED = 0
+  integer, parameter :: HO_SOURCE_EXPLICIT = 1
+  integer, parameter :: HO_SOURCE_DISABLED = 2
+
   type glide_options
 
     !*FD Holds user options controlling the methods used in the ice-model
@@ -311,6 +321,24 @@ module glide_types
     !*FD \begin{description}
 
 !end whlmod
+
+    !*sfp* added
+    integer :: which_disp = 0
+    !*FD Flag that indicates method for computing the dissipation during the temperature calc.
+    !*FD \begin{description}
+    !*FD \item[0] for 0-order SIA approx
+    !*FD \item[1] for 1-st order solution (e.g. Blatter-Pattyn)
+    !*FD \item[2] for 1-st order depth-integrated solution (SSA)
+    !*FD \begin{description}
+
+    !*sfp* added
+    integer :: which_bmelt = 0
+    !*FD Flag that indicates method for computing the frictional melt rate terms during temperature calc.
+    !*FD \begin{description}
+    !*FD \item[0] for 0-order SIA approx
+    !*FD \item[1] for 1-st order solution (e.g. Blatter-Pattyn)
+    !*FD \item[2] for 1-st order depth-integrated solution (SSA)
+    !*FD \begin{description}
 
     integer :: which_ho_sparse = 0
     !*FD Flag that indicates method for solving the sparse linear system

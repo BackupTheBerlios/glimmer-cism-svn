@@ -122,11 +122,11 @@ contains
     !*FD scale parameters
     use glide_types
     use glimmer_physcon,  only: scyr, gn
-    use glimmer_paramets, only: thk0,tim0,len0, tau0, vel0, vis0, acc0!, evs0
+    use glimmer_paramets, only: thk0,tim0,len0, vel0, vis0, acc0!, evs0
     implicit none
     type(glide_global_type)  :: model !*FD model instance
 
-    tau0 = (vel0/(vis0*len0))**(1.0/gn)
+!    tau0 = (vel0/(vis0*len0))**(1.0/gn)    !*sfp* moved back to glimmer_paramets.F90
 !    evs0 = tau0 * (len0/vel0)
 
     model%numerics%ntem = model%numerics%ntem * model%numerics%tinc
@@ -431,6 +431,9 @@ contains
     call GetValue(section, 'which_ho_babc',      model%options%which_ho_babc)
     call GetValue(section, 'which_ho_efvs',      model%options%which_ho_efvs)
     call GetValue(section, 'which_ho_resid',     model%options%which_ho_resid)
+    !*sfp* added options for type of dissipation and bmelt calc. in temperature calc.
+    call GetValue(section, 'which_disp',         model%options%which_disp)
+    call GetValue(section, 'which_bmelt',        model%options%which_bmelt)
     call GetValue(section, 'which_ho_sparse',    model%options%which_ho_sparse)
     call GetValue(section, 'which_ho_sparse_fallback', model%options%which_ho_sparse_fallback)
   end subroutine handle_ho_options
@@ -455,14 +458,15 @@ contains
          'local + const flux ', &
          'flux calculation   ', &
          'none               ' /)
-    character(len=*), dimension(0:6), parameter :: marine_margin = (/ &
+    character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
          'ignore            ', &
          'no ice shelf      ', &
          'threshold         ', &
          'const calving rate', &
          'edge threshold    ', &
          'van der Veen      ', &
-         'Pattyn Grnd Line  '/)
+         'Pattyn Grnd Line  ', &
+         'Huybrechts Greenland'/)
     character(len=*), dimension(0:5), parameter :: slip_coeff = (/ &
          'zero        ', &
          'const       ', &
@@ -523,6 +527,15 @@ contains
          'vertically averaged     ', &
          'vertically explicit     ', &
          'shelf front disabled    '/)
+    !*sfp* added the next two for HO temperature calcs
+    character(len=*), dimension(0:2), parameter :: dispwhich = (/ &
+         '0-order SIA               ', &
+         '1-st order model (Blatter-Pattyn) ', &
+         '1-st order depth-integrated (SSA)' /)
+    character(len=*), dimension(0:2), parameter :: bmeltwhich = (/ &
+         '0-order SIA               ', &
+         '1-st order model (Blatter-Pattyn) ', &
+         '1-st order depth-integrated (SSA)' /)
     character(len=*), dimension(0:3), parameter :: ho_whichsparse = (/ &
          'BiCG with LU precondition  ', &
          'GMRES with LU precondition ', &
@@ -637,7 +650,19 @@ contains
     if (model%options%which_ho_resid < 0 .or. model%options%which_ho_resid >= size(ho_whichresid)) then
         call write_log('Error, HO residual input out of range', GM_FATAL)
     end if
-
+    !*sfp* added the next two for HO T calc
+    write(message,*) 'dispwhich         :',model%options%which_disp,  &
+                      dispwhich(model%options%which_disp)
+    call write_log(message)
+    if (model%options%which_disp < 0 .or. model%options%which_disp >= size(dispwhich)) then
+        call write_log('Error, which dissipation input out of range', GM_FATAL)
+    end if
+    write(message,*) 'bmeltwhich         :',model%options%which_bmelt,  &
+                      bmeltwhich(model%options%which_bmelt)
+    call write_log(message)
+    if (model%options%which_bmelt < 0 .or. model%options%which_bmelt >= size(bmeltwhich)) then
+        call write_log('Error, which bmelt input out of range', GM_FATAL)
+    end if
     write(message,*) 'ho_whichsparse        :',model%options%which_ho_sparse,  &
                       ho_whichsparse(model%options%which_ho_sparse)
     call write_log(message)
