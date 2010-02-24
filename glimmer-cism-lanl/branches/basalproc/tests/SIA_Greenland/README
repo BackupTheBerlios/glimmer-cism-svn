@@ -1,0 +1,5 @@
+Included in this directory are the best model runs to date for the SIA model type.  The necessary data files are in included.  The model can be run with the following:
+
+glide_launch.py 5kmGreenSpin_spinup.config 
+
+The config file uses the oistope, temperature anomoly derived from the oisotope record, and the specmap record.  Total model time is 120kyr for Greenland.  Also included, but initially commented out is a elevation file for the change in the elevation at the point of the temperature record.  It is probably optional and can be can be commented out if necessary.
