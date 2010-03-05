@@ -1,15 +1,15 @@
 
 module remap_glamutils      
 
-  ! *sfp** contains various subroutines needed when using LANL incremental remapping code
-  ! for thickness evolution in glam/glimmer codes
+  ! Contains utilities needed for using LANL incremental remapping code
+  ! for thickness evolution with higher-order velocity solvers
 
     use glimmer_paramets, only: sp, dp, len0, thk0, tim0, vel0
     use glide_grids,      only: periodic_boundaries, periodic_boundaries_3d
     use xls
 
     type remap_glamutils_workspace
-        ! *sfp** arrays needed to pass GLAM variables to/from inc. remapping solver
+        ! arrays needed to pass GLAM variables to/from inc. remapping solver
         real (kind = dp), pointer, dimension(:,:,:) ::   &
             thck_ir,            &
             dew_ir,   dns_ir,   &
@@ -20,33 +20,38 @@ module remap_glamutils
         real (kind = dp), pointer, dimension(:,:,:,:) :: trace_ir
         real (kind = dp) :: dt_ir
 
-        ! *sfp** mask to apply for domains where initial ice thickness limits are equivalent
-        ! to the domain edge (e.g. the locations where bcs are applied)
-
+        ! *sfp* mask to apply for domains where the initial ice thickness limits are equivalent
+        ! to the domain edge (e.g. the locations where bcs are applied). Application of this
+        ! mask at the end of the advection calc essentially throws away any material that was
+        ! transported beyond the boundaries of the initial domain (i.e. anywhere the ice thick-
+        ! was initially zero will be forced back to zero, regardless of if material was 
+        ! advected into it or not). This is mainly a hack to deal with problems on simplified
+        ! domains.
         real (kind = dp), pointer, dimension(:,:) :: mask_ir
 
         integer :: ewn_ir, nsn_ir
     end type remap_glamutils_workspace
+
     contains
 
 !----------------------------------------------------------------------
 
     subroutine horizontal_remap_init (wk, ewn, nsn, periodic_ew, periodic_ns)
-
-    ! *sfp** initialize variables for use in inc. remapping code   
+    ! initialize variables for use in inc. remapping code   
 
       implicit none
 
       type(remap_glamutils_workspace) :: wk
 
-      integer, intent(in) :: ewn, nsn   ! horizontal dimensions
-      logical, intent(in) :: periodic_ew, periodic_ns
+      ! horizontal dimensions
+      integer, intent(in) :: ewn, nsn                   
 
-!whl - to do - Set ntrace to the actual number of tracers we want to transport
-!              (e.g., ice temperature, ice age)
-!              Hardwired ntrace = 1 for now
+      ! flags from config file for applying periodic boundary conditions
+      logical, intent(in) :: periodic_ew, periodic_ns   
 
-      integer, parameter  :: ntrace = 1    ! number of tracers
+      ! NOTE: number of tracers to be mapped (must be >1, even though for 
+      ! now no tracers are being mapped)
+      integer, parameter  :: ntrace = 1    
 
       wk%dt_ir = 0.0_dp     ! time step
 
@@ -82,14 +87,12 @@ module remap_glamutils
 !----------------------------------------------------------------------
 
     subroutine horizontal_remap_final( wk )
-
-      ! *sfp** deallocate variables for use in inc. remapping code   
-
+    ! deallocate variables for use in inc. remapping code   
+    
       implicit none
 
       type(remap_glamutils_workspace) :: wk
 
-      ! deallocate arrays 
       deallocate( wk%thck_ir )
       deallocate( wk%dew_ir );  deallocate( wk%dns_ir )
       deallocate( wk%dewt_ir ); deallocate( wk%dnst_ir )
@@ -110,18 +113,15 @@ module remap_glamutils
                                     uflx,     vflx,     &
                                     stagthck,  &
                                     periodic_ew, periodic_ns)
-
-    ! *sfp** get GLAM variables in order for use in inc. remapping code   
+    ! put variables in from model into format that remapping code wants 
 
     implicit none
 
     type(remap_glamutils_workspace) :: wk
 
-!whl - to do - add comments describing the arguments
 
-    integer, intent(out) ::   &
-         ntrace           ,&! number of tracer arrays to be remapped
-         nghost             ! number of ghost cells
+    integer, intent(out) :: ntrace, &   ! no. of tracers to be remapped   
+                            nghost      ! no. of ghost cells
 
     real (kind = dp), dimension(:,:), intent(in) :: thck, uflx, vflx, stagthck
     real (kind = dp), intent(in) :: dew, dns, dt
@@ -130,18 +130,18 @@ module remap_glamutils
     logical, intent(in) :: periodic_ew, periodic_ns
 
     integer  :: ewn,  nsn
-    integer  :: ngew, ngns !Number of *extra* ghost cells (depending on whether periodic bcs are enabled) in ew and ns
+
+    ! Number of *extra* ghost cells in ew, ns directions 
+    ! (depending on whether periodic bcs are enabled) 
+    integer  :: ngew, ngns 
 
 
-!whl - Hardwire ntrace and nghost for now
-!      Initially, no tracers are actually remapped, but the remapping routine
-!       requires ntrace >= 1
-
+    ! NOTE: number of tracers to be mapped (must be >1, even though for 
+    ! now no tracers are being mapped)
     ntrace = 1
 
-!whl - The number of ghost cells is applicable only when we have a parallel code.
-!      For remapping, nghost = 2 is ideal because then no boundary updates are needed.
-!      
+    ! No. of ghost cells only comes in if code is parallel. For remapping with serial
+    ! code nghost=2 is ideal because then no boundary updates are needed
     nghost = 2
 
     ewn = size(thck, 1)
@@ -181,7 +181,7 @@ module remap_glamutils
     call periodic_boundaries(wk%ubar_ir(:wk%ewn_ir-1,:wk%nsn_ir-1,1), periodic_ew, periodic_ns, 2)
     call periodic_boundaries(wk%vbar_ir(:wk%ewn_ir-1,:wk%nsn_ir-1,1), periodic_ew, periodic_ns, 2)
 
-    !Copy the extra set of ghost cells over
+    !*tjb* Copy the extra set of ghost cells over
     !Hard coded 5 as the source for these ghost cells,
     !because we go in two rows for the low-end ghost cells,
     !then go in two more for the source of the first two
@@ -196,7 +196,7 @@ module remap_glamutils
         wk%vbar_ir(:,wk%nsn_ir,:) = wk%ubar_ir(:,5,:)
     end if
 
-!whl - to do - Fill the tracer array with ice temperature and other tracers
+    ! eventually tracer arrays will be filled with temperature and other tracers
     wk%trace_ir(:,:,:,1) = 1.0_dp;
     wk%dt_ir = dt * tim0
 
@@ -217,7 +217,7 @@ module remap_glamutils
 !----------------------------------------------------------------------
 
     subroutine horizontal_remap_out( wk, thck, acab, dt, periodic_ew, periodic_ns )
-    ! *sfp** take output from inc. remapping and put back in GLAM format
+    ! take output from inc. remapping and put back into format that model likes
 
     implicit none
 
@@ -245,7 +245,14 @@ module remap_glamutils
     !Apply accumulation
     thck = thck + acab
     
-    !Remove thickness from previously masked out locations
+    ! *sfp* Remove thickness from previously ice free locations.
+    ! NOTE: this really only applys to a domain where we don't want the
+    ! ice to advance via remapping. This is ok for now, as we don't have a 
+    ! good scheme for calculating a marginal velocity (except in the case of 
+    ! floating ice) in which case the flux at a lateral margin into a neighboring
+    ! (previously) ice free grid cell would be suspect anyway. Nevertheless, this
+    ! should probably be added as a config file option (apply the mask or not) if
+    ! only to remind us that we are making that choice at present. 
     thck = thck * wk%mask_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn)
     
     end subroutine horizontal_remap_out
@@ -253,4 +260,3 @@ module remap_glamutils
 !----------------------------------------------------------------------
 
 end module remap_glamutils
-
