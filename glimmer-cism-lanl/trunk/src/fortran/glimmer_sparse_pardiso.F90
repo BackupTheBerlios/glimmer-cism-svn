@@ -4,12 +4,21 @@ module glimmer_sparse_pardiso
     
     use glimmer_sparse_type
     use glimmer_global, only: dp
+#ifdef HAVE_ISO_C_BINDING
     use ISO_C_BINDING, only: C_INTPTR_T
+#endif
+#ifdef _OPENMP
+    use OMP_LIB
+#endif
     implicit none
 
     type pardiso_solver_workspace
         !*FD Memory addresses used internally by PARDISO
+#ifdef HAVE_ISO_C_BINDING
         integer(kind=C_INTPTR_T), dimension(64) :: pt
+#else
+        integer(kind=size_t), dimension(64) :: pt
+#endif
        !*FD Error messages from pardisoinit: 0 no error, -10 no license, -11
         !*FD licence expired (?), -12 wrong user or hostname.
         integer(kind=4) :: error
@@ -48,7 +57,11 @@ contains
         opt%solver = 0
         opt%tolerance = 1.d-6
         opt%iterative = .TRUE.  ! true for iterative/hybrid method
-        opt%processors = 12  ! Number of processors
+#ifdef _OPENMP
+	opt%processors = OMP_GET_MAX_THREADS()
+#else
+        opt%processors = 1  ! Number of processors
+#endif
     end subroutine pardiso_default_options
 
     subroutine pardiso_allocate_workspace(matrix, options, workspace, max_nonzeros_arg)
@@ -166,7 +179,7 @@ contains
                      1, 1, options%iparm, &
                      mesglvl, rhs, solution, pardiso_solve,workspace%dparm)
 #endif
-        if (options%iparm(20) .GT. 0) then
+        if (options%iterative) then
             niters = options%iparm(20) ! CGS iterations
 	else
             niters = options%iparm(7) ! Direct iterations

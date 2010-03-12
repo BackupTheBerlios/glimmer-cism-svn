@@ -327,5 +327,13 @@ fi
 AC_SUBST(GLIMMER_CVS_VERS)
 AM_CONDITIONAL([HAVE_CVS],[test "$have_cvs_entries" == "yes"])
 
+# checking for f2003 command line parser
+AC_MSG_CHECKING([for f2003 intrinsic ISO_C_BINDING module])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([],
+               [ use ISO_C_BINDING, only: C_INTPTR_T ])],
+               [AC_DEFINE(HAVE_ISO_C_BINDING,,[defined if you have fortran 2003 intrinsics for C data type binding])
+                AC_MSG_RESULT(yes)], [AC_MSG_RESULT(no)])
+
+
 AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile])
 AC_OUTPUT([glimmer-config src/fortran/glimmer_vers.F90.in])
