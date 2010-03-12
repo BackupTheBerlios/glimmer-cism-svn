@@ -27,12 +27,12 @@ module testsFG
 !
 ! ELB 3/29/05; 7/27/07; 7/29/08
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+   use glimmer_global, only : dp
    public :: testF, testG
    private :: bothexact, p3, p4
 
    ! DOUBLE PRECISION DESIRABLE:
-   integer, parameter, public :: kind=8
+   integer, parameter, public :: kind=dp
 
    real(kind), parameter, public :: SperA = 31556926.0  ! 365.2422 days
    real(kind), parameter, public :: g=9.81       ! m/s^2; accel of gravity

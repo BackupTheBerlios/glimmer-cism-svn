@@ -422,13 +422,13 @@ contains
     type(simple_climate) :: climate         !*FD structure holding climate info
     type(glide_global_type) :: model        !*FD model instance
     real(kind=rk), intent(in) :: time                !*FD current time
-    real(4), intent(in) :: which_test                !*FD  Which exact test (F=0,G=1)
-    real(4), intent(in) :: which_call                !*FD  0 = surface temp, 1= mass balance
+    real(sp), intent(in) :: which_test                !*FD  Which exact test (F=0,G=1)
+    real(sp), intent(in) :: which_call                !*FD  0 = surface temp, 1= mass balance
     integer  :: ns,ew,lev,center
     !verification
-    real(8) ::  t, r, z, x, y                       !in variables
-    real(8) ::  H, TT, U, w, Sig, M, Sigc        !out variables
-    real(8) :: H_0
+    real(dp) ::  t, r, z, x, y                       !in variables
+    real(dp) ::  H, TT, U, w, Sig, M, Sigc        !out variables
+    real(dp) :: H_0
     center = (model%general%ewn - 1)*.5
     if (which_call .eq. 0.0 .or. which_call .eq. 2.0) then
         !point by point call to the function 

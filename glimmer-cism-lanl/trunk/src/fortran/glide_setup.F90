@@ -459,13 +459,13 @@ contains
          'flux calculation   ', &
          'none               ' /)
     character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
-         'ignore            ', &
-         'no ice shelf      ', &
-         'threshold         ', &
-         'const calving rate', &
-         'edge threshold    ', &
-         'van der Veen      ', &
-         'Pattyn Grnd Line  ', &
+         'ignore              ', &
+         'no ice shelf        ', &
+         'threshold           ', &
+         'const calving rate  ', &
+         'edge threshold      ', &
+         'van der Veen        ', &
+         'Pattyn Grnd Line    ', &
          'Huybrechts Greenland'/)
     character(len=*), dimension(0:5), parameter :: slip_coeff = (/ &
          'zero        ', &
@@ -529,18 +529,18 @@ contains
          'shelf front disabled    '/)
     !*sfp* added the next two for HO temperature calcs
     character(len=*), dimension(0:2), parameter :: dispwhich = (/ &
-         '0-order SIA               ', &
+         '0-order SIA                       ', &
          '1-st order model (Blatter-Pattyn) ', &
-         '1-st order depth-integrated (SSA)' /)
+         '1-st order depth-integrated (SSA) ' /)
     character(len=*), dimension(0:2), parameter :: bmeltwhich = (/ &
-         '0-order SIA               ', &
-         '1-st order model (Blatter-Pattyn) ', &
+         '0-order SIA                      ', &
+         '1-st order model (Blatter-Pattyn)', &
          '1-st order depth-integrated (SSA)' /)
     character(len=*), dimension(0:3), parameter :: ho_whichsparse = (/ &
-         'BiCG with LU precondition  ', &
-         'GMRES with LU precondition ', &
-         'UMFPACK Unsymmetric Multifrontal   ',&
-         'PARDISO Parllel Direct Method'/)
+         'BiCG with LU precondition       ', &
+         'GMRES with LU precondition      ', &
+         'UMFPACK Unsymmetric Multifrontal',&
+         'PARDISO Parllel Direct Method   '/)
     call write_log('GLIDE options')
     call write_log('-------------')
     write(message,*) 'I/O parameter file      : ',trim(model%funits%ncfile)
