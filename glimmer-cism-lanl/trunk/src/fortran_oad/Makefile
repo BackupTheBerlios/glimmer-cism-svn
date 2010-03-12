@@ -126,7 +126,12 @@ F90_FILES= \
 
 INC_FILES=config.inc glide_mask.inc  glide_nan.inc  glimmer_rst_body.inc  glimmer_rst_head.inc
 
-default: sources numCore.pre.xb.x2w.w2f.post.f90
+#default: sources numCore.pre.xb.x2w.w2f.post.f90
+default: sources testRose
+
+
+testRose: numCore.f90
+	${ROSE_INST_DIR}/bin/testTranslator $<
 
 numCore.pre.xb.x2w.w2f.post.f90 : toolChain
 
