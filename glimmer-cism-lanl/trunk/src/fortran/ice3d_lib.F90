@@ -1930,7 +1930,7 @@ max_vel = maxval(sqrt(ustar**2 + vstar**2))
       !Adjust boundaries if using periodic boundary conditions.
       !REFACTORED CODE BELOW
       call periodic_boundaries_3d(txz,PERIODIC_X,PERIODIC_Y)
-      call periodic_boundaries_3d(txy,PERIODIC_X,PERIODIC_Y)
+      call periodic_boundaries_3d(tyz,PERIODIC_X,PERIODIC_Y)
       call periodic_boundaries_3d(txx,PERIODIC_X,PERIODIC_Y)
       call periodic_boundaries_3d(tyy,PERIODIC_X,PERIODIC_Y)
       call periodic_boundaries_3d(txy,PERIODIC_X,PERIODIC_Y)

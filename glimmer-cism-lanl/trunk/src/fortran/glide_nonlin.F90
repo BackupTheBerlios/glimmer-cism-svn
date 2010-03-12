@@ -170,10 +170,10 @@ contains
         do i = 1,vec_size
             norm1 = norm1 + (vec_correction_new(i) - vec_correction(i)) ** 2
             norm2 = norm2 + vec_correction(i) ** 2
-            if (abs(vec_correction_new(i)) > vmean * 4. * vstd) then
-            else
-                norm3 = norm3 + vec_correction_new(i) ** 2
-            endif
+            !if (abs(vec_correction_new(i)) > vmean * 4. * vstd) then
+            !else
+            norm3 = norm3 + vec_correction_new(i) ** 2
+            !endif
             norm4 = norm4 + vec_correction(i) * vec_correction_new(i)
             norm5 = norm5 + vec_new(i) ** 2
         end do
