@@ -133,7 +133,7 @@ numCore.pre.xb.x2w.w2f.post.f90 : toolChain
 toolChain : numCore.f90
 	openad -c -m f $<
 
-numCore.f90:  $(F90_FILES:.F90=.f90)
+numCore.f90:  iso_c_binding.f90 $(F90_FILES:.F90=.f90)
 	cat $^ > $@
 
 sources: $(INC_FILES) $(F90_FILES:.F90=.f90)
@@ -152,4 +152,5 @@ config.inc:
 	gfortran -o $@ -I ./ -E -Xpreprocessor -P $^
 
 clean: 
-	rm -f *.F90 *.inc *.f90 numCore.f90
+	rm -f $(F90_FILES:.F90=.f90) $(F90_FILES) *.inc 
+	rm -f numCore.f90 *.mod
