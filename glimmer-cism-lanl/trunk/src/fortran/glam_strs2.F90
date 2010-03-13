@@ -1,62 +1,54 @@
-!*sfp* include macros for glide mask definitions
+
+! "glam_strs2.F90"
+!
+! 3d velocity calculation based on Blatter/Pattyn, 1st-order equations, by Tony Payne (Univ.
+! of Bristol) and Steve Price (Univ. of Bristol / Los Alamos Nat. Lab.). Boundary conditions
+! available include periodic (lateral), free surface, zero slip at bed, specified basal 
+! traction at bed, and specified basal yield stress at bed (all three of which are implemented
+! through various verions of the specified traction b.c.)
+! include macros for glide mask definitions
+
 #include "glide_mask.inc"       
+
+!***********************************************************************
 
 module glam_strs2
 
-!whl - Use statements modified for glimmer
-!whl - NOTES:
-!    - Do not need in, sprs2_dp, or sa
-!    - rhoi = 917 in glam_physcon, 910 in glimmer_physcon
-!    - Added evs0 and lambda0 to glimmer_paramets
-!      Glimmer defines tau0 in terms of vis0; glam defines vis0 in terms of tau0 = rho*h*thk0
-
-!whl - to do - Make sure that any hardwired constants in the code do not assume
-!              a scaling different from the glimmer scaling.
-
-!!use glam_general, only : dp, in, sprs2_dp
-!!use glam_physcon, only : gn, rhoi, rhoo, grav, pi, scyr
-!!use glam_paramets, only : thk0, len0, vel0, vis0, tim0, lambda0, evs0
-!!use glam_funits, only : ulog, unin, betafile
+!***********************************************************************
 
 use glimmer_paramets, only : dp
 use glimmer_physcon,  only : gn, rhoi, rhoo, grav, pi, scyr
 use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, lambda0, evs0, tau0_glam
 use glimmer_log,      only : write_log
 use glide_mask
-
 use glimmer_sparse_type
 use glimmer_sparse
 
 implicit none
 
-!whl - The following were moved up from glam_strs2 subroutines
   integer, save :: locplusup
   logical, save :: lateralboundry = .false.
   integer, dimension(6), save :: loc_latbc
 
   real (kind = dp), allocatable, dimension(:,:,:),     save :: flwafact
   real (kind = dp), allocatable, dimension(:),         save :: dups
-
-!whl - The following are from module strswk
   real (kind = dp), allocatable, dimension(:,:,:,:,:), save :: corr
   real (kind = dp), allocatable, dimension(:,:,:,:),   save :: usav
   real (kind = dp), allocatable, dimension(:,:,:),     save :: tvel
-  real (kind = dp), allocatable, dimension(:,:),       save :: valubbc
   real (kind = dp), allocatable, dimension(:),         save :: dup, dupm
 
-  integer, dimension(:,:), allocatable :: typebbc
   integer, dimension(:,:), allocatable :: uindx
   integer, dimension(:,:), allocatable :: umask 
 
+  ! regularization constant for eff. strain rate to avoid infinite visc.
+  ! NOTE: would be good to explore how small this really needs to be, as 
+  ! code converges much better when this value is made larger.
   real (kind = dp), parameter :: effstrminsq = (1.0e-20_dp * tim0)**2
 
-! *sfp** 'p' are later defined as variants on 'gn', or Glen's 'n'(=3),
-!       e.g. p1=gn+1=4, etc ... 
-  real (kind = dp) :: p1, p2, dew2, dns2, dew4, dns4
+  real (kind = dp) :: p1, p2    ! variants of Glen's "n" (e.g. n, (1-n)/n)
+  real (kind = dp) :: dew2, dns2, dew4, dns4
 
-!whl - The following are from module strcalcs
-!whl - Should these have the save attribute?
-
+  ! combinations of coeffs. used in momentum balance calcs
   real (kind = dp) :: cdxdy
   real (kind = dp), dimension(2) :: cdxdx
   real (kind = dp), dimension(:),   allocatable :: cdsds, cds
@@ -66,31 +58,29 @@ implicit none
   real (kind = dp), dimension(:), allocatable :: d2sigmadew2, d2sigmadns2, d2sigmadewdns
   real (kind = dp) :: d2sigmadewdsigma, d2sigmadnsdsigma
 
+  ! vectors of coeffs. used for switching symmetric solution subroutines between calc.
+  ! of x-comp of vel or y-comp of vel
   real (kind = dp), dimension(2), parameter ::   &
            oneorfour = (/ 1.0_dp, 4.0_dp /),     &
            fourorone = (/ 4.0_dp, 1.0_dp /),     &
            oneortwo  = (/ 1.0_dp, 2.0_dp /),     &
            twoorone  = (/ 2.0_dp, 1.0_dp /)
 
-!*sfp** coeff. for forward diff. template
+  ! coeff. for forward differencing template, used for stress bcs at lateral boundaries
   real (kind = dp), dimension(3), parameter ::   &
            onesideddiff = (/ -3.0_dp, 4.0_dp, -1.0_dp /)
 
-!whl - The following are from module geomderv
+  ! geometric 2nd and cross-derivs
   real (kind = dp), dimension(:,:), allocatable :: &
-    d2thckdew2, d2usrfdew2, d2thckdns2, d2usrfdns2, d2thckdewdns, d2usrfdewdns
+              d2thckdew2, d2usrfdew2, d2thckdns2, d2usrfdns2, d2thckdewdns, d2usrfdewdns
 
-!whl - The following are from module pcgdwk.
-!whl - save attribute?
-
+  ! variables for use in sparse matrix calculation
   real (kind = dp), dimension(:), allocatable :: pcgval, rhsd
   integer, dimension(:), allocatable :: pcgcol, pcgrow
   integer, dimension(2) :: pcgsize
   integer :: ct
 
-!whl - The following is from glam_funits
   integer, parameter :: unin = 90
-
 
 
 !***********************************************************************
@@ -98,15 +88,13 @@ implicit none
 contains
 
 !***********************************************************************
-!whl - added a subroutine to be called at initialization (in lieu of 'first')
 
 
 subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
                                        dew,   dns,           &
                                        sigma, stagsigma )
 
-! Allocate arrays and initialize variables.
-
+    ! Allocate arrays and initialize variables.
     implicit none
 
     integer, intent(in) :: ewn, nsn, upn
@@ -117,15 +105,6 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
 
     integer :: up
 
-!whl - to do - Many tasks currently done in glam.F90 should be done here or elsewhere.
-! - Read in namelist values from glam.nml
-! - Read in restart values?
-! - Allocate arrays if not already done in glimmer
-! - Define initial thickness
-! - Mask the thickness
-! - Initialize the horizontal remapping
-! - Add ppm thickness routines
-
     allocate( dup(upn) )
     allocate( dupm(upn) )
     allocate( cvert(upn,2) )
@@ -134,27 +113,21 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     allocate( cds(upn) )
     allocate( fvert(upn,3) )
 
-    ! *sfp** Note that "dup" is defined as a vector (to allow to be read in from file - not working!!) 
-    ! *sfp*  ... assume constant value for dup based on linearly spaced sigma coord
+    ! NOTE: "dup", the sigma coordinate spacing is defined as a vector to allow it to 
+    ! be read in from file for use with non-constant vertical grid spacing. Currently, this
+    ! is not working, so the code will not give accurate results if the sigma coordinate is
+    ! not regularly spaced. - not working!!) 
     dup = (/ ( (sigma(2)-sigma(1)), up = 1, upn) /) 
-
     dupm = - 0.25_dp / dup
-
-    !eta = (/ (dup * real(up-1,dp), up = 1, upn) /)
-!whl - eta is currently not used
-!    eta = (/ (dup(up) * real(up-1,dp), up = 1, upn) /)
-
-!whl - to do - Make sure sigma levels are evenly spaced
-
     stagsigma = (sigma(1:upn-1) + sigma(2:upn)) / 2.0_dp
 
-    ! *sfp**  p1 = -1/n   - used with rate factor in eff. visc. def.
-    ! *sfp**  p2 = (1-n)/2n   - used with eff. strain rate in eff. visc. def. 
+    ! p1 = -1/n   - used with rate factor in eff. visc. def.
+    ! p2 = (1-n)/2n   - used with eff. strain rate in eff. visc. def. 
     p1 = -1.0_dp / real(gn,dp)      
     p2 = (1.0_dp - real(gn,dp)) / (2.0_dp * real(gn,dp))
 
-    dew2 = 2.0_dp * dew; dns2 = 2.0_dp * dns        ! *sfp** 2x the standard grid spacing
-    dew4 = 4.0_dp * dew; dns4 = 4.0_dp * dns        ! *sfp** 4x the standard grid spacing
+    dew2 = 2.0_dp * dew; dns2 = 2.0_dp * dns        ! 2x the standard grid spacing
+    dew4 = 4.0_dp * dew; dns4 = 4.0_dp * dns        ! 4x the standard grid spacing
 
     allocate(dsigmadew(upn),  dsigmadns(upn))
     allocate(d2sigmadew2(upn),d2sigmadns2(upn),d2sigmadewdns(upn))
@@ -162,25 +135,28 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     allocate (d2thckdew2(ewn-1,nsn-1),d2thckdns2(ewn-1,nsn-1),d2thckdewdns(ewn-1,nsn-1), &
               d2usrfdew2(ewn-1,nsn-1),d2usrfdns2(ewn-1,nsn-1),d2usrfdewdns(ewn-1,nsn-1))
 
-    allocate(valubbc(ewn-1,nsn-1),typebbc(ewn-1,nsn-1))
-    allocate(umask(ewn-1,nsn-1)) ! this will be moved to main
+    allocate(umask(ewn-1,nsn-1))                        
 
-!whl - moved from findefvsstr
-    allocate(flwafact(1:upn-1,ewn,nsn))  !*sfp* Note that vert dim here must agree w/ that of efvs
+    allocate(flwafact(1:upn-1,ewn,nsn))  ! NOTE: the vert dim here must agree w/ that of 'efvs'
+
+    allocate(dups(upn)) 
+
     flwafact = 0.0_dp
 
-! *sfp** determine constants used in various FD calculations associated with 'findcoefst'   
-! NOTE: there is some question about the definitions here vs. in write-up (see notes in subroutine)
-!whl - moved from findcoefstr
+     ! define constants used in various FD calculations associated with the 
+     ! subroutine 'findcoefst'   
      call calccoeffsinit(upn, dew, dns)
 
-!whl - moved from vertintg
-    allocate(dups(upn)) 
     dups = (/ (sigma(up+1) - sigma(up), up=1,upn-1), 0.0d0 /)
 
 end subroutine glam_velo_fordsiapstr_init
 
+
 !***********************************************************************
+
+! Note that this is the driver subroutine, called from 'run_ho_diagnostic' in
+! 'glide_velo_higher.F90'. In turn, 'run_ho_model' is called from 'inc_remap_driver' in
+! 'glam.F90', and 'inc_remap_driver' is called from 'glide_tstep_ps' in 'glide.F90'.
 
 subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  dew,      dns,          &
@@ -206,140 +182,113 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
-  integer, dimension(:,:),   intent(inout)  :: umask  !*sfp* replaces the prev., internally calc. mask
-                                                      ! ... 'inout' status allows for a minor alteration
-                                                      ! to cism defined mask, which don't necessarily 
-                                                      ! associate all/any boundaries as a unique mask value.
+  integer, dimension(:,:),   intent(inout)  :: umask  
+  ! NOTE: 'inout' status to 'umask' should be changed to 'in' at some point, 
+  ! but for now this allows for some minor internal hacks to CISM-defined mask  
+
   real (kind = dp), intent(in) :: dew, dns
 
-  real (kind = dp), dimension(:),     intent(in)  :: sigma, stagsigma
-  real (kind = dp), dimension(:,:),   intent(in)  :: thck, usrf, lsrf, topg
-  real (kind = dp), dimension(:,:),   intent(in)  :: dthckdew, dthckdns
-  real (kind = dp), dimension(:,:),   intent(in)  :: dusrfdew, dusrfdns
-  real (kind = dp), dimension(:,:),   intent(in)  :: dlsrfdew, dlsrfdns
-  real (kind = dp), dimension(:,:),   intent(in)  :: stagthck
-  real (kind = dp), dimension(:,:),   intent(in)  :: minTauf
-  real (kind = dp), dimension(:,:,:), intent(in)  :: flwa
+  real (kind = dp), dimension(:),     intent(in)  :: sigma, stagsigma       ! sigma coords
+  real (kind = dp), dimension(:,:),   intent(in)  :: thck, usrf, lsrf, topg ! geom vars
+  real (kind = dp), dimension(:,:),   intent(in)  :: dthckdew, dthckdns     ! thick grads
+  real (kind = dp), dimension(:,:),   intent(in)  :: dusrfdew, dusrfdns     ! upper surf grads
+  real (kind = dp), dimension(:,:),   intent(in)  :: dlsrfdew, dlsrfdns     ! basal surf grads
+  real (kind = dp), dimension(:,:),   intent(in)  :: stagthck               ! staggered thickness
+  real (kind = dp), dimension(:,:),   intent(in)  :: minTauf                ! till yield stress
+  real (kind = dp), dimension(:,:,:), intent(in)  :: flwa                   ! flow law rate factor
 
-  !*sfp* This is the betasquared field from CISM (externally specified), and should eventually
-  ! take the place of the subroutine 'calcbetasquared' below (for now, using this value instead
-  ! will simply be included as another option within that subroutine) 
+  ! This is the betasquared field from CISM (externally specified), and should eventually
+  ! take the place of the subroutine 'calcbetasquared' below. For now, there is simply an option
+  ! in the subroutine 'calcbetasquared' (case 9) to use this external, CISM specified value for
+  ! the betasquared field as opposed to one of the values calculated internally.
   real (kind = dp), dimension(:,:),   intent(in)  :: beta 
 
+  integer, intent(in) :: whichbabc    ! options for betasquared field to use
+  integer, intent(in) :: whichefvs    ! options for efvs calculation (calculate it or make it uniform)
+  integer, intent(in) :: whichresid   ! options for method to use when calculating vel residul
+  integer, intent(in) :: whichsparse  ! options for which method for doing elliptic solve
+  logical, intent(in) :: periodic_ew, periodic_ns  ! options for applying periodic bcs or not
 
-!whl - to do - Merge whichbabc with whichbtrc?
-  integer, intent(in) :: whichbabc
-  integer, intent(in) :: whichefvs
-  integer, intent(in) :: whichresid
-  integer, intent(in) :: whichsparse
-  logical, intent(in) :: periodic_ew, periodic_ns
+  real (kind = dp), dimension(:,:,:), intent(out) :: uvel, vvel  ! horiz vel components: u(z), v(z)
+  real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx  ! horiz fluxs: u_bar*H, v_bar*H
+  real (kind = dp), dimension(:,:,:), intent(out) :: efvs        ! effective viscosity
 
-  real (kind = dp), dimension(:,:,:), intent(out) :: uvel, vvel
-  real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx
-  real (kind = dp), dimension(:,:,:), intent(out) :: efvs
+  integer :: ew, ns, up     ! counters for horiz and vert do loops
 
-  integer :: ew, ns, up
+  real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
+  real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
-  real (kind = dp), parameter :: minres = 1.0d-4 
-  real (kind = dp), save, dimension(2) :: resid  
+  integer, parameter :: cmax = 750                  ! max no. of iterations
+  integer :: counter                                ! iteation counter 
+  character(len=100) :: message                     ! error message
 
-  integer, parameter :: cmax = 100
-  integer :: counter 
-  character(len=100) :: message
-
-!*sfp* needed to incorporate generic wrapper to solver
+  ! variables used for incorporating generic wrapper to sparse solver
   type(sparse_matrix_type) :: matrix
   real (kind = dp), dimension(:), allocatable :: answer
   real (kind = dp) :: err
   integer :: iter
 
 
-!whl - Moved initialization stuff to glam_velo_fordsiapstr_init
-
-!whl - Took these out of initialization because these will change
-!      for prognostic thickness
-
-  ! *sfp** geometric 1st deriv. for generic input variable 'ipvr',
-  !      output as 'opvr' (includes 'upwinding' for boundary values)
+  ! calc geometric 2nd deriv. for generic input variable 'ipvr', returns 'opvr'
   call geom2ders(ewn, nsn, dew, dns, usrf, stagthck, d2usrfdew2, d2usrfdns2)
   call geom2ders(ewn, nsn, dew, dns, thck, stagthck, d2thckdew2, d2thckdns2)
 
-  ! *sfp** geometric (2nd) cross-deriv. for generic input variable 'ipvr', output as 'opvr'
+  ! calc geometric 2nd cross-deriv. for generic input variable 'ipvr', returns 'opvr'
   call geom2derscros(dew, dns, thck, stagthck, d2thckdewdns)
   call geom2derscros(dew, dns, usrf, stagthck, d2usrfdewdns)
 
-  ! *sfp* These are passed a number of times below, but I don't think they are used anymore - remove?
-!  valubbc = 0.0_dp
-!  typebbc = 0.0_dp
-
-  ! *sfp** make a 2d array identifying if the associated point has zero thickness,
-  !      has non-zero thickness and is interior, or has non-zero thickness
-  !      and is along a boundary
-
-  !*sfp* This subroutine has been altered from its original form (was a function, still included
-  ! below w/ subroutine but commented out) to allow for a tweak to the CISM calculated mask (adds
-  ! in an unique number for ANY arbritray boundary, be it land, water, or simply at the edge of
-  ! the calculation domain). 
-  !
-  ! As of late July 2009, call to this function should no longer be necessary, as the mask and 
-  ! code here have been altered so that the general mask can be used for flagging the appropriate
-  ! boundary conditions.
-  ! call maskvelostr(ewn, nsn, thck, stagthck, umask)
-
   allocate(uindx(ewn-1,nsn-1))
 
-  ! *sfp** if a point from the 2d array 'mask' is associated with non-zero ice thickness,
-  !      either a boundary or interior point, give it a unique number. If not, give it a zero			 
-  uindx = indxvelostr(ewn, nsn, upn,  &
-                      umask,pcgsize(1))
+  ! If a point from the 2d array 'mask' is associated with a non-zero ice thickness
+  ! assign it a unique number. If not assign a zero.			 
+  uindx = indxvelostr(ewn, nsn, upn, umask,pcgsize(1))
 
-  !!!!!!!!! *sfp* start debugging !!!!!!!!!!!!!!!!!!!!!!!!
-!  do ew = 1, 15; do ns = 16, 30     !*sfp* hack of mask for Ross exp.
+
+!*sfp* hack of mask for Ross exp.
+!  do ew = 1, 15; do ns = 16, 30     
 !    if( umask(ew,ns) == 41 )then
 !        umask(ew,ns) = 105
 !    end if
 !  end do; end do
-!  print *, 'mask = '
-!  print *, umask(1:18,17:35)
-!  print *, umask(1:18,100:115)
-!  print *, ' '
-!  pause
-!  print *, 'uindx = '
-!  print *, uindx
-!  pause
-  !!!!!!!!! stop debugging !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+
+  ! allocate space for storing temporary across-flow comp of velocity
   allocate(tvel(upn,ewn-1,nsn-1)) 
   tvel = 0.0_dp
  
-  ! *sfp** allocate space for variables used by 'mindcrash' function
+  ! allocate space for variables used by 'mindcrash' function (unstable manifold correction)
   allocate(corr(upn,ewn-1,nsn-1,2,2),usav(upn,ewn-1,nsn-1,2))
 
-  ! *sfp** an initial guess at the size of the sparse matrix
+  ! make an initial guess at the size of the sparse matrix
   pcgsize(2) = pcgsize(1) * 20
 
-  ! *sfp** allocate space matrix variables
+  ! allocate space matrix variables
   allocate (pcgrow(pcgsize(2)),pcgcol(pcgsize(2)),rhsd(pcgsize(1)), &
             pcgval(pcgsize(2)))
   allocate(matrix%row(pcgsize(2)), matrix%col(pcgsize(2)), &
             matrix%val(pcgsize(2)), answer(pcgsize(1)))
 
-  !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
-  
-  resid = 1.0_dp
+  ! set residual and iteration counter to initial values
+  resid = 1.0_dp    
   counter = 1
 
-  ! *sfp** main iteration on stress, vel, and eff. visc. solutions,
+  ! print some info to the screen to update on iteration progress
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics solver'
   print *, ' '
   print *, 'iter #     uvel resid          vvel resid         target resid'
   print *, ' '
 
+  ! ****************************************************************************************
+  ! START of Picard iteration
+  ! ****************************************************************************************
+ 
+  ! Picard iteration; continue iterating until resid falls below specified tolerance
+  ! or the max no. of iterations is exceeded
   do while ( maxval(resid) > minres .and. counter < cmax)
-!  do while ( resid(1) > minres .and. counter < cmax)  ! *sfp** for 1d solutions (d*/dy=0) 
+  !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
-    ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
+    ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
                      stagsigma,  counter,    &
                      whichefvs,  efvs,     &
@@ -349,7 +298,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dusrfdns,   dthckdns, &
                      umask)
 
-    ! *sfp** calculation of coeff. for stress balance calc. 
+    ! calculate coeff. for stress balance in y-direction 
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &
                      2,           efvs,           &
@@ -362,21 +311,27 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      d2usrfdewdns,d2thckdewdns,   &
                      dlsrfdew,    dlsrfdns,       &
                      stagthck,    whichbabc,      &
-                     valubbc,     typebbc,        &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
                      beta, counter )
 
-    ! *sfp** solve 'Ax=b' for the Y component of velocity
+    ! put vels and coeffs from 3d arrays into sparse vector format
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
 
+    ! solve 'Ax=b' for the y-component of velocity using method "which_sparse"
     call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
+    ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
 
+    ! NOTE: y-component of velocity that comes out is called "tvel", to differentiate it
+    ! from the y-vel solution from the previous iteration, which is maintained as "vvel". 
+    ! This is necessary since we have not yet solved for the x-comp of vel, which needs the
+    ! old prev. guess as an input (NOT the new guess).
 
-! implement periodic boundary conditions in V (if flagged)
+
+! implement periodic boundary conditions in y (if flagged)
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     if( periodic_ns )then
         tvel(:,1:ewn-1,nsn-1) = tvel(:,1:ewn-1,2)
@@ -397,12 +352,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    end if
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-    !  ... however, call it 'tvel' so that 'vvel', the solution from the previous iteration,
-    !  gets passed to the solver for 'uvel' (rather than the new value of 'vvel' ... why?) 
 
-    ! *sfp** calculation of coeff. for stress balance calc. 
-
-    ! - along-flow stress balance -
+    ! calculate coeff. for stress balance calc. in x-direction 
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &
                      1,           efvs,           &
@@ -415,26 +366,28 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      d2usrfdewdns,d2thckdewdns,   &
                      dlsrfdew,    dlsrfdns,       &
                      stagthck,    whichbabc,      &
-                     valubbc,     typebbc,        &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
                      beta, counter )
 
 
-    ! *sfp** solve 'Ax=b' for the X component of velocity
+    ! put vels and coeffs from 3d arrays into sparse vector format
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel )
 
+    ! solve 'Ax=b' for the x-component of velocity using method "which_sparse"
     call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
+    ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
 
-    ! *sfp** correct the velocity estimates using the "unstable manifold" correction scheme
+    ! apply unstable manifold correction to converged velocities
     uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
     vvel = mindcrshstr(2,whichresid,tvel,counter,resid(2))
 
-! implement periodic boundary conditions in U (if flagged)
+
+! implement periodic boundary conditions in x (if flagged)
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     if( periodic_ns )then
         uvel(:,1:ewn-1,nsn-1) = uvel(:,1:ewn-1,2)
@@ -455,23 +408,23 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    end if
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-    counter = counter + 1
+    counter = counter + 1   ! advance the iteration counter
 
-    ! *sfp** output status of iteration: iteration number, max residual, and location of max residual
+    ! output the iteration status: iteration number, max residual, and location of max residual
+    ! (send output to the screen or to the log file, per whichever line is commented out) 
     print '(i3,3g20.6)', counter, resid(1), resid(2), minres
+    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
+    !call write_log (message)
 
-!whl - write this info to the log file
-!    write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
-!    call write_log (message)
   end do
 
+  ! ****************************************************************************************
+  ! END of Picard iteration
+  ! ****************************************************************************************
 
-!*sfp* removed call to 'calcstrsstr' here (stresses now calculated externally)
-
-  
   do ns = 1,nsn-1
       do ew = 1,ewn-1 
-      ! *sfp** calc. fluxes from converged vel. fields (for input to thickness evolution subroutine)
+      ! calc. fluxes from converged vel. fields (needed for input to thickness evolution subroutine)
          if (umask(ew,ns) > 0) then
              uflx(ew,ns) = vertintg(upn, sigma, uvel(:,ew,ns)) * stagthck(ew,ns)
              vflx(ew,ns) = vertintg(upn, sigma, vvel(:,ew,ns)) * stagthck(ew,ns)
@@ -480,7 +433,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   end do
 
 
-  ! *sfp* de-allocation of sparse matrix solution variables 
+  ! de-allocation sparse matrix solution variables 
   deallocate(tvel)
   deallocate(uindx,corr,usav)
   deallocate(pcgval,pcgrow,pcgcol,rhsd)
@@ -495,9 +448,8 @@ end subroutine glam_velo_fordsiapstr
 
 function indxvelostr(ewn,  nsn,  upn,  &
                      mask, pointno)
-
-! *sfp** if a point from the 2d array 'mask' is associated with non-zero ice thickness, 
-!      either a boundary or interior point, give it a unique number. If not, give it a zero.
+!if a point from the 2d array 'mask' is associated with non-zero ice thickness, 
+! (either a boundary or interior point) give it a unique number. If not, give it a zero.
 
   implicit none
 
@@ -521,18 +473,12 @@ function indxvelostr(ewn,  nsn,  upn,  &
       end do
   end do
 
-! add twop ghost points at upper and lower boundaries
-
+  ! add two ghost points at upper and lower boundaries (needed for sfc and basal bcs)
   pointno = (pointno - 1) * (upn + 2)
 
   return
 
 end function indxvelostr
-
-!***********************************************************************
-
-!*sfp* removed subroutine 'calcgdststr' here, which calculated 3d driving stress
-! arrays (no longer needed - stress fields calc. externally now)
 
 !***********************************************************************
 
@@ -545,9 +491,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
                        dusrfdns,  dthckdns,  &
                        mask)
 
-! *sfp** calculate the eff. visc.	
-! (NOTE: this version looks to AGREE with the version I came up with in the write-up, 
-!        with the correct number of cross terms.)
+  ! calculate the eff. visc.	
 
   implicit none 
 
@@ -567,17 +511,17 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
   integer, dimension(2) :: mew, mns
 
-! *sfp** this is the 1/4(X0/H0)^2 factor in front of the term ((dv/dz)^2+(du/dz)^2) 
+! *sfp* this is the 1/4(X0/H0)^2 factor in front of the term ((dv/dz)^2+(du/dz)^2) 
   real (kind = dp), parameter :: f1 = 0.25_dp * (len0 / thk0)**2
 
   select case(whichefvs)
 
-  case(0)       ! *sfp** calculate eff. visc. from eff. strain rate, etc
+  case(0)       ! calculate eff. visc. from eff. strain rate, etc
 
   if (1 == counter) then
     do ns = 2,nsn-1; do ew = 2,ewn-1
     if (thck(ew,ns) > 0.0_dp) then
-      ! *sfp** term: 1/2*A^(-1/n)
+      ! *sfp** this is the term: 1/2*A^(-1/n)
       forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
     end if; end do; end do
   end if
@@ -613,25 +557,33 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
                          sum(dusrfdns(ew-1:ew,ns-1:ns)), &
                          sum(dthckdns(ew-1:ew,ns-1:ns)))
 
-    ! *sfp** eff. strain rate (squared)
+    ! eff. strain rate squared
     effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
              0.25_dp * (vgradew + ugradns)**2 + &
-             f1 * (ugradup**2 + vgradup**2)
+             f1 * (ugradup**2 + vgradup**2)   
+!             f1 * (ugradup**2 + vgradup**2) + effstrminsq   
 
-    ! *sfp** set eff. strain rate (squared) to some min value where
-    !      it falls below some threshold value, 'effstrminsq'
+    ! *sfp* set eff. strain rate (squared) to some min value where it falls below some 
+    ! threshold value, 'effstrminsq'. Commented out the old version below, which "caps" 
+    ! the min eff strain rate (and thus the max eff visc) in favor of a version that 
+    ! leads to a "smooth" description of eff strain rate (and eff visc). The change for 
+    ! new version is that the value of 'effstrminsq' simply gets added in with the others
+    ! (e.g. Pattyn 3d model). The issues w/ the capping approach are discussed in:
+    ! Lemieux and Tremblay, JGR, VOL. 114, C05009, doi:10.1029/2008JC005017, 2009)  
+
+    ! Old "capping" version
     where (effstr < effstrminsq)
       effstr = effstrminsq
     end where
 
-    ! *sfp** p2 = (1-n)/2n, where the factor of 1/2 comes from taking 
-    !      the sqr root of the squared eff. strain rate ...
 
-    !*sfp* Note that I've made the vert dims explicit here, since glide_types defines this 
+    ! *sfp* Note that I've made the vert dims explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
     ! should efvs exist at cell centroids in the vert as well as horiz, as in our code, or 
     ! should we be doing some one-sided diffs at the boundaries so that it has vert dims of upn?
     ! For now, we populate ONLY the first 1:upn-1 values of the efvs vector.
+
+    ! Below, p2=(1-n)/2n. The 1/2 is from taking the sqr root of the squared eff. strain rate
     efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
 
     else  
@@ -640,26 +592,15 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
    end do
    end do
 
-  case(1)       ! *sfp** set a constant eff. visc. 
+  case(1)       ! set the eff visc to some const value 
 
     efvs = 1.0_dp / 100.0_dp
 
-!whl - changed default to case 2
-! *sfp* - not sure what this does. Doesn't make sense to assign the value of 
-! the eff. visc. to the value of the min eff. strain rate. Consider removing this option?
-  case (2)
-
-    efvs = effstrminsq
-  
   end select
 
   return
 
 end subroutine findefvsstr
-
-!***********************************************************************
-
-!*sfp* removed 'calcstrsstr' subroutine here (stresses now calculated externally)
 
 !***********************************************************************
 
@@ -672,9 +613,11 @@ function vertideriv(upn, varb, thck)
   real (kind = dp), intent(in) :: thck    
 
   real (kind = dp), dimension(size(varb)-1) :: vertideriv
-
-! *sfp** 'dupm' defined as -1/(2*del_sigma), in which case it seems like 
-!       there should be a '-' in front of this expression...
+  !'dupm' is defined as -1/(2*del_sigma), in which case it seems like 
+  ! there should be a '-' in front of this expression ... but note that
+  ! the negative sign is implicit by the fact that the vertical index 
+  ! increases moving downward in the ice column (up=1 is the sfc, 
+  ! up=upn is the bed).
 
   vertideriv(1:upn-1) = dupm * (varb(2:upn) - varb(1:upn-1)) / thck
 
@@ -698,7 +641,6 @@ function horizderiv(upn,     stagsigma,   &
 
   real (kind = dp) :: horizderiv(size(varb,1)-1)
   
-  ! *sfp** where does this factor of 1/4 come from ... averaging? 
   horizderiv = (varb(1:upn-1,2) + varb(2:upn,2) - varb(1:upn-1,1) - varb(2:upn,1)) / grid - &    
                 dvarbdz * (dusrfdx - stagsigma * dthckdx) / 4.0_dp
 
@@ -721,25 +663,6 @@ function getlocrange(upn, indx)
   return
 
 end function getlocrange
-
-!***********************************************************************
-
-!whl - This function is not currently used.
-
-!function getlocation(upn, indx)
-!
-!
-!  implicit none
-!
-!  integer, intent(in) :: upn
-!  integer, intent(in) :: indx
-!  integer :: getlocation
-!
-!  getlocation = (indx - 1) * (upn + 2) + 1
-!
-!  return
-!
-!end function getlocation
 
 !***********************************************************************
 
@@ -967,7 +890,6 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                        d2usrfdewdns,d2thckdewdns,   &
                        dlsrfdew,    dlsrfdns,       &
                        stagthck,    whichbabc,      &
-                       valubbc,     typebbc,        &
                        uindx,       mask,           &
                        lsrf,        topg,           &
                        minTauf,     flwa,           &    
@@ -985,7 +907,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
   real (kind = dp), dimension(:,:,:), intent(in) :: efvs, thisvel, &
                                                     othervel
-  real (kind = dp), dimension(:,:), intent(in) :: stagthck, valubbc, thisdusrfdx, &
+  real (kind = dp), dimension(:,:), intent(in) :: stagthck, thisdusrfdx,     &
                                                   dusrfdew,   dthckdew,      &
                                                   d2usrfdew2, d2thckdew2,    &
                                                   dusrfdns,   dthckdns,      &
@@ -1000,7 +922,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
   real (kind = dp), dimension(:,:,:), intent(in) :: flwa
 
-  integer, dimension(:,:), intent(in) :: mask, uindx, typebbc
+  integer, dimension(:,:), intent(in) :: mask, uindx
   integer, intent(in) :: pt, whichbabc
 
   real (kind = dp), dimension(ewn-1,nsn-1) :: betasquared
@@ -1440,7 +1362,7 @@ subroutine bodyset(ew,  ns,  up,           &
      ! (w.r.t. cols), on a new row ...
      call fillsprsemain(g,locplusup,loc,up)
 
-     rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
+     rhsd(locplusup) =  sum( croshorizmainbc(dew,           dns,            &
                                             slopex,        slopey,         &
                                             dsigmadew(up), dsigmadns(up),  &
                                             pt,            bcflag,         &
