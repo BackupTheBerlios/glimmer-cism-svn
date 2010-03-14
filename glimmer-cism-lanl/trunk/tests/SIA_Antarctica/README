@@ -2,4 +2,6 @@ Included in this directory are the best model runs to date for the SIA model typ
 
 glide_launch.py 10kmAntSpin.config 
 
-The config file uses the temperature anomoly, and the specmap record.  Total model time is 125kyr for Antarctica.  
+The config file uses the temperature anomoly, and the specmap record.  Total model time is 125kyr for Antarctica. 
+
+An uptodate data file can be found at http://websrv.cs.umt.edu/isis/index.php/Data.  
