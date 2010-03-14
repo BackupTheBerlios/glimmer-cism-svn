@@ -146,7 +146,10 @@ subroutine spin_temp_config(config,temp)
     call coordsystem_allocate(model%general%ice_grid, temp%presartm)
     call coordsystem_allocate(model%general%ice_grid, temp%arng)
     call coordsystem_allocate(model%general%ice_grid, temp%tinvp)
-    
+    !Set inital temp field to 0 for antarctica
+    if (temp%model_type .eq. 0) then 
+      model%temper%temp = -10.0 
+    end if
     if (len(trim(temp%ele_fname)) .ne. 0) then
       call glimmer_read_ts(temp%ele_ts,temp%ele_fname,1)
     end if
