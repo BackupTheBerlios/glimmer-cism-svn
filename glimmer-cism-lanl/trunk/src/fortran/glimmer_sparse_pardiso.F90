@@ -1,9 +1,13 @@
+#ifdef HAVE_CONFIG_H
+#include "config.inc"
+#endif
+
 module glimmer_sparse_pardiso
     !*FD This module builds on the glimmer_sparse module to provide an 'easy'
     !*FD interface to PARDISO.
     
     use glimmer_sparse_type
-    use glimmer_global, only: dp
+    use glimmer_global
 #ifdef HAVE_ISO_C_BINDING
     use ISO_C_BINDING, only: C_INTPTR_T
 #endif
