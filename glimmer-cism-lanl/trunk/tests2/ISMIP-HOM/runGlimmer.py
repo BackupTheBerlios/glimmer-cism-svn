@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # This script runs ISMIP-HOM experiments using Glimmer.
 # Output files are written in the "output" subdirectory.
 # The script loops over experiments performing the following three steps:
@@ -28,7 +29,7 @@ if __name__ == '__main__':
   import ConfigParser
   from optparse import OptionParser
   from math import tan, sin, pi, exp
-  from Scientific.IO.NetCDF import NetCDFFile
+  from netCDF import *
 
 # Parse the command line arguments
   parser = OptionParser()
@@ -91,7 +92,10 @@ if __name__ == '__main__':
       configFile.close()
 
 #     Create the netCDF input file needed by Glimmer
-      netCDFfile = NetCDFFile(filename+'.nc','w')
+      if netCDF_module == 'netCDF4':
+        netCDFfile = NetCDFFile(filename+'.nc','w',format='NETCDF3_CLASSIC')
+      else:
+        netCDFfile = NetCDFFile(filename+'.nc','w')
       netCDFfile.createDimension('time',1)
       netCDFfile.createDimension('x1',nx)   # unstaggered grid
       netCDFfile.createDimension('y1',ny)
@@ -197,10 +201,20 @@ if __name__ == '__main__':
             x = float(i)/(nx-3)   # In a more perfect world: x = (i+0.5)/(nx-2)
             for j in range(ny-2):
               y = float(j)/(ny-3) # In a more perfect world: y = (j+0.5)/(ny-2)
-              if experiment == 'f':
-                ISMIP_HOMfile.write('\t'.join(map(str,[x,y,data[0][0][-1,j,i][0]]+[v[-1,level,j,i][0] for (v,level) in data[1:]]))+'\n')
+              if netCDF_module == 'Scientific.IO.NetCDF':
+                if experiment in ('a','c'):
+                  ISMIP_HOMfile.write('\t'.join(map(str,[x,y]+[v[0,level,j,i][0] for (v,level) in data]))+'\n')
+                if experiment in ('b','d','e'):
+                  ISMIP_HOMfile.write('\t'.join(map(str,[x]+[v[0,level,ny/2,i][0] for (v,level) in data]))+'\n')
+                elif experiment == 'f':
+                  ISMIP_HOMfile.write('\t'.join(map(str,[x,y,data[0][0][-1,j,i][0]]+[v[-1,level,j,i][0] for (v,level) in data[1:]]))+'\n')
               else:
-                ISMIP_HOMfile.write('\t'.join(map(str,[x,y]+[v[0,level,j,i][0] for (v,level) in data]))+'\n')
+                if experiment in ('a','c'):
+                  ISMIP_HOMfile.write('\t'.join(map(str,[x,y]+[v[0,level,j,i] for (v,level) in data]))+'\n')
+                if experiment in ('b','d','e'):
+                  ISMIP_HOMfile.write('\t'.join(map(str,[x]+[v[0,level,ny/2,i] for (v,level) in data]))+'\n')
+                elif experiment == 'f':
+                  ISMIP_HOMfile.write('\t'.join(map(str,[x,y,data[0][0][-1,j,i]]+[v[-1,level,j,i] for (v,level) in data[1:]]))+'\n')
           ISMIP_HOMfile.close()
           netCDFfile.close()
 

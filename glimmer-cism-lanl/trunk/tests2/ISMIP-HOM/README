@@ -10,9 +10,9 @@ in the following as the ISMIP-HOM scripts) were created to run the experiments
 using Glimmer/CISM and compare the results with results from other models.
 
 PREREQUISITES:
-In order to use the ISMIP-HOM scripts, you will need to have Python and the
-following Python module installed:
-Scientific.IO.NetCDF
+In order to use the ISMIP-HOM scripts, you will need to have Python and one of 
+the following Python modules installed:
+Scientific.IO.NetCDF, netCDF4, or pycdf
 
 To plot the results (which is the usual way to view the output), the Python 
 matplotlib library also must be installed.
@@ -45,7 +45,7 @@ python runGlimmer.py --exp=a,c
 
 runs experiments a and c using the default domain sizes.  Combine these as
 
-python runGlimmer.py --exp=a,c --size==40,80,160
+python runGlimmer.py --exp=a,c --size=40,80,160
 
 to run experiments a and c with domain sizes 40, 80, and 160 km.  Short
 versions of the arguments are also accepted;
@@ -134,7 +134,8 @@ can be viewed using image viewer software or a web browser.
 SCRATCH FILES:
 Glimmer creates some additional files in addition to its netCDF output file.
 At the end of its execution, runGlimmer.py moves any files in the current
-working directory having names ending in either ".txt", ".log", or ".nc" to the "scratch" subdirectory under the assumption that they were created by
+working directory having names ending in either ".txt", ".log", or ".nc" to 
+the "scratch" subdirectory under the assumption that they were created by
 Glimmer and are not needed.  So... 
 WARNING: If you have files with names ending ".txt", ".log", or ".nc" in the
 directory from which you are running runGlimmer.py they will get moved

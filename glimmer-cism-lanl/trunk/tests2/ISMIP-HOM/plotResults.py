@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # This script plots the results of running ISMIP-HOM experiments using Glimmer.
 # Before running this script, run runGlimmer.py to generate the results.
 # See the accompanying README file for more information.
@@ -13,7 +14,7 @@ from math       import sqrt
 
 # Output flags
 printNaNwarnings = False
-savePlotInFile = False
+savePlotInFile = True
 plotType = '.png'
 
 # Lists of model classifications
