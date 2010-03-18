@@ -2855,7 +2855,7 @@ subroutine calcbetasquared (whichbabc,               &
     case(4)     ! same as case(3) but taking yield stress from basal processes model
 
       betasquared = minTauf
-!      betasquared = minTauf / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+      betasquared = minTauf / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
 !      betasquared = betasquared * ( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )**(-0.5d0)
 
     case(5)     ! simple 2d ice shelf

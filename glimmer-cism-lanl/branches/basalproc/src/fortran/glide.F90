@@ -118,13 +118,16 @@ contains
     use isostasy
     use glimmer_map_init
     use glide_ground
-
+    
     ! *sfp** added
     use glam_strs2, only : glam_velo_fordsiapstr_init
     use remap_glamutils, only : horizontal_remap_init
 
     ! *sfp** added for summer modeling school
     use fo_upwind_advect, only : fo_upwind_advect_init
+
+	!*mb* added 
+	use glam_Basal_Proc, only : Basal_Proc_init
 
     implicit none
     type(glide_global_type) :: model        !*FD model instance
@@ -228,6 +231,15 @@ contains
         call fo_upwind_advect_init( model%general%ewn, model%general%nsn )
 
     endif
+	
+	! *mb* added; initialization of basal proc. module
+	if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
+		model%options%which_bmod == BAS_PROC_FASTCALC) then
+		
+		call Basal_Proc_init (model%general%ewn, model%general%nsn,model%basalproc, 	&
+							  model%options%hotstart,model%numerics%ntem)
+		
+	end if		
 
     ! initialise ice age
     ! Currently the ice age is only computed for remapping transport
@@ -278,6 +290,10 @@ contains
     use glide_mask
     use glide_thckmask
     use glide_grids
+    
+   	! *mb* added for basal proc module	
+    use glam_Basal_Proc, only : Basal_Proc_driver
+    
     implicit none
 
     type(glide_global_type) :: model        !*FD model instance
@@ -339,6 +355,16 @@ contains
     ! Calculate basal traction factor
     ! ------------------------------------------------------------------------ 
     call calc_btrc(model,model%options%whichbtrc,model%velocity%btrc)
+    
+    ! ------------------------------------------------------------------------ 
+    ! Calculate basal shear strength from Basal Proc module, if necessary
+    ! ------------------------------------------------------------------------    
+	if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
+		model%options%which_bmod == BAS_PROC_FASTCALC) then
+		call Basal_Proc_driver (model%general%ewn,model%general%nsn,model%general%upn,       &
+								model%numerics%ntem,model%velocity%ubas,model%velocity%vbas, &
+								model%options%which_bmod,model%temper%bmlt,model%basalproc)
+	end if
 
   end subroutine glide_tstep_p1
 
@@ -363,8 +389,8 @@ contains
 
     ! *sfp* added so that stress tensor is populated w/ HO stress fields
     use stress_hom, only: glide_stress
-
-    implicit none
+    
+     implicit none
 
     type(glide_global_type) :: model        !*FD model instance
     logical,optional :: no_write

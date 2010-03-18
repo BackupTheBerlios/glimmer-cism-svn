@@ -39,6 +39,7 @@ contains
     ! which = BWATER_LOCAL Completely local, bwat_new = c1 * melt_rate + c2 * bwat_old
     ! which = BWATER_FLUX Flux based calculation
     ! which = BWATER_NONE Nothing, basal water = 0.
+    ! which = BWATER_BASAL_PROC, till water content in the basal processes module
 
     case(BWATER_LOCAL)
 
@@ -83,6 +84,11 @@ contains
       call pressure_wphi(thck,topg,N,wphi,model%numerics%thklim,floater)
       call route_basal_water(wphi,bmlt,model%numerics%dew,model%numerics%dns,bwatflx,lakes)
       call flux_to_depth(bwatflx,wphi,c_flux_to_depth,p_flux_to_depth,q_flux_to_depth,model%numerics%dew,model%numerics%dns,bwat)
+    
+    case(BWATER_BASAL_PROC)
+    !Normalized basal water 
+    bwat=model%basalproc%Hwater/thk0
+    
     case default
       bwat = 0.0d0
     end select

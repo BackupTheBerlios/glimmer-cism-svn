@@ -44,8 +44,8 @@ module glam
         ! model derived type. These are just dummy values for now
         ! to get things compiling ... 
 
-        real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
-        minTauf = 0.0d0
+      !  real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
+      !  minTauf = 0.0d0
 
         ewn = model%general%ewn
         nsn = model%general%nsn

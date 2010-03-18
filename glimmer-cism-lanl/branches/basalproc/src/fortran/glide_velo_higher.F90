@@ -81,12 +81,12 @@ contains
         !probably
         integer, dimension(model%general%ewn-1, model%general%nsn-1)  :: geom_mask_stag
         real(dp), dimension(model%general%ewn-1, model%general%nsn-1) :: latbc_norms_stag
-        real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
+   !     real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
         ! *sfp** specify subroutine arguments here that are not already in the 
         ! model derived type. These are just dummy values for now
         ! to get things compiling ... 
 
-        minTauf = 0.0d0
+  !      minTauf = 0.0d0
 
         !Beta field computations that change in time
         if (model%options%which_ho_beta_in == HO_BETA_USE_BTRC) then
@@ -188,7 +188,7 @@ contains
                                         model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
                                         model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
-                                        minTauf, geom_mask_stag,                                    &
+                                        model%basalproc%minTauf, geom_mask_stag,                    &
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &
