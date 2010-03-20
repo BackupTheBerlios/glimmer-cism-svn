@@ -158,6 +158,14 @@ data:          data%velocity_hom%beta
 factor:        scale2d_f6
 load:          1
 
+[tauf]
+dimensions:    time, y0, x0
+units:         Pa         
+long_name:     higher-order basal yield stress 
+data:          data%basalproc%minTauf
+factor:        scale3d_f9
+load:          1
+
 [ubas]
 dimensions:    time, y0, x0
 units:         meter/year
