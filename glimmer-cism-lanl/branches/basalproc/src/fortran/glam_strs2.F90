@@ -336,8 +336,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, 'iter #     uvel resid          vvel resid         target resid'
   print *, ' '
 
-  do while ( maxval(resid) > minres .and. counter < cmax)
-!  do while ( resid(1) > minres .and. counter < cmax)  ! *sfp** for 1d solutions (d*/dy=0) 
+!  do while ( maxval(resid) > minres .and. counter < cmax)
+  do while ( resid(1) > minres .and. counter < cmax)  ! *sfp** for 1d solutions (d*/dy=0) 
 
     ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
@@ -2797,8 +2797,6 @@ subroutine calcbetasquared (whichbabc,               &
   integer, intent(in) :: ewn, nsn
 
   real (kind = dp), intent(in) :: dew, dns
-!  real (kind = dp), intent(in), dimension(ewn,nsn) :: lsrf, topg, thck
-!  real (kind = dp), intent(in), dimension(ewn-1,nsn-1) :: thisvel, othervel, minTauf, beta
   real (kind = dp), intent(in), dimension(:,:) :: lsrf, topg, thck
   real (kind = dp), intent(in), dimension(:,:) :: thisvel, othervel, minTauf, beta
 
@@ -2827,9 +2825,9 @@ subroutine calcbetasquared (whichbabc,               &
     case(2)     ! read in a map of betasquared from a file
                 !whl - to do - Create a netCDF version of betafile
 
-      open(unin,file=trim(betafile),status='old')
-      read(unin,*) ((betasquared(ew,ns), ew=1,ewn-1), ns=1,nsn-1)
-      close(unin)
+!      open(unin,file=trim(betafile),status='old')
+!      read(unin,*) ((betasquared(ew,ns), ew=1,ewn-1), ns=1,nsn-1)
+!      close(unin)
 
       betasquared = betasquared / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
 !      betasquared = betasquared * ( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )**(-0.5d0)
@@ -2854,9 +2852,10 @@ subroutine calcbetasquared (whichbabc,               &
 
     case(4)     ! same as case(3) but taking yield stress from basal processes model
 
-      betasquared = minTauf
       betasquared = minTauf / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
-!      betasquared = betasquared * ( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )**(-0.5d0)
+
+!      print *, 'minTauf = '
+!      print *, minTauf
 
     case(5)     ! simple 2d ice shelf
 

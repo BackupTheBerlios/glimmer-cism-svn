@@ -19,9 +19,9 @@ contains
     implicit none
     
     !Arguments
-	integer,intent(in) :: ewn,nsn,hotstart
+    integer,intent(in) :: ewn,nsn,hotstart
 	real (kind = sp),intent (in) :: ntem
-	type(glide_basalproc),intent(inout) :: basalproc
+    type(glide_basalproc),intent(inout) :: basalproc
     character (len=30), intent(in), optional :: tillfile
     
     !Variables

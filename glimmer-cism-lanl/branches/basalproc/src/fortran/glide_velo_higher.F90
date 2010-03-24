@@ -81,12 +81,6 @@ contains
         !probably
         integer, dimension(model%general%ewn-1, model%general%nsn-1)  :: geom_mask_stag
         real(dp), dimension(model%general%ewn-1, model%general%nsn-1) :: latbc_norms_stag
-   !     real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
-        ! *sfp** specify subroutine arguments here that are not already in the 
-        ! model derived type. These are just dummy values for now
-        ! to get things compiling ... 
-
-  !      minTauf = 0.0d0
 
         !Beta field computations that change in time
         if (model%options%which_ho_beta_in == HO_BETA_USE_BTRC) then
@@ -175,8 +169,9 @@ contains
                                       model%geomderv%dusrfdew, model%geomderv%dusrfdns, model%numerics%sigma, &
                                       model%velocity_hom%diffu_x, model%velocity_hom%diffu_y, &
                                       model%velocity_hom%uflx,    model%velocity_hom%vflx) 
-            
+
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
+
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
                                         model%numerics%dew,      model%numerics%dns,                &

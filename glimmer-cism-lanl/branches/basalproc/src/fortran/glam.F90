@@ -40,13 +40,6 @@ module glam
           ntrace_ir       ,&! number of tracers to be remapped
           nghost_ir         ! number of ghost cells
 
-        ! *sfp** specify subroutine arguments here that are not already in the 
-        ! model derived type. These are just dummy values for now
-        ! to get things compiling ... 
-
-      !  real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
-      !  minTauf = 0.0d0
-
         ewn = model%general%ewn
         nsn = model%general%nsn
         

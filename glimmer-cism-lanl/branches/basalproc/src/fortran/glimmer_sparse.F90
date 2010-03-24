@@ -35,7 +35,8 @@ contains
         type(sparse_solver_options) :: opt
 
         opt%base%method = method
-        opt%base%tolerance  = 5e-5
+!        opt%base%tolerance  = 5e-5
+        opt%base%tolerance  = 1.0d-12   !*sfp* changed
         opt%base%maxiters = 200
 
         !Solver specific options
@@ -323,7 +324,8 @@ contains
         character(256) :: errdesc
 
         !If no error happened, this routine should be a nop
-        if (error == 0) return
+!        if (error == 0) return
+        if (error == 0 .or. error == 6 .or. error == 2 ) return     !*sfp* changed
 
         !Aquire a file unit, and open the file
         lunit = get_free_unit()

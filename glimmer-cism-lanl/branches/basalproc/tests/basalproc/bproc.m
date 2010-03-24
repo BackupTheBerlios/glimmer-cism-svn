@@ -1,0 +1,80 @@
+
+%% file to create .mat input variables for Marion's coupled runs
+%%
+%% To be read by .py script to make .nc input file
+
+H0 = 1e3;
+T0 = -10;
+q0 = -7e-2;
+slope = 1e-4;
+
+r = 22;
+c = 45;
+l = 11;     % no of vert levels
+
+dew = 5e3; 
+dns = 5e3;
+
+x = [0:5e3:5e3*c-1];
+y = [0:5e3:5e3*r-1]';
+
+thck = H0 * ones( r, c );
+airt = T0 * ones( r, c );
+qgeo = q0 * ones( r, c );
+
+% topg = repmat( linspace( 1e3, 1e3-(slope*(c-1)*dew), c), r, 1 );
+topg = repmat( fliplr( linspace( -900, 0+(slope*(c-1)*dew), c) ), r, 1 );        %% force to be near floatationg at ds end
+
+usrf = topg + thck;
+
+%% put buffer of zero thickness cells around perimeter (for remapping)
+thck(1:3,:) = 0; thck(:,1:3) = 0; thck(end-2:end,:) = 0; thck(:,end-2:end) = 0;
+usrf(1:3,:) = 0; usrf(:,1:3) = 0; usrf(end-2:end,:) = 0; usrf(:,end-2:end) = 0;
+% topg(1:3,:) = 0; topg(:,1:3) = 0; topg(end-2:end,:) = 0; topg(:,end-2:end) = 0;
+topg = usrf - thck; ind = find( topg == 0 ); topg(ind) = min(min(topg));
+
+figure(1), imagesc( x/1e3, y/1e3, thck ), axis xy, axis equal, axis tight, colorbar
+xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'thickness (m)' )
+
+figure(2), imagesc( x/1e3, y/1e3, topg ), axis xy, axis equal, axis tight, colorbar
+xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'basal topg (m)' )
+
+figure(3), imagesc( x/1e3, y/1e3, usrf ), axis xy, axis equal, axis tight, colorbar
+xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
+
+
+%% load in old till map
+load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl
+
+minTauf = Tillggl;
+% minTauf = 88 * ones( size( minTauf ) );       % for debugging
+beta = 1e2*ones(size(minTauf));
+
+figure(4), imagesc( x/1e3, y/1e3, minTauf/1e3 ), axis xy, axis equal, axis tight, colorbar
+xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'Tau0 (kPa)' )
+
+figure(5), imagesc( x/1e3, y/1e3, airt ), axis xy, axis equal, axis tight, colorbar
+xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'airt temp (C)' )
+
+figure(6), imagesc( x/1e3, y/1e3, qgeo ), axis xy, axis equal, axis tight, colorbar
+xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'geo flux (W m^2)' )
+
+%% add a kinbcmask field to specify where 0 flux bcs are
+kinbcmask = zeros(size(minTauf));
+kinbcmask(1:3,:) = 1; kinbcmask(end-2:end,:) = 1; kinbcmask(:,1:3) = 1;
+
+uvelhom = zeros( l, r-1, c-1 );
+for i=1:l
+    uvelhom(i,:,:) = zeros(size(minTauf));
+end
+
+vvelhom = uvelhom; 
+
+figure(7), imagesc( x/1e3, y/1e3, kinbcmask ), axis xy, axis equal, axis tight, colorbar
+xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'kinbcmask' )
+
+
+cd /Users/sprice/work/modeling/cism_new/branches/tests/basalproc
+
+% save bproc.mat airt qgeo usrf topg thck minTauf kinbcmask uvelhom vvelhom 
+save bproc.mat airt qgeo usrf topg thck beta minTauf kinbcmask uvelhom vvelhom 
