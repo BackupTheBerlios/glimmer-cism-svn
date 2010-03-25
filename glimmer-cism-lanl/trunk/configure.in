@@ -161,12 +161,9 @@ if test "$ac_cv_netcdf_prefix" != ""; then
   FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_netcdf_prefix/include"
   LDFLAGS="$LDFLAGS -L$ac_cv_netcdf_prefix/lib"
 fi
-AC_CHECK_LIB(netcdf,NF_INQ_LIBVERS)
+AC_SEARCH_LIBS(NF_INQ_LIBVERS,[netcdf, netcdff],,[AC_MSG_ERROR(cannot find netCDF fortran library)])
 AC_MSG_CHECKING([for f90 netCDF interface])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[use netcdf])],AC_MSG_RESULT([yes]),AC_MSG_FAILURE([no]))
-
-#NEW VERSION Of netcdf check (disabled for now)
-#ACX_NETCDF([],[AC_MSG_ERROR(cannot find netCDF fortran library)])
 
 #Checking for alternate linear solvers
 AC_ARG_WITH(umfpack,AS_HELP_STRING([--with-umfpack],[Optional location of umfpack linear solver]),[ac_cv_umfpack_prefix=$withval])
