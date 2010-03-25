@@ -1,0 +1,52 @@
+This contains a unit test for interfacing with Trilinos solvers. The unit
+test includes the following files:
+./simple.F90
+./strat1.xml
+../../src/fortran/sparse_type.F90
+../../src/cpp/Simple_Interface.hpp
+../../src/cpp/Simple_Interface.cpp
+../../src/cpp/SI_Drive.cpp
+./Makefile
+
+----------
+
+1. simple.F90 is a simple routine, creating a matrix and a rhs. It
+also contains demonstrations of updating values to the matrix.
+
+2. strat1.xml contains a parameter list for Trilinos linear solvers.
+
+3. sparse_type.F90 defines a simple sparse matrix type.
+
+4. Simple_Interface.hpp (.cpp) defines a class each of whose instances
+houses a CrsMatrix object.
+
+5. SI_Drive.cpp contains four routines. initialize_ is called only
+once to convert a matrix in triad format into CrsMatrix format. It
+then creates a Simple_Interface instance to house this CrsMatrix
+object. update_ is to update the CrsMatrix object (with triplets) in
+the current Simple_Interface instance. solve_ is to make calls to
+Trilinos linear solvers. finalize_ is to wrap up any necessary work
+left.
+
+6. Makefile probably works (with minor modifications) once the auto
+conf business is done, and at the moment it is configured for the case
+with all the files above being put in the same directory.
+
+----------
+
+* Note: The difference between this unit test
+(TrilinosSolversUnitTest2) and the previous unit test
+(TrilinosSolversUnitTest) is the following:
+
++ TrilinosSolversUnitTest: Matrices in triad format are formed at each
+iteration and then get converted into CrsMatrix format before calling
+to Trilinos linear solvers.
+
++ TrilinosSolversUnitTest2: At the beginning, a matrix in triad format
+is formed and converted into CrsMatrix format. As the iterations go
+on, the CrsMatrix matrix gets updated if the sparsity pattern is the
+same or a new CrsMatrix will be formed (with the information of the
+current CrsMatrix matrix being copied over) if the sparsity pattern
+changes.
+
+RN_20091130
