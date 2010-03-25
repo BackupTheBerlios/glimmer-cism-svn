@@ -242,13 +242,15 @@ contains
        call calc_bounds_lat(lats,grid%lat_bound)
     endif
 
-    if (present(depb)) then
-       grid%dep_bound=depb
-    else
-       call write_log('Failed in new_global_grid: calc_bounds_dep NYI',GM_FATAL,__FILE__,__LINE__)
-!       call calc_bounds_dep(deps,grid%dep_bound)
+    if (grid3d) then
+       if (present(depb)) then
+          grid%dep_bound=depb
+       else
+          call write_log('Failed in new_global_grid: calc_bounds_dep NYI',GM_FATAL,__FILE__,__LINE__)
+          !       call calc_bounds_dep(deps,grid%dep_bound)
+       endif
     endif
-
+    
     ! Set radius of earth if necessary
 
     if (present(radius)) radea=radius
