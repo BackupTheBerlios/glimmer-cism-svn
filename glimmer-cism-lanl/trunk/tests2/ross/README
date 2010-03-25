@@ -1,0 +1,72 @@
+Ross Ice Shelf Experiment
+=========================
+This experiment was designed to model the Ross Ice Shelf off Antarctica.  
+For information about the experiment and its results see:
+http://homepages.vub.ac.be/~phuybrec/eismint/iceshelf.html
+
+The python scripts provided here (runGlimmer.py and plotResults.py, refered to
+in the following as the Ross scripts) were created to run the experiment 
+using Glimmer/CISM and compare the results with measured velocities.
+
+PREREQUISITES:
+In order to use the Ross scripts, you will need to have Python and one of the
+following Python modules installed:
+Scientific.IO.NetCDF, netCDF4, or pycdf
+
+To plot the results (which is the usual way to view the output), the Python 
+matplotlib library also must be installed.
+
+RUNNING THE EXPERIMENT:
+Running the experiment is a two step process.  Each step invokes a python script
+by entering a command on the command line.  The working directory should be the
+directory which contains the Ross scripts.  This directory should also 
+contain three subdirectories, "data", containing input data for the experiment, 
+and "output" and "scratch", where the results of running the scripts will be 
+written.
+
+STEP 1. Run Glimmer/CISM by invoking the runGlimmer.py script:
+
+python runGlimmer.py
+
+This step runs Glimmer using parameters specified in the ross.config file.
+
+STEP 2. Plot the results by invoking the plotResults.py script:
+
+python plotResults.py
+
+The plots created are saved as ".png" files in the "output" subdirectory of
+the directory containing the plotResults.py script.  You can change the type
+of file created by changing the value of the variable "plotType" in the
+plotResults.py script.  If you prefer to have the plots displayed on the screen
+instead of saved to file, set the variable "savePlotInFile" in plotResults.py
+to "False" instead of "True".  The variables "savePlotInFile" and "plotType"
+are set near the top of the plotResults.py script under the comment line
+
+# Output flags
+
+OUTPUT FILES:
+When you run the Ross scripts, they create files in the "output"
+subdirectory.  These files are described below.
+
+Files whose names end ".nc" are netCDF files.  The contents of these files can
+be examined using a tool such as ncview.
+There are three different netCDF files created each time Glimmer is run:
+1. raw.nc is netCDF file containing the experiment input data from the "data" 
+directory with minimal modification.  This file is really not necessary.
+2. ross.nc is an input file created by runGlimmer.py which provides input 
+information to Glimmer.
+3. ross.out.nc is an output file created by Glimmer.
+
+Files whose names end ".png" are Portable Network Graphics files written by 
+plotResults.py containing the plotted data.  This is standard file type that
+can be viewed using image viewer software or a web browser.
+
+SCRATCH FILES:
+Glimmer creates some additional files in addition to its netCDF output file.
+At the end of its execution, runGlimmer.py moves any files in the current
+working directory having names ending in either ".txt", ".log", or ".nc" to 
+the "scratch" subdirectory under the assumption that they were created by
+Glimmer and are not needed.  So... 
+WARNING: If you have files with names ending ".txt", ".log", or ".nc" in the
+directory from which you are running runGlimmer.py they will get moved
+to the "scratch" subdirectory when you run runGlimmer.py
