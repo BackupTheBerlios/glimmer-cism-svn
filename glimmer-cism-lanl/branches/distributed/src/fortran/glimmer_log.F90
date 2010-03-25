@@ -117,6 +117,7 @@ contains
   
   subroutine open_log(unit,fname)
     !*FD opens log file
+    use parallel
     implicit none
     integer, optional          :: unit   !*FD file unit to use
     character(len=*), optional :: fname  !*FD name of log file
@@ -134,19 +135,20 @@ contains
        glimmer_logname = 'glide.log'
     end if
 
-    if (glimmer_unit.ne.6) then
+    if ((main_task).and.(glimmer_unit.ne.6)) then
        open(unit=glimmer_unit,file=glimmer_logname,status='unknown')
     end if
 
     call date_and_time(date,time)
     call write_log_div
-    write(unit=glimmer_unit,fmt="(a,a4,'-',a2,'-',a2,' ',a2,':',a2,':',a6)") ' Started logging at ',&
+    if (main_task) write(unit=glimmer_unit,fmt="(a,a4,'-',a2,'-',a2,' ',a2,':',a2,':',a6)") ' Started logging at ',&
          date(1:4),date(5:6),date(7:8),time(1:2),time(3:4),time(5:10)
     call write_log_div
   end subroutine open_log
 
   subroutine write_log(message,type,file,line)
     !*FD write to log
+    use parallel
     implicit none
     integer,intent(in),optional          :: type    !*FD Type of error to be generated (see list above).
     character(len=*),intent(in)          :: message !*FD message to be written
@@ -169,21 +171,21 @@ contains
 
     ! constructing message
     if (present(file) .and. present(line)) then
-       write(*,*)"Logged at",file,line
+       if (main_task) write(*,*)"Logged at",file,line
        write(line_num,'(I6)')line
        write(msg,*) trim(msg_prefix(local_type))//' (',trim(file),':',trim(adjustl(line_num)),') '//message
     else
        write(msg,*) trim(msg_prefix(local_type))//' '//message
     end if
     ! messages are always written to file log
-    write(glimmer_unit,*) trim(msg)
+    if (main_task) write(glimmer_unit,*) trim(msg)
     ! and maybe to std out
     if (local_type.ne.0) then
-       if (gm_show(local_type)) write(*,*) trim(msg)
+       if ((main_task).and.(gm_show(local_type))) write(*,*) trim(msg)
     end if
     ! stop logging if we encountered a fatal error
     if (local_type.eq.GM_FATAL) then
-       write(*,*) "Fatal error encountered, exiting..."
+       if (main_task) write(*,*) "Fatal error encountered, exiting..."
        call close_log
        stop
     end if
@@ -191,12 +193,14 @@ contains
 
   subroutine write_log_div
     !*FD start a new section
+    use parallel
     implicit none
-    write(glimmer_unit,*) '*******************************************************************************'
+    if (main_task) write(glimmer_unit,*) '*******************************************************************************'
   end subroutine write_log_div
 
   subroutine close_log
     !*FD close log file
+    use parallel
     implicit none
     ! local variables
     character(len=8) :: date
@@ -204,11 +208,11 @@ contains
 
     call date_and_time(date,time)
     call write_log_div
-    write(unit=glimmer_unit,fmt="(a,a4,'-',a2,'-',a2,' ',a2,':',a2,':',a6)") ' Finished logging at ',&
+    if (main_task) write(unit=glimmer_unit,fmt="(a,a4,'-',a2,'-',a2,' ',a2,':',a2,':',a6)") ' Finished logging at ',&
          date(1:4),date(5:6),date(7:8),time(1:2),time(3:4),time(5:10)
     call write_log_div
     
-    close(glimmer_unit)
+    if (main_task) close(glimmer_unit)
   end subroutine close_log
 
   subroutine sync_log

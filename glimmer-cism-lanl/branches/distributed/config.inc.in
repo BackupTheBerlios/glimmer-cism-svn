@@ -27,6 +27,9 @@
 /* Define to 1 if you have the `umfpack' library (-lumfpack). */
 #undef HAVE_LIBUMFPACK
 
+/* Define to 1 if you want to enable extra profiling */
+#undef HAVE_MPI
+
 /* Name of package */
 #undef PACKAGE
 

@@ -47,6 +47,7 @@
 program simple_glide
   !*FD This is a simple GLIDE test driver. It can be used to run
   !*FD the EISMINT test cases
+  use parallel
   use glimmer_global, only:rk
   use glide
   use simple_forcing
@@ -63,12 +64,6 @@ program simple_glide
 #include <f90papi.h>
 #endif
 
-#ifdef HAVE_MPI
-#include <mpif.h>
-
-  integer npes,ierr,iam,lengthofconfigname
-#endif
-
   type(glide_global_type) :: model        ! model instance
   type(simple_climate) :: climate         ! climate
   type(ConfigSection), pointer :: config  ! configuration stuff
@@ -76,6 +71,7 @@ program simple_glide
   real(kind=dp) t1,t2
   integer clock,clock_rate,ret
 
+  call parallel_initialise
   ! start gptl
 #ifdef GPTL
   ret = gptlsetoption (gptlprint_method,gptlfull_tree)
@@ -85,35 +81,7 @@ program simple_glide
   ret = gptlstart ('total')
 #endif
 
-#ifdef HAVE_MPI
- call MPI_Init(ierr)
- call MPI_Comm_size(MPI_COMM_WORLD,npes,ierr)
- call MPI_Comm_rank(MPI_COMM_WORLD,iam,ierr)
-
-!! RN_20100115: An attempt to do MPI in Fortran
-!if (iam .eq. 0) then
-!  write(*,*), 'i am in here'
-!  call glimmer_GetCommandline()
-!  lengthofconfigname = len_trim(commandline_configname)
-!  write(*,*), 'configname: ', commandline_configname
-!  call MPI_Bcast(lengthofconfigname, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-!  ! send commandline_configname
-!  call MPI_Bcast(commandline_configname, lengthofconfigname, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
-!else
-!  write(*,*) "hello from ", iam
-!! receive commandline_configname
-!  call MPI_Bcast(lengthofconfigname, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-!  call MPI_Bcast(commandline_configname, lengthofconfigname, MPI_CHARACTER, 0, MPI_COMM_WORLD, ierr)
-!  write(*,*), 'configname: ', commandline_configname  
-!endif  
-!#else
-!  call glimmer_GetCommandline()
-
-#endif
   call glimmer_GetCommandline()
-
-
-
   ! start logging
   call open_log(unit=50, fname=logname(commandline_configname))
   
@@ -136,6 +104,7 @@ program simple_glide
   call simple_massbalance(climate,model,time)
   call simple_surftemp(climate,model,time)
   call spinup_lithot(model)
+  call parallel_stop(__FILE__,__LINE__)
 
   do while(time.le.model%numerics%tend)
      call glide_tstep_p1(model,time)
@@ -153,10 +122,7 @@ program simple_glide
   t2 = real(clock,kind=dp)/real(clock_rate,kind=dp)
   call glimmer_writestats(commandline_resultsname,commandline_configname,t2-t1)
   call close_log
-
-#ifdef HAVE_MPI
- call MPI_Finalize(ierr)
-#endif
+  call parallel_finalise
 
   ! stop gptl
 #ifdef GPTL

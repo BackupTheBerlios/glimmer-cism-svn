@@ -1,6 +1,13 @@
-./configure --prefix=/ccs/home/4ue/parallel \
-FC="ftn -O3" F77="ftn -O3" CC="cc -O3" CXX="CC -O3" \
-CPPFLAGS="-DMPICH_IGNORE_CXX_SEEK" FCFLAGS="-DNO_RESCALE" \
---with-netcdf=/ccs/home/4ue/netcdf-4.0.1/pgi-9.0.4 \
---with-trilinos=/ccs/home/4ue/trilinos/CISM \
---with-lapack=-llapack --with-blas=/sw/xt5/blas/ref/cnl2.1_pgi8.0.3/lib/libblas.a 
+./configure \
+--prefix=$HOME \
+FC="ftn -Minform=inform -Mbounds -g -Mchkptr" \
+F77="ftn -Minform=inform -Mbounds -g -Mchkptr" \
+CC="cc -Minform=inform -Mbounds -g" \
+CXX="CC -Minform=inform -Mbounds -g" \
+CPPFLAGS="-DHAVE_MPI -DMPICH_IGNORE_CXX_SEEK" FCFLAGS="-DNO_RESCALE" \
+LDFLAGS="-pgcpplibs -L/opt/cray/hdf5/1.8.3.1/hdf5-pgi/lib -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib" \
+NETCDF_LIBS="-lnetcdff -lnetcdf" \
+LIBS="-lhdf5_hl -lhdf5 -lz" \
+--with-netcdf=/opt/cray/netcdf/4.0.1.1/netcdf-pgi \
+--with-trilinos=/sw/xt5/trilinos/10.0.4/cnl2.2_pgi9.0.4/install_clean \
+--with-lapack=-lsci --with-blas=-lsci

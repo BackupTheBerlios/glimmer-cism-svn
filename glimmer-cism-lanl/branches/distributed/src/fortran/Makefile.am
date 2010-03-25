@@ -33,7 +33,7 @@ RESTART_CODE = glide_types.F90 glimmer_config.F90 glimmer_coordinates.F90 \
                   glint_mbal_coupling.F90 glint_mbal.F90 glint_smb.F90 glint_type.F90 \
                   isostasy_types.F90 profile.F90 simple_forcing.F90 glimmer_paramets.F90 \
                   glimmer_anomcouple.F90 glint_mpinterp.F90
-libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
+libglimmer_a_SOURCES = parallel.F90 glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_config.F90 glimmer_global.F90 glimmer_utils.F90\
                        glimmer_log.F90 glimmer_ts.F90 glimmer_ncdf.F90 \
                        glimmer_ncio.F90 glimmer_ncparams.F90 \
@@ -107,7 +107,7 @@ endif TRILINOS
 eis_glide_SOURCES = eis_glide.F90
 eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 spin_glide_SOURCES = spin_glide.F90
-spin_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a
+spin_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a  $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 glint_example_SOURCES = glint_example.F90
 glint_example_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 glex_ebm_SOURCES = glex_ebm.F90
@@ -131,7 +131,7 @@ glimmer_unittest_SOURCES = unittest_framework.F90 unittest.F90 unittest_glide_de
 glimmer_unittest_LDADD = libglide.a libglimmer.a SLAP_library/libslap.a
 
 glide_thermal_equib_SOURCES = thermal_equib.F90
-glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a
+glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 
 ALL_SRC=$(test_integrage_SOURCES) $(test_lithot_SOURCES) $(test_ts_SOURCES) $(test_setup_SOURCES) \
         $(test_config_SOURCES) $(nc2config_SOURCES) $(glex_ebm_SOURCES) $(glint_example_SOURCES) \

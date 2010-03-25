@@ -74,6 +74,7 @@ contains
 
   subroutine init_thck(model)
     !*FD initialise work data for ice thickness evolution
+    use parallel
     use glimmer_log
     implicit none
     type(glide_global_type) :: model
@@ -89,8 +90,10 @@ contains
 
 #ifdef DEBUG_PICARD
     call write_log('Logging Picard iterations')
-    open(picard_unit,name='picard_info.data',status='unknown')
-    write(picard_unit,*) '#time    max_iter'
+    if (main_task) then
+       open(picard_unit,name='picard_info.data',status='unknown')
+       write(picard_unit,*) '#time    max_iter'
+    end if
 #endif
 
     ! allocate memory for ADI scheme

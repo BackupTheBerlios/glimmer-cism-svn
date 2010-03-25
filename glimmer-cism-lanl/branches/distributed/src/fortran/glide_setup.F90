@@ -202,6 +202,7 @@ contains
 
     !*FD Loads a file containing
     !*FD sigma vertical coordinates.
+    use parallel
     use glide_types
     use glimmer_log
     use glimmer_filenames
@@ -232,15 +233,19 @@ contains
           model%numerics%sigma(up) = glide_find_level(level, model%options%which_sigma_builtin, up, upn)
        end do
     case(1)
-       inquire (exist=there,file=process_path(model%funits%sigfile))
+       if (main_task) inquire (exist=there,file=process_path(model%funits%sigfile))
+       call broadcast(there)
        if (.not.there) then
           call write_log('Sigma levels file: '//trim(process_path(model%funits%sigfile))// &
                ' does not exist',GM_FATAL)
        end if
        call write_log('Reading sigma file: '//process_path(model%funits%sigfile))
+       if (main_task) then
        open(unit,file=process_path(model%funits%sigfile))
        read(unit,'(f9.7)',err=10,end=10) (model%numerics%sigma(up), up=1,upn)
        close(unit)
+       end if
+       call broadcast(model%numerics%sigma)
     case(2)
        call write_log('Using sigma levels from main configuration file')
     end select

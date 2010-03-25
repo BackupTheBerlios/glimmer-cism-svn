@@ -105,6 +105,7 @@ contains
 
   subroutine glide_initialise(model)
     !*FD initialise GLIDE model instance
+    use parallel
     use glide_setup
     use glimmer_ncio
     use glide_velo
@@ -140,6 +141,8 @@ contains
     ! scale parameters
     call glide_scale_params(model)
     ! set up coordinate systems
+    ! time to change to the parallel values of ewn and nsn
+    call parallel_grid(model%general%ewn,model%general%nsn)
     model%general%ice_grid = coordsystem_new(0.d0, 0.d0, &
          model%numerics%dew, model%numerics%dns, &
          model%general%ewn, model%general%nsn)
@@ -176,6 +179,7 @@ contains
     case(1) ! Supplied topography is relaxed
        model%isos%relx = model%geometry%topg
     case(2) ! Supplied topography is in equilibrium
+       call not_parallel(__FILE__,__LINE__)
        call isos_relaxed(model)
     end select
 
@@ -195,6 +199,7 @@ contains
                                      model%climate%stressin, &
                                      model%climate%stressout)
     if (model%options%gthf.gt.0) then
+       call not_parallel(__FILE__,__LINE__)
        call init_lithot(model)
     end if
 
@@ -208,6 +213,7 @@ contains
     ! *sfp** added; initialization of Payne/Price HO dynamics subroutine ... name can change once agreed on
     if (model%options%which_ho_diagnostic == HO_DIAG_PP ) then
 
+       call not_parallel(__FILE__,__LINE__)
         call glam_velo_fordsiapstr_init(model%general%ewn,    model%general%nsn,  &
                                         model%general%upn,                        &
                                         model%numerics%dew,   model%numerics%dns, &
@@ -225,6 +231,7 @@ contains
     ! *sfp** added for summer modeling school
     if (model%options%whichevol== EVOL_FO_UPWIND ) then
 
+       call not_parallel(__FILE__,__LINE__)
         call fo_upwind_advect_init( model%general%ewn, model%general%nsn )
 
     endif
@@ -236,6 +243,7 @@ contains
  
     if (model%options%hotstart.ne.1) then
        ! initialise Glen's flow parameter A using an isothermal temperature distribution
+       call not_parallel(__FILE__,__LINE__)
        call timeevoltemp(model,0)
     end if
 
@@ -243,7 +251,7 @@ contains
     call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
-
+    !TREY
     !calculate the normal at the marine margin
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
 

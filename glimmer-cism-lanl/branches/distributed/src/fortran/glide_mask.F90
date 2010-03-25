@@ -52,6 +52,7 @@ module glide_mask
 
 contains
   subroutine glide_set_mask(numerics, thck, topg, ewn, nsn, eus, mask, iarea, ivol)
+    use parallel
     use glide_types
     use glimmer_physcon, only : rhoi, rhoo
     implicit none
@@ -135,11 +136,14 @@ contains
           end if
 
          !Mark domain boundaries
-         if (ns == 1 .or. ns == nsn .or. ew == 1 .or. ew == ewn) then
+         !if (ns == 1 .or. ns == nsn .or. ew == 1 .or. ew == ewn) then
+          if (parallel_boundary(ew,ns)) then
             mask(ew, ns) = ior(mask(ew, ns), GLIDE_MASK_COMP_DOMAIN_BND)
          end if
        end do
     end do
+    call parallel_print(mask)
+    call parallel_stop(__FILE__,__LINE__)
   end subroutine glide_set_mask
 
   subroutine augment_kinbc_mask(mask, kinbcmask)
@@ -166,14 +170,15 @@ contains
   end subroutine
 
   subroutine get_area_vol(thck, dew, dns, iarea, ivol)
+    use parallel
     real(dp), dimension(:,:) :: thck
     real(dp) :: dew, dns
     real(dp) :: iarea, ivol
 
     integer :: i,j
 
-    do i = 1, size(thck,1)
-        do j = 2, size(thck,2)
+    do i = 1+parallel_halo, size(thck,1)-parallel_halo
+        do j = 1+parallel_halo, size(thck,2)-parallel_halo
             if (thck(i,j) > 0) then
                 iarea = iarea + 1
                 ivol = ivol + thck(i,j)
@@ -183,6 +188,7 @@ contains
 
     iarea = iarea  * dew * dns
     ivol = ivol * dew * dns
+    call global_sum(iarea,ivol)    
     
   end subroutine get_area_vol
 

@@ -106,6 +106,7 @@ contains
 
   subroutine ConfigRead(fname,config)
     !*FD read configuration file
+    use parallel
     use glimmer_log
     implicit none
     character(len=*), intent(in) :: fname
@@ -119,21 +120,23 @@ contains
     integer unit,ios,linenr
     character(len=linelen) :: line
     character(len=100) :: message
-    inquire (exist=there,file=fname)
+
+    if (main_task) inquire (exist=there,file=fname)
+    call broadcast(there)
     if (.not.there) then
        call write_log('Cannot open configuration file '//trim(fname),GM_FATAL)
     end if
     
-write(*,*), 'filename: ', fname
-
     unit=99
-    open(unit,file=trim(fname),status='old')
+    if (main_task) open(unit,file=trim(fname),status='old')
     ios=0
     linenr=0
     config=>NULL()
     this_section=>NULL()
     do while(ios.eq.0)
-       read(unit,fmt='(a250)',iostat=ios) line
+       if (main_task) read(unit,fmt='(a250)',iostat=ios) line
+       call broadcast(line)
+       call broadcast(ios)
        line = adjustl(line)
        if (ios.ne.0) then
           exit
@@ -163,7 +166,7 @@ write(*,*), 'filename: ', fname
        end if
        linenr = linenr + 1
     end do
-    close(unit)
+    if (main_task) close(unit)
     return
   end subroutine ConfigRead
 
