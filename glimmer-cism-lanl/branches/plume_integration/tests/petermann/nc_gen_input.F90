@@ -140,15 +140,15 @@ subroutine make_confined_shelf()
   write(*,*) 'chan_amp',chan_amp
 
   call get_command_argument(firstarg + 12,argstr)
-  read(argstr,'(f8.2)'), chan_init_length
+  read(argstr,'(f8.2)') chan_init_length
   write(*,*) 'chan_init_length',chan_init_length  
 
   call get_command_argument(firstarg + 13,argstr)
-  read(argstr,'(i5)'), kinbcw
+  read(argstr,'(i5)') kinbcw
   write(*,*) 'kinbc_width',kinbcw
  
   call get_command_argument(firstarg + 14,argstr)
-  read(argstr,'(l)'), ns_switch
+  read(argstr,'(l)') ns_switch
   write(*,*) 'ns_switch',ns_switch
 
   allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
@@ -309,15 +309,15 @@ subroutine make_steady_shelf()
   write(*,*) 'chan_amp',chan_amp
 
   call get_command_argument(firstarg + 12,argstr)
-  read(argstr,'(f8.2)'), chan_init_length
+  read(argstr,'(f8.2)') chan_init_length
   write(*,*) 'chan_init_length',chan_init_length  
 
   call get_command_argument(firstarg + 13,argstr)
-  read(argstr,'(i5)'), kinbcw
+  read(argstr,'(i5)') kinbcw
   write(*,*) 'kinbc_width',kinbcw
  
   call get_command_argument(firstarg + 14,argstr)
-  read(argstr,'(l)'), ns_switch
+  read(argstr,'(l)') ns_switch
   write(*,*) 'ns_switch',ns_switch
 
   allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
@@ -478,11 +478,11 @@ subroutine make_two_sided_shelf()
   write(*,*) 'chan_amp',chan_amp
 
   call get_command_argument(firstarg + 11,argstr)
-  read(argstr,'(f8.2)'), chan_init_length
+  read(argstr,'(f8.2)') chan_init_length
   write(*,*) 'chan_init_length',chan_init_length  
 
   call get_command_argument(firstarg + 12,argstr)
-  read(argstr,'(i5)'), kinbcw
+  read(argstr,'(i5)') kinbcw
   write(*,*) 'kinbc_width',kinbcw
 
   allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
