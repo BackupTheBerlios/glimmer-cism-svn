@@ -224,7 +224,6 @@ def main(config_filename):
                 'gc_vals',
                 'plume_nl_filename',
                 'gc_config_filename',
- #               'nc_input_fname',
                 'nc_gen_input_args',
                 ]
 
@@ -240,7 +239,6 @@ def main(config_filename):
 
     pnl_name = newVals['plume_nl_filename']
     gc_config_name = newVals['gc_config_filename']
-#    nc_input_name = newVals['nc_input_filename']
     nc_gen_input_args = newVals['nc_gen_input_args']
     
     f = open(pnl_name,'w')
@@ -258,7 +256,8 @@ def main(config_filename):
     cmd = ['nc_gen_input']
     cmd.extend(nc_gen_input_args)
     cmd = [fortran_style('nc_gen_input', c) for c in cmd]
-
+    print cmd
+    
     retcode = subprocess.call(cmd)
     if (retcode != 0):
         raise Exception('Error running nc_gen_input')

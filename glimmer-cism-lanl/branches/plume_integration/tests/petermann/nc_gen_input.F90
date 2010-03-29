@@ -8,8 +8,8 @@ program nc_gen_input
   !real,parameter :: rhoi_rhow = 1030.d0 / 920.d0
 
   character(len=512) :: gen_usage = "nc_gen_input <type_code> &
-                                    &nc_filename [params] \n &
-                                    &              <type_code> = [cs|ts]"
+                                    &nc_filename [params] &
+                                    &<type_code> = [cs|ts]"
   character(len=512) :: conf_shelf_params = "<fname> <nx> <ny> <hx> <hy> &
                                 <slope_start_pos> <grounded_ice_thk> &
 				<ice_front_pos> <ice_front_thick> &
@@ -37,7 +37,6 @@ program nc_gen_input
      stop 1
 
   end if
-
   
   call get_command_argument(1,argstr)
 
@@ -47,8 +46,6 @@ program nc_gen_input
   end if
   
   type_code = argstr
-
-
 
   if (type_code == 'cs') then
 
@@ -100,11 +97,11 @@ subroutine make_confined_shelf()
   write(*,*) 'ny:',ny
 
   call get_command_argument(firstarg + 2,argstr)
-  read(argstr,'(f8.2)') hx
+  read(argstr,'(f18.12)') hx
   write(*,*) 'hx',hx
 
   call get_command_argument(firstarg + 3,argstr)
-  read(argstr,'(f8.2)') hy
+  read(argstr,'(f18.12)') hy
   write(*,*) 'hy',hy
 
   call get_command_argument(firstarg + 4,argstr)
@@ -112,7 +109,7 @@ subroutine make_confined_shelf()
   write(*,*) 'startpos',startpos
 
   call get_command_argument(firstarg + 5,argstr)
-  read(argstr,'(f8.2)') githk
+  read(argstr,'(f18.12)') githk
   write(*,*) 'githk',githk
 
   call get_command_argument(firstarg + 6,argstr)
@@ -120,27 +117,27 @@ subroutine make_confined_shelf()
   write(*,*) 'ifpos',ifpos
 
   call get_command_argument(firstarg + 7,argstr)
-  read(argstr,'(f8.2)') ifthk
+  read(argstr,'(f18.12)') ifthk
   write(*,*) 'ifthk',ifthk
  
   call get_command_argument(firstarg + 8,argstr)
-  read(argstr,'(f8.2)') otopg
+  read(argstr,'(f18.12)') otopg
   write(*,*) 'otopg', otopg
 
   call get_command_argument(firstarg + 9,argstr)
-  read(argstr,'(f8.2)') ltopg
+  read(argstr,'(f18.12)') ltopg
   write(*,*) 'ltopg', ltopg
 
   call get_command_argument(firstarg + 10,argstr)
-  read(argstr,'(f8.2)') kx
+  read(argstr,'(f18.12)') kx
   write(*,*) 'kx',kx
   
   call get_command_argument(firstarg + 11,argstr)
-  read(argstr,'(f8.2)') chan_amp
+  read(argstr,'(f18.12)') chan_amp
   write(*,*) 'chan_amp',chan_amp
 
   call get_command_argument(firstarg + 12,argstr)
-  read(argstr,'(f8.2)') chan_init_length
+  read(argstr,'(f18.12)') chan_init_length
   write(*,*) 'chan_init_length',chan_init_length  
 
   call get_command_argument(firstarg + 13,argstr)
@@ -269,11 +266,11 @@ subroutine make_steady_shelf()
   write(*,*) 'ny:',ny
 
   call get_command_argument(firstarg + 2,argstr)
-  read(argstr,'(f8.2)') hx
+  read(argstr,'(f18.12)') hx
   write(*,*) 'hx',hx
 
   call get_command_argument(firstarg + 3,argstr)
-  read(argstr,'(f8.2)') hy
+  read(argstr,'(f18.12)') hy
   write(*,*) 'hy',hy
 
   call get_command_argument(firstarg + 4,argstr)
@@ -281,7 +278,7 @@ subroutine make_steady_shelf()
   write(*,*) 'startpos',startpos
 
   call get_command_argument(firstarg + 5,argstr)
-  read(argstr,'(f8.2)') githk
+  read(argstr,'(f18.12)') githk
   write(*,*) 'githk',githk
 
   call get_command_argument(firstarg + 6,argstr)
@@ -289,27 +286,27 @@ subroutine make_steady_shelf()
   write(*,*) 'ifpos',ifpos
 
   call get_command_argument(firstarg + 7,argstr)
-  read(argstr,'(f8.2)') ifthk
+  read(argstr,'(f18.12)') ifthk
   write(*,*) 'ifthk',ifthk
  
   call get_command_argument(firstarg + 8,argstr)
-  read(argstr,'(f8.2)') otopg
+  read(argstr,'(f18.12)') otopg
   write(*,*) 'otopg', otopg
 
   call get_command_argument(firstarg + 9,argstr)
-  read(argstr,'(f8.2)') ltopg
+  read(argstr,'(f18.12)') ltopg
   write(*,*) 'ltopg', ltopg
 
   call get_command_argument(firstarg + 10,argstr)
-  read(argstr,'(f8.2)') kx
+  read(argstr,'(f18.12)') kx
   write(*,*) 'kx',kx
   
   call get_command_argument(firstarg + 11,argstr)
-  read(argstr,'(f8.2)') chan_amp
+  read(argstr,'(f18.12)') chan_amp
   write(*,*) 'chan_amp',chan_amp
 
   call get_command_argument(firstarg + 12,argstr)
-  read(argstr,'(f8.2)') chan_init_length
+  read(argstr,'(f18.12)') chan_init_length
   write(*,*) 'chan_init_length',chan_init_length  
 
   call get_command_argument(firstarg + 13,argstr)
@@ -442,15 +439,15 @@ subroutine make_two_sided_shelf()
   write(*,*) 'ny:',ny
 
   call get_command_argument(firstarg + 2,argstr)
-  read(argstr,'(f8.2)') hx
+  read(argstr,'(f18.12)') hx
   write(*,*) 'hx',hx
 
   call get_command_argument(firstarg + 3,argstr)
-  read(argstr,'(f8.2)') hy
+  read(argstr,'(f18.12)') hy
   write(*,*) 'hy',hy
 
   call get_command_argument(firstarg + 4,argstr)
-  read(argstr,'(f8.2)') githk
+  read(argstr,'(f18.12)') githk
   write(*,*) 'githk',githk
 
   call get_command_argument(firstarg + 5,argstr)
@@ -458,27 +455,27 @@ subroutine make_two_sided_shelf()
   write(*,*) 'ifpos',ifpos
 
   call get_command_argument(firstarg + 6,argstr)
-  read(argstr,'(f8.2)') ifthk
+  read(argstr,'(f18.12)') ifthk
   write(*,*) 'ifthk',ifthk
  
   call get_command_argument(firstarg + 7,argstr)
-  read(argstr,'(f8.2)') otopg
+  read(argstr,'(f18.12)') otopg
   write(*,*) 'otopg', otopg
 
   call get_command_argument(firstarg + 8,argstr)
-  read(argstr,'(f8.2)') ltopg
+  read(argstr,'(f18.12)') ltopg
   write(*,*) 'ltopg', ltopg
 
   call get_command_argument(firstarg + 9,argstr)
-  read(argstr,'(f8.2)') kx
+  read(argstr,'(f18.12)') kx
   write(*,*) 'kx',kx
   
   call get_command_argument(firstarg + 10,argstr)
-  read(argstr,'(f8.2)') chan_amp
+  read(argstr,'(f18.12)') chan_amp
   write(*,*) 'chan_amp',chan_amp
 
   call get_command_argument(firstarg + 11,argstr)
-  read(argstr,'(f8.2)') chan_init_length
+  read(argstr,'(f18.12)') chan_init_length
   write(*,*) 'chan_init_length',chan_init_length  
 
   call get_command_argument(firstarg + 12,argstr)
