@@ -1,4 +1,4 @@
-
+#!/usr/bin/python
 
 #  This script is used to build the following:
 #         namelist file for plume model (if required)
@@ -9,63 +9,92 @@
 # a python module, and overwriting the default values with the
 # provided values.
 
-class plume_namelist(dict):
+import sys
+import subprocess
 
-    def __init__(self, otherDict):
+class FortranConversionException(Exception):
+    def __init__(self, msg, param_name):
+        Exception.__init__(self,msg)
+        self.param_name = param_name
 
-        # Default values are defined here first.
+def fortran_style(key, val):
+    if (type(val) == type(1)):
+        return '%d' % val
+    elif (type(val) == type(1.0)):
+        return 'd'.join(('%e' % val).split('e'))
+    elif (type(val) == type(True)):
+        return val and 'T' or 'F'
+    elif (type(val) == type('happy')):
+          return val
+    elif val is None:
+        raise FortranConversionException(key)
+    else:
+        raise FortranConversionException(key)
+
+class PlumeNamelist(object):
+
+    def __init__(self):
+
+        # Default values are defined here.
         
-        self['mixlayer'] = 'F'
-        self['in_glimmer'] = 'F'
-        self['restart'] = 'F'
-        self['frazil']  = 'F' 
-        self['nonlin']  = 'T'  
-        self['horturb'] = 'F' 
-        self['entrain'] = 'T'  
-        self['entype']  = '1'       
-        self['basmelt'] = 'T'  
-        self['rholinear'] = 'T'  
-        self['thermobar'] = 'F' 
-        self['intrace']  = 'F' 
-        self['vardrag']  = 'F' 
-        self['topedit']  = 'F' 
-        self['tangle']  = 'F' 
-        self['negfrz']  = 'F' 
-        self['use_min_plume_thickness'] = 'T'
-        self['tottim']  = '000.0d0'
-        self['outtim']  = '00.1d0'
-        self['labtim']  = '00.1d0'
-        self['snottim'] = '00.01d0'
-        self['lnottim'] = '00.1d0'
-        self['dt1']     = '50.0d0'              
-        self['m_grid'] = 46         
-        self['n_grid'] = 86          
-        self['hx'] = '200.d0'      
-        self['hy'] = '200.d0'
-        self['gldep'] = '1000.d0'
-        self['ifdep'] = '800.d0'    
-        self['wcdep'] = '1000.d0'   
-        self['plume_min_thickness'] = '10.0d0'
-        self['bsmoothit'] = '00'
-        self['salttop'] = '34.500d0'
-        self['saltbot'] = '34.500d0'
-        self['temptop'] = '-1.000d0'
-        self['tempbot'] = '-1.000d0'
-        self['phi'] = '+0.d0'                   
-        self['ah'] = '0000.d0'    
-        self['kh'] = '0000.d0'
-        self['cdb'] = '2.5d-3'    
-        self['cl'] = '1.775d-2'   
-        self['ef'] = '5.0d-1'     
-        self['nus'] = '+1.d0'     
-        self['nbar'] = '1.0d3'    
-        self['nice'] = '10'        
-        self['seedtype'] = '2' 
-        self['cseedfix'] = '1.0d-7'
-        self['cinffix']  = '0.0d0'
+        # Where it wouldn't really make sense to have a default value
+        # a value of None is assigned.  This must be updated by a non-None
+        # value before writing out then namelist contents
+        
+        self.vals = {'mixlayer' : False,
+                     'in_glimmer' : False,
+                     'restart' : False,
+                     'frazil' : False,
+                     'nonlin' : True,
+                     'horturb' : False,
+                     'entrain' : True,
+                     'entype' : 1,
+                     'basmelt' : True,
+                     'rholinear' : True,
+                     'thermobar' : False,
+                     'intrace' : False,
+                     'vardrag' : False,
+                     'topedit' : False,
+                     'tangle' : False, 
+                     'negfrz' : False,
+                     'use_min_plume_thickness' : True,
+                     'tottim'  : 0.0,
+                     'outtim'  : 0.1,
+                     'labtim'  : 0.1,
+                     'snottim' : 0.01,
+                     'lnottim' : 0.1,
+                     'dt1'     : None,
+                     'm_grid' : None,
+                     'n_grid' : None,          
+                     'hx' : None,      
+                     'hy' : None,
+                     'gldep' : None,
+                     'ifdep' : None,
+                     'wcdep' : None,
+                     'plume_min_thickness' : None,
+                     'bsmoothit' : 0,
+                     'salttop' : 34.5,
+                     'saltbot' : 34.5,
+                     'temptop' : -1.000,
+                     'tempbot' : -1.000,
+                     'phi' : 0.0,
+                     'ah' : 0.0,   
+                     'kh' : 0.0,
+                     'cdb' : 2.5e-3,    
+                     'cl' : 1.775e-2,   
+                     'ef' : 5.0e-1,     
+                     'nus' : +1.0,     
+                     'nbar' : 1.0e3,
+                     'nice' : 10,
+                     'seedtype' : 2,
+                     'cseedfix' : 1.0e-7,
+                     'cinffix'  : 0.0
+                     }
+                     
+    def update_vals(self, specificVals):
+       #next we overwrite default values with any values provided
 
-        #next we overwrite default values with any values provided 
-        self.update(otherDict)
+       self.vals.update(specificVals)
 
     def produce_namelist_contents(self):
         
@@ -73,48 +102,173 @@ class plume_namelist(dict):
         # a plume namelist file
         
         lines = []
-        for (k,v) in self.items():
-            lines.append(', %s = %s\n' % (k,v))
+        for (k,v) in self.vals.items():
+            try:
+                lines.append(', %s = %s\n' % (k,fortran_style(k,v)))
+            except FortranConversionException:
+                raise Exception('%s \n %s \n %s' % 
+                                ('Could not write dict to Fortran namelist.',
+                                 'Missing definitions of:',
+                                ' '.join([k for (k,v) in
+                                          self.vals.items() if (v is None)])))
         return '&plume_nml\n %s /' % ' '.join(lines)
 
 
-class glimmer_cims_config(object):
+class GCConfig(object):
 
-    def __init__(self, specificVals):
+    def __init__(self):
         
-        self.vals = { 'parameters' : 
-                      { 'geothermal' : -42.0e-3,
-                        'default_flwa' : 4.6e-18,
-                        'flow_factor' : 1},
-                      'Petermann shelf' :
-                      {  'air_temperature' : -5.0,
-                         'accumulation_rate' : 10.0,
-                         'eustatic_sea_level' : 0.0 },
-                      'options' :
-                      { 'flow_law' : 1,
-                        'evolution' : 3,
-                        'termperature' : 0,
-                        'vertical_integration' : 1,
-                        'marine_margin' : 0,
-                        'topo_is_relaxed' : 1,
-                        'slip_coeff' : 1,
-                        'periodic_ew' : 0,
-                        'periodic_ns' : 0,
-                        'hotstart' : 0,
-                        'basal_water' : 2,
-                        'which_bmlt' : 1}
-                      }
-                        
-                       
-                        
-                      
-            
-def main(config_file):
-    print config_file
+        self.vals = { 'parameters' : { 'geothermal' : -42.0e-3,
+                                       'default_flwa' : 4.6e-18,
+                                       'flow_factor' : 1},
+                      'Petermann shelf' : {  'air_temperature' : -5.0,
+                                             'accumulation_rate' : 10.0,
+                                             'eustatic_sea_level' : 0.0 },
+                      'options' : {'flow_law' : 1,
+                                   'evolution' : 3,
+                                   'temperature' : 0,
+                                   'vertical_integration' : 1,
+                                   'marine_margin' : 0,
+                                   'topo_is_relaxed' : 1,
+                                   'slip_coeff' : 1,
+                                   'periodic_ew' : 0,
+                                   'periodic_ns' : 0,
+                                   'hotstart' : 0,
+                                   'basal_water' : 2,
+                                   'which_bmlt' : 1},
+                      'grid' : { 'sigma_builtin' : 1,
+                                 'upn' : None,
+                                 'ewn' : None,
+                                 'nsn' : None,
+                                 'dew' : None,
+                                 'dns' : None },
 
+                      'ho_options' : { 'which_ho_sparse_fallback' : -1,
+                                       'basal_stress_input' : 3,
+                                       'which_ho_resid' : 0,
+                                       'which_ho_babc' : 9,
+                                       'guess_specified' : 1,
+                                       'which_ho_sparse' : 0,
+                                       'diagnostic_scheme' : 3,
+                                       'include_thin_ice' : 0,
+                                       'which_ho_efvs' : 0},
+                      'CF default' : { 'comment' : None,
+                                       'title' : None,
+                                       'institution' : 'NYU'},
+                      'CF input' : { 'name' : None,
+                                     'time' : None },
+                      'CF output' : { 'variables' : ' '.join(['lsurf','usurf',
+                                                              'thk','bmlt',
+                                                              'uvelhom','vvelhom',
+                                                              'uvelhom_srf',
+                                                              'uvelhom_bas',
+                                                              'vvelhom_srf',
+                                                              'vvelhom_bas',
+                                                              'thkmask','topg',
+                                                              'beta','btrc']),
+                                      'frequency' : None,
+                                      'name' : None },
+                      'time' : { 'tstart' : 0.0,
+                                 'tend' : None,
+                                 'dt' : None,
+                                 'niso' : 1.0,
+                                 'ntem' : 1.0,
+                                 'nvel' : 1.0 },
+                      'plume' : { 'plume_nl_file' : None,
+                                  'plume_output_file' : None,
+                                  'suppress_ascii_output' : True,
+                                  'suppress_logging' : False,
+                                  'plume_output_prefix' : None,
+                                  'plume_output_dir' : './',
+                                  'plume_write_all_states' : False,
+                                  'plume_min_spinup_time' : 5.0,
+                                  'plume_min_subcycle_time' : 0.5,
+                                  'plume_steadiness_tol' : 1.0e-6,
+                                  'plume_imin' : None,
+                                  'plume_imax' : None,
+                                  'plume_kmin' : None,
+                                  'plume_kmax' : None }
+                      }
+        
+    def update_vals(self, specificVals):
+
+        for (k,v) in specificVals.items():
+            if (not (k in self.vals.keys())):
+                raise Exception ('Unknown section name: %s' % k)
+            self.vals[k].update(v)
+        
+    def produce_config_file(self):
+
+        sections = []
+        
+        for (k,vdict) in self.vals.items():
+            try:
+                section_vals = [' %s = %s' %
+                                (k_inner,fortran_style(k_inner,v))
+                                for (k_inner,v) in vdict.items()]
+            except FortranConversionException, (e):
+                raise Exception('Failed to convert %s' %
+                                e.param_name)
+            
+            sections.append('[%s]\n%s\n' % (k, '\n'.join(section_vals)))
+                        
+        return '\n'.join(sections)
+            
+def main(config_filename):
+
+    newVals = {}
+    
+    execfile(config_filename, globals(), newVals)
+
+    req_vars = ['plume_vals',
+                'gc_vals',
+                'plume_nl_filename',
+                'gc_config_filename',
+ #               'nc_input_fname',
+                'nc_gen_input_args',
+                ]
+
+    for req_var in req_vars:
+        if (not req_var in newVals):
+            raise Exception('Did not find %s defined in %s' % (req_var,
+                                                               config_filename))
+    pnl = PlumeNamelist()    
+    pnl.update_vals(newVals['plume_vals'])
+
+    gc_config = GCConfig()
+    gc_config.update_vals(newVals['gc_vals'])
+
+    pnl_name = newVals['plume_nl_filename']
+    gc_config_name = newVals['gc_config_filename']
+#    nc_input_name = newVals['nc_input_filename']
+    nc_gen_input_args = newVals['nc_gen_input_args']
+    
+    f = open(pnl_name,'w')
+    try:
+        f.write(pnl.produce_namelist_contents())
+    finally:
+        f.close()
+
+    g = open(gc_config_name,'w')
+    try:
+        g.write(gc_config.produce_config_file())
+    finally:
+        g.close()
+
+    cmd = ['nc_gen_input']
+    cmd.extend(nc_gen_input_args)
+    cmd = [fortran_style('nc_gen_input', c) for c in cmd]
+
+    retcode = subprocess.call(cmd)
+    if (retcode != 0):
+        raise Exception('Error running nc_gen_input')
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    if (len(sys.argv) < 2):
+        raise Exception('Need to call with config file as last argument')
+    
+    config_filename = sys.argv[-1] #last argument
+    main(config_filename)
 
     
     

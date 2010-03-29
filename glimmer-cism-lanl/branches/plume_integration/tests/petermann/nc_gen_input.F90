@@ -34,7 +34,7 @@ program nc_gen_input
   if (command_argument_count() < 1) then
 
      write(*,*) "Usage: ", trim(gen_usage)
-     stop
+     stop 1
 
   end if
 
@@ -84,7 +84,7 @@ subroutine make_confined_shelf()
 
    if (command_argument_count() /= 17) then
 	write(*,*)"Incorrect number of parameters. Confined shelf requires:  ",trim(conf_shelf_params)
-        stop
+        stop 1
    end if
 
   call get_command_argument(2,argstr)
@@ -253,7 +253,7 @@ subroutine make_steady_shelf()
    if (command_argument_count() /= 17) then
 	write(*,*)"Incorrect number of parameters. Confined shelf requires: &
                 &  ",trim(conf_shelf_params)
-        stop
+        stop 1
    end if
 
   call get_command_argument(2,argstr)
@@ -426,7 +426,7 @@ subroutine make_two_sided_shelf()
    if (command_argument_count() /= 15) then
       write(*,*)"Incorrect number of parameters. Two-sided shelf requires: ",&
                 trim(two_sided_shelf_params)
-      stop
+      stop 1
    end if
 
   call get_command_argument(2,argstr)
@@ -621,7 +621,7 @@ subroutine write_nc_file()
 
     if (status_code /= 0) then
        write(*,*) 'fatal netcdf error:',nf90_strerror(status_code)
-       stop
+       stop 1
     end if
 
   end subroutine check
