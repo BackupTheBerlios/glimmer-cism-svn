@@ -28,11 +28,13 @@ qgeo = q0 * ones( r, c );
 acab = b0 * ones( r, c );
 
 % topg = repmat( linspace( 1e3, 1e3-(slope*(c-1)*dew), c), r, 1 );
-topg = repmat( linspace( 0, -H0*(rho_i/rho_w), c), r, 1 );        %% force to be near floatationg at ds end
+
+temp = repmat( linspace( 0, -H0*(rho_i/rho_w)-50, c-3), r, 1 ) + 0;        %% force to be near floatationg at ds end
+topg = [ temp, repmat(temp(:,end-3), 1, 3 ) ];
 
 usrf = topg + thck;
 
-%% put buffer of zero thickness cells around perimeter (for remapping)
+% %% put buffer of zero thickness cells around perimeter (for remapping)
 thck(1:3,:) = 0; thck(:,1:3) = 0; thck(end-2:end,:) = 0; thck(:,end-2:end) = 0;
 usrf(1:3,:) = 0; usrf(:,1:3) = 0; usrf(end-2:end,:) = 0; usrf(:,end-2:end) = 0;
 
