@@ -42,7 +42,7 @@ class PlumeNamelist(object):
         # value before writing out then namelist contents
         
         self.vals = {'mixlayer' : False,
-                     'in_glimmer' : False,
+                     'in_glimmer' : True,
                      'restart' : False,
                      'frazil' : False,
                      'nonlin' : True,
@@ -59,10 +59,10 @@ class PlumeNamelist(object):
                      'negfrz' : False,
                      'use_min_plume_thickness' : True,
                      'tottim'  : 0.0,
-                     'outtim'  : 0.1,
-                     'labtim'  : 0.1,
-                     'snottim' : 0.01,
-                     'lnottim' : 0.1,
+                     'outtim'  : 0.5,
+                     'labtim'  : 0.25,
+                     'snottim' : 0.25,
+                     'lnottim' : 1.0,
                      'dt1'     : None,
                      'm_grid' : None,
                      'n_grid' : None,          
@@ -102,7 +102,9 @@ class PlumeNamelist(object):
         # a plume namelist file
         
         lines = []
-        for (k,v) in self.vals.items():
+        vItems = self.vals.items()
+        vItems.sort()
+        for (k,v) in vItems:
             try:
                 lines.append(', %s = %s\n' % (k,fortran_style(k,v)))
             except FortranConversionException:
@@ -120,7 +122,15 @@ class GCConfig(object):
         
         self.vals = { 'parameters' : { 'geothermal' : -42.0e-3,
                                        'default_flwa' : 4.6e-18,
-                                       'flow_factor' : 1},
+                                       'flow_factor' : 1,
+                                       #'ice_limit' : 10.0,
+                                       #'marine_limit' : 0.0
+                                       #'calving_fraction' : 0.0,
+                                       #'hydro_time' : 0.0,
+                                       # 'basal_tract' : ,
+                                       # 'basal_tract_const' : ,
+                                       'log_level' : 6,
+                                       },
                       'Petermann shelf' : {  'air_temperature' : -5.0,
                                              'accumulation_rate' : 10.0,
                                              'eustatic_sea_level' : 0.0 },
@@ -131,6 +141,8 @@ class GCConfig(object):
                                    'marine_margin' : 0,
                                    'topo_is_relaxed' : 1,
                                    'slip_coeff' : 1,
+                                   'sliding_law' : 4,
+                                   'stress_calc' : 2,
                                    'periodic_ew' : 0,
                                    'periodic_ns' : 0,
                                    'hotstart' : 0,
@@ -159,12 +171,15 @@ class GCConfig(object):
                                      'time' : None },
                       'CF output' : { 'variables' : ' '.join(['lsurf','usurf',
                                                               'thk','bmlt',
-                                                              'uvelhom','vvelhom',
+                                                              'acab',
+                                                              'uvelhom',
+                                                              'vvelhom',
                                                               'uvelhom_srf',
                                                               'uvelhom_bas',
                                                               'vvelhom_srf',
                                                               'vvelhom_bas',
                                                               'thkmask','topg',
+                                                              'kinbcmask',
                                                               'beta','btrc']),
                                       'frequency' : None,
                                       'name' : None },
@@ -200,12 +215,18 @@ class GCConfig(object):
     def produce_config_file(self):
 
         sections = []
+
+        vItems = self.vals.items()
+        vItems.sort()
         
-        for (k,vdict) in self.vals.items():
+        for (k,vdict) in vItems:
             try:
+                vdictItems = vdict.items()
+                vdictItems.sort()
                 section_vals = [' %s = %s' %
                                 (k_inner,fortran_style(k_inner,v))
-                                for (k_inner,v) in vdict.items()]
+                                for (k_inner,v) in vdictItems]
+                
             except FortranConversionException, (e):
                 raise Exception('Failed to convert %s' %
                                 e.param_name)
@@ -256,7 +277,6 @@ def main(config_filename):
     cmd = ['nc_gen_input']
     cmd.extend(nc_gen_input_args)
     cmd = [fortran_style('nc_gen_input', c) for c in cmd]
-    print cmd
     
     retcode = subprocess.call(cmd)
     if (retcode != 0):

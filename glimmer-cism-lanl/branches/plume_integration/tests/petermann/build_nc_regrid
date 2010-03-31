@@ -6,6 +6,7 @@ NETCDF=/home/cvg222/install/netcdf/
 INCFLAG=I
 BIN=/home/cvg222/bin/
  
-$FC -o nc_gen_input -$INCFLAG $NETCDF/include -L $NETCDF/lib ./nc_gen_input.F90 -lnetcdf
-mv ./nc_gen_input $BIN/nc_gen_input
+$FC -o nc_regrid -$INCFLAG $NETCDF/include -L $NETCDF/lib ./nc_regrid.F90 -lnetcdf
+mv ./nc_regrid $BIN/nc_regrid
+
 
