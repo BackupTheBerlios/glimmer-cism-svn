@@ -5,14 +5,17 @@ program nc_regrid
   implicit none
 
   ! module variables
-
   character (len=512) :: nc_file_in, nc_file_out
-  integer :: n_margin, s_margin, w_margin, e_margin
-  integer :: kmask_width
+
+  integer :: top_n_margin, top_s_margin, top_w_margin, top_e_margin
+  integer :: thk_n_margin, thk_s_margin, thk_w_margin, thk_e_margin
+  integer :: kin_n_margin, kin_s_margin, kin_w_margin, kin_e_margin
+
   integer :: t_read
 
   integer :: nx_new, ny_new, ny_old, nx_old, nt_old
   real :: hx_old, hy_old, hx_new, hy_new
+  real :: hx_new_kin, hy_new_kin
 
   ! first two old x values, and old y values
   real,dimension(2) :: x1_old,y1_old
@@ -22,7 +25,7 @@ program nc_regrid
   real,dimension(:),allocatable :: xstag_new,ystag_new
   real,dimension(:,:),allocatable :: thck_old,thck_new,topog_old,topog_new
   integer,dimension(:,:),allocatable :: kinbcmask_old,kinbcmask_new
-
+  
   call main()
 
 contains
@@ -30,16 +33,21 @@ contains
 subroutine main()
 
   character(len=512) :: gen_usage = "nc_regrid &
-                                    &nc_file_in nc_file_out [params]"
-  character(len=512) :: params = "<t_read> <n_margin> <s_margin> &
-                                    &<w_margin> <e_margin> <new_m> <new_n> &
-                                    &<kmask_width>"
+                                    &<nc_file_in> <nc_file_out> &
+                                    &<t_read> <new_m> <new_n> &
+                                    &<top_n_margin> <top_s_margin> &
+                                    &<top_w_margin> <top_e_margin> &
+                                    &<thk_n_margin> <thk_s_margin> &
+                                    &<thk_w_margin> <thk_e_margin> &
+                                    &<kin_n_margin> <kin_s_margin> &
+                                    &<kin_w_margin> <kin_e_margin> "
 
   character(len=128) :: argstr
 
-  if (command_argument_count() /= 10) then
+
+
+  if (command_argument_count() /= 17) then
      write(*,*) "Usage: ", trim(gen_usage)
-     write(*,*) "     params: ", trim(params)
      stop 1
   end if
 
@@ -56,32 +64,60 @@ subroutine main()
   write(*,*) 't_read:', t_read
 
   call get_command_argument(4, argstr)
-  read(argstr,'(i5)') n_margin
-  write(*,*) 'n_margin:',n_margin
-
-  call get_command_argument(5,argstr)
-  read(argstr,'(i5)') s_margin
-  write(*,*) 's_margin:',s_margin
-
-  call get_command_argument(6, argstr)
-  read(argstr,'(i5)') w_margin
-  write(*,*) 'w_margin:',w_margin
-
-  call get_command_argument(7,argstr)
-  read(argstr,'(i5)') e_margin
-  write(*,*) 'e_margin:',e_margin
-
-  call get_command_argument(8,argstr)
-  read(argstr,'(i5)') kmask_width
-  write(*,*)'kmask_width', kmask_width
-
-  call get_command_argument(9, argstr)
   read(argstr,'(i5)') nx_new
   write(*,*) 'new_m:',nx_new
 
-  call get_command_argument(10,argstr)
+  call get_command_argument(5,argstr)
   read(argstr,'(i5)') ny_new
   write(*,*) 'new_n:', ny_new
+
+  call get_command_argument(6, argstr)
+  read(argstr,'(i5)') top_n_margin
+  write(*,*) 'top_n_margin:',top_n_margin
+
+  call get_command_argument(7,argstr)
+  read(argstr,'(i5)') top_s_margin
+  write(*,*) 'top_s_margin:',top_s_margin
+
+  call get_command_argument(8, argstr)
+  read(argstr,'(i5)') top_w_margin
+  write(*,*) 'top_w_margin:',top_w_margin
+
+  call get_command_argument(9,argstr)
+  read(argstr,'(i5)') top_e_margin
+  write(*,*) 'top_e_margin:',top_e_margin
+
+  call get_command_argument(10,argstr)
+  read(argstr,'(i5)') thk_n_margin
+  write(*,*)'thk_n_marg', thk_n_margin
+
+  call get_command_argument(11,argstr)
+  read(argstr,'(i5)') thk_s_margin
+  write(*,*)'thk_s_margin', thk_s_margin
+
+  call get_command_argument(12,argstr)
+  read(argstr,'(i5)') thk_w_margin
+  write(*,*)'thk_w_margin', thk_w_margin
+
+  call get_command_argument(13,argstr)
+  read(argstr,'(i5)') thk_e_margin
+  write(*,*)'thk_e_margin', thk_e_margin
+
+  call get_command_argument(14,argstr)
+  read(argstr,'(i5)') kin_n_margin
+  write(*,*)'kin_n_marg', kin_n_margin
+
+  call get_command_argument(15,argstr)
+  read(argstr,'(i5)') kin_s_margin
+  write(*,*)'kin_s_margin', kin_s_margin
+
+  call get_command_argument(16,argstr)
+  read(argstr,'(i5)') kin_w_margin
+  write(*,*)'kin_w_margin', kin_w_margin
+
+  call get_command_argument(17,argstr)
+  read(argstr,'(i5)') kin_e_margin
+  write(*,*)'kin_e_margin', kin_e_margin
 
   call read_old_nc_file() 
 
@@ -99,20 +135,7 @@ subroutine main()
 
 end subroutine main
 
-elemental function is_land(w)
-
-	integer :: is_land
-	integer,intent(in) :: w
-
-	if (w > 0.0) then
-	   is_land = 1
-        else
-	   is_land = 0
-        end if
-
-end function is_land
-
-subroutine write_margins(data_old,data_new, &
+subroutine write_real_margins(data_old,data_new, &
                          test_sign, threshold, &
                          nx0,nx1,ny0,ny1, &
 	                 n_marg,s_marg,w_marg,e_marg)
@@ -128,8 +151,7 @@ subroutine write_margins(data_old,data_new, &
 	data_new(1:w_marg,:) = data_old(1,ny0/2)
   else
 	!ocean margin on west
-	data_new(1:w_marg, (s_marg+1):(ny1-n_marg)) = &
-				          data_old(1,ny0/2)
+	data_new(1:w_marg, (s_marg+1):(ny1-n_marg)) = data_old(1,ny0/2)
   end if
   
   if (test_sign * data_old(nx0,ny0/2) > test_sign * threshold) then
@@ -159,42 +181,47 @@ subroutine write_margins(data_old,data_new, &
                                data_old(nx0/2,ny0)
   end if
 
-end subroutine write_margins
+end subroutine write_real_margins
 
 
-subroutine write_interior(data_old, data_new, nx0,nx1,ny0,ny1)
+subroutine write_interior(data_old, data_new, nx_old,nx_new,ny_old,ny_new,&
+                          n_margin,s_margin,w_margin,e_margin)
 
   real,dimension(:,:),intent(in) :: data_old
   real,dimension(:,:),intent(inout) :: data_new
-  integer,intent(in) :: nx0,nx1,ny0,ny1
+  integer,intent(in) :: nx_old,nx_new,ny_old,ny_new
+  integer,intent(in) :: n_margin,s_margin,w_margin,e_margin
 
   !local vars
-  integer :: i00,i01,i10,i11,j00,j01,j10,j11 
-  integer :: i0,j0
-  real :: a,b, temp
+  integer :: i_old_left,i_new_left,i_old_right,i_new_right
+  integer :: j_old_bot,j_new_bot,j_old_top,j_new_top 
+  integer :: i_prev,j_prev
+  real :: a,b
   integer :: i,j
-  i00 = w_margin+1
-  i01 = w_margin+1
-  i10 = nx0 - e_margin
-  i11 = nx1 - e_margin
+  i_old_left = w_margin+1
+  i_new_left = w_margin+1
+  i_old_right = nx_old - e_margin
+  i_new_right = nx_new - e_margin
   
-  j00 = s_margin + 1
-  j01 = s_margin + 1
-  j10 = ny0 - n_margin
-  j11 = ny1 - n_margin
+  j_old_bot = s_margin + 1
+  j_new_bot = s_margin + 1
+  j_old_top = ny_old - n_margin
+  j_new_top = ny_new - n_margin
 
-  do i=i01,i11
-     do j=j01,j11
+  do i=i_new_left,i_new_right
+     do j=j_new_bot,j_new_top
  	 
-         i0 = aint((real(i) - i01)*(hx_new/hx_old)) + real(i00)
-         j0 = aint((real(j) - j01)*(hy_new/hx_old)) + real(j01)
-         a = (real(i)-i01)-aint((real(i)-i01)*(hx_new/hx_old))*(hx_old/hx_new)
-	 b = (real(j)-j01)-aint((real(j)-j01)*(hy_new/hy_old))*(hy_old/hy_new)
+         i_prev = int((real(i) - i_new_left)*(hx_new/hx_old)) + i_old_left
+         j_prev = int((real(j) - j_new_bot)*(hy_new/hy_old)) + j_old_bot
+         a = (real(i)-i_new_left) - &
+                aint((real(i)-i_new_left)*(hx_new/hx_old))*(hx_old/hx_new)
+	 b = (real(j)-j_new_bot) - &
+		aint((real(j)-j_new_bot)*(hy_new/hy_old))*(hy_old/hy_new)
 
-	 data_new(i,j) = (1-a)*(1-b)*data_old(i0,j0)     + &
-	                 (1-a)*   b *data_old(i0,j0+1)   + &
-                            a *(1-b)*data_old(i0+1,j0)     + &
-	                    a *   b *data_old(i0+1,j0+1)
+	 data_new(i,j) = (1-a)*(1-b) * data_old(i_prev,j_prev)     + &
+	                 (1-a)*   b  * data_old(i_prev,j_prev+1)   + &
+                            a *(1-b) * data_old(i_prev+1,j_prev)     + &
+	                    a *   b  * data_old(i_prev+1,j_prev+1)
      end do
   end do
 
@@ -207,8 +234,6 @@ subroutine read_old_nc_file()
   integer :: time_dimid,time_varid,x_dimid,y_dimid
   integer :: x_varid,y_varid
   integer :: thck_varid,topog_varid,kinbcmask_varid
-
-
 
   character(len=NF90_MAX_NAME) :: x1_name,y1_name,t_name
   
@@ -237,6 +262,11 @@ subroutine read_old_nc_file()
       						  count= (/ 2 /) ))
   hy_old = y1_old(2) - y1_old(1)
 
+  if (t_read < 1) then
+	write(*,*) 't_read can not be negative'
+	stop 1
+  end if
+
   if (nt_old < t_read) then
 	write(*,*) 't_read exceeds available time slices: ', nt_old
 	stop 1
@@ -264,10 +294,15 @@ subroutine define_new_data()
   integer :: i,j
   real,dimension(nx_new-1,ny_new-1) :: kinbcmask_new_real
 
-  hx_new = hx_old * (nx_old - w_margin - e_margin - 1) / &
-                    (nx_new - w_margin - e_margin - 1)
-  hy_new = hy_old * (ny_old - s_margin - n_margin - 1) / &
-                    (ny_new - s_margin - n_margin - 1)
+  hx_new = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
+                    (nx_new - thk_w_margin - thk_e_margin - 1)
+  hy_new = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
+                    (ny_new - thk_s_margin - thk_n_margin - 1)
+
+  hx_new_kin = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
+                        (nx_new - thk_w_margin - thk_e_margin - 1)
+  hy_new_kin = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
+                        (ny_new - thk_s_margin - thk_n_margin - 1)
 
   !now populate the dimension variables
   xs_new = (/ ( x1_old(1) + (i-1)*hx_new,i=1,nx_new ) /)
@@ -276,25 +311,28 @@ subroutine define_new_data()
   ystag_new = (/ ( y1_old(1) + ((real(j)-0.5)*hy_new),j=1,ny_new-1 ) /)
   
   ! now define the thck, topog, kinbcmask arrays
-  call write_margins(topog_old,topog_new, +1.0, 0.0,&
-                          nx_old, nx_new,ny_old, ny_new, &
-	                  n_margin,s_margin,w_margin,e_margin)
+  topog_new = 0.0
+  thck_new = 0.0
+  kinbcmask_new_real = 0.0
 
-  call write_margins(thck_old,thck_new, -1.0, 0.0, &
+  call write_real_margins(topog_old,topog_new, +1.0, 0.0,&
                           nx_old, nx_new,ny_old, ny_new, &
-                          n_margin,s_margin,w_margin,e_margin)
-  call write_margins(real(kinbcmask_old), kinbcmask_new_real, +1.0,0.0,&
+	                  top_n_margin,top_s_margin,top_w_margin,top_e_margin)
+
+  call write_interior(topog_old,topog_new, nx_old,nx_new,ny_old,ny_new,&
+		      top_n_margin,top_s_margin,top_w_margin,top_e_margin)
+
+  call write_real_margins(thck_old,thck_new, -1.0, 0.0, &
+                          nx_old, nx_new,ny_old, ny_new, &
+                          thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin)
+
+  call write_interior(thck_old,thck_new,nx_old,nx_new,ny_old,ny_new,&
+                      thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin)
+
+  kinbcmask_new_real = 0.0
+  call write_real_margins(real(kinbcmask_old), kinbcmask_new_real, +1.0,0.0,&
                           nx_old-1, nx_new-1, ny_old-1, ny_new-1, &
-			  is_land(n_margin)*kmask_width, &
-	                  is_land(s_margin)*kmask_width, &
-	 		  is_land(w_margin)*kmask_width, &
-	                  is_land(e_margin)*kmask_width)
-  
-  call write_interior(topog_old,topog_new, nx_old,nx_new,ny_old,ny_new)
-  call write_interior(thck_old,thck_new,nx_old,nx_new,ny_old,ny_new)
-  call write_interior(real(kinbcmask_old),kinbcmask_new_real, &
-		 	nx_old,nx_new,ny_old,ny_new)
-
+			  kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin)
   kinbcmask_new = int(kinbcmask_new_real)
 
 end subroutine define_new_data
@@ -381,7 +419,5 @@ subroutine write_nc_file()
     end if
 
   end subroutine check
-
-
 
 end program nc_regrid
