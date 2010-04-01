@@ -82,7 +82,7 @@ two files, one for experiment a, one for experiment b each containing three
 plots.)  Plotting one domain size at a time results in larger plots; for 
 example
 
-python plotResults.py --exp=a,c --size==40
+python plotResults.py --exp=a,c --size=40
 
 creates two files, each containing one (large) plot.
 
