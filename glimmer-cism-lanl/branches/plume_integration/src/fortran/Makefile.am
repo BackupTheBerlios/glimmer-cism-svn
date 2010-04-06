@@ -1,4 +1,4 @@
-SUBDIRS = SLAP_library
+SUBDIRS = SLAP_library plume
 RESTART_STEM=glimmer_rst
 RESTART_INC_INS=$(RESTART_STEM)_body.inc.in $(RESTART_STEM)_head.inc.in
 RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
@@ -6,7 +6,7 @@ RESTART_COMMON=glimmer_restart_common.F90 glimmer_restart_pointarr.F90 \
                glimmer_restart_statarr.F90 glimmer_restart_statscal.F90
 
 lib_LIBRARIES = libglide.a libglimmer.a libglint.a libclimate.a
-bin_PROGRAMS  =  simple_glide eis_glide glint_example glex_ebm eismint3_glide nc2config \
+bin_PROGRAMS  =  simple_glide eis_glide glint_example glex_ebm eismint3_glide nc2config shelf_driver \
                  spin_glide glide_thermal_equib
 check_PROGRAMS = test_config test_setup test_ts test_lithot test_integrate test_commandline test_writestats \
                  glimmer_unittest
@@ -83,6 +83,8 @@ libclimate_a_SOURCES = eismint3_forcing.F90 eismint3_types.F90 \
                        eismint3_io.F90 spin_forcing.F90 spin_mb.F90 \
                        spin_temp.F90 spin_slc.F90 spin_io.F90 \
                        testsfg.F90 spin_types.F90 
+libplume_a_SOURCE = plume\plume_global.F90 plume\plume_functions.F90 plume\plume_context.F90 plume\plume.F90 plume\plume_io.F90
+           
 if PARDISO
 RESTART_CODE += glimmer_sparse_pardiso.F90
 libglimmer_a_SOURCES += glimmer_sparse_pardiso.F90
@@ -94,6 +96,8 @@ eismint3_glide_LDADD = libclimate.a libglide.a libglimmer.a \
 simple_glide_SOURCES = simple_glide.F90 
 simple_glide_LDADD = libclimate.a libglide.a libglimmer.a \
                      SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+shelf_driver_SOURCES = shelf_driver.F90
+shelf_driver_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) plume/libplume.a
 eis_glide_SOURCES = eis_glide.F90
 eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 spin_glide_SOURCES = spin_glide.F90

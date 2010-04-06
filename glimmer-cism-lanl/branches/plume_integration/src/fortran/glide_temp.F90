@@ -933,7 +933,7 @@ contains
     type(glide_global_type) :: model
     real(dp), dimension(:,0:,0:), intent(in) :: temp
     real(dp), dimension(:,:), intent(in) :: thck,  stagthck, dusrfdew, dusrfdns, ubas, vbas  
-    real(dp), dimension(:,:), intent(out) :: bmlt
+    real(dp), dimension(:,:), intent(inout) :: bmlt
     logical, dimension(:,:), intent(in) :: floater
     integer, intent(in) :: whichbmelt
 
@@ -1038,6 +1038,8 @@ contains
 
              end if
 
+          else if (model%options%use_plume == 1) then
+		! do nothing, we are using the plume model to calculate basal melt
           else
 
              bmlt(ew,ns) = 0.0d0
