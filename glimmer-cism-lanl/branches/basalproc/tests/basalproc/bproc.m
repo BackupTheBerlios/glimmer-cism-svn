@@ -49,14 +49,14 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 
 
 %% load in old till map
-load ~/Home/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl           % Marion's path
-%load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
+% load ~/Home/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl           % Marion's path
+load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
 
 minTauf = Tillggl;
-% minTauf = 88 * ones( size( minTauf ) );       % for debugging
+% minTauf = 5e3 * ones( size( minTauf ) );       % for debugging
 beta = 5e1*ones(size(minTauf));
-beta(8:14,:) = 3e1;
-beta(10:12,:) = 0.5e1;
+% beta(8:14,:) = 3e1;
+% beta(10:12,:) = 0.5e1;
 
 figure(4), imagesc( x/1e3, y/1e3, minTauf/1e3 ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'Tau0 (kPa)' )
@@ -86,8 +86,7 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'acab (m/a)' )
 
 tauf=minTauf;
 
-cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
-%cd /Users/sprice/work/modeling/cism_new/branches/tests/basalproc            % Steve's path
+% cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
+cd /Users/sprice/work/modeling/cism_new/branches/tests/basalproc            % Steve's path
 
-% save bproc.mat airt acab qgeo usrf topg thck minTauf kinbcmask uvelhom vvelhom 
 save bproc.mat airt acab qgeo usrf topg thck beta tauf kinbcmask uvelhom vvelhom 
