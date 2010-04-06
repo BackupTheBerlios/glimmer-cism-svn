@@ -9,7 +9,10 @@ hy = 200.0
 dt = 0.25
 tend = 1.0
 
-ifdep = 600.0
+
+ifdep = 400.0
+gldep = 600.0
+wcdep = 200.0
 
 run_name = 'petermann_combined_test'
 
@@ -23,8 +26,8 @@ nc_gen_input_args = ['cs',
                     80, #start of shelf
                     700.0, #grounded ice thickness
                     2, # end of shelf
-		    500.0, #ice front ice thickness
-                    -600.0, # ocean topography
+		    ifdep, #ice front ice thickness
+                    -gldep, # ocean topography
                     200.0, # land topography
  	            0.0,0.0,0.0, #no channels
                     3, # 3 cells of kinbc on sides
@@ -38,8 +41,13 @@ plume_vals = {'ifdep' : ifdep,
               'hx' : hx,
               'hy' : hy,
               'dt1' : 50.0,
-              'gldep' : 1000.0,
-              'wcdep' : 500.0}
+              'phi' : 0.0,
+              'tempbot' : 0.0,
+              'temptop' : 0.0,
+              'saltbot' : 34.5,
+              'salttop' : 34.5,
+              'gldep' : gldep,
+              'wcdep' : wcdep}
 
 gc_vals = {'plume' : { 'plume_imin' : 1,
  			'plume_imax' : m,
@@ -51,11 +59,13 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
 	                'plume_nl_file' : plume_nl_filename},
             'time' : {'tend' : tend,
  		      'dt' : dt },
-	    'grid' : { 'upn' : 11,
+	    'grid' : { 'upn' : 5,
 			'ewn' : m,
 			'nsn' : n,
 			'dew' : hx,
 			'dns' : hy },
+           'Petermann shelf' : {'accumulation_rate' : 0.0,
+                                'air_temperature' : -5.0},
  	    'CF output' : { 'frequency' : dt,
 			    'name' : '%s.out.nc' % run_name},
             'CF input' : { 'name' : nc_input_fname,

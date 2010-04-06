@@ -13,8 +13,8 @@ import sys
 import subprocess
 
 class FortranConversionException(Exception):
-    def __init__(self, msg, param_name):
-        Exception.__init__(self,msg)
+    def __init__(self, param_name):
+        Exception.__init__(self,'Error converting key %s' % param_name)
         self.param_name = param_name
 
 def fortran_style(key, val):
@@ -131,8 +131,8 @@ class GCConfig(object):
                                        # 'basal_tract_const' : ,
                                        'log_level' : 6,
                                        },
-                      'Petermann shelf' : {  'air_temperature' : -5.0,
-                                             'accumulation_rate' : 10.0,
+                      'Petermann shelf' : {  'air_temperature' : None,
+                                             'accumulation_rate' : None,
                                              'eustatic_sea_level' : 0.0 },
                       'options' : {'flow_law' : 1,
                                    'evolution' : 3,
@@ -147,7 +147,7 @@ class GCConfig(object):
                                    'periodic_ns' : 0,
                                    'hotstart' : 0,
                                    'basal_water' : 2,
-                                   'which_bmlt' : 1},
+                                   'which_bmlt' : None},
                       'grid' : { 'sigma_builtin' : 1,
                                  'upn' : None,
                                  'ewn' : None,
@@ -228,8 +228,8 @@ class GCConfig(object):
                                 for (k_inner,v) in vdictItems]
                 
             except FortranConversionException, (e):
-                raise Exception('Failed to convert %s' %
-                                e.param_name)
+                print('\n\nFailed to convert %s\n\n' % e.param_name)
+                raise Exception('Failed to build case')
             
             sections.append('[%s]\n%s\n' % (k, '\n'.join(section_vals)))
                         
@@ -246,6 +246,7 @@ def main(config_filename):
                 'plume_nl_filename',
                 'gc_config_filename',
                 'nc_gen_input_args',
+                'nc_regrid_args',
                 ]
 
     for req_var in req_vars:
@@ -261,6 +262,7 @@ def main(config_filename):
     pnl_name = newVals['plume_nl_filename']
     gc_config_name = newVals['gc_config_filename']
     nc_gen_input_args = newVals['nc_gen_input_args']
+    nc_regrid_args = newVals['nc_regrid_args']
     
     f = open(pnl_name,'w')
     try:
@@ -274,13 +276,21 @@ def main(config_filename):
     finally:
         g.close()
 
-    cmd = ['nc_gen_input']
-    cmd.extend(nc_gen_input_args)
-    cmd = [fortran_style('nc_gen_input', c) for c in cmd]
+    if (nc_gen_input_args):
+        cmd = ['nc_gen_input']
+        cmd.extend(nc_gen_input_args)
+        cmd = [fortran_style('nc_gen_input', c) for c in cmd]
+    elif (nc_regrid_args):
+        cmd =['nc_regrid']
+        cmd.extend(nc_regrid_args)
+        cmd = [fortran_style('nc_regrid', c) for c in cmd]
+    else:
+        raise Exception('No arguments to generate netcdf input')
+    
     
     retcode = subprocess.call(cmd)
     if (retcode != 0):
-        raise Exception('Error running nc_gen_input')
+        raise Exception('Error running:\n %s' ' '.join(cmd))
 
 if __name__ == '__main__':
     if (len(sys.argv) < 2):
