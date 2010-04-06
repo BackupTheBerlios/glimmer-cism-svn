@@ -106,14 +106,14 @@ class PlumeNamelist(object):
         vItems.sort()
         for (k,v) in vItems:
             try:
-                lines.append(', %s = %s\n' % (k,fortran_style(k,v)))
+                lines.append(' %s = %s\n' % (k,fortran_style(k,v)))
             except FortranConversionException:
                 raise Exception('%s \n %s \n %s' % 
                                 ('Could not write dict to Fortran namelist.',
                                  'Missing definitions of:',
                                 ' '.join([k for (k,v) in
                                           self.vals.items() if (v is None)])))
-        return '&plume_nml\n %s /' % ' '.join(lines)
+        return '&plume_nml\n %s /' % ' ,'.join(lines)
 
 
 class GCConfig(object):
@@ -286,7 +286,6 @@ def main(config_filename):
         cmd = [fortran_style('nc_regrid', c) for c in cmd]
     else:
         raise Exception('No arguments to generate netcdf input')
-    
     
     retcode = subprocess.call(cmd)
     if (retcode != 0):
