@@ -141,15 +141,25 @@ module glide_types
   integer, parameter :: HO_EFVS_FULL = 0
   integer, parameter :: HO_EFVS_CONSTANT = 1
   integer, parameter :: HO_EFVS_MINIMUM = 2
-
-  integer, parameter :: HO_SOURCE_AVERAGED = 0
-  integer, parameter :: HO_SOURCE_EXPLICIT = 1
-  integer, parameter :: HO_SOURCE_DISABLED = 2
     !*FD Flag that indicates how effective viscosity is computed
     !*FD \begin{description}
     !*FD \item[0] compute from effective strain rate
     !*FD \item[1] constant value
     !*FD \item[2] minimum value
+
+  !*sfp* added the next two groups for HO T calcs.
+  integer, parameter :: SIA_DISP = 0
+  integer, parameter :: FIRSTORDER_DISP = 1
+  integer, parameter :: SSA_DISP = 2
+
+  integer, parameter :: SIA_BMELT = 0
+  integer, parameter :: FIRSTORDER_BMELT = 1
+  integer, parameter :: SSA_BMELT = 2
+
+  integer, parameter :: HO_SOURCE_AVERAGED = 0
+  integer, parameter :: HO_SOURCE_EXPLICIT = 1
+  integer, parameter :: HO_SOURCE_DISABLED = 2
+
   type glide_options
 
     !*FD Holds user options controlling the methods used in the ice-model
@@ -312,6 +322,24 @@ module glide_types
 
 !end whlmod
 
+    !*sfp* added
+    integer :: which_disp = 0
+    !*FD Flag that indicates method for computing the dissipation during the temperature calc.
+    !*FD \begin{description}
+    !*FD \item[0] for 0-order SIA approx
+    !*FD \item[1] for 1-st order solution (e.g. Blatter-Pattyn)
+    !*FD \item[2] for 1-st order depth-integrated solution (SSA)
+    !*FD \begin{description}
+
+    !*sfp* added
+    integer :: which_bmelt = 0
+    !*FD Flag that indicates method for computing the frictional melt rate terms during temperature calc.
+    !*FD \begin{description}
+    !*FD \item[0] for 0-order SIA approx
+    !*FD \item[1] for 1-st order solution (e.g. Blatter-Pattyn)
+    !*FD \item[2] for 1-st order depth-integrated solution (SSA)
+    !*FD \begin{description}
+
     integer :: which_ho_sparse = 0
     !*FD Flag that indicates method for solving the sparse linear system
     !*FD that arises from the higher-order solver
@@ -371,12 +399,6 @@ module glide_types
 
     integer :: diagnostic_run = 0
 
-    integer :: which_bmlt = 0
-    !*FD \begin{description}
-    !*FD \item[0] standard bmlt calculation
-    !*FD \item[1] use plume to calculate bmlt
-    !*FD \end{description}
-
   end type glide_options
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -426,7 +448,7 @@ module glide_types
     logical               :: empty = .true.
     !*FD True if there is no ice anywhere in the domain, false otherwise.
 
-    real(dp) :: ivol, iarea !*FD ice volume and ice area
+    real(dp) :: ivol, iarea,iareag, iareaf !*FD ice volume and ice area
 
   end type glide_geometry
 
@@ -682,7 +704,7 @@ module glide_types
   type glide_grnd
     real(dp),dimension(:,:),pointer :: gl_ew => null()
     real(dp),dimension(:,:),pointer :: gl_ns => null()
-    real(sp),dimension(:,:),pointer :: gline_flux => null() !*FD flux at the
+    real(dp),dimension(:,:),pointer :: gline_flux => null() !*FD flux at the
                                                             !grounding line
   end type glide_grnd
   

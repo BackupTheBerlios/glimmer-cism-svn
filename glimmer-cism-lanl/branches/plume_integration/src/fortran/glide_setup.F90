@@ -410,7 +410,6 @@ contains
     call GetValue(section,'periodic_ew',model%options%periodic_ew)
     call GetValue(section,'periodic_ns',model%options%periodic_ns)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
-    call GetValue(section, 'which_bmlt',model%options%which_bmlt)
   end subroutine handle_options
   
   !Higher order options
@@ -432,6 +431,9 @@ contains
     call GetValue(section, 'which_ho_babc',      model%options%which_ho_babc)
     call GetValue(section, 'which_ho_efvs',      model%options%which_ho_efvs)
     call GetValue(section, 'which_ho_resid',     model%options%which_ho_resid)
+    !*sfp* added options for type of dissipation and bmelt calc. in temperature calc.
+    call GetValue(section, 'which_disp',         model%options%which_disp)
+    call GetValue(section, 'which_bmelt',        model%options%which_bmelt)
     call GetValue(section, 'which_ho_sparse',    model%options%which_ho_sparse)
     call GetValue(section, 'which_ho_sparse_fallback', model%options%which_ho_sparse_fallback)
   end subroutine handle_ho_options
@@ -456,14 +458,15 @@ contains
          'local + const flux ', &
          'flux calculation   ', &
          'none               ' /)
-    character(len=*), dimension(0:6), parameter :: marine_margin = (/ &
-         'ignore            ', &
-         'no ice shelf      ', &
-         'threshold         ', &
-         'const calving rate', &
-         'edge threshold    ', &
-         'van der Veen      ', &
-         'Pattyn Grnd Line  '/)
+    character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
+         'ignore              ', &
+         'no ice shelf        ', &
+         'threshold           ', &
+         'const calving rate  ', &
+         'edge threshold      ', &
+         'van der Veen        ', &
+         'Pattyn Grnd Line    ', &
+         'Huybrechts Greenland'/)
     character(len=*), dimension(0:5), parameter :: slip_coeff = (/ &
          'zero        ', &
          'const       ', &
@@ -524,11 +527,20 @@ contains
          'vertically averaged     ', &
          'vertically explicit     ', &
          'shelf front disabled    '/)
+    !*sfp* added the next two for HO temperature calcs
+    character(len=*), dimension(0:2), parameter :: dispwhich = (/ &
+         '0-order SIA                       ', &
+         '1-st order model (Blatter-Pattyn) ', &
+         '1-st order depth-integrated (SSA) ' /)
+    character(len=*), dimension(0:2), parameter :: bmeltwhich = (/ &
+         '0-order SIA                      ', &
+         '1-st order model (Blatter-Pattyn)', &
+         '1-st order depth-integrated (SSA)' /)
     character(len=*), dimension(0:3), parameter :: ho_whichsparse = (/ &
-         'BiCG with LU precondition         ', &
-         'GMRES with LU precondition        ', &
-         'UMFPACK Unsymmetric Multifrontal  ',&
-         'PARDISO Parllel Direct Method     '/)
+         'BiCG with LU precondition       ', &
+         'GMRES with LU precondition      ', &
+         'UMFPACK Unsymmetric Multifrontal',&
+         'PARDISO Parllel Direct Method   '/)
     call write_log('GLIDE options')
     call write_log('-------------')
     write(message,*) 'I/O parameter file      : ',trim(model%funits%ncfile)
@@ -580,11 +592,6 @@ contains
     end if
     if (model%options%hotstart.eq.1) then
        call write_log('Hotstarting model')
-    end if
-    if (model%options%which_bmlt.eq.1) then
-       call write_log('Using plume model to calculate bmlt below floating ice')
-    else
-       call write_log('Using glimmer to calculate bmlt everywhere')
     end if
 
     !HO options
@@ -643,7 +650,19 @@ contains
     if (model%options%which_ho_resid < 0 .or. model%options%which_ho_resid >= size(ho_whichresid)) then
         call write_log('Error, HO residual input out of range', GM_FATAL)
     end if
-
+    !*sfp* added the next two for HO T calc
+    write(message,*) 'dispwhich         :',model%options%which_disp,  &
+                      dispwhich(model%options%which_disp)
+    call write_log(message)
+    if (model%options%which_disp < 0 .or. model%options%which_disp >= size(dispwhich)) then
+        call write_log('Error, which dissipation input out of range', GM_FATAL)
+    end if
+    write(message,*) 'bmeltwhich         :',model%options%which_bmelt,  &
+                      bmeltwhich(model%options%which_bmelt)
+    call write_log(message)
+    if (model%options%which_bmelt < 0 .or. model%options%which_bmelt >= size(bmeltwhich)) then
+        call write_log('Error, which bmelt input out of range', GM_FATAL)
+    end if
     write(message,*) 'ho_whichsparse        :',model%options%which_ho_sparse,  &
                       ho_whichsparse(model%options%which_ho_sparse)
     call write_log(message)

@@ -41,34 +41,8 @@ contains
         do ns = 1,nsn-1
             do ew = 1,ewn-1
 
-                
-                
-                !The following cases relate to Anne LeBroque's fix for nunataks
-                !ew,ns cell is ice free:
-                if (ipvr(ew,ns) <= thklim/thk0 .and. &
-                   ((usrf(ew,ns) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >= thklim/thk0) &
-                    .or. (usrf(ew,ns) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >= thklim/thk0))) then
-                        opvr(ew,ns) = 0.0
-
-                !ew+1,ns cell is ice free:
-                else if (ipvr(ew+1,ns) <= thklim/thk0 .and. &
-                    ((usrf(ew+1,ns) >= usrf(ew,ns) .and. ipvr(ew,ns) >= thklim/thk0) &
-                    .or. (usrf(ew+1,ns) >= usrf(ew+1,ns+1) .and. ipvr(ew+1,ns+1) >= thklim/thk0))) then
-                        opvr(ew,ns) = 0.0
-    
-                !ew,ns+1 cell is ice free:
-                else if (ipvr(ew,ns+1) <= thklim/thk0 .and. &
-                    ((usrf(ew,ns+1) >= usrf(ew,ns) .and. ipvr(ew,ns) >= thklim/thk0) &
-                    .or. (usrf(ew,ns+1) >= usrf(ew+1,ns+1) .and. ipvr(ew+1,ns+1) >= thklim/thk0))) then
-                        opvr(ew,ns) = 0.0
-    
-                !ew+1,ns+1 cell is ice free:
-                else if (ipvr(ew+1,ns+1) <= thklim/thk0 .and. &
-                    ((usrf(ew+1,ns+1) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >=thklim/thk0) &
-                    .or. (usrf(ew+1,ns+1) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >=thklim/thk0))) then
-                        opvr(ew,ns) = 0.0
                 !If any of our staggering points are shelf front, ignore zeros when staggering
-                else if (any(GLIDE_IS_CALVING(mask(ew:ew+1, ns:ns+1)))) then
+                if (any(GLIDE_IS_CALVING(mask(ew:ew+1, ns:ns+1)))) then
                     n = 0
                     tot = 0
     
@@ -93,12 +67,35 @@ contains
                     else
                         opvr(ew,ns) = 0
                     end if
-                
-                else
-                !Standard Staggering
-                    opvr(ew,ns) = (ipvr(ew+1,ns) + ipvr(ew,ns+1) + &
-                                   ipvr(ew+1,ns+1) + ipvr(ew,ns)) / 4.0d0
+                !The following cases relate to Anne LeBroque's fix for nunataks
+                !ew,ns cell is ice free:
+                else if (ipvr(ew,ns) <= thklim/thk0 .and. &
+                   ((usrf(ew,ns) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >= thklim/thk0) &
+                    .or. (usrf(ew,ns) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >= thklim/thk0))) then
+                        opvr(ew,ns) = 0.0
 
+                !ew+1,ns cell is ice free:
+                else if (ipvr(ew+1,ns) <= thklim/thk0 .and. &
+                    ((usrf(ew+1,ns) >= usrf(ew,ns) .and. ipvr(ew,ns) >= thklim/thk0) &
+                    .or. (usrf(ew+1,ns) >= usrf(ew+1,ns+1) .and. ipvr(ew+1,ns+1) >= thklim/thk0))) then
+                        opvr(ew,ns) = 0.0
+    
+                !ew,ns+1 cell is ice free:
+                else if (ipvr(ew,ns+1) <= thklim/thk0 .and. &
+                    ((usrf(ew,ns+1) >= usrf(ew,ns) .and. ipvr(ew,ns) >= thklim/thk0) &
+                    .or. (usrf(ew,ns+1) >= usrf(ew+1,ns+1) .and. ipvr(ew+1,ns+1) >= thklim/thk0))) then
+                        opvr(ew,ns) = 0.0
+    
+                !ew+1,ns+1 cell is ice free:
+                else if (ipvr(ew+1,ns+1) <= thklim/thk0 .and. &
+                    ((usrf(ew+1,ns+1) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >=thklim/thk0) &
+                    .or. (usrf(ew+1,ns+1) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >=thklim/thk0))) then
+                        opvr(ew,ns) = 0.0
+                
+                !Standard Staggering
+                else
+                        opvr(ew,ns) = (ipvr(ew+1,ns) + ipvr(ew,ns+1) + &
+                               ipvr(ew+1,ns+1) + ipvr(ew,ns)) / 4.0d0
                 end if
   
         end do

@@ -69,6 +69,8 @@ module glint_main
 
      type(global_grid) :: g_grid      !*FD The main global grid, used for 
                                       !*FD input and most outputs
+     type(global_grid) :: g_grid_ocn  !*FD Global grid used for ocean  
+                                      !*FD inputs 
      type(global_grid) :: g_grid_orog !*FD Global grid used for orography output.
 
      ! Ice model instances --------------------------------------
@@ -92,17 +94,20 @@ module glint_main
      logical  :: new_av        = .true. !*FD Set to true if the next correct call starts a new averaging round
      ! Averaging arrays -----------------------------------------
 
-     real(rk),pointer,dimension(:,:) :: g_av_precip  => null()  !*FD globally averaged precip
-     real(rk),pointer,dimension(:,:) :: g_av_temp    => null()  !*FD globally averaged temperature 
-     real(rk),pointer,dimension(:,:) :: g_max_temp   => null()  !*FD global maximum temperature
-     real(rk),pointer,dimension(:,:) :: g_min_temp   => null()  !*FD global minimum temperature
-     real(rk),pointer,dimension(:,:) :: g_temp_range => null()  !*FD global temperature range
-     real(rk),pointer,dimension(:,:) :: g_av_zonwind => null()  !*FD globally averaged zonal wind 
-     real(rk),pointer,dimension(:,:) :: g_av_merwind => null()  !*FD globally averaged meridional wind 
-     real(rk),pointer,dimension(:,:) :: g_av_humid   => null()  !*FD globally averaged humidity (%)
-     real(rk),pointer,dimension(:,:) :: g_av_lwdown  => null()  !*FD globally averaged downwelling longwave (W/m$^2$)
-     real(rk),pointer,dimension(:,:) :: g_av_swdown  => null()  !*FD globally averaged downwelling shortwave (W/m$^2$)
-     real(rk),pointer,dimension(:,:) :: g_av_airpress => null() !*FD globally averaged surface air pressure (Pa)
+     ! *FD RMG note: 'globally averaged' in these comments refers to time averaging not spatial averaging
+     real(rk),pointer,dimension(:,:)  :: g_av_precip   => null()  !*FD globally averaged precip
+     real(rk),pointer,dimension(:,:)  :: g_av_temp     => null()  !*FD globally averaged temperature 
+     real(rk),pointer,dimension(:,:)  :: g_max_temp    => null()  !*FD global maximum temperature
+     real(rk),pointer,dimension(:,:)  :: g_min_temp    => null()  !*FD global minimum temperature
+     real(rk),pointer,dimension(:,:)  :: g_temp_range  => null()  !*FD global temperature range
+     real(rk),pointer,dimension(:,:)  :: g_av_zonwind  => null()  !*FD globally averaged zonal wind 
+     real(rk),pointer,dimension(:,:)  :: g_av_merwind  => null()  !*FD globally averaged meridional wind 
+     real(rk),pointer,dimension(:,:)  :: g_av_humid    => null()  !*FD globally averaged humidity (%)
+     real(rk),pointer,dimension(:,:)  :: g_av_lwdown   => null()  !*FD globally averaged downwelling longwave (W/m$^2$)
+     real(rk),pointer,dimension(:,:)  :: g_av_swdown   => null()  !*FD globally averaged downwelling shortwave (W/m$^2$)
+     real(rk),pointer,dimension(:,:)  :: g_av_airpress => null()  !*FD globally averaged surface air pressure (Pa)
+     real(rk),pointer,dimension(:,:,:):: g_av_temp_ocn => null()  !*FD globally averaged ocean potential temperature 
+     real(rk),pointer,dimension(:,:,:):: g_av_salin_ocn=> null()  !*FD globally averaged ocean salinity
 
      ! Fractional coverage information --------------------------
 
@@ -422,6 +427,54 @@ contains
 
   end subroutine initialise_glint
 
+
+  !-------------------------------------------------------------------------------
+  ! Optional subroutine to initialise the ocean grid and fields
+  subroutine initialise_glint_ocn(params,lats,longs,deps,latb,lonb,depb)
+
+    !*FD Initialises the model
+
+!    use glimmer_config
+!    use glint_initialise
+!    use glimmer_log
+!    use glimmer_filenames
+    implicit none
+
+    ! Subroutine argument declarations --------------------------------------------------------
+
+    type(glint_params),              intent(inout) :: params      !*FD parameters to be set
+    real(rk),dimension(:),           intent(in)    :: lats,longs  !*FD location of gridpoints 
+                                                                  !*FD in global data.
+    real(rk),dimension(:),           intent(in)    :: deps        !*FD vertical location of gridpoints 
+    real(rk),dimension(:),  optional,intent(in)    :: latb        !*FD Locations of the latitudinal 
+                                                                  !*FD boundaries of the grid-boxes.
+    real(rk),dimension(:),  optional,intent(in)    :: lonb        !*FD Locations of the longitudinal
+                                                                  !*FD boundaries of the grid-boxes.
+    real(rk),dimension(:),  optional,intent(in)    :: depb        !*FD Locations of the vertical
+                                                                  !*FD boundaries of the grid-boxes.
+
+    ! Initialise main global grid --------------------------------------------------------------
+
+    call new_global_grid(params%g_grid_ocn,longs,lats,deps=deps,lonb=lonb,latb=latb,depb=depb)
+
+
+    ! Allocate arrays -----------------------------------------------
+
+    allocate(params%g_av_temp_ocn(params%g_grid_ocn%nx,params%g_grid_ocn%ny,params%g_grid_ocn%nz))
+    allocate(params%g_av_salin_ocn(params%g_grid_ocn%nx,params%g_grid_ocn%ny,params%g_grid_ocn%nz))
+
+    ! Initialise arrays ---------------------------------------------
+
+    params%g_av_temp_ocn  = 0.0
+    params%g_av_salin_ocn = 0.0
+
+    ! RMG note: need to add an ocean/land mask at some point
+
+  end subroutine initialise_glint_ocn
+
+
+
+
   !================================================================================
 
   subroutine glint(params,time,rawtemp,rawprecip,orog,zonwind,merwind,humid,lwdown,swdown,airpress, &
@@ -715,6 +768,90 @@ contains
     endif
 
   end subroutine glint
+
+  !================================================================================
+  ! RMG note: this is currently just a place holder for when the ocean coupling is 
+  ! fully implemented
+  subroutine glint_put_ocn(params,rawtemp_ocn,rawsalin_ocn)
+
+!    use glimmer_utils
+!    use glint_interp
+!    use glint_timestep
+!    use glimmer_log
+    implicit none
+
+    ! Subroutine argument declarations -------------------------------------------------------------
+
+    type(glint_params),              intent(inout) :: params          !*FD parameters for this run
+    real(rk),dimension(:,:,:),target,intent(in)    :: rawtemp_ocn     !*FD Surface temperature field (celcius)
+    real(rk),dimension(:,:,:),target,intent(in)    :: rawsalin_ocn    !*FD Precipitation rate        (mm/s)
+
+    ! Internal variables ----------------------------------------------------------------------------
+
+!!$    integer :: i
+!!$    real(rk),dimension(:,:),allocatable :: albedo_temp,if_temp,vf_temp,sif_temp,svf_temp,sd_temp,wout_temp,orog_out_temp,win_temp
+!!$    real(rk) :: twin_temp,twout_temp,icevol_temp
+!!$    type(output_flags) :: out_f
+!!$    logical :: icets
+!!$    character(250) :: message
+!!$    real(rk),dimension(size(rawprecip,1),size(rawprecip,2)),target :: anomprecip
+!!$    real(rk),dimension(size(rawtemp,1),  size(rawtemp,2)),  target :: anomtemp
+!!$    real(rk),dimension(:,:),pointer :: precip
+!!$    real(rk),dimension(:,:),pointer :: temp
+!!$    real(rk) :: yearfrac
+
+    print*,''
+    print*,'ocean coupling development.'
+    print*,''
+    print*,'Min and max ocean potential temperature: ',minval(rawtemp_ocn),maxval(rawtemp_ocn)
+    print*,'Min and max ocean salinity: ',minval(rawsalin_ocn),maxval(rawsalin_ocn)
+    print*,''
+
+
+!RMG note: might want to include some of this kind of checking
+!!$    ! Check we're expecting a call now --------------------------------------------------------------
+!!$
+!!$    if (params%new_av) then
+!!$       if (time == params%next_av_start) then
+!!$          params%av_start_time = time
+!!$          params%new_av = .false.
+!!$       else
+!!$          write(message,*) 'Unexpected calling of GLINT at time ',time
+!!$          call write_log(message,GM_FATAL,__FILE__,__LINE__)
+!!$       end if
+!!$    else
+!!$       if (mod(time-params%av_start_time,params%time_step)/=0) then
+!!$          write(message,*) 'Unexpected calling of GLINT at time ',time
+!!$          call write_log(message,GM_FATAL,__FILE__,__LINE__)
+!!$       end if
+!!$    end if
+!!$
+!!$    ! Check input fields are correct ----------------------------------------------------------------
+!!$
+!!$    call check_input_fields(params,humid,lwdown,swdown,airpress,zonwind,merwind)
+!!$
+!!$    ! Sort out anomaly coupling
+!!$
+!!$    if (params%anomaly_params%enabled) then
+!!$       yearfrac=real(mod(time,days_in_year),rk)/real(days_in_year,rk)
+!!$       call anomaly_calc(params%anomaly_params,yearfrac,rawtemp,rawprecip,anomtemp,anomprecip)
+!!$       precip => anomprecip
+!!$       temp   => anomtemp
+!!$    else
+!!$       precip => rawprecip
+!!$       temp   => rawtemp
+!!$    end if
+!!$
+!!$    ! Do averaging and so on...
+!!$
+!!$    call accumulate_averages(params,temp,precip,zonwind,merwind,humid,lwdown,swdown,airpress)
+!!$
+!!$    ! Increment step counter
+!!$
+!!$    params%av_steps=params%av_steps+1
+
+
+  end subroutine glint_put_ocn
 
   !===================================================================
 

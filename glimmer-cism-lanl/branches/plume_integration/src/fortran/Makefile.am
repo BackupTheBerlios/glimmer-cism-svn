@@ -1,4 +1,4 @@
-SUBDIRS = SLAP_library plume
+SUBDIRS = SLAP_library
 RESTART_STEM=glimmer_rst
 RESTART_INC_INS=$(RESTART_STEM)_body.inc.in $(RESTART_STEM)_head.inc.in
 RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
@@ -6,7 +6,7 @@ RESTART_COMMON=glimmer_restart_common.F90 glimmer_restart_pointarr.F90 \
                glimmer_restart_statarr.F90 glimmer_restart_statscal.F90
 
 lib_LIBRARIES = libglide.a libglimmer.a libglint.a libclimate.a
-bin_PROGRAMS  =  simple_glide eis_glide glint_example glex_ebm eismint3_glide nc2config shelf_driver\
+bin_PROGRAMS  =  simple_glide eis_glide glint_example glex_ebm eismint3_glide nc2config \
                  spin_glide glide_thermal_equib
 check_PROGRAMS = test_config test_setup test_ts test_lithot test_integrate test_commandline test_writestats \
                  glimmer_unittest
@@ -64,9 +64,10 @@ libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \
                      glide_thckmask.F90 glide_nonlin.F90 glide_grids.F90\
                      glam.F90 glam_strs2.F90 glam_thck_ppm.F90\
                      remap_advection.F90 remap_glamutils.F90 glide_ground.F90 \
-                     fo_upwind_advect.F90
-# *sfp* Added the last two lines above for addition of Payne/Price HO dynamics and  
-# *sfp* LANL inc. remapping for dH/dt calculation
+                     fo_upwind_advect.F90 glide_stress.F90
+# *sfp* Added the last three lines above for addition of (1) Payne/Price HO dynamics,  
+# (2) LANL inc. remapping and a 1st-order upwind scheme for dH/dt calculation, and
+# (3) module for calc stresses from HO vels and visc and populating the stress tensor
 
 libglint_a_SOURCES = glint_climate.F90 glint_initialise.F90 glint_io.F90 \
                      glint_timestep.F90 glint_type.F90 glint_main.F90 \
@@ -82,8 +83,6 @@ libclimate_a_SOURCES = eismint3_forcing.F90 eismint3_types.F90 \
                        eismint3_io.F90 spin_forcing.F90 spin_mb.F90 \
                        spin_temp.F90 spin_slc.F90 spin_io.F90 \
                        testsfg.F90 spin_types.F90 
-libplume_a_SOURCE = plume\plume_global.F90 plume\plume_functions.F90 plume\plume_context.F90 \
-                    plume\plume.F90 plume\plume_io.F90
 if PARDISO
 RESTART_CODE += glimmer_sparse_pardiso.F90
 libglimmer_a_SOURCES += glimmer_sparse_pardiso.F90
@@ -95,10 +94,6 @@ eismint3_glide_LDADD = libclimate.a libglide.a libglimmer.a \
 simple_glide_SOURCES = simple_glide.F90 
 simple_glide_LDADD = libclimate.a libglide.a libglimmer.a \
                      SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
-shelf_driver_SOURCES = shelf_driver.F90 
-shelf_driver_LDADD = libclimate.a libglide.a libglimmer.a \
-	             SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) \
-                     plume/libplume.a   
 eis_glide_SOURCES = eis_glide.F90
 eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 spin_glide_SOURCES = spin_glide.F90
@@ -130,9 +125,9 @@ glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/li
 
 ALL_SRC=$(test_integrage_SOURCES) $(test_lithot_SOURCES) $(test_ts_SOURCES) $(test_setup_SOURCES) \
         $(test_config_SOURCES) $(nc2config_SOURCES) $(glex_ebm_SOURCES) $(glint_example_SOURCES) \
-	$(eis_glide_SOURCES) $(simple_glide_SOURCES) $(shelf_driver_SOURCES) $(eismint3_glide_SOURCES) $(libglimmer_a_SOURCES) \
+	$(eis_glide_SOURCES) $(simple_glide_SOURCES) $(eismint3_glide_SOURCES) $(libglimmer_a_SOURCES) \
 	$(libglide_a_SOURCES) $(libglint_a_SOURCES) $(libclimate_a_SOURCES) $(spin_glide_SOURCES) \
-        $(glimmer_unittest_SOURCES)
+        $(glimmer_unittest_SOURCES) $(glide_thermal_equib_SOURCES)
 
 AM_FCFLAGS = $(NETCDF_CPPFLAGS) $(HDF5_CPPFLAGS)
 

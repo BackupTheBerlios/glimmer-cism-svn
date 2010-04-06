@@ -195,7 +195,7 @@ contains
        ns=jj
        do ii=1,imax
           ew=ii
-          zro(ii,jj,kk) = zro(ii,jj,kk)+real(acab(ew,ns),8)*dt
+          zro(ii,jj,kk) = zro(ii,jj,kk)+real(acab(ew,ns),dp)*dt
        end do
     end do
     where(zro < 0.0_dp) zro=0.0_dp
@@ -255,9 +255,9 @@ contains
     kmax=1
 
 ! Size of domain
-    xmin=0.0_dp; xmax=dew*real(ewn-1,8)
+    xmin=0.0_dp; xmax=dew*real(ewn-1,dp)
     if (imax==1) xmax=1.0_dp
-    ymin=0.0_dp; ymax=dns*real(nsn-1,8)
+    ymin=0.0_dp; ymax=dns*real(nsn-1,dp)
     if (jmax==1) ymax=1.0_dp
     zmin=0.0_dp; zmax=1.0_dp
 
