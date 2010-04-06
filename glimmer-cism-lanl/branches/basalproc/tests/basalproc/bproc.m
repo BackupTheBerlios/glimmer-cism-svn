@@ -49,7 +49,7 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 
 
 %% load in old till map
-load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl
+load ~/Home/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl
 
 minTauf = Tillggl;
 % minTauf = 88 * ones( size( minTauf ) );       % for debugging
@@ -83,8 +83,9 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'kinbcmask' )
 figure(8), imagesc( x/1e3, y/1e3, acab ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'acab (m/a)' )
 
+tauf=minTauf;
 
-cd /Users/sprice/work/modeling/cism_new/branches/tests/basalproc
+cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc
 
 % save bproc.mat airt acab qgeo usrf topg thck minTauf kinbcmask uvelhom vvelhom 
-save bproc.mat airt acab qgeo usrf topg thck beta minTauf kinbcmask uvelhom vvelhom 
+save bproc.mat airt acab qgeo usrf topg thck beta tauf kinbcmask uvelhom vvelhom 
