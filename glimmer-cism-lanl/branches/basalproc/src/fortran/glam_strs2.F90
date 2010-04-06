@@ -191,7 +191,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  dusrfdew, dusrfdns,     & 
                                  dlsrfdew, dlsrfdns,     &
                                  stagthck, flwa,         & 
-                                 mintauf,                & 
+                                 minTauf,                & 
                                  umask,                  & 
                                  whichbabc,              &
                                  whichefvs,              &
@@ -2856,7 +2856,9 @@ subroutine calcbetasquared (whichbabc,               &
 
 !      print *, 'minTauf = '
 !      print *, minTauf
-
+!	print*,'in glam_strs2.F90, minTauf=',sum(minTauf)/((ewn-1)*(nsn-1))	
+	
+	
     case(5)     ! simple 2d ice shelf
 
      betalow = 1.0d0

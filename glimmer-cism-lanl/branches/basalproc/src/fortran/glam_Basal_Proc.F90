@@ -42,7 +42,7 @@ contains
 
     if (hotstart.eq.1) then
        !From restart file, the following variables are known: dy, u, N and minTauf and etill
-       basalproc%minTauf=5000  !Dummy value for now
+  !     basalproc%minTauf=5000  !Dummy value for now
        por=etill/(1+etill)
        stagHwater=0.0
        do i=2,basalproc%tnodes
@@ -108,11 +108,16 @@ contains
     integer :: i
 
     !Calculate basal melt rate on staggered grid
-  	 call stagvarb(bmlt, stagbmlt,ewn,nsn)
+  	call stagvarb(bmlt, stagbmlt,ewn,nsn)
       
 !    !Calculate the magnitude of basal velocity, in m/yr
-	    Ub=scyr*vel0* (sqrt(ubas(:,:)**2+vbas(:,:)**2))
+	Ub=scyr*vel0* (sqrt(ubas(:,:)**2+vbas(:,:)**2))
 
+!	print*,'begin basal_proc_driver'
+!	print*,'mean Tauf=',sum(basalproc%minTauf)/((ewn-1)*(nsn-1))
+!	print*,'mean bmlt=',sum(stagbmlt)/((ewn-1)*(nsn-1))
+!	print*,'mean Ub=',sum(Ub)/((ewn-1)*(nsn-1))
+	
     select case(what)
 
     case(1)
@@ -129,7 +134,7 @@ contains
 
 	!Calculate Hwater on normal grid - using zero gradient as BC
 	call stag2norm(ewn,nsn,stagHwater,basalproc%Hwater)
-	print*,'end of Basal_Proc-driver call, minTauf=',sum(basalproc%minTauf)/((ewn-1)*(nsn-1))
+	
 
  
     
