@@ -136,7 +136,7 @@ class GCConfig(object):
                                              'eustatic_sea_level' : 0.0 },
                       'options' : {'flow_law' : 1,
                                    'evolution' : 3,
-                                   'temperature' : 0,
+                                   'temperature' : 1,
                                    'vertical_integration' : 1,
                                    'marine_margin' : 0,
                                    'topo_is_relaxed' : 1,
