@@ -75,6 +75,13 @@ program simple_glide
   call system_clock(clock,clock_rate)
   t1 = real(clock,kind=dp)/real(clock_rate,kind=dp)
 
+  !*sfp* note that lines commented out below w/ "!!" are short-term
+  ! hacks to allow for use of simple_glide when evolving T, u, v, and
+  ! visc while holding geometry constant
+  !
+  ! These lines should be made active again if/when wanting to do a run
+  ! that also allows for thickness evolution
+
   ! initialise GLIDE
   call glide_config(model,config)
   call simple_initialise(climate,config)
@@ -84,18 +91,18 @@ program simple_glide
   call glide_nc_fillall(model)
   time = model%numerics%tstart
 
-  call simple_massbalance(climate,model,time)
-  call simple_surftemp(climate,model,time)
-  call spinup_lithot(model)
+!!  call simple_massbalance(climate,model,time)
+!!  call simple_surftemp(climate,model,time)
+!!  call spinup_lithot(model)
 
   do while(time.le.model%numerics%tend)
      call glide_tstep_p1(model,time)
      call glide_tstep_p2(model)
-     call glide_tstep_p3(model)
+!!     call glide_tstep_p3(model)
      ! override masking stuff for now
      time = time + model%numerics%tinc
-     call simple_massbalance(climate,model,time)
-     call simple_surftemp(climate,model,time)     
+!!     call simple_massbalance(climate,model,time)
+!!     call simple_surftemp(climate,model,time)     
   end do
 
   ! finalise GLIDE

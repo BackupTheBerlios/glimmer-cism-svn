@@ -73,15 +73,15 @@ module glam
 
         ! *sfp** call remapping code
 
-         call horizontal_remap  ( model%remap_wk%dt_ir,                                  & 
-                                  model%remap_wk%ewn_ir,      model%remap_wk%nsn_ir,             &
-                                  ntrace_ir,   nghost_ir,         &
-                                  model%remap_wk%ubar_ir,     model%remap_wk%vbar_ir,           &
-                                  model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
-                                  model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
-                                  model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
-                                  model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
-                                  model%remap_wk%hm_ir,       model%remap_wk%tarea_ir)
+!         call horizontal_remap  ( model%remap_wk%dt_ir,                                  & 
+!                                  model%remap_wk%ewn_ir,      model%remap_wk%nsn_ir,             &
+!                                  ntrace_ir,   nghost_ir,         &
+!                                  model%remap_wk%ubar_ir,     model%remap_wk%vbar_ir,           &
+!                                  model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
+!                                  model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
+!                                  model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
+!                                  model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
+!                                  model%remap_wk%hm_ir,       model%remap_wk%tarea_ir)
 
 
         ! *sfp** put variables back into format to be used by glam
