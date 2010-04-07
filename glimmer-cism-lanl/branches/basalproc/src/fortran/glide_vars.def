@@ -304,6 +304,7 @@ factor:        scale2d_f1
 standard_name: land_ice_surface_specific_mass_balance
 coordinates:   lon lat
 average:       1
+load:          1
 
 [bheatflx]
 dimensions:    time, y1, x1
@@ -351,6 +352,7 @@ data:          data%climate%artm
 standard_name: surface_temperature
 cell_methods:  time: mean
 coordinates:   lon lat
+load:          1
 
 [btemp]
 dimensions:    time, y1, x1
