@@ -475,8 +475,8 @@ contains
         !             tau_xz_t, tau_yz_t, tau_xx_t, tau_yy_t, tau_xy_t, flwn, zip, periodic_ew, periodic_ns) 
         
         
-        call stagvarb_3d(uvel_unstag, uvel,ewn,nsn,upn)
-        call stagvarb_3d(vvel_unstag, vvel,ewn,nsn,upn)
+        call stagvarb_3d_mask(uvel_unstag, uvel,ewn,nsn,upn,geometry_mask)
+        call stagvarb_3d_mask(vvel_unstag, vvel,ewn,nsn,upn,geometry_mask)
         
     end subroutine velo_hom_pattyn_nonstag
 

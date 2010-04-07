@@ -401,8 +401,8 @@ module glide_types
 
     integer :: use_plume = 0
     !*FD \begin{description}
-    !*FD \item[0] Not using plume, use standard basal melt calculation.
-    !*FD \item[1] Using plume to calculuate basal melt for floating ice.
+    !*FD \item[0] standard bmlt calculation
+    !*FD \item[1] use plume to calculate bmlt
     !*FD \end{description}
 
   end type glide_options

@@ -22,8 +22,8 @@ executable   = 'simple_glide'
 fake_shelf   = False
 verbose      = False
 use_inlets   = (False, True, 'reverse')[1]
-mask_llc     = True # The previous script (makerossnc.py) masked the lower left corner
-offset_error = 0    # The previous script (makerossnc.py) had an error of 2; offset_error should be 0 
+mask_llc     = False # The previous script (makerossnc.py) masked the lower left corner
+offset_error = 1     # offset_error should be 1 
 
 def addBorder(data,dtype,value=0):
   field = numpy.empty((ny,nx),dtype)

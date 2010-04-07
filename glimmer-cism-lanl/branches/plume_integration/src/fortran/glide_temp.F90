@@ -1039,7 +1039,9 @@ contains
              end if
 
           else if (model%options%use_plume == 1) then
-		! do nothing, we are using the plume model to calculate basal melt
+		!using plume to calculate basal melt rate for floating ice
+		! so do nothing here since bmlt array has values written 
+		! into it outside of this subroutine
           else
 
              bmlt(ew,ns) = 0.0d0

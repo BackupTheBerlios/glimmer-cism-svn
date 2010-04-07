@@ -41,8 +41,34 @@ contains
         do ns = 1,nsn-1
             do ew = 1,ewn-1
 
+                
+                
+                !The following cases relate to Anne LeBroque's fix for nunataks
+                !ew,ns cell is ice free:
+                if (ipvr(ew,ns) <= thklim/thk0 .and. &
+                   ((usrf(ew,ns) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >= thklim/thk0) &
+                    .or. (usrf(ew,ns) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >= thklim/thk0))) then
+                        opvr(ew,ns) = 0.0
+
+                !ew+1,ns cell is ice free:
+                else if (ipvr(ew+1,ns) <= thklim/thk0 .and. &
+                    ((usrf(ew+1,ns) >= usrf(ew,ns) .and. ipvr(ew,ns) >= thklim/thk0) &
+                    .or. (usrf(ew+1,ns) >= usrf(ew+1,ns+1) .and. ipvr(ew+1,ns+1) >= thklim/thk0))) then
+                        opvr(ew,ns) = 0.0
+    
+                !ew,ns+1 cell is ice free:
+                else if (ipvr(ew,ns+1) <= thklim/thk0 .and. &
+                    ((usrf(ew,ns+1) >= usrf(ew,ns) .and. ipvr(ew,ns) >= thklim/thk0) &
+                    .or. (usrf(ew,ns+1) >= usrf(ew+1,ns+1) .and. ipvr(ew+1,ns+1) >= thklim/thk0))) then
+                        opvr(ew,ns) = 0.0
+    
+                !ew+1,ns+1 cell is ice free:
+                else if (ipvr(ew+1,ns+1) <= thklim/thk0 .and. &
+                    ((usrf(ew+1,ns+1) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >=thklim/thk0) &
+                    .or. (usrf(ew+1,ns+1) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >=thklim/thk0))) then
+                        opvr(ew,ns) = 0.0
                 !If any of our staggering points are shelf front, ignore zeros when staggering
-                if (any(GLIDE_IS_CALVING(mask(ew:ew+1, ns:ns+1)))) then
+                else if (any(GLIDE_IS_CALVING(mask(ew:ew+1, ns:ns+1)))) then
                     n = 0
                     tot = 0
     
@@ -67,35 +93,12 @@ contains
                     else
                         opvr(ew,ns) = 0
                     end if
-                !The following cases relate to Anne LeBroque's fix for nunataks
-                !ew,ns cell is ice free:
-                else if (ipvr(ew,ns) <= thklim/thk0 .and. &
-                   ((usrf(ew,ns) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >= thklim/thk0) &
-                    .or. (usrf(ew,ns) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >= thklim/thk0))) then
-                        opvr(ew,ns) = 0.0
-
-                !ew+1,ns cell is ice free:
-                else if (ipvr(ew+1,ns) <= thklim/thk0 .and. &
-                    ((usrf(ew+1,ns) >= usrf(ew,ns) .and. ipvr(ew,ns) >= thklim/thk0) &
-                    .or. (usrf(ew+1,ns) >= usrf(ew+1,ns+1) .and. ipvr(ew+1,ns+1) >= thklim/thk0))) then
-                        opvr(ew,ns) = 0.0
-    
-                !ew,ns+1 cell is ice free:
-                else if (ipvr(ew,ns+1) <= thklim/thk0 .and. &
-                    ((usrf(ew,ns+1) >= usrf(ew,ns) .and. ipvr(ew,ns) >= thklim/thk0) &
-                    .or. (usrf(ew,ns+1) >= usrf(ew+1,ns+1) .and. ipvr(ew+1,ns+1) >= thklim/thk0))) then
-                        opvr(ew,ns) = 0.0
-    
-                !ew+1,ns+1 cell is ice free:
-                else if (ipvr(ew+1,ns+1) <= thklim/thk0 .and. &
-                    ((usrf(ew+1,ns+1) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >=thklim/thk0) &
-                    .or. (usrf(ew+1,ns+1) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >=thklim/thk0))) then
-                        opvr(ew,ns) = 0.0
                 
-                !Standard Staggering
                 else
-                        opvr(ew,ns) = (ipvr(ew+1,ns) + ipvr(ew,ns+1) + &
-                               ipvr(ew+1,ns+1) + ipvr(ew,ns)) / 4.0d0
+                !Standard Staggering
+                    opvr(ew,ns) = (ipvr(ew+1,ns) + ipvr(ew,ns+1) + &
+                                   ipvr(ew+1,ns+1) + ipvr(ew,ns)) / 4.0d0
+
                 end if
   
         end do
@@ -132,6 +135,73 @@ contains
         call stagvarb(ipvr(k,:,:), opvr(k,:,:), ewn, nsn)
     end do
   end subroutine stagvarb_3d
+
+  subroutine stagvarb_mask(ipvr,opvr,ewn,nsn,geometry_mask)
+    implicit none 
+
+    real(dp), intent(out), dimension(:,:) :: opvr 
+    real(dp), intent(in), dimension(:,:)  :: ipvr
+    
+    integer, intent(in) :: ewn,nsn
+    integer, intent(in), dimension(:,:) :: geometry_mask
+    integer :: ew,ns,n
+    real(dp) :: tot
+
+        opvr(1:ewn-1,1:nsn-1) = (ipvr(2:ewn,1:nsn-1) + ipvr(1:ewn-1,2:nsn) + &
+                                 ipvr(2:ewn,2:nsn)   + ipvr(1:ewn-1,1:nsn-1)) / 4.0d0
+        do ns = 1,nsn-1
+            do ew = 1,ewn-1
+
+                !If any of our staggering points are shelf front, ignore zeros when staggering
+                if (any(GLIDE_NO_ICE(geometry_mask(ew:ew+1, ns:ns+1)))) then
+                    n = 0
+                    tot = 0
+    
+                    if (GLIDE_HAS_ICE(geometry_mask(ew,ns))) then
+                        tot = tot + ipvr(ew,ns)
+                        n   = n   + 1
+                    end if
+                    if (GLIDE_HAS_ICE(geometry_mask(ew+1,ns))) then
+                        tot = tot + ipvr(ew+1,ns)
+                        n   = n   + 1
+                    end if
+                    if (GLIDE_HAS_ICE(geometry_mask(ew,ns+1))) then
+                        tot = tot + ipvr(ew,ns+1)
+                        n   = n   + 1
+                    end if
+                    if (GLIDE_HAS_ICE(geometry_mask(ew+1,ns+1))) then
+                        tot = tot + ipvr(ew+1,ns+1)
+                        n   = n   + 1
+                    end if
+                    if (n > 0) then
+                        opvr(ew,ns) = tot/n
+                    else
+                        opvr(ew,ns) = 0
+                    end if
+                
+                !Standard Staggering
+                else
+                        opvr(ew,ns) = (ipvr(ew+1,ns) + ipvr(ew,ns+1) + &
+                               ipvr(ew+1,ns+1) + ipvr(ew,ns)) / 4.0d0
+                end if
+  
+        end do
+    end do
+  end subroutine stagvarb_mask
+
+  subroutine stagvarb_3d_mask(ipvr, opvr, ewn, nsn, upn, geometry_mask)
+    real(dp), intent(in), dimension(:,:,:) :: ipvr
+    real(dp), intent(out), dimension(:,:,:) :: opvr
+    integer, intent(in) :: ewn, nsn, upn
+    integer, intent(in), dimension(:,:) :: geometry_mask
+    integer :: k
+
+    do k = 1, upn
+        call stagvarb_mask(ipvr(k,:,:), opvr(k,:,:), ewn, nsn, geometry_mask)
+    end do
+  end subroutine stagvarb_3d_mask
+
+
 
 
     !*FD Copies a staggered grid onto a nonstaggered grid.  This verion

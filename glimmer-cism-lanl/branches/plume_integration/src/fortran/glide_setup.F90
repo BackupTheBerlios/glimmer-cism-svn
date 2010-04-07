@@ -410,6 +410,7 @@ contains
     call GetValue(section,'periodic_ew',model%options%periodic_ew)
     call GetValue(section,'periodic_ns',model%options%periodic_ns)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
+    call GetValue(section,'use_plume', model%options%use_plume)
   end subroutine handle_options
   
   !Higher order options
@@ -474,6 +475,10 @@ contains
          '~basal water', &
          '~basal melt ', &
          'taub^3      ' /)
+    character(len=*), dimension(0:1), parameter :: use_plume_which = (/ &
+	 'using plume              ', &
+	 'no plume                 ' /)
+
     character(len=*), dimension(0:4), parameter :: evolution = (/ &
          'pseudo-diffusion                      ', &
          'ADI scheme                            ', &
@@ -574,6 +579,11 @@ contains
        call write_log('Error, evolution out of range',GM_FATAL)
     end if
     write(message,*) 'evolution               : ', model%options%whichevol, evolution(model%options%whichevol)
+    call write_log(message)
+    if (model%options%use_plume.lt.0 .or. model%options%use_plume.ge.size(evolution)) then
+       call write_log('Error, use_plume out of range',GM_FATAL)
+    end if
+    write(message,*) 'use_plume               : ', model%options%use_plume, use_plume_which(model%options%use_plume)
     call write_log(message)
     if (model%options%whichwvel.lt.0 .or. model%options%whichwvel.ge.size(vertical_integration)) then
        call write_log('Error, vertical_integration out of range',GM_FATAL)

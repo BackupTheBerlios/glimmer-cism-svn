@@ -34,32 +34,27 @@ STEP 2. Plot the results by invoking the plotResults.py script:
 
 python plotResults.py
 
-The plots created are saved as ".png" files in the "output" subdirectory of
-the directory containing the plotResults.py script.  You can change the type
-of file created by changing the value of the variable "plotType" in the
-plotResults.py script.  If you prefer to have the plots displayed on the screen
-instead of saved to file, set the variable "savePlotInFile" in plotResults.py
-to "False" instead of "True".  The variables "savePlotInFile" and "plotType"
-are set near the top of the plotResults.py script under the comment line
+The plotResults.py script can also be invoked using command line options to plot
+filled contours, change the color map, and mask the grounded region.  Example:
 
-# Output flags
+python plotResults.py --ncontours=14 --vmax=1400 --cmap=gist_ncar --mask
+
+Short forms of the options are also available.  Example:
+
+python plotResults.py -n 14 -v 1400 -c gist_ncar -m
+
+# Output files
 
 OUTPUT FILES:
-When you run the Ross scripts, they create files in the "output"
-subdirectory.  These files are described below.
+When you run runGlimmer.py, it creates three NetCDF files in the "output"
+subdirectory.  These files can be examined using a tool such as ncview. Their
+contents are described below.
 
-Files whose names end ".nc" are netCDF files.  The contents of these files can
-be examined using a tool such as ncview.
-There are three different netCDF files created each time Glimmer is run:
 1. raw.nc is netCDF file containing the experiment input data from the "data" 
 directory with minimal modification.  This file is really not necessary.
 2. ross.nc is an input file created by runGlimmer.py which provides input 
 information to Glimmer.
 3. ross.out.nc is an output file created by Glimmer.
-
-Files whose names end ".png" are Portable Network Graphics files written by 
-plotResults.py containing the plotted data.  This is standard file type that
-can be viewed using image viewer software or a web browser.
 
 SCRATCH FILES:
 Glimmer creates some additional files in addition to its netCDF output file.
