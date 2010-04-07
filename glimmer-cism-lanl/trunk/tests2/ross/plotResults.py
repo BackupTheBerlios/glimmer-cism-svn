@@ -130,7 +130,13 @@ pyplot.title('Ross Ice Shelf Experiment')
 pyplot.figure(2)
 pyplot.clf()
 plot_discarded_points = False
+# The dimensions of X and Y for pcolor should be one greater than those of the data
+midx = sum(map(numpy.array,(x[:-1],x[1:])))/2
+midy = sum(map(numpy.array,(y[:-1],y[1:])))/2
+x = x[:1] + list(midx) + x[-1:]
+y = y[:1] + list(midy) + y[-1:]
 x,y = numpy.meshgrid(x,y)
+# Set plot parameters
 vmax = numpy.max(velnormhom)
 if options.vmax > 0:
   vmax = options.vmax
@@ -142,6 +148,7 @@ if options.ncontours > 1:
   ticks = numpy.arange(options.ncontours+1) * vmax/options.ncontours
 if options.use_mask:
   velnormhom = numpy.ma.masked_array(velnormhom,mask==1)
+# Make the actual plot
 pyplot.pcolor(x,y,velnormhom,norm=norm,cmap=cmap)
 if plot_discarded_points:
   pyplot.scatter(lon0,lat0,s=50,c='white')
