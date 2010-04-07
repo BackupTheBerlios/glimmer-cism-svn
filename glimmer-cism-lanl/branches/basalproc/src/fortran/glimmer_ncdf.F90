@@ -422,7 +422,8 @@ module glimmer_scales
   use glimmer_global, only : dp
 
   real(dp) :: scale2d_f1, scale2d_f2, scale2d_f3, scale2d_f4, scale2d_f5, scale2d_f6, scale2d_f7, scale2d_f8, scale2d_f9
-  real(dp) :: scale3d_f1, scale3d_f2, scale3d_f3, scale3d_f4, scale3d_f5, scale3d_f6, scale3d_f7, scale3d_f8, scale3d_f9
+  real(dp) :: scale3d_f1, scale3d_f2, scale3d_f3, scale3d_f4, scale3d_f5, scale3d_f6, scale3d_f7, scale3d_f8, &
+              scale3d_f9, scale3d_f10
 
   !MAKE_RESTART
 #ifdef RESTARTS
@@ -442,7 +443,7 @@ contains
   subroutine glimmer_init_scales
     !*FD calculate scale factors (can't have non-integer powers)
     use glimmer_physcon, only : scyr, gn
-    use glimmer_paramets, only : thk0, tim0, vel0, vis0, len0, acc0
+    use glimmer_paramets, only : thk0, tim0, vel0, vis0, len0, acc0, tau0_glam
     implicit none
 
     scale2d_f1 = scyr * thk0 / tim0
@@ -464,6 +465,7 @@ contains
     scale3d_f7 = scyr * thk0/tim0
     scale3d_f8 = vis0*scyr
     scale3d_f9 = 1.0d0
+    scale3d_f10 = tau0_glam 
   end subroutine glimmer_init_scales
 end module glimmer_scales
 

@@ -299,11 +299,10 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !        umask(ew,ns) = 105
 !    end if
 !  end do; end do
-!  print *, 'mask = '
-!  print *, umask(1:18,17:35)
-!  print *, umask(1:18,100:115)
-!  print *, ' '
-!  pause
+  print *, 'mask = '
+  print *, umask
+  print *, ' '
+  pause
 !  print *, 'uindx = '
 !  print *, uindx
 !  pause
@@ -2852,13 +2851,8 @@ subroutine calcbetasquared (whichbabc,               &
 
     case(4)     ! same as case(3) but taking yield stress from basal processes model
 
-      betasquared = minTauf / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+      betasquared = (minTauf*tau0_glam) / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
 
-!      print *, 'minTauf = '
-!      print *, minTauf
-!	print*,'in glam_strs2.F90, minTauf=',sum(minTauf)/((ewn-1)*(nsn-1))	
-	
-	
     case(5)     ! simple 2d ice shelf
 
      betalow = 1.0d0

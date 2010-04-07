@@ -163,7 +163,7 @@ dimensions:    time, y0, x0
 units:         Pa         
 long_name:     higher-order basal yield stress 
 data:          data%basalproc%minTauf
-factor:        scale3d_f9
+factor:        scale3d_f10
 load:          1
 hot:		   1
 
