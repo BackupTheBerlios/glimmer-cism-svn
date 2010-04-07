@@ -118,7 +118,7 @@ module glide_types
   integer, parameter :: BWATER_LOCAL = 0
   integer, parameter :: BWATER_FLUX  = 1
   integer, parameter :: BWATER_NONE  = 2
-  integer, parameter :: BWATER_BASAL_PROC = 3
+  integer, parameter :: BWATER_BASAL_PROC = 3  !*mb* basal water available from basal proc. module
 
   integer, parameter :: HO_DIAG_NONE = 0
   integer, parameter :: HO_DIAG_PATTYN_UNSTAGGERED = 1

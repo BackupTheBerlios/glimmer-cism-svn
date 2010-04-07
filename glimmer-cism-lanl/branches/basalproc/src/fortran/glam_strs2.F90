@@ -2852,7 +2852,7 @@ subroutine calcbetasquared (whichbabc,               &
     case(4)     ! same as case(3) but taking yield stress from basal processes model
 
       betasquared = (minTauf*tau0_glam) / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
-
+    
     case(5)     ! simple 2d ice shelf
 
      betalow = 1.0d0

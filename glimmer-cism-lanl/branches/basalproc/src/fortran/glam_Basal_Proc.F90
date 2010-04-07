@@ -1,6 +1,6 @@
-module glam_Basal_Proc
-
-
+module glam_Basal_Proc	
+	
+	
 use glide_types
 use glimmer_paramets, only : dp,sp
 use glimmer_physcon,  only : grav, rhow, rhos, scyr
@@ -11,6 +11,8 @@ use glimmer_log,      only : write_log
 
 !!Variables
   real (kind = dp), dimension(:,:,:), allocatable:: u,N,etill,dy
+  real (kind = dp), dimension(:,:), allocatable:: minTauf_init,Hwater_init
+  logical, dimension(:,:),   allocatable::tillmask
   integer, parameter :: unin = 90
   
 contains
@@ -36,6 +38,9 @@ contains
 	allocate (u(ewn-1,nsn-1,basalproc%tnodes));			u=41.0d3
 	allocate (N(ewn-1,nsn-1,basalproc%tnodes));			N=11.0d3
 	allocate (etill(ewn-1,nsn-1,basalproc%tnodes));		etill=0.5d0
+	allocate (minTauf_init(ewn-1,nsn-1));				minTauf_init=5000
+	allocate (Hwater_init(ewn-1,nsn-1)); 				Hwater_init=3
+	allocate (tillmask(ewn-1,nsn-1)); 					tillmask=.true.
 
 
 
@@ -82,6 +87,13 @@ contains
          write(message,*) 'Till layer has been initialized using namelist file: ',tillfile
        	 call write_log(message)       
     end if
+    
+    	!Define tillmask based on values of Tauf in the initial file
+		!Wherever Tauf has been set to low values (10Pa or less), tillmask=.false.,
+		!e.g., we will not calculate till properties
+		where (basalproc%minTauf.le.10) tillmask=.false.
+		minTauf_init=basalproc%minTauf
+		Hwater_init=stagHwater
     
     	!Calculate Hwater on normal grid - using zero gradient as BC
 		call stag2norm(ewn,nsn,stagHwater,basalproc%Hwater)	    
@@ -134,7 +146,7 @@ contains
 
 	!Calculate Hwater on normal grid - using zero gradient as BC
 	call stag2norm(ewn,nsn,stagHwater,basalproc%Hwater)
-	
+
 
  
     
@@ -216,8 +228,10 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
   real (kind = dp), dimension(ewn-1,nsn-1) :: du  
   integer :: i
 
+
   !Boundary conditions at the ice/till interface
   
+
   uold=u 
   du=dy(:,:,1)*(bdot/scyr)*rhow*grav/Kh  ! Removed *dt so that du has indeed unit Pa
   u(:,:,1)=uold(:,:,1) + (Cv*scyr*dt/dy(:,:,1)**2)*(uold(:,:,2)-uold(:,:,1)+du) + &
@@ -263,6 +277,11 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
      Hwater=Hwater+dy(:,:,i-1)*((por(:,:,i-1)+por(:,:,i))/2)
   enddo
 
+	!Reset minTauf values where tillmask=.false.
+	where (.not.tillmask)
+		minTauf=minTauf_init
+		Hwater=Hwater_init
+	end where
 
 end subroutine Till_FullRes
 
@@ -288,6 +307,12 @@ subroutine Till_FastCalc(dt,bdot,aconst,bconst,Zs,minTauf,Hwater)
 
   minTauf=aconst*exp(-bconst*etill(:,:,1))
   Hwater=Zs*(etill(:,:,1)/(1+etill(:,:,1)))
+
+	!Reset minTauf values where tillmask=.false.
+	where (.not.tillmask)
+		minTauf=minTauf_init
+		Hwater=Hwater_init
+	end where
 
 
 end subroutine Till_FastCalc

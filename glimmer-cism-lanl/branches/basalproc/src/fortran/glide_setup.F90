@@ -467,7 +467,7 @@ contains
          'local water balance', &
          'local + const flux ', &
          'flux calculation   ', &
-         'From bas proc mod  ' /)
+         'From basal proc model  ' /)
     character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
          'ignore            ', &
          'no ice shelf      ', &
@@ -572,6 +572,15 @@ contains
     end if
     write(message,*) 'flow law                : ',model%options%whichflwa,flow_law(model%options%whichflwa)
     call write_log(message)
+    
+    
+    if (model%options%which_bmod.lt.0 .or. model%options%which_bmod.ge.size(whichbmod)) then
+       call write_log('Error, whichbmod out of range',GM_FATAL)
+    end if
+    write(message,*) 'whichbmod               : ',model%options%which_bmod,whichbmod(model%options%which_bmod)
+    call write_log(message)
+
+
     if (model%options%whichbwat.lt.0 .or. model%options%whichbwat.ge.size(basal_water)) then
        call write_log('Error, basal_water out of range',GM_FATAL)
     end if

@@ -88,7 +88,7 @@ contains
     case(BWATER_BASAL_PROC)
     !Normalized basal water 
     bwat=model%basalproc%Hwater/thk0
-    
+   
     case default
       bwat = 0.0d0
     end select
