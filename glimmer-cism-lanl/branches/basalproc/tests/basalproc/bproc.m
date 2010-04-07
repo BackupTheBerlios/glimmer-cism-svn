@@ -29,7 +29,7 @@ acab = b0 * ones( r, c );
 
 % topg = repmat( linspace( 1e3, 1e3-(slope*(c-1)*dew), c), r, 1 );
 
-temp = repmat( linspace( 0, -H0*(rho_i/rho_w)-50, c-3), r, 1 ) + 0;        %% force to be near floatationg at ds end
+temp = repmat( linspace( (-H0*(rho_i/rho_w)-50)/1.25, -H0*(rho_i/rho_w)-50, c-3), r, 1 ) + 0;        %% force to be near floatationg at ds end
 topg = [ temp, repmat(temp(:,end-3), 1, 3 ) ];
 
 usrf = topg + thck;
@@ -53,7 +53,9 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
 
 minTauf = Tillggl;
-% minTauf = 5e3 * ones( size( minTauf ) );       % for debugging
+ind = find( minTauf < 5e3 ); minTauf(ind) = 5e3;
+
+% minTauf = 10e3 * ones( size( minTauf ) );       % for debugging
 beta = 5e1*ones(size(minTauf));
 % beta(8:14,:) = 3e1;
 % beta(10:12,:) = 0.5e1;
