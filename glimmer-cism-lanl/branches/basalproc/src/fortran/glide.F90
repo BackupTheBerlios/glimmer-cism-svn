@@ -237,7 +237,7 @@ contains
 		model%options%which_bmod == BAS_PROC_FASTCALC) then
 		
 		call Basal_Proc_init (model%general%ewn, model%general%nsn,model%basalproc, 	&
-							  model%options%hotstart,model%numerics%ntem)
+							  model%numerics%ntem)
 		
 	end if		
 

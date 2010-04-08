@@ -806,10 +806,9 @@ contains
     if (model%options%which_bmod.gt.0) then
     	call GetValue(section, 'Zs',  model%basalproc%Zs)
     	call GetValue(section, 'tnodes',  model%basalproc%tnodes)
+    	call GetValue(section, 'till_hot', model%basalproc%till_hot)
   	end if	
-  	if (model%options%hotstart.eq.0) then
-  		call GetValue(section, 'tillfile',model%basalproc%tillfile)
-  	end if
+
   end subroutine handle_till_options	
   
     subroutine print_till_options(model)
@@ -842,14 +841,12 @@ if (model%options%which_bmod.gt.0) then
        write(message,*) 'bconst  : ',model%basalproc%aconst
        call write_log(message)    
     end if
-	if (model%options%hotstart.eq.0) then
-		write(message,*) 'tillfile  :',model%basalproc%tillfile
-		call write_log(message)
-	end if	
        write(message,*) 'Solid till thickness : ',model%basalproc%Zs
        call write_log(message)
        write(message,*) 'Till nodes number : ',model%basalproc%tnodes
        call write_log(message)
+       write(message,*) 'till_hot  :',model%basalproc%till_hot
+	call write_log(message)
        
    end if
   end subroutine print_till_options

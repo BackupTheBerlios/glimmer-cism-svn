@@ -167,6 +167,21 @@ factor:        scale3d_f10
 load:          1
 hot:		   1
 
+[u_till]
+dimensions:    time, y0, x0
+units:         Pa         
+long_name:     Till excess pore pressure 
+data:          data%basalproc%u
+hot:		   1
+
+[etill]
+dimensions:    time, y0, x0
+units:         ND         
+long_name:     Till void ratio 
+data:          data%basalproc%etill
+hot:		   1
+
+
 [ubas]
 dimensions:    time, y0, x0
 units:         meter/year

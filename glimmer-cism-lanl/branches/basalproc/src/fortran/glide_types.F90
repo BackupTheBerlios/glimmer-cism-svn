@@ -858,12 +858,16 @@ module glide_types
   	real (kind = dp):: Zs = 3.0d0                    ! Solid till thickness: m
   	real (kind = dp):: aconst=994000000d0            ! Constant in till strength eq. (Pa)
   	real (kind = dp):: bconst=21.7                   ! Constant in till strength eq. (ND)
+  	integer:: till_hot = 0
   	integer:: tnodes = 5
-  	character(len=100) :: tillfile
+
   	
   	!Model variables that will be passed to other subroutines
   	real(dp),dimension(:,:)  ,pointer :: minTauf => null() !Bed strength calculated with basal proc. mod.
   	real(dp),dimension(:,:)  ,pointer :: Hwater  => null() !Water available from till layer (m)
+  	!Model variabled necessary for hotstart
+  	real(dp),dimension(:,:,:)  ,pointer :: u => null() 	   !Till excess pore pressure (Pa)
+  	real(dp),dimension(:,:,:)  ,pointer :: etill  => null()  !Till void ratio (ND)	
   	
   end type glide_basalproc
   
@@ -1173,7 +1177,11 @@ contains
  !allocate basal processes variables
     call coordsystem_allocate(model%general%ice_grid, model%basalproc%Hwater)
     call coordsystem_allocate(model%general%velo_grid, model%basalproc%minTauf)
-
+!	allocate(model%basalproc%u (ewn-1,nsn-1,model%basalproc%tnodes))
+!	model%basalproc%u=0.0
+!	allocate(model%basalproc%etill (ewn-1,nsn-1,model%basalproc%tnodes))
+!	model%basalproc%etill=0.0
+	
   end subroutine glide_allocarr
 
   subroutine glide_deallocarr(model)
@@ -1327,7 +1335,9 @@ contains
     ! deallocate till variables
     deallocate(model%basalproc%Hwater)
     deallocate(model%basalproc%minTauf)
-
+!	deallocate(model%basalproc%u)
+!	deallocate(model%basalproc%etill)
+	
   end subroutine glide_deallocarr
 
   ! some accessor functions

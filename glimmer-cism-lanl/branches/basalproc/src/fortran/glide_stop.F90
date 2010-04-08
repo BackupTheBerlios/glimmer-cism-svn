@@ -159,7 +159,7 @@ contains
 	if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
 		model%options%which_bmod == BAS_PROC_FASTCALC) then
 		
-		call Basal_Proc_final ()
+		call Basal_Proc_final (model%basalproc)
 		
 	end if	
 
