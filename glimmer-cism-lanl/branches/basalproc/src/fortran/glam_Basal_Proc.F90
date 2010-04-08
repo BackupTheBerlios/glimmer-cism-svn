@@ -2,15 +2,14 @@ module glam_Basal_Proc
 	
 	
 use glide_types
-use glimmer_paramets, only : dp,sp
+use glimmer_paramets, only : dp,sp,vel0,tau0_glam
 use glimmer_physcon,  only : grav, rhow, rhos, scyr
-use glimmer_paramets, only : vel0
 use glimmer_log,      only : write_log
 
   implicit none;save
 
 !!Variables
-  real (kind = dp), dimension(:,:,:), allocatable:: u,N,etill,dy
+  real (kind = dp), dimension(:,:,:), allocatable:: u,etill,dy
   real (kind = dp), dimension(:,:), allocatable:: minTauf_init,Hwater_init
   logical, dimension(:,:),   allocatable::tillmask
   integer, parameter :: unin = 90
@@ -27,7 +26,7 @@ contains
     character (len=30), intent(in), optional :: tillfile
     
     !Variables
-    real (kind = dp), dimension (ewn,nsn,basalproc%tnodes) :: por,Ztot
+    real (kind = dp), dimension (ewn-1,nsn-1,basalproc%tnodes) :: por,Ztot,N
     real (kind = dp), dimension (ewn-1,nsn-1) :: stagHwater
     real (kind = sp), dimension (ewn,nsn) :: TillMap
     integer :: x,y,i
@@ -36,7 +35,6 @@ contains
 !allocate basal processes variables
 	allocate (dy(ewn-1,nsn-1,basalproc%tnodes-1));		dy=0.6d0
 	allocate (u(ewn-1,nsn-1,basalproc%tnodes));			u=41.0d3
-	allocate (N(ewn-1,nsn-1,basalproc%tnodes));			N=11.0d3
 	allocate (etill(ewn-1,nsn-1,basalproc%tnodes));		etill=0.5d0
 	allocate (minTauf_init(ewn-1,nsn-1));				minTauf_init=5000
 	allocate (Hwater_init(ewn-1,nsn-1)); 				Hwater_init=3
@@ -45,33 +43,33 @@ contains
 
 
 
-    if (hotstart.eq.1) then
-       !From restart file, the following variables are known: dy, u, N and minTauf and etill
-  !     basalproc%minTauf=5000  !Dummy value for now
-       por=etill/(1+etill)
-       stagHwater=0.0
-       do i=2,basalproc%tnodes
-          stagHwater(:,:)=stagHwater+dy(:,:,i-1)*(por(:,:,i-1)+por(:,:,i))/2
-       enddo
+!    if (hotstart.eq.1) then
+!       !From restart file, the following variables are known: u, minTauf and etill
+!       basalproc%minTauf=basalproc%minTauf*tau0_glam
+!       por=etill/(1+etill)
+!       dy=basalproc%Zs*(1+etill(:,:,1:basalproc%tnodes-1))/(basalproc%tnodes-1)
+!       stagHwater=0.0
+!       do i=2,basalproc%tnodes
+!          stagHwater(:,:)=stagHwater+dy(:,:,i-1)*(por(:,:,i-1)+por(:,:,i))/2
+!       enddo
+!
+!       write(message,*) 'Till layer has been initialized from restart file'
+!       call write_log(message)
+!       
+!       
+!    else if (hotstart.eq.0) then
 
-       write(message,*) 'Till layer has been initialized from restart file'
-       call write_log(message)
-       
-       
-    else if (hotstart.eq.0) then
-
-          open (unit=unin,file=tillfile,access='direct',form='unformatted',recl=ewn*nsn*4)
-          read(unin,rec=1) TillMap
-          close(unin)
-          basalproc%minTauf=dble(TillMap)
-          
-     
-       
+!          open (unit=unin,file=tillfile,access='direct',form='unformatted',recl=ewn*nsn*4)
+!          read(unin,rec=1) TillMap
+!          close(unin)
+!          basalproc%minTauf=dble(TillMap)
+      
+      !TO DO: sort out how to start a run with and without hotstart
+      	basalproc%minTauf=basalproc%minTauf*tau0_glam
        N(:,:,1)=basalproc%minTauf/basalproc%fric
        do i=2,basalproc%tnodes
           N(:,:,i)=N(:,:,1)
        end do
-       
        etill=basalproc%etillo-basalproc%Comp*log10(N/basalproc%No)
        por=etill/(1+etill)
        dy=basalproc%Zs*(1+etill(:,:,1:basalproc%tnodes-1))/(basalproc%tnodes-1) 
@@ -81,12 +79,11 @@ contains
           Ztot(:,:,i)=Ztot(:,:,i-1)+dy(:,:,i-1)
           stagHwater(:,:)=stagHwater+dy(:,:,i-1)*(por(:,:,i-1)+por(:,:,i))/2
        enddo
-     
        u=(rhos-rhow)*(1-por)*grav*Ztot-N
 
-         write(message,*) 'Till layer has been initialized using namelist file: ',tillfile
+         write(message,*) 'Till layer has been initialized'
        	 call write_log(message)       
-    end if
+ !   end if
     
     	!Define tillmask based on values of Tauf in the initial file
 		!Wherever Tauf has been set to low values (10Pa or less), tillmask=.false.,
@@ -94,7 +91,7 @@ contains
 		where (basalproc%minTauf.le.10) tillmask=.false.
 		minTauf_init=basalproc%minTauf
 		Hwater_init=stagHwater
-    
+    	!print*,'mean Tauf init=',sum(minTauf_init)/((ewn-1)*(nsn-1))
     	!Calculate Hwater on normal grid - using zero gradient as BC
 		call stag2norm(ewn,nsn,stagHwater,basalproc%Hwater)	    
     
@@ -147,7 +144,10 @@ contains
 	!Calculate Hwater on normal grid - using zero gradient as BC
 	call stag2norm(ewn,nsn,stagHwater,basalproc%Hwater)
 
+	! Scale minTauf
+	basalproc%minTauf=basalproc%minTauf/tau0_glam
 
+!	print*,'ENDING WITH mean Tauf=',sum(basalproc%minTauf)/((ewn-1)*(nsn-1))
  
     
   end subroutine Basal_Proc_driver
@@ -159,7 +159,6 @@ contains
 
   ! Deallocate till variables
     deallocate(u)
-    deallocate(N)
     deallocate(etill)
     deallocate(dy)
     
@@ -227,7 +226,6 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
   real (kind = dp), dimension(ewn-1,nsn-1,tnodes-1) :: vw   !vertical water flow, m/s
   real (kind = dp), dimension(ewn-1,nsn-1) :: du  
   integer :: i
-
 
   !Boundary conditions at the ice/till interface
   
