@@ -218,7 +218,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
-  integer, parameter :: cmax = 750                  ! max no. of iterations
+  integer, parameter :: cmax = 1000                  ! max no. of iterations
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -245,12 +245,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 
 !*sfp* hack of mask for Ross exp.
-!  do ew = 1, 15; do ns = 16, 30     
-!    if( umask(ew,ns) == 41 )then
-!        umask(ew,ns) = 105
-!    end if
-!  end do; end do
-
+!    do ns=1,nsn-1; do ew=1,ewn-1
+!        if( umask(ew,ns) == 21 .or. umask(ew,ns) == 5 )then
+!            umask(ew,ns) = 73
+!        endif
+!    end do; end do
 
   ! allocate space for storing temporary across-flow comp of velocity
   allocate(tvel(upn,ewn-1,nsn-1)) 
@@ -334,22 +333,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! implement periodic boundary conditions in y (if flagged)
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     if( periodic_ns )then
-        tvel(:,1:ewn-1,nsn-1) = tvel(:,1:ewn-1,2)
-        tvel(:,1:ewn-2,1) = tvel(:,1:ewn-2,nsn-2)
+        tvel(:,:,nsn-1) = tvel(:,:,2)
+        tvel(:,:,1) = tvel(:,:,nsn-2)
     end if
     if( periodic_ew )then
-        tvel(:,ewn-1,1:nsn-1) = tvel(:,2,1:nsn-1)
-        tvel(:,1,1:nsn-1) = tvel(:,ewn-2,1:nsn-1)
+        tvel(:,ewn-1,:) = tvel(:,2,:)
+        tvel(:,1,:) = tvel(:,ewn-2,:)
     end if
-
-!    if( periodic_ns .eq. 1 )then
-!        tvel(:,1:ewn-1,nsn-2) = tvel(:,1:ewn-1,3)    ! if using rempping for dH/dt (domain def. is different) 
-!        tvel(:,1:ewn-1,2) = tvel(:,1:ewn-1,nsn-3)
-!    end if
-!    if( periodic_ew .eq. 1 )then
-!        tvel(:,ewn-2,1:nsn-1) = tvel(:,3,1:nsn-1) 
-!        tvel(:,2,1:nsn-1) = tvel(:,ewn-3,1:nsn-1)
-!    end if
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 
@@ -390,22 +380,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! implement periodic boundary conditions in x (if flagged)
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     if( periodic_ns )then
-        uvel(:,1:ewn-1,nsn-1) = uvel(:,1:ewn-1,2)
-        uvel(:,1:ewn-2,1) = uvel(:,1:ewn-2,nsn-2)
+        uvel(:,:,nsn-1) = uvel(:,:,2)
+        uvel(:,:,1) = uvel(:,:,nsn-2)
     end if
     if( periodic_ew )then
-        uvel(:,ewn-1,1:nsn-1) = uvel(:,2,1:nsn-1)
-        uvel(:,1,1:nsn-1) = uvel(:,ewn-2,1:nsn-1)
+        uvel(:,ewn-1,:) = uvel(:,2,:)
+        uvel(:,1,:) = uvel(:,ewn-2,:)
     end if
-
-!    if( periodic_ns .eq. 1 )then
-!        uvel(:,1:ewn-1,nsn-2) = uvel(:,1:ewn-1,3)    ! if using rempping for dH/dt (domain def. is different) 
-!        uvel(:,1:ewn-1,2) = uvel(:,1:ewn-1,nsn-3)
-!    end if
-!    if( periodic_ew .eq. 1 )then
-!        uvel(:,ewn-2,1:nsn-1) = uvel(:,3,1:nsn-1) 
-!        uvel(:,2,1:nsn-1) = uvel(:,ewn-3,1:nsn-1)
-!    end if
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
     counter = counter + 1   ! advance the iteration counter
@@ -560,8 +541,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! eff. strain rate squared
     effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
              0.25_dp * (vgradew + ugradns)**2 + &
-             f1 * (ugradup**2 + vgradup**2)   
-!             f1 * (ugradup**2 + vgradup**2) + effstrminsq   
+!             f1 * (ugradup**2 + vgradup**2)                    ! make active for old "capping" version (see note below)   
+             f1 * (ugradup**2 + vgradup**2) + effstrminsq       ! make inactive for old "capping" version 
 
     ! *sfp* set eff. strain rate (squared) to some min value where it falls below some 
     ! threshold value, 'effstrminsq'. Commented out the old version below, which "caps" 
@@ -571,11 +552,10 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! (e.g. Pattyn 3d model). The issues w/ the capping approach are discussed in:
     ! Lemieux and Tremblay, JGR, VOL. 114, C05009, doi:10.1029/2008JC005017, 2009)  
 
-    ! Old "capping" version
-    where (effstr < effstrminsq)
-      effstr = effstrminsq
-    end where
-
+!    ! Old "capping" version            ! these lines must be active to use the "capping" scheme for the efvs calc
+!    where (effstr < effstrminsq)
+!      effstr = effstrminsq
+!    end where
 
     ! *sfp* Note that I've made the vert dims explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
@@ -2734,11 +2714,12 @@ subroutine calcbetasquared (whichbabc,               &
 
   select case(whichbabc)
 
-    case(0)     ! constant value
+    case(0)     ! constant value; useful for debugging and test cases
 
       betasquared = 1.0d0
 
-    case(1)     ! specify simple pattern, e.g. a strip of low B^2 to make an ice stream
+    case(1)     ! simple pattern; also useful for debugging and test cases
+                ! (here, a strip of weak bed surrounded by stronger bed to simulate an ice stream)
 
       betasquared = 1.0d10
 
@@ -2746,103 +2727,26 @@ subroutine calcbetasquared (whichbabc,               &
         betasquared(ew,ns) = 1.0d0
       end do; end do
 
-    case(2)     ! read in a map of betasquared from a file
-                !whl - to do - Create a netCDF version of betafile
+    case(2)
 
-      open(unin,file=trim(betafile),status='old')
-      read(unin,*) ((betasquared(ew,ns), ew=1,ewn-1), ns=1,nsn-1)
-      close(unin)
+      betasquared = minTauf / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
 
-      betasquared = betasquared / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
-!      betasquared = betasquared * ( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )**(-0.5d0)
-
-    case(3)
-
-      ! betasquared as proxy for till yield stress via Bueler iteration to achieve TauB ~ Tau0
-      ! TauB = Tau0 * U_b * ( U_b^2 + U0 )^(-1/2)  
-      ! ... where U0 is some small number to avoid div. by 0 (3rd term under radical)
-      ! Here, betasquared is re-written to encompass the extra terms with the assumption that U_b in the radical
-      ! can be taken from the value at the previous iteration.
-      ! NOTE: previously assigned value for betasquared is now assumed equal to till yield stress, in Pa !!!
-
-      betasquared = 1.0d10
-
-      do ew=1, ewn-1; do ns=10, nsn-10
-!        betasquared(ew,ns) = 1.05d0 * 7.0d3
-        betasquared(ew,ns) = 5.0d3
-      end do; end do
-
-      betasquared = betasquared / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
-
-    case(4)     ! same as case(3) but taking yield stress from basal processes model
-
-      betasquared = minTauf
-!      betasquared = minTauf / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
-!      betasquared = betasquared * ( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )**(-0.5d0)
-
-    case(5)     ! simple 2d ice shelf
-
-     betalow = 1.0d0
-     betahigh = 1.0d5
-
-     grounded = rhoo*( 0.0_dp - topg(:,3) ) / ( rhoi * thck(:,3) )
-
-     do ew=1, ewn-1
-
-      if( ( grounded(ew) .lt. 1.0_dp ) .and. ( grounded(ew+1) .lt. 1.0_dp ) )then
-
-        betasquared(ew,:) = betahigh
-
-      elseif( ( grounded(ew) .gt. 1.0_dp ) .and. ( grounded(ew+1) .gt. 1.0_dp ) )then
-
-        betasquared(ew,:) = betalow
-
-      elseif( grounded(ew) .lt. 1.0_dp .and. grounded(ew+1) .ge. 1.0_dp )then
-
-        dx = ( 1.0_dp - grounded(ew) ) / ( ( grounded(ew+1) - grounded(ew) ) / dew )
-        thck_gl = thck(ew,3) + ( thck(ew+1,3) - thck(ew,3) ) / dew * dx
-        alpha = ( thck_gl - thck(ew,3) ) / ( thck(ew+1,3) - thck(ew,3) )
-        betasquared(ew,:) = alpha*betahigh + ( 1.0_dp - alpha )*betalow
-
-!        print *, 'x = ', (ew-1)*dew*len0
-!        print *, 'dx = ', dx*len0
-!        print *, 'x g.l. = ', ((ew-1)*dew+dx)*len0
-!        print *, 'alpha = ', alpha
-!        print *, 'betasquared at g.l. = ', betasquared(ew,3)
-
-      end if
-
-     end do
-
-    case(6)     ! ISMIP-HOM experiment C; spatially periodic traction parameter
-
-        do ns=1,nsn-1; do ew=1,ewn-1
-            ! units as in ismip-hom document ( Pa * a * m^-1 )
-!            betasquared(ew,ns) = 1000 + 1000 * sin(2*pi/(lambda0*len0 )*(ns-1)*dns*len0) * &
-!                                 sin(2*pi/(lambda0*len0)*(ew-1)*dew*len0)
-
-            ! *sp* altered slightly so that phase of beta^2 is the same as that expected by 
-            ! CISM ISMIP-HOM test suite
-            betasquared(ew,ns) = 1000 + 1000 * sin(2*pi/(lambda0*len0 )*(real(ns)+0.0d0)*dns*len0) * &
-                                 sin(2*pi/(lambda0*len0)*(real(ew)+0.0d0)*dew*len0)
-       end do; end do
-
-    case(7)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
+    case(3)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
 
       betasquared = 1.0d-5
       betasquared( (ewn-1)/2:(ewn-1)/2+1, (nsn-1)/2:(nsn-1)/2+1 ) = 1.0d10
 
-    case(8)    ! frozen (u=v=0) ice-bed interface
+    case(4)    ! frozen (u=v=0) ice-bed interface
 
       betasquared = 1.0d10
 
-    case(9)    !*sfp* use value passed in externally from CISM 
+    case(5)    !*sfp* use value passed in externally from CISM 
                ! NOTE that this is NOT dimensional when passed in. It has been scaled by the 
                ! the following: scyr * vel0 * len0 / (thk0**2)
 
       betasquared = beta * scyr * vel0 * len0 / (thk0**2)    ! scale up to dimensional (Pa yrs 1/m)
 
-      where ( betasquared /= betasquared )
+      where ( betasquared /= betasquared )  ! this is a check for NaNs, which are replaced w/ no slip
         betasquared = 1.0d10
       end where    
 
