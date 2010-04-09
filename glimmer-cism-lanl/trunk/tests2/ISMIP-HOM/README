@@ -140,3 +140,20 @@ Glimmer and are not needed.  So...
 WARNING: If you have files with names ending ".txt", ".log", or ".nc" in the
 directory from which you are running runGlimmer.py they will get moved
 to the "scratch" subdirectory when you run runGlimmer.py
+
+TO DO / KNOWN ISSUES
+
+For ISMIP-HOM tests A and C, at the 5 and 10 km wavelengths, convergence may be 
+very slow and may require some adjustments to the grid spacing in the vertical 
+and horizontal. This applies to both of the higher-order cores.
+    In general, the code will converge faster for fewer horizontal grid
+points but the results may be less accurate (i.e. the match with the ISMIP-HOM 
+mean may be poor). The provided configuration files have reasonable default 
+values for the grid spacing, but in some cases these may need to be adjusted.
+
+For the Payne/Price core (diagnostic_scheme = 3), the "which_sparse" option must
+be set to either 0 or 1 (either BiCG or GMRES for the linear solver, respectively).
+Future releases will allow for more options.
+
+
+
