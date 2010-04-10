@@ -15,7 +15,7 @@ from ConfigParser import ConfigParser
 # If not, confined-shelf.config is used.
 if len(sys.argv) > 1:
   if sys.argv[1][0] == '-': # The filename can't begin with a hyphen
-    print '\nUsage:  python confined_shelf.py [FILE.CONFIG]\n'
+    print '\nUsage:  python confined-shelf.py [FILE.CONFIG]\n'
     sys.exit(0)
   else:
     configfile = sys.argv[1]
