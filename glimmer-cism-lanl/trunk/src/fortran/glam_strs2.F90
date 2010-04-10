@@ -842,7 +842,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
     !	resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
     !           MASK = vel .ne. 0.0_dp) / sum( vel_ne_0(1:nr-1,:,:) )
 
-    ! *sfp** note that the location of the max residual is somewhat irrelevent here,
+    ! *sfp** note that the location of the max residual is somewhat irrelevent here
     !      since we are using the mean resid for convergence testing
     locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
 
@@ -1221,7 +1221,7 @@ subroutine bodyset(ew,  ns,  up,           &
     ! we would access stagthck(i-1,j-1) and apply that to the bc rather than stagthck(i,j). For a point
     ! w/ a normal of 1/sqrt(2)*[1,-1], we would access stagthck(i-1,j+1), etc. 
 
-    if( cc < 10 )then
+!    if( cc < 10 )then
 
     ! (1) 
     ! source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
@@ -1232,19 +1232,19 @@ subroutine bodyset(ew,  ns,  up,           &
     ! ... as of summer 2009, this hack has been removed (no more factor of 2) and replaced by a new stagthck
     ! averaging scheme at the margins, which uses only the non-zero values of thickness on the normal grid to
     ! calc. the value of the stag. thickness
-    source = abar*vis0_glam * ( 1.0_dp/4.0_dp * rhoi * grav * stagthck(ew,ns)*thk0 * ( 1.0_dp - rhoi/rhoo))**3.0_dp
-    source = source * tim0
+!    source = abar*vis0_glam * ( 1.0_dp/4.0_dp * rhoi * grav * stagthck(ew,ns)*thk0 * ( 1.0_dp - rhoi/rhoo))**3.0_dp
+!    source = source * tim0
 
     ! multiply by 4 so that case where v=0, du/dy = 0, LHS gives: du/dx = du/dx|_shelf 
     ! (i.e. LHS = 4*du/dx, requires 4*du/dx_shelf)
-    source = source * 4.0_dp
+!    source = source * 4.0_dp
 
     ! split source based on the boundary normal orientation and non-dimensinoalize
     ! Also note that this is not really appropriate to apply option (1) to 2d flow, since terms other than du/dx in 
     ! eff. strain rate are ignored. For 2d flow, should use option (2) below. 
-     source = source * normal(pt)
+!     source = source * normal(pt)
 
-    else
+!    else
 
     ! (2)
     ! source term (strain rate at shelf/ocean boundary) from MacAyeal depth-ave solution. 
@@ -1258,20 +1258,9 @@ subroutine bodyset(ew,  ns,  up,           &
     source = source / ( sum(local_efvs, local_efvs > 1.0d-12) / &
              sum( (local_efvs/local_efvs), local_efvs > 1.0d-12 ) )
 
-  !! *sfp* This is a hacky version above the above (divide source term by mean eff. visc. at boundary)
-!            do i = 1, 2; do j = 1, 2; do k = 1, 2
-!                if (abs(local_efvs(i,j,k)) > 1.0d-12)then
-!                    efvstot = efvstot + local_efvs(i,j,k)
-!                    efvscount = efvscount + 1 
-!                end if
-!            end do; end do; end do
-!
-!    source = source / ( efvstot / efvscount )
-
     source = source * normal(pt) ! non-dim
 
-
-    end if
+!    end if
 
                         
     g = normhorizmainbc_lat(dew,           dns,        &
