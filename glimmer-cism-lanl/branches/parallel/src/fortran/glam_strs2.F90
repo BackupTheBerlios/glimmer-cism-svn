@@ -247,7 +247,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   integer :: ew, ns, up
 
-  real (kind = dp), parameter :: minres = 1.0d-4 
+  real (kind = dp), parameter :: minres = 1.0d-04
   real (kind = dp), save, dimension(2) :: resid  
 
   integer, parameter :: cmax = 100
@@ -256,9 +256,10 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !*sfp* needed to incorporate generic wrapper to solver
   type(sparse_matrix_type) :: matrix
-  real (kind = dp), dimension(:), allocatable :: answer
+  real (kind = dp), dimension(:), allocatable :: answer, u_k_1, v_k_1, F_vec
   real (kind = dp) :: err
   integer :: iter
+  integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
 
 ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
@@ -350,6 +351,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   allocate(matrix%row(pcgsize(2)), matrix%col(pcgsize(2)), &
             matrix%val(pcgsize(2)), answer(pcgsize(1)))
 
+  allocate( u_k_1(pcgsize(1)), v_k_1(pcgsize(1)), &
+            F_vec(2*pcgsize(1)), g_flag(pcgsize(1)) ) ! jfl for res calc.
+
   !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
   
   resid = 1.0_dp
@@ -359,7 +363,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics solver'
   print *, ' '
-  print *, 'iter #     uvel resid          vvel resid         target resid'
+  print *, 'iter#    uvel resid         vvel resid        target resid'
   print *, ' '
 
   do while ( maxval(resid) > minres .and. counter < cmax)
@@ -398,7 +402,20 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, counter )
 
     ! *sfp** solve 'Ax=b' for the Y component of velocity
-    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
+    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel, g_flag)
+
+!==============================================================================
+! jfl 20100412: residual for v comp: Fv= A(u_k-1,v_k-1)v_k-1 = b(u_k-1,v_k-1)  
+!==============================================================================
+
+    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag )
+
+      F_vec(1:pcgsize(1)) = v_k_1(:)
+      
+!      if (counter .eq. 20) then
+!         call output_res( ewn, nsn, upn, uindx, counter, &
+!                          size(v_k_1), v_k_1, 2 )
+!      endif
 
 !==============================================================================
 ! RN_20100129: Including non-matrix-conversion scheme
@@ -425,6 +442,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     !write(*,*) 'whichsparse', whichsparse
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
+
+    v_k_1 = answer ! jfl
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
 
@@ -476,7 +495,17 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 
     ! *sfp** solve 'Ax=b' for the X component of velocity
-    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel )
+    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel, g_flag)
+
+!==============================================================================
+! jfl 20100412: residual for u comp: Fu= A(u_k-1,v_k-1)u_k-1 = b(u_k-1,v_k-1)  
+!==============================================================================
+
+    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag)
+
+    F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
+
+!    print *, 'L2 norm (k)= ', counter, sqrt(DOT_PRODUCT(F_vec,F_vec))
 
 !==============================================================================
 ! RN_20100129: Including non-matrix-conversion scheme
@@ -503,6 +532,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !==============================================================================
 
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
+
+    u_k_1 = answer ! jfl
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
@@ -563,6 +594,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   deallocate(pcgval,pcgrow,pcgcol,rhsd)
   deallocate(matrix%row, matrix%col, matrix%val)
   deallocate(answer) 
+  deallocate(u_k_1, v_k_1, F_vec, g_flag) ! jfl 
 
   return
 
@@ -858,7 +890,7 @@ end function getlocationarray
 
 !***********************************************************************
 
-subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
+subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel, g_flag)
 
   !*sfp* This subroutine puts sparse matrix variables in SLAP triad format into 
   ! "matrxi" derived type, so that it can be passed to generic solver wrapper
@@ -867,6 +899,7 @@ subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
+  integer, dimension(:), intent(out) :: g_flag ! jfl
   real (kind = dp), dimension(:,:,:), intent(in) :: vel
   integer, dimension(:,:), intent(in) :: uindx
   type(sparse_matrix_type), intent(inout) :: matrix
@@ -885,6 +918,8 @@ subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
   matrix%col = pcgcol
   matrix%val = pcgval
 
+  g_flag = 0 ! flag for ghost cells
+
   !! *sfp** initial estimate for vel. field; take from 3d array and put into
   !! format of a solution vector.
   do ns = 1,nsn-1
@@ -894,6 +929,8 @@ subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
             answer(loc(1):loc(2)) = vel(:,ew,ns)
             answer(loc(1)-1) = vel(1,ew,ns)
             answer(loc(2)+1) = vel(upn,ew,ns)
+            g_flag(loc(1)-1) = 1 ! jfl
+            g_flag(loc(2)+1) = 1 ! jfl
         end if
     end do
   end do
@@ -976,6 +1013,9 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
       mindcrshstr = usav(:,:,:,pt) + &
                     corr(:,:,:,new(pt),pt) * abs(corr(:,:,:,old(pt),pt)) / &
                     abs(corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt)) 
+
+!      mindcrshstr = vel; ! jfl uncomment this and comment out line above 
+!                         ! to avoid the unstable manifold correction
 
     elsewhere
 
