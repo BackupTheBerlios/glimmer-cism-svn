@@ -139,5 +139,11 @@ contains
        status=nf90_put_var(NCO%id,varid,model%lithot%deltaz)
        call nc_errorhandle(__FILE__,__LINE__,status)
     end if
+    if (model%options%which_bmod.gt.0) then
+       status = nf90_inq_varid(NCO%id,'tnodes',varid)
+       status=nf90_put_var(NCO%id,varid,model%basalproc%tnodes)
+       call nc_errorhandle(__FILE__,__LINE__,status)
+    end if    
+    
   end subroutine glide_nc_filldvars
 end module glide_nc_custom

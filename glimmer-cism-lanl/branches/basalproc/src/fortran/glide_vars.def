@@ -1,5 +1,5 @@
 #[]
-#dimensions:    time, level, y1, x1
+#dimensions:    time, level, y1, x1 ,tnodes
 #units:         
 #long_name:     
 #data:          
@@ -69,6 +69,12 @@ units:         meter
 long_name:     vertical coordinate of lithosphere layer
 dimlen:        model%lithot%nlayer
 
+[tnodes]
+dimensions:	   tnodes
+units:		   1
+long_name: 	   number of till layers
+dimlen:		   model%basalproc%tnodes
+
 [lat]
 dimensions:    time, y1, x1
 units:         degreeN
@@ -94,7 +100,7 @@ long_name:     relaxed bedrock topography
 data:          data%isos%relx
 factor:        thk0
 load:          1
-hot:           1
+hot:           0
 coordinates:   lon lat
 
 [eus]
@@ -168,17 +174,16 @@ load:          1
 hot:		   1
 
 [u_till]
-dimensions:    time, y0, x0
+dimensions:    time, y0, x0, tnodes
 units:         Pa         
 long_name:     Till excess pore pressure 
-data:          data%basalproc%u
-hot:		   1
+data:          data%basalproc%u(:,:,up)		   
 
 [etill]
-dimensions:    time, y0, x0
+dimensions:    time, y0, x0, tnodes
 units:         ND         
 long_name:     Till void ratio 
-data:          data%basalproc%etill
+data:          data%basalproc%etill(:,:,up)
 hot:		   1
 
 
@@ -508,7 +513,7 @@ dimensions:    time, lithoz, y1, x1
 units:         degree_Celsius
 long_name:     lithosphere temperature
 data:          data%lithot%temp
-hot:           1
+hot:           0
 coordinates:   lon lat
 
 [age]
@@ -518,7 +523,7 @@ long_name:     ice age
 data:          data%geometry%age(up,:,:)
 standard_name: land_ice_age
 factor:        tim0/scyr
-hot:           1
+hot:           0
 coordinates:   lon lat
 
 [gl_ew]

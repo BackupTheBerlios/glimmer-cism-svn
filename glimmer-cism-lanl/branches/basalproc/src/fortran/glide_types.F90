@@ -1177,9 +1177,9 @@ contains
  !allocate basal processes variables
     call coordsystem_allocate(model%general%ice_grid, model%basalproc%Hwater)
     call coordsystem_allocate(model%general%velo_grid, model%basalproc%minTauf)
-!	allocate(model%basalproc%u (ewn-1,nsn-1,model%basalproc%tnodes))
+	allocate(model%basalproc%u (ewn-1,nsn-1,model%basalproc%tnodes))
 !	model%basalproc%u=0.0
-!	allocate(model%basalproc%etill (ewn-1,nsn-1,model%basalproc%tnodes))
+	allocate(model%basalproc%etill (ewn-1,nsn-1,model%basalproc%tnodes))
 !	model%basalproc%etill=0.0
 	
   end subroutine glide_allocarr
@@ -1335,8 +1335,8 @@ contains
     ! deallocate till variables
     deallocate(model%basalproc%Hwater)
     deallocate(model%basalproc%minTauf)
-!	deallocate(model%basalproc%u)
-!	deallocate(model%basalproc%etill)
+	deallocate(model%basalproc%u)
+	deallocate(model%basalproc%etill)
 	
   end subroutine glide_deallocarr
 

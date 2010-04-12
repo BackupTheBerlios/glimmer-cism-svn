@@ -33,8 +33,10 @@ contains
 
 !allocate basal processes variables
 	allocate (dy(ewn-1,nsn-1,basalproc%tnodes-1));		dy=0.6d0
-	allocate (basalproc%u(ewn-1,nsn-1,basalproc%tnodes));	basalproc%u=41.0d3
-	allocate (basalproc%etill(ewn-1,nsn-1,basalproc%tnodes));basalproc%etill=0.5d0
+!	allocate (basalproc%u(ewn-1,nsn-1,basalproc%tnodes));	
+	basalproc%u=41.0d3
+!	allocate (basalproc%etill(ewn-1,nsn-1,basalproc%tnodes));
+	basalproc%etill=0.5d0
 	allocate (minTauf_init(ewn-1,nsn-1));				minTauf_init=5000
 	allocate (Hwater_init(ewn-1,nsn-1)); 				Hwater_init=3
 	allocate (tillmask(ewn-1,nsn-1)); 					tillmask=.true.
@@ -154,8 +156,8 @@ contains
   ! Deallocate till variables
 
     deallocate(dy)
-    deallocate(basalproc%etill)
-    deallocate(basalproc%u)
+  !  deallocate(basalproc%etill)
+  !  deallocate(basalproc%u)
     
   end subroutine Basal_Proc_final
   
