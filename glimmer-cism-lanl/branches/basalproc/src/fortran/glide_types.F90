@@ -861,6 +861,7 @@ module glide_types
   	integer:: till_hot = 0
   	integer:: tnodes = 5
 
+  	real(dp), dimension (:) , pointer :: till_dz => null()  !holds inital till layer spacing - 
   	
   	!Model variables that will be passed to other subroutines
   	real(dp),dimension(:,:)  ,pointer :: minTauf => null() !Bed strength calculated with basal proc. mod.

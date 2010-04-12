@@ -222,6 +222,7 @@ contains
 
     ! setting the size of the level dimension
     NCO%nlevel = model%general%upn
+
   end subroutine glimmer_nc_createfile
 
   subroutine glimmer_nc_checkwrite(outfile,model,forcewrite,time)

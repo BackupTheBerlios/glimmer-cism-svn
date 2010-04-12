@@ -77,6 +77,7 @@ module glimmer_ncdf
 
      integer :: nlevel = 0
      !*FD size of vertical coordinate
+     
 
      integer timedim
      !*FD id of time dimension

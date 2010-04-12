@@ -40,7 +40,7 @@ contains
 	allocate (minTauf_init(ewn-1,nsn-1));				minTauf_init=5000
 	allocate (Hwater_init(ewn-1,nsn-1)); 				Hwater_init=3
 	allocate (tillmask(ewn-1,nsn-1)); 					tillmask=.true.
-
+	allocate (basalproc%till_dz(basalproc%tnodes)); basalproc%till_dz=1.0d0
 
 
 
@@ -158,6 +158,7 @@ contains
     deallocate(dy)
   !  deallocate(basalproc%etill)
   !  deallocate(basalproc%u)
+  deallocate (basalproc%till_dz)
     
   end subroutine Basal_Proc_final
   
