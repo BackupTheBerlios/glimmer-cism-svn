@@ -401,16 +401,18 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      minTauf,     flwa,           &
                      beta, counter )
 
-    ! *sfp** solve 'Ax=b' for the Y component of velocity
+    ! *sfp** solve 'Av=b' for the Y component of velocity (v)
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel, g_flag)
 
 !==============================================================================
 ! jfl 20100412: residual for v comp: Fv= A(u_k-1,v_k-1)v_k-1 = b(u_k-1,v_k-1)  
 !==============================================================================
 
-    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag )
+! calc of residual is wrong for k=1 because u_k_1 and v_k_1 are not known
 
-      F_vec(1:pcgsize(1)) = v_k_1(:)
+!    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag )
+
+!      F_vec(1:pcgsize(1)) = v_k_1(:)
       
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
@@ -443,7 +445,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     !write(*,*) 'whichsparse', whichsparse
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
-    v_k_1 = answer ! jfl
+!    v_k_1 = answer ! jfl
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
 
@@ -494,16 +496,16 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, counter )
 
 
-    ! *sfp** solve 'Ax=b' for the X component of velocity
+    ! *sfp** solve 'Cu=d' for the X component of velocity (u)
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel, g_flag)
 
 !==============================================================================
-! jfl 20100412: residual for u comp: Fu= A(u_k-1,v_k-1)u_k-1 = b(u_k-1,v_k-1)  
+! jfl 20100412: residual for u comp: Fu= C(u_k-1,v_k-1)u_k-1 = d(u_k-1,v_k-1)  
 !==============================================================================
 
-    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag)
+!    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag)
 
-    F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
+!    F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
 
 !    print *, 'L2 norm (k)= ', counter, sqrt(DOT_PRODUCT(F_vec,F_vec))
 
@@ -533,7 +535,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
-    u_k_1 = answer ! jfl
+!    u_k_1 = answer ! jfl
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
