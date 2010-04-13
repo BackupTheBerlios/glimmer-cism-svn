@@ -218,7 +218,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
-  integer, parameter :: cmax = 1000                  ! max no. of iterations
+  integer, parameter :: cmax = 500                  ! max no. of iterations
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -473,7 +473,6 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
                        mask)
 
   ! calculate the eff. visc.	
-
   implicit none 
 
   integer, intent(in) :: ewn, nsn, upn 
@@ -492,89 +491,97 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
   integer, dimension(2) :: mew, mns
 
-! *sfp* this is the 1/4(X0/H0)^2 factor in front of the term ((dv/dz)^2+(du/dz)^2) 
+  ! This is the factor 1/4(X0/H0)^2 in front of the term ((dv/dz)^2+(du/dz)^2) 
   real (kind = dp), parameter :: f1 = 0.25_dp * (len0 / thk0)**2
 
   select case(whichefvs)
 
-  case(0)       ! calculate eff. visc. from eff. strain rate, etc
+  case(0)       ! calculate eff. visc. using eff. strain rate
 
   if (1 == counter) then
     do ns = 2,nsn-1; do ew = 2,ewn-1
     if (thck(ew,ns) > 0.0_dp) then
-      ! *sfp** this is the term: 1/2*A^(-1/n)
+      ! this is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n)
       forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
     end if; end do; end do
   end if
 
   do ns = 2,nsn-1
-  do ew = 2,ewn-1
-   if (thck(ew,ns) > 0.0_dp) then
+      do ew = 2,ewn-1
+        if (thck(ew,ns) > 0.0_dp) then
 
-    ugradup = vertideriv(upn, hsum(uvel(:,ew-1:ew,ns-1:ns)), thck(ew,ns))
-    vgradup = vertideriv(upn, hsum(vvel(:,ew-1:ew,ns-1:ns)), thck(ew,ns))
+            ugradup = vertideriv(upn, hsum(uvel(:,ew-1:ew,ns-1:ns)), thck(ew,ns))
+            vgradup = vertideriv(upn, hsum(vvel(:,ew-1:ew,ns-1:ns)), thck(ew,ns))
 
-    ugradew = horizderiv(upn,  stagsigma,                &
+            ugradew = horizderiv(upn,  stagsigma,        &
                          sum(uvel(:,ew-1:ew,ns-1:ns),3), &
                          dew4, ugradup,                  &             
                          sum(dusrfdew(ew-1:ew,ns-1:ns)), &
                          sum(dthckdew(ew-1:ew,ns-1:ns)))
-
-    vgradew = horizderiv(upn,  stagsigma,                &
+        
+            vgradew = horizderiv(upn,  stagsigma,        &
                          sum(vvel(:,ew-1:ew,ns-1:ns),3), &
                          dew4, vgradup,                  &             
                          sum(dusrfdew(ew-1:ew,ns-1:ns)), &
                          sum(dthckdew(ew-1:ew,ns-1:ns)))
 
-    ugradns = horizderiv(upn,  stagsigma,               &
+            ugradns = horizderiv(upn,  stagsigma,        &
                          sum(uvel(:,ew-1:ew,ns-1:ns),2), &
                          dns4, ugradup,                  &                              
                          sum(dusrfdns(ew-1:ew,ns-1:ns)), &
                          sum(dthckdns(ew-1:ew,ns-1:ns)))
 
-    vgradns = horizderiv(upn,  stagsigma,               &
+            vgradns = horizderiv(upn,  stagsigma,        &
                          sum(vvel(:,ew-1:ew,ns-1:ns),2), &
                          dns4, vgradup,                  &                              
                          sum(dusrfdns(ew-1:ew,ns-1:ns)), &
                          sum(dthckdns(ew-1:ew,ns-1:ns)))
 
-    ! eff. strain rate squared
-    effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
-             0.25_dp * (vgradew + ugradns)**2 + &
-!             f1 * (ugradup**2 + vgradup**2)                    ! make active for old "capping" version (see note below)   
-             f1 * (ugradup**2 + vgradup**2) + effstrminsq       ! make inactive for old "capping" version 
+            ! "effstr" = eff. strain rate squared
+            effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
+                         0.25_dp * (vgradew + ugradns)**2 + &
+!                         f1 * (ugradup**2 + vgradup**2)              ! make line ACTIVE for "capping" version (see note below)   
+                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
 
-    ! *sfp* set eff. strain rate (squared) to some min value where it falls below some 
+    ! -----------------------------------------------------------------------------------
+    ! NOTES on capping vs. non-capping version of eff. strain rate calc.
+    ! -----------------------------------------------------------------------------------
+    !
+    ! Set eff. strain rate (squared) to some min value where it falls below some 
     ! threshold value, 'effstrminsq'. Commented out the old version below, which "caps" 
     ! the min eff strain rate (and thus the max eff visc) in favor of a version that 
     ! leads to a "smooth" description of eff strain rate (and eff visc). The change for 
     ! new version is that the value of 'effstrminsq' simply gets added in with the others
-    ! (e.g. Pattyn 3d model). The issues w/ the capping approach are discussed in:
-    ! Lemieux and Tremblay, JGR, VOL. 114, C05009, doi:10.1029/2008JC005017, 2009)  
+    ! (e.g. how it is done in the Pattyn model). The issues w/ the capping approach are 
+    ! discussed (w.r.t. sea ice model) in: Lemieux and Tremblay, JGR, VOL. 114, C05009, 
+    ! doi:10.1029/2008JC005017, 2009). Long term, the capping version should probably be
+    ! available as a config file option or possibly removed altogether.   
 
-!    ! Old "capping" version            ! these lines must be active to use the "capping" scheme for the efvs calc
-!    where (effstr < effstrminsq)
-!      effstr = effstrminsq
-!    end where
+    ! Old "capping" scheme       ! these lines must be active to use the "capping" scheme for the efvs calc
+!            where (effstr < effstrminsq)
+!                   effstr = effstrminsq
+!            end where
 
-    ! *sfp* Note that I've made the vert dims explicit here, since glide_types defines this 
+    ! Note that the vert dims are explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
-    ! should efvs exist at cell centroids in the vert as well as horiz, as in our code, or 
-    ! should we be doing some one-sided diffs at the boundaries so that it has vert dims of upn?
-    ! For now, we populate ONLY the first 1:upn-1 values of the efvs vector.
+    ! should efvs live at cell centroids in the vert as well as horiz (as is assumed in this code)
+    ! or should we be doing some one-sided diffs at the sfc/bed boundaries so that it has vert dims 
+    ! of upn? For now, we populate ONLY the first 1:upn-1 values of the efvs vector and leave the one
+    ! at upn empty (the Pattyn/Bocek/Johnson core would fill all values, 1:upn).
 
-    ! Below, p2=(1-n)/2n. The 1/2 is from taking the sqr root of the squared eff. strain rate
-    efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
+            ! Below, p2=(1-n)/2n. The 1/2 is from taking the sqr root of the squared eff. strain rate
+            efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
 
-    else  
-      efvs(:,ew,ns) = effstrminsq
-    end if
-   end do
-   end do
+        else  
+           efvs(:,ew,ns) = effstrminsq ! if the point is associated w/ no ice, set to min value
+        end if
+
+       end do   ! end ew
+   end do       ! end ns
 
   case(1)       ! set the eff visc to some const value 
 
-    efvs = 1.0_dp / 100.0_dp
+    efvs = 1.0_dp
 
   end select
 
@@ -595,7 +602,7 @@ function vertideriv(upn, varb, thck)
   real (kind = dp), dimension(size(varb)-1) :: vertideriv
   !'dupm' is defined as -1/(2*del_sigma), in which case it seems like 
   ! there should be a '-' in front of this expression ... but note that
-  ! the negative sign is implicit by the fact that the vertical index 
+  ! the negative sign is implicit in the fact that the vertical index 
   ! increases moving downward in the ice column (up=1 is the sfc, 
   ! up=upn is the bed).
 
@@ -680,9 +687,9 @@ end function getlocationarray
 
 subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
 
-  !*sfp* This subroutine puts sparse matrix variables in SLAP triad format into 
-  ! "matrxi" derived type, so that it can be passed to generic solver wrapper
-  ! "sparse_easy_solve". To take the place of explicit solver interface to SLAP.
+  ! Puts sparse matrix variables in SLAP triad format into "matrix" derived type, 
+  ! so that it can be passed to the generic solver wrapper, "sparse_easy_solve". 
+  ! Takes place of the old, explicit solver interface to SLAP linear solver.
 
   implicit none
 
@@ -705,8 +712,8 @@ subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
   matrix%col = pcgcol
   matrix%val = pcgval
 
-  !! *sfp** initial estimate for vel. field; take from 3d array and put into
-  !! format of a solution vector.
+  ! Initial estimate for vel. field; take from 3d array and put into
+  ! the format of a solution vector.
   do ns = 1,nsn-1
     do ew = 1,ewn-1
         if (uindx(ew,ns) /= 0) then
@@ -724,7 +731,7 @@ end subroutine solver_preprocess
 
 subroutine solver_postprocess( ewn, nsn, upn, uindx, answrapped, ansunwrapped )
 
-! This unwraps the vels from the solution vector into a 3d array.
+  ! Unwrap the vels from the solution vector and place into a 3d array.
 
   implicit none
 
@@ -753,12 +760,9 @@ end subroutine solver_postprocess
 
 function mindcrshstr(pt,whichresid,vel,counter,resid)
 
-! *sfp** function to perform 'unstable manifold correction' - 
-!      corrects velocity fields u, v, from an initial guess at u, v, and eff. visc. 
-!      iteratively to eventually reach a consistent solution in which 
-!          A(u_old,v_old) u_new = b(u_old,v_old)
-!      (coeff. matrix A is function of vel field through visc, 
-!       rhs b is function of vel field through bcs) 
+  ! Function to perform 'unstable manifold correction' (see Hindmarsch and Payne, 1996,
+  ! "Time-step limits for stable solutions of the ice-sheet equation", Annals of 
+  ! Glaciology, 23, p.74-85)
 
   implicit none
 
@@ -813,10 +817,11 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   select case (whichresid)
 
-! *sfp** residual calculation method; 
-
-!whl - to do - changed from default to case(0) and renumbered other cases
-!      maxval (0); maxval ignoring basal vel (1); mean value (2)
+  ! options for residual calculation method, as specified in configuration file 
+  ! (see additional notes in "higher-order options" section of documentation)
+  ! case(0): use max of abs( vel_old - vel ) / vel ) 
+  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels 
+  ! case(2): use mean of abs( vel_old - vel ) / vel )
 
    case(0)
     resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)  
@@ -834,15 +839,15 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
     vel_ne_0 = 0
     where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
 
-    !*sfp** include basal velocities in resid. calculation
+    ! include basal velocities in resid. calculation when using MEAN
     resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
             MASK = vel .ne. 0.0_dp) / sum( vel_ne_0 )
 
-    !*sfp** ignore basal velocities in resid. calculation
-    !	resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
+    ! ignore basal velocities in resid. calculation when using MEAN
+    ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
     !           MASK = vel .ne. 0.0_dp) / sum( vel_ne_0(1:nr-1,:,:) )
 
-    ! *sfp** note that the location of the max residual is somewhat irrelevent here
+    ! NOTE that the location of the max residual is somewhat irrelevent here
     !      since we are using the mean resid for convergence testing
     locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
 
@@ -850,7 +855,9 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
     usav(:,:,:,pt) = vel
 
-!  print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
+    ! Additional debugging line, useful when trying to determine if convergence is being consistently 
+    ! help up by the residual at one or a few particular locations in the domain.
+!    print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
 
   return
 
@@ -875,9 +882,9 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                        minTauf,     flwa,           &    
                        beta, count )
 
-! *sfp** find coeffecients in stress balance equation ...
-! ... also appears to contain important bc information
-! and puts that information into the sparse coeff. matrix
+  ! Main subroutine for determining coefficients that go into the LHS matrix A 
+  ! in the expression Au = b. Calls numerous other subroutines, including boundary
+  ! condition subroutines, which determin "b".
 
   implicit none
 
@@ -916,13 +923,10 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer, dimension(3) :: shift
   integer :: ew, ns, up
 
-  ct = 1        ! *sfp* this index count non-zero entries into the sparse matrix
+  ct = 1        ! index to count the number of non-zero entries in the sparse matrix
 
-  ! *sfp** 'localplusup' is used to find locations in the sparse matrix relative to
-  ! the present location. In general, it is approx. the number of grid cells in 
-  ! the vertical direction  
-
-  ! *sfp** calculate/specify value of 'betasquared', to be input to subroutine 'bodyset', below
+  ! calculate/specify the map of 'betasquared', for use in the basal boundary condition. 
+  ! Input to the subroutine 'bodyset' (below) ... 
   call calcbetasquared (whichbabc,              &
                         dew,        dns,        &
                         ewn,        nsn,        &
@@ -936,13 +940,9 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   do ns = 1,nsn-1
     do ew = 1,ewn-1 
 
-     ! *sfp** depth-ave rate factor, needed for one of the ice shelf b.c. options (below)
-!     flwabar = sum( ( flwa(:,ew,ns) + flwa(:,ew,ns+1) + flwa(:,ew+1,ns) + flwa(:,ew+1,ns+1) ) / 4.0_dp, 1 ) / real(upn)    
-!     flwabar = 3.171d-24 / vis0_glam    ! isothermal, temperate value 
-!     flwabar = 1.8075e-25 / vis0_glam    ! EISMINT-ROSS test 3-4 value
-
-     ! *sfp* ...or, calculate the depth-averaged value (complicated code so as not to include funny values at boundaries)
-     ! *sfp* This is kind of a mess and could be redone or moded to a function/subroutine.
+     ! Calculate the depth-averaged value of the rate factor, needed below when applying an ice shelf
+     ! boundary condition (complicated code so as not to include funny values at boundaries ...
+     ! ... kind of a mess and could be redone or made into a function or subroutine).
      flwabar = ( sum( flwa(:,ew,ns), 1, flwa(1,ew,ns)*vis0_glam < 1.0d-10 )/real(upn) + &
                sum( flwa(:,ew,ns+1), 1, flwa(1,ew,ns+1)*vis0_glam < 1.0d-10 )/real(upn)  + &
                sum( flwa(:,ew+1,ns), 1, flwa(1,ew+1,ns)*vis0_glam < 1.0d-10 )/real(upn)  + &
@@ -956,11 +956,10 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
            loc_array = getlocationarray(ewn, nsn, upn, mask )
     end if
 
-  !!!!!!!!! *sfp* debugging !!!!!!!!!!!!!!!!!!!!!!!!
+!  !!!!!!!!! for debugging !!!!!!!!!!!!!!
 !    print *, 'loc_array = '
 !    print *, loc_array
 !    pause
-
 
     loc(1) = loc_array(ew,ns)
 
@@ -989,15 +988,16 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         loc(4) = loc_array(ew,ns+1)
         loc(5) = loc_array(ew,ns-1)
 
-        ! *sfp** this loop fills coeff. for all vertical layers, including sfc. and bed bcs
+        ! this loop fills coeff. for all vertical layers at index ew,ns (including sfc. and bed bcs)
         do up = 1,upn
 
-            ! *sfp** adjust indices at sfc and bed so that correct values of 'efvs' and 'othervel'
-            !      are passed to function
-
+            ! Function to adjust indices at sfc and bed so that most correct values of 'efvs' and 'othervel'
+            ! are passed to function. Because of the fact that efvs goes from 1:upn-1 rather than 1:upn
+            ! we simply use the closest values. This could probably be improved upon at some point
+            ! by extrpolating values for efvs at the sfc and bed using one-sided diffs, and it is not clear
+            ! how important this simplfication is.
             shift = indshift( 0, ew, ns, up, ewn, nsn, upn, loc_array, stagthck(ew-1:ew+1,ns-1:ns+1) )  
 
-            !whl - added several arguments to bodyset call
             call bodyset(ew,  ns,  up,        &
                          ewn, nsn, upn,       &
                          dew,      dns,       &
@@ -1061,16 +1061,17 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 !    print *, 'At a NON-SHELF boundary ... ew, ns = ', ew, ns
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-        !*sfp** puts specified value for vel on rhs, coincident w/ location of the additional equation 
-        ! for the HO sfc and basal bcs (NOTE: this is NOT zero by default unless the initial guess is zero !!)
+        ! Put specified value for vel on rhs. NOTE that this is NOT zero by default 
+        ! unless the initial guess is zero. It will be set to whatever the initial value 
+        ! for the vel at location up,ew,ns is in the initial array!
         locplusup = loc(1)
         call valueset(0.0_dp)
         locplusup = loc(1) + upn + 1
         call valueset(0.0_dp)
         do up = 1,upn
            locplusup = loc(1) + up
-           call valueset( thisvel(up,ew,ns) )     ! *sfp** vel at margin set to specified value (default = 0) 
-!           call valueset( 0.0_dp )  
+           call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
+!           call valueset( 0.0_dp )                ! vel at margin set to 0 
         end do
 
     end if
@@ -1092,15 +1093,17 @@ subroutine bodyset(ew,  ns,  up,           &
                    thisdusrfdx,            &
                    dusrfdew, dusrfdns,     &
                    dlsrfdew, dlsrfdns,     &
-                   local_efvs,             &
+                   local_efvs_in,          &
                    local_othervel,         &
                    betasquared,            &
                    local_thisvel,          &
                    abar, cc)
 
-  implicit none
+  ! This subroutine does the bulk of the work in calling the appropriate discretiztion routines,
+  ! which determine the values for coefficients that will go into the sparse matrix, for points
+  ! on and inside of the boundaries.
 
-!whl - added several in/out arguments here
+  implicit none
 
   integer, intent(in) :: ewn, nsn, upn
   integer, intent(in) :: ew, ns, up
@@ -1115,44 +1118,60 @@ subroutine bodyset(ew,  ns,  up,           &
   real (kind = dp), dimension(:,:), intent(in) :: dlsrfdew, dlsrfdns
   real (kind = dp), dimension(:,:), intent(in) :: thisdusrfdx
 
-  real (kind = dp), dimension(2,2,2), intent(in) :: local_efvs
+  real (kind = dp), dimension(2,2,2), intent(in) :: local_efvs_in
+
+  ! "local_othervel" is the other vel component (i.e. u when v is being calc and vice versa), 
+  ! which is taken as a known value (terms involving it are moved to the RHS and treated as sources)
   real (kind = dp), dimension(3,3,3), intent(in) :: local_othervel
-! *sfp** this vel compoenent is taken from the solution 
-! at the end of the previous iteration, and is treated 
-! as a known value (see below, where all rhs coef. are
-! multiplied by this vel.)
 
   real (kind = dp), intent(in) :: betasquared
   real (kind = dp), intent(in), optional :: local_thisvel
   real (kind = dp), intent(in), optional :: abar
   integer, intent(in), optional :: cc
 
-! *sfp** needed for dirichlet basal bc (see note below)
+  ! storage space for coefficients that go w/ the discretization at the local point up, ew, ns
   real (kind = dp), dimension(3,3,3) :: g
 
-! *sfp** source term on rhs of lateral boundary condition, 
-! e.g. source = rho*g*H/(2*Neff) * ( 1 - rho_i / rho_w ) for ice shelf 
-  real (kind = dp) :: source, slopex, slopey
+  real (kind = dp), dimension(2,2,2) :: local_efvs 
 
-! *sfp** lateral boundary normal and vector to indicate use of forward 
-! or bacward one-sided diff. for lateral bcs
+  ! source term for the rhs when using ice shelf lateral boundary condition, 
+  ! e.g. source = rho*g*H/(2*Neff) * ( 1 - rho_i / rho_w ) for ice shelf 
+  real (kind = dp) :: source 
+
+  real (kind = dp) :: slopex, slopey    ! local sfc (or bed) slope terms
+
+  ! lateral boundary normal and vector to indicate use of forward 
+  ! or bacward one-sided diff. when including specified stress lateral bcs
   real (kind = dp), dimension(2) :: fwdorbwd, normal
 
-  integer, dimension(2) :: bcflag  ! *sfp** indicates choice of sfc and basal bcs ...
+  integer, dimension(2) :: bcflag  ! indicates choice of sfc and basal bcs ...
 
-  real (kind = dp) :: efvstot   ! *sfp* both of these lines for averaging of eff. vis. near boundaries
+  real (kind = dp) :: efvstot   ! both of these vars are used for averaging of eff. vis. near lat boundaries
   integer :: efvscount, i, j, k
   efvstot = 0.0d0; efvscount = 0; i = 0; j = 0; k = 0 
 
   locplusup = loc(1) + up       
 
+  ! re-arrange local_efvs array when at the surface or bed so that the average visc. calculated there 
+  ! is closer to the value needed according to the way the sfc/bed stress bcs are implemented
+  ! (that, is by solving for a false velocity on the other side of the interface that makes the stress
+  ! bc true). This appears to give better results for the short wavelength experiements for ISMIP-HOM A
+  local_efvs(1:2,:,:) = local_efvs_in(1:2,:,:)
+  if( up == 1 )then     
+        local_efvs(1,:,:) = local_efvs_in(2,:,:)
+  else if( up == upn)then
+        local_efvs(2,:,:) = local_efvs_in(1,:,:)
+  end if
+
+
   if( lateralboundry )then
+
 
   ! *********************************************************************************************
   ! lateral boundary conditions 
   
   ! if at sfc or bed, source due to seawater pressure is 0 and bc normal vector
-  !  should contain components (ds/dx, ds/dy) or (db/dx, db,dy)
+  ! should contain components (ds/dx, ds/dy) or (db/dx, db,dy)
      source = 0.0_dp
 
      call getlatboundinfo( ew,  ns,  up,                            &
@@ -1186,7 +1205,6 @@ subroutine bodyset(ew,  ns,  up,           &
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
         ! (w.r.t. cols), on a new row ...
-
         call fillsprsebndy( g, locplusup, loc_latbc, up, normal ) 
 
         rhsd(locplusup) = sum( croshorizmainbc_lat(dew,           dns,           &
@@ -1201,31 +1219,23 @@ subroutine bodyset(ew,  ns,  up,           &
                 
     end if     ! up = 1 or up = upn (IF at lateral boundary and IF at surface or bed)
 
-    ! if in main body and at ice/ocean boundary, calculate depth-averaged stress
+    ! If in main body and at ice/ocean boundary, calculate depth-averaged stress
     ! due to sea water, bc normal vector components should be boundary normal 
     locplusup = loc(1) + up
     slopex = normal(1)
     slopey = normal(2)
 
-    ! Two options here, (1) use the 1d solution that involves the rate factor, 
-    !                   (2) use the more general solution that involves the eff. visc.
-    ! ... only one of these options should be active (comment the other lines out)
+    ! Two options here, (1) use the 1d solution that involves the rate factor (not accurate for 
+    !                       3d domains, but generally more stable 
+    !                   (2) use the more general solution that involves the eff. visc. and normal
+    !                       vector orientation at lateral boundary
+    ! ... only one of these options should be active at a time (comment the other lines out)
+    ! The default setting is (2), the more general case that should also work in the 1d case.
 
-    ! *sfp* NOTE: Some functionality could be added here to correct for thickness values on the
-    ! staggered grid being applied in the source term for the shelf bc. That is, the staggerd thickness
-    ! will generally be significantly less than the actual thickness that, presumably, we want to use
-    ! when applying this bc. The quick fix below is to add another factor of two (assuming that the stag
-    ! thickness at the boundary is 1/2 of the full thickness) into the source term. A better fix might
-    ! be to use the staggered thickness one cell 'back' from the boundary in the opposite direction of 
-    ! the boundary normal ... e.g. if the normal is pointing at 45 deg (one thirty) normal = 1/sqrt(2)*[1,1],
-    ! we would access stagthck(i-1,j-1) and apply that to the bc rather than stagthck(i,j). For a point
-    ! w/ a normal of 1/sqrt(2)*[1,-1], we would access stagthck(i-1,j+1), etc. 
-
-!    if( cc < 10 )then
-
-    ! (1) 
-    ! source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
-    ! (eq. 2, Pattyn+, 2006, JGR v.111; eq. 8, Vieli&Payne, 2005, JGR v.110). Note that this 
+    ! --------------------------------------------------------------------------------------
+    ! (1) source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
+    ! --------------------------------------------------------------------------------------
+    ! See eq. 2, Pattyn+, 2006, JGR v.111; eq. 8, Vieli&Payne, 2005, JGR v.110). Note that this 
     ! contains the 1d assumption that ice is not spreading lateraly !(assumes dv/dy = 0 for u along flow)
     ! Note that factor of 2 in front of 'stagthck' is NOT part of the standard bc. Here, it is used to 
     ! correct for the fact that the staggered thickness will be 1/2 of the normal thickness at a boundary 
@@ -1233,34 +1243,33 @@ subroutine bodyset(ew,  ns,  up,           &
     ! averaging scheme at the margins, which uses only the non-zero values of thickness on the normal grid to
     ! calc. the value of the stag. thickness
 !    source = abar*vis0_glam * ( 1.0_dp/4.0_dp * rhoi * grav * stagthck(ew,ns)*thk0 * ( 1.0_dp - rhoi/rhoo))**3.0_dp
-!    source = source * tim0
 
     ! multiply by 4 so that case where v=0, du/dy = 0, LHS gives: du/dx = du/dx|_shelf 
     ! (i.e. LHS = 4*du/dx, requires 4*du/dx_shelf)
 !    source = source * 4.0_dp
 
     ! split source based on the boundary normal orientation and non-dimensinoalize
-    ! Also note that this is not really appropriate to apply option (1) to 2d flow, since terms other than du/dx in 
+    ! Note that it is not really appropriate to apply option (1) to 1d flow, since terms other than du/dx in 
     ! eff. strain rate are ignored. For 2d flow, should use option (2) below. 
 !     source = source * normal(pt)
+    ! --------------------------------------------------------------------------------------
 
-!    else
 
-    ! (2)
-    ! source term (strain rate at shelf/ocean boundary) from MacAyeal depth-ave solution. 
-    ! As above, factor of 2 in front of 'stagthck' is not part of the formal solution but is used here to
-    ! correct for the fact that the boundary thickness on the staggered grid will generally be ~1/2 of the 
-    ! full thickness at the boundary (as a result of averaging to make 'stagthck' from 'thck'). 
-    ! NOTE that hack having to do w/ stag thick at boundaries has been removed here too, as for option (1) above
+    ! --------------------------------------------------------------------------------------
+    ! (2) source term (strain rate at shelf/ocean boundary) from MacAyeal depth-ave solution. 
+    ! --------------------------------------------------------------------------------------
     source = (rhoi*grav*stagthck(ew,ns)*thk0) / tau0_glam / 2.0_dp * ( 1.0_dp - rhoi / rhoo )
 
-    ! terms after "/" below count number of non-zero efvs cells ... needed for averaging efvs at boundary 
+    ! terms after "/" below count number of non-zero efvs cells ... needed for averaging of the efvs at boundary 
     source = source / ( sum(local_efvs, local_efvs > 1.0d-12) / &
              sum( (local_efvs/local_efvs), local_efvs > 1.0d-12 ) )
 
-    source = source * normal(pt) ! non-dim
+    source = source * normal(pt) ! partition according to normal vector at lateral boundary
+    ! --------------------------------------------------------------------------------------
 
-!    end if
+    ! regardless of using method (1) or (2), the source term must be made non-dim at the end of this section
+    ! (i.e. line below stays ACTIVE for either case)
+    source = source * tim0 ! non-dim source term
 
                         
     g = normhorizmainbc_lat(dew,           dns,        &
@@ -1303,15 +1312,18 @@ subroutine bodyset(ew,  ns,  up,           &
 
   if(  ( up == upn  .or. up == 1 ) .and. .not. lateralboundry) then
 
-     if( up == 1 )then                ! specify necessary variables for free sfc
+     if( up == 1 )then                ! specify necessary variables and flags for free sfc
         bcflag = (/1,0/)
         locplusup = loc(1) + up - 1   ! reverse the sparse matrix / rhs vector row index by 1 ...
         slopex = dusrfdew(ew,ns); slopey = dusrfdns(ew,ns)
-     else                             ! specify necessary variables for basal bc
+     else                             ! specify necessary variables and flags for basal bc
+
         !bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well;
+
                                       ! better to specify very large value for betasquared below
         bcflag = (/1,1/)              ! flag for specififed stress at bed: Tau_zx = betasquared * u_bed,
                                       ! where betasquared is MacAyeal-type traction parameter
+
         locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
         slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns)
      end if
@@ -1351,7 +1363,7 @@ end subroutine bodyset
 
 subroutine valueset(local_value)
 
-! *sfp** plugs values into the rhs vector for eventual soln. to Ax=rhs ...
+  ! plugs given value into the right location in the rhs vector of matrix equation Ax=rhs
 
   implicit none
 
@@ -1368,23 +1380,22 @@ end subroutine valueset
 
 subroutine calccoeffsinit (upn, dew, dns)
 
-! *sfp** determines constants used in various FD calculations associated with 'findcoefst'
-
+  ! determines constants used in various FD calculations associated with 'findcoefst'
   implicit none
 
   integer, intent(in) :: upn
   real (kind = dp), intent(in) :: dew, dns
 
-! these are coefficients used in finite differences of vertical terms.
+  ! these are coefficients used in finite differences of vertical terms.
 
-! *sfp** the factor of 1/4 here may actually be a factor of 1/2 ... 
-! Is it from the use of function 'hsum' to sum visc. in horiz. direction? 
-! If so, this would then require dividing by 4 to get a mean (in map view, 
-! each vel. point is surrounded by 4 visc. points)
+  ! The factor of 1/4 here may actually be a factor of 1/2 ... 
+  ! Is it from the use of function 'hsum' to sum visc. in horiz. direction? 
+  ! If so, this would then require dividing by 4 to get a mean (in map view, 
+  ! each vel. point is surrounded by 4 visc. points)
 
   cvert(:,1) = (len0**2) / (4.0_dp * thk0**2 * dup**2)
 
-! ... used for specified traction basal bc (OLD VERSION)
+  ! ... used for specified traction basal bc (OLD VERSION)
   cvert(:,2) = (len0) / (16.0_dp * thk0 * dup)
 
 
@@ -2469,7 +2480,7 @@ function indshift( which, ew, ns, up, ewn, nsn, upn, loc_array, thck )
   maskcorners(:,2) = (/ 0.0d0, 0.0d0, 0.0d0 /)
   maskcorners(:,3) = (/ 315.0d0, 0.0d0, 45.0d0 /)
 
-  if( up==1 )then   !! first treat bed/sfc, which aren't complicated
+  if( up == 1 )then   !! first treat bed/sfc, which aren't complicated
       upshift = 1
   elseif( up == upn )then
       upshift = -1
