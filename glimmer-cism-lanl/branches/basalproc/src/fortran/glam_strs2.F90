@@ -243,7 +243,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: minres = 1.0d-4 
   real (kind = dp), save, dimension(2) :: resid  
 
-  integer, parameter :: cmax = 200
+  integer, parameter :: cmax = 50
   integer :: counter 
   character(len=100) :: message
 

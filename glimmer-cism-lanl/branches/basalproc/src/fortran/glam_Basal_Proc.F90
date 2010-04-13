@@ -34,9 +34,9 @@ contains
 !allocate basal processes variables
 	allocate (dy(ewn-1,nsn-1,basalproc%tnodes-1));		dy=0.6d0
 !	allocate (basalproc%u(ewn-1,nsn-1,basalproc%tnodes));	
-	basalproc%u=41.0d3
+	
 !	allocate (basalproc%etill(ewn-1,nsn-1,basalproc%tnodes));
-	basalproc%etill=0.5d0
+
 	allocate (minTauf_init(ewn-1,nsn-1));				minTauf_init=5000
 	allocate (Hwater_init(ewn-1,nsn-1)); 				Hwater_init=3
 	allocate (tillmask(ewn-1,nsn-1)); 					tillmask=.true.
@@ -81,15 +81,22 @@ contains
     	!Define tillmask based on values of Tauf in the initial file
 		!Wherever Tauf has been set to low values (10Pa or less), tillmask=.false.,
 		!e.g., we will not calculate till properties
-		where (basalproc%minTauf.le.10) tillmask=.false.
-		minTauf_init=basalproc%minTauf
-		Hwater_init=stagHwater
+	!	where (basalproc%minTauf.le.10) tillmask=.false.
+!		minTauf_init=basalproc%minTauf
+!		Hwater_init=stagHwater
     	!print*,'mean Tauf init=',sum(minTauf_init)/((ewn-1)*(nsn-1))
     	!Calculate Hwater on normal grid - using zero gradient as BC
 		call stag2norm(ewn,nsn,stagHwater,basalproc%Hwater)	    
         
         write(message,*) 'Till layer has been initialized'
        	call write_log(message) 
+       	print*,'minTauf=',sum(basalproc%minTauf)/((ewn-1)*(nsn-1))
+       	print*,'dy=',sum(dy)/((ewn-1)*(nsn-1)*(basalproc%tnodes-1))
+       	print*,'u=',sum(basalproc%u)/((ewn-1)*(nsn-1)*basalproc%tnodes)
+       	print*,'etill=',sum(basalproc%etill)/((ewn-1)*(nsn-1)*basalproc%tnodes)
+       	print*,'Hwater=',sum(stagHwater)/((ewn-1)*(nsn-1))
+       	
+       	
   end subroutine Basal_Proc_init
   
   
