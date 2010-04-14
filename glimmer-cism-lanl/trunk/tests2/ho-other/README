@@ -1,0 +1,49 @@
+ho-other
+========
+This directory contains a Python script for running an experiment involving
+an ice sheet with an elipsoidal "hump" shape on a flat base.  To run the
+experiment, enter the following on a terminal command line:
+
+python hump.py
+
+This will run the script using the configuration file "hump.config" which is
+also found in this directory.  If you want to run the experiment using a 
+different configuration file you can include the filename as an optional
+command line argument.  For example:
+
+python hump.py your.config
+
+The script performs the following three steps:
+1. Create a netCDF input file for Glimmer.
+2. Run Glimmer, creating a netCDF output file.
+3. Move any additional files written by Glimmer to the "scratch" subdirectory.
+
+The netCDF files are written in the "output" subdirectory. This is controlled
+by a parameter in the configuration file so if you use your own configuration
+file the output may be written elsewhere.  Unless someone changed hump.config
+since I wrote this, hump.config includes the lines:
+
+[CF input]
+name = output/hump.nc
+
+and
+
+[CF output]
+name = output/hump.out.nc
+
+which are what direct the output to the "output" subdirectory.
+
+PREREQUISITES:
+In order to use the hump.py script, you will need to have Python and one of the
+following Python modules installed:
+Scientific.IO.NetCDF, netCDF4, or pycdf
+
+To view the results use ncview or another utility for viewing netCDF files.
+
+WARNING: If you have files with names ending ".txt", ".log", or ".nc" in the
+directory from which you are running hump.py they will get moved to the 
+"scratch" subdirectory when you run hump.py.  In addition, if you use a
+configuration file that specifies netCDF files (with names ending ".nc") are
+to be written in the current directory, they will get moved to the "scratch"
+subdirectory after they are written.
+
