@@ -502,7 +502,9 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
   if (1 == counter) then
     do ns = 2,nsn-1; do ew = 2,ewn-1
     if (thck(ew,ns) > 0.0_dp) then
-      ! this is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n)
+      ! this is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n),
+      ! which is averaged to midpoints in the vertical (i.e. it lives on a staggered 
+      ! grid in the vertical, which is the case for "efvs" as well).
       forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
     end if; end do; end do
   end if
@@ -565,10 +567,15 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
     ! Note that the vert dims are explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
-    ! should efvs live at cell centroids in the vert as well as horiz (as is assumed in this code)
+    ! should efvs live at cell centroids in the vert (as is assumed in this code)
     ! or should we be doing some one-sided diffs at the sfc/bed boundaries so that it has vert dims 
     ! of upn? For now, we populate ONLY the first 1:upn-1 values of the efvs vector and leave the one
     ! at upn empty (the Pattyn/Bocek/Johnson core would fill all values, 1:upn).
+
+    ! NOTE also that efvs lives on the non-staggered grid in the horizontal. That is, in all of the 
+    ! discretizations conducted below, efvs is explicitly averaged from the normal horiz grid onto the 
+    ! staggered horiz grid (Thus, in the calculations, efvs is treated as if it lived on the staggered 
+    ! horiz grid, even though it does not). 
 
             ! Below, p2=(1-n)/2n. The 1/2 is from taking the sqr root of the squared eff. strain rate
             efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
@@ -957,7 +964,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
            loc_array = getlocationarray(ewn, nsn, upn, mask )
     end if
 
-!  !!!!!!!!! for debugging !!!!!!!!!!!!!!
+!  !!!!!!!!! useful for debugging !!!!!!!!!!!!!!
 !    print *, 'loc_array = '
 !    print *, loc_array
 !    pause
@@ -1208,6 +1215,9 @@ subroutine bodyset(ew,  ns,  up,           &
         ! (w.r.t. cols), on a new row ...
         call fillsprsebndy( g, locplusup, loc_latbc, up, normal ) 
 
+        ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
+        ! which results from moving them from the LHS over to the RHS, has been moved
+        ! inside of "croshorizmainbc_lat".
         rhsd(locplusup) = sum( croshorizmainbc_lat(dew,           dns,           &
                                                    slopex,        slopey,        &
                                                    dsigmadew(up), dsigmadns(up), &
@@ -1223,7 +1233,10 @@ subroutine bodyset(ew,  ns,  up,           &
     ! If in main body and at ice/ocean boundary, calculate depth-averaged stress
     ! due to sea water, bc normal vector components should be boundary normal 
     locplusup = loc(1) + up
-    slopex = normal(1)
+
+    ! for this bc, the normal vector components are not the sfc/bed slopes but are taken
+    ! from a normal to the shelf front in map view (x,y plane); slopex,slopey are simply renamed here 
+    slopex = normal(1)          
     slopey = normal(2)
 
     ! Two options here, (1) use the 1d solution that involves the rate factor (not accurate for 
@@ -1286,6 +1299,9 @@ subroutine bodyset(ew,  ns,  up,           &
     ! (w.r.t. cols), on a new row ...
     call fillsprsebndy( g, locplusup, loc_latbc, up, normal )
 
+    ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
+    ! which results from moving them from the LHS over to the RHS, has been moved
+    ! inside of "croshorizmainbc_lat".
     rhsd(locplusup) = sum( croshorizmainbc_lat(dew,           dns,            &
                                                slopex,        slopey,         &
                                                dsigmadew(up), dsigmadns(up),  &
@@ -1304,6 +1320,10 @@ subroutine bodyset(ew,  ns,  up,           &
      g = normhorizmain(pt,up,local_efvs)
      g(:,2,2) = g(:,2,2) + vertimain(hsum(local_efvs),up)             
      call fillsprsemain(g,locplusup,loc,up) 
+     ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
+     ! which results from moving them from the LHS over to the RHS, is explicit and 
+     ! hast NOT been moved inside of "croshorizmin" (as is the case for the analogous
+     ! boundary condition routines).
      rhsd(locplusup) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
 
   end if
@@ -1319,7 +1339,7 @@ subroutine bodyset(ew,  ns,  up,           &
         slopex = dusrfdew(ew,ns); slopey = dusrfdns(ew,ns)
      else                             ! specify necessary variables and flags for basal bc
 
-        !bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well;
+        !bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well so commented out here...
 
                                       ! better to specify very large value for betasquared below
         bcflag = (/1,1/)              ! flag for specififed stress at bed: Tau_zx = betasquared * u_bed,
@@ -1344,6 +1364,9 @@ subroutine bodyset(ew,  ns,  up,           &
      ! (w.r.t. cols), on a new row ...
      call fillsprsemain(g,locplusup,loc,up)
 
+     ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
+     ! which results from moving them from the LHS over to the RHS, has been moved
+     ! inside of "croshorizmainbc".
      rhsd(locplusup) =  sum( croshorizmainbc(dew,           dns,            &
                                             slopex,        slopey,         &
                                             dsigmadew(up), dsigmadns(up),  &
@@ -1680,6 +1703,9 @@ function vertimainbc(thck,bcflag,dup,efvs,betasquared)
 
 
     ! for higher-order BASAL B.C. U=V=0, in x ('which'=1) or y ('which'=2) direction ...
+    ! NOTE that this is not often implemented, as it is generally sufficient to implement 
+    ! an "almost" no slip BC by just making the coeff. for betasquared very large (and the 
+    ! the code converges more quickly/stably in this case than for actual no-slip).
     else if( bcflag(1) == 0 )then
 
            ! if u,v set to 0, there are no coeff. assoc. with du/digma terms ...
@@ -1700,30 +1726,22 @@ function normhorizmainbc(dew,       dns,        &
                          dup,                   &
                          oneorfour, fourorone)
 
-! determines higher-order surface and basal boundary conditions for LHS of equation ...
-! ... that is, gives 3x3x3 coeff. array for either u or v component of velocity,
-! depending on the value of the flag 'which'. Example of function call:
-!
-!  g = normhorizmainbc(dusrfew(ew,ns),dusrfnx(ew,ns),dsigmadew(ew,ns,up),dsigmadns(ew,ns,up),which,up,bcflag)	
-!
-! ... where g is a 3x3x3 array.
-!
-! 'dusrfdns' and 'dusrfdew' are n x m arrays, where n and m are the number of grid cells in the
-! horiz x and y directions.
-!
-! 'dsigmadew' and 'dsigmadew' are vectors w/ dimensions of 'upn', the number of grid points in 
-! the vertical.
-!
-! 'bcflag' is a 1 x 2 vector to indicate (1) which b.c. is being solved for (surface or bed) and 
-! (2), if solving for the bed b.c., which type of b.c. to use (for now, only allows for u=v=0). 
-! For example, bcflag = [ 0, 0 ] denotes free sfc bc; bcflag = [ 1, 0 ] denotes basal bc w/ u=v=0;
-! bcflag = [ 1, 1 ] denotes basal bc w/ some other choice of basal b.c., etc...
-!
-! The vectors "fourorone" and "oneorfour" are given by: fourorone = [ 4 1 ]; oneorfour = [ 1 4 ].
-! A single value is chosen from each vector and applied to the calculation of coefficients below.
-! The "correct" value needed to satisfy the expression is chosen based on the "which" flag, which
-! takes on a value of 1 for calculations in the x direction and a value of 2 for calculations in 
-! the y direction. 
+    ! Determines higher-order surface and basal boundary conditions for LHS of equation.
+    ! Gives 3x3x3 coeff. array for either u or v component of velocity, depending on the 
+    ! value of the flag 'which'. Example of function call:
+    !
+    !  g = normhorizmainbc(dusrfew(ew,ns),dusrfnx(ew,ns),dsigmadew(up),dsigmadns(up),which,up,bcflag)	
+    !
+    ! ... where g is a 3x3x3 array.
+    !
+    ! 'bcflag' is a 1 x 2 vector to indicate (1) which b.c. is being solved for (surface or bed) and 
+    ! (2), if solving for the bed b.c., which type of b.c. to use. For example, bcflag = [ 0, 0 ] 
+    ! denotes free sfc bc; bcflag = [ 1, 0 ] denotes basal bc w/ u=v=0, etc. (see also subroutine
+    ! "bodyset"). "fourorone" and "oneorfour" are given by vectors: fourorone = [ 4 1 ]; oneorfour = [ 1 4 ].
+    ! A single value is chosen from each vector and applied to the calculation of coefficients below.
+    ! The "correct" value needed to satisfy the expression is chosen based on the "which" flag, which
+    ! takes on a value of 1 for calculations in the x direction and a value of 2 for calculations in 
+    ! the y direction. 
 
     implicit none
 
@@ -1741,11 +1759,13 @@ function normhorizmainbc(dew,       dns,        &
     g(:,:,:) = 0.0_dp
 
     ! for higher-order FREE SURFACE B.C. for x ('which'=1) or y ('which'=2) direction ...
+    ! NOTE that this handles the case for specified stress at the bed as well, as we 
+    ! simply pass in a different value for the normal vector (slope) components (still
+    ! called "dusrfdns", "dusrfdew" here, but args passed in are different).
     if( bcflag(1) == 1 )then
 
            ! first, coeff. that go with du/dsigma, and thus are associated 
            ! with u(1,2,2) and u(3,2,2) ...
-
            c = ( fourorone(which) * dusrfdew * dsigmadew   &
                + oneorfour(which) * dusrfdns * dsigmadns )/(2*dup)
            g(3,2,2) = -c 
@@ -1784,9 +1804,8 @@ function croshorizmainbc(dew,       dns,       &
                          dup,       local_othervel,  &
                          oneortwo,  twoorone)
 
-! The vectors "twoorone" and "oneortwo" are given by: twoorone = [ 2 1 ]; oneortwo = [ 1 2 ];
-! The entire funciton is analagous to "normhorizmainbc" ... 
-!  see additional comments there for more description.
+    ! As described for "normhorizmainbc" above. The vectors "twoorone" and 
+    ! "oneortwo" are given by: twoorone = [ 2 1 ]; oneortwo = [ 1 2 ];
 
     implicit none
 
@@ -1804,11 +1823,13 @@ function croshorizmainbc(dew,       dns,       &
     g(:,:,:) = 0.0_dp
 
     ! for higher-order FREE SURFACE B.C. for x ('which'=1) or y ('which'=2) direction ...
+    ! NOTE that this handles the case for specified stress at the bed as well, as we 
+    ! simply pass in a different value for the normal vector (slope) components (still
+    ! called "dusrfdns", "dusrfdew" here, but args passed in are different).
     if( bcflag(1) == 1 )then
 
            ! first, coeff. that go with du/dsigma, and thus are associated
            ! with u(1,2,2) and u(3,2,2) ...
-
            c = ( - twoorone(which) * dusrfdew * dsigmadns   &
                  - oneortwo(which) * dusrfdns * dsigmadew )/(2*dup)
            g(3,2,2) = -c
@@ -1852,6 +1873,18 @@ function normhorizmainbc_lat(dew,       dns,   &
                              onesideddiff,         &
                              normal,    fwdorbwd)
 
+    ! Analogous to "normhorizmainbc" but for the case of lateral stress (ice shelf)
+    ! boundary conditions. Note that the basic form of the equations is the same. 
+    ! What changes here is (1) the value of the normal vector that is passed in (at
+    ! the sfc and bed we pass in the surface or basal slopes, while at the boundaries
+    ! we use the normal vector orientation to the boundary in map view) and (2) we to
+    ! to use one sided diffs at the lateral boundaries rather than centerd diffs.
+
+    ! Note that we assume here that du/dz (and thus du/dsigma) is approx. 0 for an ice 
+    ! shelf, and also that the sfc/basal slopes of an ice shelf are very flat at/near 
+    ! the boundary. Thus, we assume flow is depth independent and we ignore gradients 
+    ! in sigma. 
+
     implicit none
 
     real (kind = dp), intent(in) :: dew, dns
@@ -1869,6 +1902,7 @@ function normhorizmainbc_lat(dew,       dns,   &
     c = 0.0_dp; g(:,:,:) = 0.0_dp; whichbc = (/ 0.0_dp, 1.0_dp /)
 
     ! for higher-order FREE SURFACE B.C. for x ('which'=1) or y ('which'=2) direction ...
+    ! (also applies to basal stress bc) 
 
     ! first, coeff. that go with du/dsigma, and thus are associated with u(1,2,2) and u(3,2,2) ...
     ! ...note that these are stored in an empty column of 'g' (a corner column) so that we don't 
@@ -1935,9 +1969,7 @@ function croshorizmainbc_lat (dew,       dns,       &
                               onesideddiff,         &
                               normal,    fwdorbwd)
 
-! The vectors "twoorone" and "oneortwo" are given by: twoorone = [ 2 1 ]; oneortwo = [ 1 2 ];
-! The entire funciton is analagous to "normhorizmainbc" ... 
-! see additional comments there for more description.
+    ! Analagous to "normhorizmainbc_lat" but for cross terms. See notes above.
 
     implicit none
 
@@ -1964,7 +1996,6 @@ function croshorizmainbc_lat (dew,       dns,       &
 
     ! first, coeff. that go with du/dsigma, and thus are associated with u(1,2,2) and u(3,2,2) 
     ! ... note that these are stored in a separate vector (to avoid being overwritten if stored in normal 'g')	
-
     c = ( - twoorone(which) * dusrfdew * dsigmadns   &
               - oneortwo(which) * dusrfdns * dsigmadew )/(2*dup)
     gvert(3) = -c * whichbc(what)
@@ -2011,7 +2042,7 @@ function croshorizmainbc_lat (dew,       dns,       &
     end if
 
     ! Now rearrange position of coefficients in structure 'g' so that they are multiplied by 
-    ! the correct velocity component in 'local_othervel' in 'bodyset' ...
+    ! the correct velocity component of 'local_othervel' in 'bodyset' ...
     ! ... this can be done by using the boundary normal vector to shift the indices of the rows/columns
     ! in 'g', in the appropriate direction. First, convert the boundary normal to an integer index ...
     inormal(1) = int( normal(1)/abs(normal(1)) )
@@ -2022,13 +2053,13 @@ function croshorizmainbc_lat (dew,       dns,       &
     croshorizmainbc_lat(2,:,2+inormal(2)) = g(2,:,2)    ! move x-coeffs. appropriate amount
     croshorizmainbc_lat(1,2+inormal(1),:) = g(1,2,:)    ! move y-coeffs. appropriate amount
 
-    ! sum coeffs. in same column and collapse so that all coeff. are on level (2,:,:)	
+    ! sum coeffs. that are in same column and flatten so that all coeff. are on level (2,:,:)	
     croshorizmainbc_lat(2,:,:) = croshorizmainbc_lat(2,:,:) + croshorizmainbc_lat(1,:,:)    
 
     ! set remaining coeff. on this level to to 0 ...
     croshorizmainbc_lat(1,:,:) = 0.0_dp
 
-    ! accounter for vertical terms stored seperately in 'gvert'
+    ! accounter for vertical terms stored seperately and temporarily in 'gvert'
     croshorizmainbc_lat(1,2+inormal(1),2+inormal(2)) = gvert(1) * whichbc(what)
     croshorizmainbc_lat(3,2+inormal(1),2+inormal(2)) = gvert(3) * whichbc(what)
 
@@ -2042,7 +2073,7 @@ end function croshorizmainbc_lat
 
 function horiztermdxdx(efvs,fact)
 
-! this is the d/dx(f.du/dx) and d/dy(f.du/dy) terms
+  ! this is the d/dx(f.du/dx) and d/dy(f.du/dy) terms
 
   implicit none
 
@@ -2063,7 +2094,7 @@ end function horiztermdxdx
 
 function horiztermdxdy(efvs,fact)
 
-! this is the d/dy(f.du/dx) and d/dx(f.du/dy) terms
+  ! this is the d/dy(f.du/dx) and d/dx(f.du/dy) terms
 
   implicit none
 
@@ -2090,7 +2121,7 @@ end function horiztermdxdy
 
 function horiztermdsdx(dsigmadxy,efvs,fact)
 
-! this is the d/ds(f.du/dx) and d/ds(f.du/dy) terms
+  ! this is the d/ds(f.du/dx) and d/ds(f.du/dy) terms
 
   implicit none
 
@@ -2117,7 +2148,7 @@ end function horiztermdsdx
 
 function horiztermdxds(dsigmadxy,efvs,fact)
 
-! this is the d/dx(f.du/ds) and d/dy(f.du/ds) terms
+  ! this is the d/dx(f.du/ds) and d/dy(f.du/ds) terms
 
   implicit none
 
@@ -2144,7 +2175,7 @@ end function horiztermdxds
 
 function horiztermdsds(dsigmadxysq,efvs,fact)
 
-! this is the d/ds(f.du/ds) term
+  ! this is the d/ds(f.du/ds) term
 
   implicit none
 
@@ -2166,7 +2197,7 @@ end function horiztermdsds
 
 function horiztermds(d2sigmadxy2etc,efvs,fact)
 
-! this is the f.du/ds term
+  ! this is the f.du/ds term
 
   implicit none
 
@@ -2187,29 +2218,30 @@ end function horiztermds
 
 subroutine fillsprsemain(inp,locplusup,ptindx,up)
 
+  ! scatter coefficients from 3x3x3 block "g" onto sparse matrix row
   implicit none
 
   real (kind = dp), dimension(3,3,3), intent(in):: inp
   integer, intent(in) :: locplusup, up
   integer, dimension(6), intent(in) :: ptindx
 
-! insert entries to these points that are on same level
+  ! insert entries to "g" that are on same level
   call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup)
   call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup)
   call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup)
   call putpcgc(inp(2,2,3),ptindx(4)+up,locplusup)  
   call putpcgc(inp(2,2,1),ptindx(5)+up,locplusup)
 
-! add points for level above (that is, points in the local array with a LARGER first index,
-! which correspond to grid points that are CLOSER TO THE BED than at current level)
+  ! add points for level above (that is, points in "g"  with a LARGER first index,
+  ! which correspond to grid points that are CLOSER TO THE BED than at current level)
   call putpcgc(inp(3,2,2),ptindx(1)+up+1,locplusup)
   call putpcgc(inp(3,3,2),ptindx(2)+up+1,locplusup)
   call putpcgc(inp(3,1,2),ptindx(3)+up+1,locplusup)
   call putpcgc(inp(3,2,3),ptindx(4)+up+1,locplusup)  
   call putpcgc(inp(3,2,1),ptindx(5)+up+1,locplusup)
 
-! add points for level below (that is, points in the local array with a SMALLER first index,
-! which correspond to grid points that are CLOSER TO THE SURFACE than at current level) 
+  ! add points for level below (that is, points in "g" with a SMALLER first index,
+  ! which correspond to grid points that are CLOSER TO THE SURFACE than at current level) 
   call putpcgc(inp(1,2,2),ptindx(1)+up-1,locplusup)
   call putpcgc(inp(1,3,2),ptindx(2)+up-1,locplusup)
   call putpcgc(inp(1,1,2),ptindx(3)+up-1,locplusup)
@@ -2223,8 +2255,10 @@ end subroutine fillsprsemain
 !***********************************************************************
 
 subroutine fillsprsebndy(inp,locplusup,ptindx,up,normal)
-!*sfp* subroutine to put coeff. in correct locations for boundary conditions
 
+  ! scatter coeff. from 3x3x3 block "g" onto sparse matrix row. This subroutine
+  ! is specifically for the boundary conditions, which are handled differently
+  ! than points in the "main" body of the domain (interior to boundaries).
   implicit none
 
   integer, intent(in) :: locplusup, up
@@ -2233,7 +2267,6 @@ subroutine fillsprsebndy(inp,locplusup,ptindx,up,normal)
   real (kind = dp), dimension(2), intent(in) :: normal
 
   ! at points where mixed centered and one-side diffs. would apply
-
   if( normal(1) == 0.0_dp )then         ! at boundary normal to y, centered diffs in x 
     if( normal(2) == -1.0_dp )then      ! at boundary w/ normal [0,-1]
            call putpcgc(inp(1,3,3),ptindx(5)+up-1,locplusup)
@@ -2314,9 +2347,9 @@ end subroutine fillsprsebndy
 subroutine getlatboundinfo( ew, ns, up, ewn, nsn, upn,  &  
                            thck, loc_array,             &
                            fwdorbwd, normal, loc_latbc)
-!*sfp* subroutine to calculate map plane normal vector at 45 deg. increments
-! for regions of floating ice
 
+  ! Calculate map plane normal vector at 45 deg. increments
+  ! for regions of floating ice
   implicit none
 
   integer, intent(in) :: ew, ns, up
@@ -2348,8 +2381,7 @@ subroutine getlatboundinfo( ew, ns, up, ewn, nsn, upn,  &
   ! and 'crosshorizmainbc_lat'
 
   ! following is algorithm for calculating boundary normal at 45 deg. increments, based on arbitray
-  ! boundary shape
-
+  ! boundary shape (based on initial suggestions by Anne LeBrocq)
   where( thck .ne. 0.0d0 )
         thckmask = 0.0_dp
   elsewhere( thck .eq. 0.0d0 )
@@ -2358,7 +2390,8 @@ subroutine getlatboundinfo( ew, ns, up, ewn, nsn, upn,  &
 
   testvect = sum( thckmask * mask, 1 )
 
-    ! calculate the angle of the normal in cart. (x,y) system w/ 0 deg. at 12 O'clock, 90 deg. at 3 O'clock, etc.
+    ! calculate the angle of the normal in cart. (x,y) system w/ 0 deg. at 12 O'clock, 
+    ! 90 deg. at 3 O'clock, etc.
     if( sum( sum( thckmask, 1 ) ) .eq. 1.0d0 )then
         phi = sum( sum( thckmask * maskcorners, 1 ) )
     else
@@ -2375,7 +2408,7 @@ subroutine getlatboundinfo( ew, ns, up, ewn, nsn, upn,  &
         end if
     end if
 
-    ! define normal vectors and change to loc_array based on this angle
+    ! define normal vectors and change definition of loc_array based on this angle
     if( phi .eq. 0.0d0 )then
          loc_latbc(1) = loc_array(ew,ns-1); loc_latbc(4) = loc_array(ew,ns); loc_latbc(5) = loc_array(ew,ns-2)
          loc_latbc(2) = loc_array(ew+1,ns); loc_latbc(3) = loc_array(ew-1,ns)
@@ -2417,13 +2450,13 @@ end subroutine getlatboundinfo
 !***********************************************************************
 
 function indshift( which, ew, ns, up, ewn, nsn, upn, loc_array, thck )  
-!*sfp* subroutine to rearrange indices slightly at sfc,bed, and lateral boundaries,
-!so that values one index inside of the domain are used for, e.g. eff. visc.
 
-! function output is a vector containing necessary index shifts for portions of 'othervel' 
-! extracted near domain boundaries. NOTE that this contains duplication of some of the code in the 
-! subroutine "getlatboundinfo", and the two could be combines at some point
-
+  ! Subroutine to rearrange indices slightly at sfc,bed, and lateral boundaries,
+  ! so that values one index inside of the domain are used for, e.g. eff. visc.
+  
+  ! Function output is a vector containing necessary index shifts for portions of 'othervel' and 'efvs' 
+  ! extracted near domain boundaries. NOTE that this contains duplication of some of the code in the 
+  ! subroutine "getlatboundinfo", and the two could be combined at some point.
   implicit none
 
   integer, intent(in) :: which
@@ -2516,143 +2549,7 @@ function indshift( which, ew, ns, up, ewn, nsn, upn, loc_array, thck )
 end function indshift
 
 !***********************************************************************
-!*sfp* This subroutine is a fix to the CISM derived mask so that each 
-! boundary point, be it at the domain edge or associated w/ the jump from
-! ice to no ice, is assigned an identifier GLIDE_MASK_BOUNDARY. This is not
-! done by default when the CISM mask is defined. Note that this is an altered
-! version of the original function 'maskvelostr', commented out below.
 
-subroutine maskvelostr( ewn, nsn, thck, stagthck, umask )
-
-  implicit none
-
-  integer, intent(in) :: ewn, nsn 
-  real (kind = dp), intent(in), dimension(:,:) :: thck, stagthck
-  integer, intent(inout), dimension(:,:) :: umask   
-
-  integer :: ew, ns
-
-   do ns = 1,nsn-1; do ew = 1,ewn-1
-
-    ! *sfp** if at the domain edges, define as a generic boundary
-    if (all(thck(ew:ew+1,ns:ns+1) > 0.0_dp )) then
-
-      !if (ew == 1 .or. ew == ewn-1) then
-      if (ew == 1 .or. ew == 2 .or. ew == ewn-1 .or. ewn == ewn-2 ) then
-        !umask(ew,ns) = GLIDE_MASK_BOUNDARY
-      !else if (ns == 1 .or. ns == nsn-1) then
-      else if (ns == 1 .or. ns == 2 .or. ns == nsn-1 .or. ns == nsn-2 ) then
-        !umask(ew,ns) = GLIDE_MASK_BOUNDARY
-      end if
-
-
-    else if (any(thck(ew:ew+1,ns:ns+1) > 0.0_dp )) then
-
-     !if ( .not. GLIDE_IS_CALVING(umask(ew,ns)) ) then
-     ! umask(ew,ns) = GLIDE_MASK_BOUNDARY
-     !end if
-
-    end if
-
-   !*sfp* for Ross IS exp only
-!    umask(:,nsn-1) = GLIDE_MASK_BOUNDARY 
-!    umask(:,1) = GLIDE_MASK_BOUNDARY 
-!    umask(1,:) = GLIDE_MASK_BOUNDARY 
-!    umask(ewn-1,:) = GLIDE_MASK_BOUNDARY 
-
-   end do; end do
-
-   return
-
-end subroutine maskvelostr
-
-
-!function maskvelostr(ewn,  nsn,   &
-!                     thck, stagthck)
-!
-!! *sfp** make 2d array containing a '0' (no ice present in associated cell), 
-!! '1' (cell contains ice and is in main body of ice sheet), 
-!! '2' (cell contains ice and is on a boundary)
-!! ... a 'cell' is an area bound by 4 grid points
-!
-!  implicit none
-!
-!  integer, intent(in) :: ewn, nsn 
-!  real (kind = dp), intent(in), dimension(:,:) :: thck, stagthck
-!
-!  integer :: ew, ns
-!  integer, dimension(size(thck,1)-1,size(thck,2)-1) :: maskvelostr
-!  integer, dimension(3,3) :: template    ! *sfp** added ...
-!
-!  do ns = 1,nsn-1
-!  do ew = 1,ewn-1
-!
-!! *sfp** if all of the 4 points on the non-staggered grid contain non-zero ice thickness,
-!!       we are either in the main body of the ice or on a boundary
-!
-!    if (all(thck(ew:ew+1,ns:ns+1) > 0.0_dp )) then
-!
-!      ! *sfp** if at the domain edges, define as a boundary
-!      if (ew == 1 .or. ew == ewn-1) then
-!        maskvelostr(ew,ns) = boundarys !      else if (ns == 1 .or. ns == nsn-1) then
-!        maskvelostr(ew,ns) = boundarys 
-!      else      ! *sfp** if not at domain edge, define as main body 
-!        maskvelostr(ew,ns) = mnbdy
-!      end if
-!    
-!    else if (any(thck(ew:ew+1,ns:ns+1) > 0.0_dp )) then
-!
-!      maskvelostr(ew,ns) = boundarys
-!
-!    else
-!
-!      maskvelostr(ew,ns) = noice
-!
-!    end if
-!
-!  end do   ! ew
-!  end do   ! ns
-!
-!  return
-!
-!end function maskvelostr
-
-!***********************************************************************
-
-function viewsparse( dim, pcgrow, pcgcol, pcgval )
-
-! *sfp*
-! function to construct sparse matrix from SLAPSOLV solver inputs 
-! (for debugging test problems only!)
-
-    implicit none
-
-    integer, intent( in ), dimension( : ) :: pcgrow, pcgcol
-    integer, intent( in ) :: dim
-    real (kind = dp), intent( in ), dimension( : ) :: pcgval
-    real (kind = dp), dimension(dim,dim) :: viewsparse 
-    integer :: i, j, k, c
-
-    c = 0; viewsparse = 0.0_dp
-
-    do k = 1, size( pcgrow )
-      if( pcgrow(k) .ne. 0 )then
-        c = c + 1
-      end if
-    end do
-
-    do k = 1, c
-      i = pcgrow(k); j = pcgcol(k) 
-      viewsparse( i, j ) = pcgval(k)
-    end do
-   
-    return
-
-end function viewsparse
-
-!***********************************************************************
-
-! *sfp** function to specify map of betasquared
 subroutine calcbetasquared (whichbabc,               & 
                             dew,         dns,        &
                             ewn,         nsn,        &
@@ -2662,12 +2559,14 @@ subroutine calcbetasquared (whichbabc,               &
                             minTauf, beta,           &
                             betasquared, betafile) 
 
+  ! subroutine to calculate map of betasquared sliding parameter, based on 
+  ! user input ("whichbabc" flag, from config file as "which_ho_babc").
+  implicit none
+
   integer, intent(in) :: whichbabc
   integer, intent(in) :: ewn, nsn
 
   real (kind = dp), intent(in) :: dew, dns
-!  real (kind = dp), intent(in), dimension(ewn,nsn) :: lsrf, topg, thck
-!  real (kind = dp), intent(in), dimension(ewn-1,nsn-1) :: thisvel, othervel, minTauf, beta
   real (kind = dp), intent(in), dimension(:,:) :: lsrf, topg, thck
   real (kind = dp), intent(in), dimension(:,:) :: thisvel, othervel, minTauf, beta
 
@@ -2694,8 +2593,9 @@ subroutine calcbetasquared (whichbabc,               &
         betasquared(ew,ns) = 1.0d0
       end do; end do
 
-    case(2)
-
+    case(2)     ! take input value for till yield stress and force betasquared to be implemented such
+                ! that plastic-till sliding behavior is enforced (see additional notes in documentation).
+     
       betasquared = minTauf / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
 
     case(3)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
@@ -2707,13 +2607,13 @@ subroutine calcbetasquared (whichbabc,               &
 
       betasquared = 1.0d10
 
-    case(5)    !*sfp* use value passed in externally from CISM 
-               ! NOTE that this is NOT dimensional when passed in. It has been scaled by the 
-               ! the following: scyr * vel0 * len0 / (thk0**2)
+    case(5)    ! use value passed in externally from CISM (NOTE not dimensional when passed in) 
 
-      betasquared = beta * scyr * vel0 * len0 / (thk0**2)    ! scale up to dimensional (Pa yrs 1/m)
+      ! scale CISM input value to dimensional units of (Pa yrs 1/m)
+      betasquared = beta * scyr * vel0 * len0 / (thk0**2)    
 
-      where ( betasquared /= betasquared )  ! this is a check for NaNs, which are replaced w/ no slip
+      ! this is a check for NaNs, which indicate, and are replaced by no slip
+      where ( betasquared /= betasquared )  
         betasquared = 1.0d10
       end where    
 
@@ -2723,14 +2623,14 @@ subroutine calcbetasquared (whichbabc,               &
 
   end select
   
-  ! convert to dimensional model units ( Pa * s * m^-1 ) and then non-dimensionalize
-  betasquared = ( betasquared * scyr ) / ( tau0_glam * tim0 / len0 )     !*sfp* glam scaling
+  ! convert whatever the specified value is to dimensional units of (Pa s m^-1 ) 
+  ! and then non-dimensionalize using PP dyn core specific scaling.
+  betasquared = ( betasquared * scyr ) / ( tau0_glam * tim0 / len0 ) 
 
 end subroutine calcbetasquared
 
 
 !***********************************************************************
-!whl - copied this function from glam_velo.f90
 
 function vertintg(upn, sigma, in) 
  
@@ -2756,12 +2656,11 @@ function vertintg(upn, sigma, in)
 end function vertintg 
 
 !***********************************************************************
-!whl - copied this subroutine copied from glam_thck.f90
 
 subroutine geom2derscros(dew,  dns,   &
                          ipvr, stagthck, opvrewns)        
 
-! *sfp** geometric (2nd) cross-deriv. for generic input variable 'ipvr', output as 'opvr'       
+  ! geometric (2nd) cross-deriv. for generic input variable 'ipvr', output as 'opvr'       
  
   implicit none 
 
@@ -2769,7 +2668,7 @@ subroutine geom2derscros(dew,  dns,   &
   real (kind = dp), intent(out), dimension(:,:) :: opvrewns
   real (kind = dp), intent(in), dimension(:,:) :: ipvr, stagthck
  
-!whl - Replace by a loop over ewn, nsn?  What is eoshift?
+  ! consider replacing by a loop over ewn, nsn?
   where (stagthck /= 0.0d0)
     opvrewns = (eoshift(eoshift(ipvr,1,0.0_dp,2),1,0.0_dp,1) + ipvr   &
                - eoshift(ipvr,1,0.0_dp,1) - eoshift(ipvr,1,0.0_dp,2)) / (dew*dns)
@@ -2782,15 +2681,14 @@ subroutine geom2derscros(dew,  dns,   &
 end subroutine geom2derscros
 
 !***********************************************************************
-!whl - copied this subroutine from glam_thck.f90
 
 subroutine geom2ders(ewn,    nsn,  &
                      dew,    dns,  &
                      ipvr,   stagthck,  &
                      opvrew, opvrns)       
 
-! *sfp** geometric 1st deriv. for generic input variable 'ipvr', 
-!      output as 'opvr' (includes 'upwinding' for boundary values)
+  ! geometric 1st deriv. for generic input variable 'ipvr', 
+  ! output as 'opvr' (includes 'upwinding' for boundary values)
 
   implicit none 
  
@@ -2807,8 +2705,6 @@ subroutine geom2ders(ewn,    nsn,  &
   dewsq4 = 4.0d0 * dew * dew
   dnssq4 = 4.0d0 * dns * dns
 
-!whl - Inline the functions below?
- 
   do ns = 2, nsn-2 
   do ew = 2, ewn-2
     if (stagthck(ew,ns) .gt. 0.0d0) then
@@ -2821,7 +2717,7 @@ subroutine geom2ders(ewn,    nsn,  &
   end do
   end do
  
-! *** 2nd order boundaries using upwinding
+  ! *** 2nd order boundaries using upwinding
  
   do ew = 1, ewn-1, ewn-2
  
@@ -2966,7 +2862,6 @@ end subroutine geom2ders
  
 
 !***********************************************************************
-!whl - copied this from module general
 
     function hsum(inp) 
  
