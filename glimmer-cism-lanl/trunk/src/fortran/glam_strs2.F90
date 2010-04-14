@@ -52,7 +52,8 @@ implicit none
   real (kind = dp) :: cdxdy
   real (kind = dp), dimension(2) :: cdxdx
   real (kind = dp), dimension(:),   allocatable :: cdsds, cds
-  real (kind = dp), dimension(:,:), allocatable :: cvert, cdsdx, fvert
+  real (kind = dp), dimension(:), allocatable :: cvert, fvert
+  real (kind = dp), dimension(:,:), allocatable :: cdsdx
 
   real (kind = dp), dimension(:), allocatable :: dsigmadew, dsigmadns
   real (kind = dp), dimension(:), allocatable :: d2sigmadew2, d2sigmadns2, d2sigmadewdns
@@ -107,11 +108,11 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
 
     allocate( dup(upn) )
     allocate( dupm(upn) )
-    allocate( cvert(upn,2) )
+    allocate( cvert(upn) )
     allocate( cdsdx(upn,2) )
     allocate( cdsds(upn) )
     allocate( cds(upn) )
-    allocate( fvert(upn,3) )
+    allocate( fvert(upn) )
 
     ! NOTE: "dup", the sigma coordinate spacing is defined as a vector to allow it to 
     ! be read in from file for use with non-constant vertical grid spacing. Currently, this
@@ -1381,41 +1382,24 @@ end subroutine valueset
 subroutine calccoeffsinit (upn, dew, dns)
 
   ! determines constants used in various FD calculations associated with 'findcoefst'
+  ! In general, the constants contain (1) grid spacing info, (2) numeric constants 
+  ! used for averaging of eff. visc. from normal grid in horiz onto stag grid in horiz. 
   implicit none
 
   integer, intent(in) :: upn
   real (kind = dp), intent(in) :: dew, dns
 
-  ! these are coefficients used in finite differences of vertical terms.
+  ! this coefficient used in finite differences of vertical terms.
+  cvert(:) = (len0**2) / (4.0_dp * thk0**2 * dup**2)
 
-  ! The factor of 1/4 here may actually be a factor of 1/2 ... 
-  ! Is it from the use of function 'hsum' to sum visc. in horiz. direction? 
-  ! If so, this would then require dividing by 4 to get a mean (in map view, 
-  ! each vel. point is surrounded by 4 visc. points)
-
-  cvert(:,1) = (len0**2) / (4.0_dp * thk0**2 * dup**2)
-
-  ! ... used for specified traction basal bc (OLD VERSION)
-  cvert(:,2) = (len0) / (16.0_dp * thk0 * dup)
-
-
-! these are coefficients used in finite differences of horizontal terms
-! for d/dx(fdu/dx), d/dx(fdu/dy), d/dsigma(fdu/dx), d/dx(fdu/dsigma) and
-! du/dsigma.  in some cases need separate coeffs for ew and ns dimensions.
-
-! *sfp** the following 4 terms are diff. then those in the write-up on p.44 
-! by a factor of 1/2 (however, they are the same as those on p.34)
-
+  ! these coefficients used in finite differences of horizontal terms
+  ! for d/dx(fdu/dx), d/dx(fdu/dy), d/dsigma(fdu/dx), d/dx(fdu/dsigma) and
+  ! du/dsigma. 
   cdxdx = (/ 0.25_dp / dew**2, 0.25_dp / dns**2 /)
-  cdxdy = 0.0625_dp / (dew * dns)
   cdsdx(:,1) = 0.0625_dp / (dew * dup); cdsdx(:,2) = 0.0625_dp / (dns * dup);
-
-! *sfp** this term is diff. by a factor of 1/8 from that on p.44
   cdsds = 0.25_dp / (dup * dup)
-
-! *sfp** this term is diff. by a factor of 1/8 from that on p.44 (but is equal 
-! to the def. given on p.34)	
   cds = 0.0625_dp / dup
+  cdxdy = 0.0625_dp / (dew * dns)
 
   return
      
@@ -1430,12 +1414,10 @@ subroutine calccoeffs(upn,        sigma,                    &
                       d2usrfdew2, d2usrfdns2, d2usrfdewdns, &
                       d2thckdew2, d2thckdns2, d2thckdewdns)
 
-! *sfp** SUBROUTINE called from 'findcoefst' to find coefficients in 
-!      stress balance equations
-! Detemines coeficients needed for finite differencing.
-! This is a column-based operation.  
-! In general these coefficients refer to grid transformations and averaging 
-!  of efvs to half grid points.
+  ! Called from 'findcoefst' to find coefficients in stress balance equations
+  ! Detemines coeficients needed for finite differencing.
+  ! This is a column-based operation. In general these coefficients refer 
+  ! to grid transformations and averaging of efvs to half grid points.
 
   implicit none
 
@@ -1445,14 +1427,7 @@ subroutine calccoeffs(upn,        sigma,                    &
                                   d2usrfdew2, d2usrfdns2, d2usrfdewdns, &
                                   d2thckdew2, d2thckdns2, d2thckdewdns
      
-! *sfp** these next 3 values are not used in this subroutine ... 
-! Are they saved to the module 'strscals' after being used here, 
-!  or are they not used at all?
-
-  fvert(:,1) = cvert(:,1) / stagthck**2     ! *sfp** note that this is effected by the def. of 'cvert', which may be off by factor of 1/2
-
-  fvert(:,2) = cvert(:,2) / stagthck        ! *sfp** NOTE that these values may not be needed anymore ... only accessed by old bc functions?
-  fvert(:,3) = 2.0_dp * fvert(:,1)          ! *sfp** this also affected by def. of 'cvert' through def. of 'fvert(1)'
+  fvert(:) = cvert(:) / stagthck**2     
 
   dsigmadew = calcdsigmadx(upn, sigma, dusrfdew, dthckdew, stagthck)
   dsigmadns = calcdsigmadx(upn, sigma, dusrfdns, dthckdns, stagthck)
@@ -1545,9 +1520,6 @@ end function calcd2sigmadxdsigma
 
 function vertimain(efvs,up)
 
-! *sfp** function to come up with coeff. that correspond to the 'vertical' terms 
-! on the LHS of the standard equation: (X/H)^2 * d/dz( du/dz) 
- 
   implicit none
 
   real (kind = dp), dimension(2), intent(in) :: efvs
@@ -1556,8 +1528,8 @@ function vertimain(efvs,up)
 
   integer, intent(in) :: up
 
-  vertimain(3) = fvert(up,1) * efvs(2)  ! *sfp** coeffs. for standard 2nd-order, centered diff.
-  vertimain(1) = fvert(up,1) * efvs(1)
+  vertimain(3) = fvert(up) * efvs(2) 
+  vertimain(1) = fvert(up) * efvs(1)
   vertimain(2) = - vertimain(3) - vertimain(1)
 
   return
@@ -1568,11 +1540,11 @@ end function vertimain
 
 function normhorizmain(which,up,efvs)
 
-! *sfp** FUNCTION called from 'findcoefst' to calculate normal-stress grad terms 
-!      like: d/dx(f(du/dx)), d/dy(f(dv/dy)), etc.  
-! ... calls FUNCTIONS: horiztermdxdx, horiztermdsdx, horiztermdxds,
-!                      horiztermdsds, horiztermds 
-! determines coefficients from d/dx(fdu/dx) and d/dy(fdu/dy)
+  ! Called from 'findcoefst' to calculate normal-stress grad terms 
+  !      like: d/dx(f(du/dx)), d/dy(f(dv/dy)), etc.  
+  ! ... calls FUNCTIONS: horiztermdxdx, horiztermdsdx, horiztermdxds,
+  !                      horiztermdsds, horiztermds 
+  ! determines coefficients from d/dx(fdu/dx) and d/dy(fdu/dy)
 
   implicit none
 
@@ -1591,9 +1563,6 @@ function normhorizmain(which,up,efvs)
   sumefvsew = sum(sum(efvs,3),1)
   sumefvsns = sum(sum(efvs,2),1)
   sumefvs = sum(efvs)
-
-! *sfp** here, coeff. for all the norm. horiz. terms are summed to come up with coeff. at 
-! the center of a 3x3x3 block ... 
 
 ! for d(f.du/dx)/dx
    
@@ -1620,11 +1589,12 @@ end function normhorizmain
 !***********************************************************************
    
 function croshorizmain(which,up,efvs)
-! *sfp** FUNCTION called from 'findcoefst' to calculate cross-stress grad terms 
-!      like: d/dx(f(du/dy)), d/dy(f(dv/dx)), etc.  
-! ... calls FUNCTIONS: horiztermdxdy, horiztermdsdx, horiztermdxds, 
-!                      horiztermdsds, horiztermds 
-! determines coefficients from d/dx(fdu/dy) and d/dy(fdu/dx)
+
+  ! Called from 'findcoefst' to calculate cross-stress grad terms 
+  !      like: d/dx(f(du/dy)), d/dy(f(dv/dx)), etc.  
+  ! ... calls FUNCTIONS: horiztermdxdy, horiztermdsdx, horiztermdxds, 
+  !                      horiztermdsds, horiztermds 
+  ! determines coefficients from d/dx(fdu/dy) and d/dy(fdu/dx)
 
   implicit none
 
@@ -1643,9 +1613,6 @@ function croshorizmain(which,up,efvs)
   sumefvsew = sum(sum(efvs,3),1)
   sumefvsns = sum(sum(efvs,2),1)
   sumefvs = sum(efvs)
-
-! *sfp** here, coeff. for all the cross horiz. terms are summed to come up with coeff. at 
-! the center of a 3x3x3 block ... 
 
 ! for d(f.du/dy)/dx
 
@@ -1672,7 +1639,7 @@ end function croshorizmain
 !***********************************************************************
 
 ! ***************************************************************************
-! *sfp** functions to deal with higher-order boundary conditions at sfc and bed
+! start of functions to deal with higher-order boundary conditions at sfc and bed
 ! ***************************************************************************
 
 function vertimainbc(thck,bcflag,dup,efvs,betasquared)
