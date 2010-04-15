@@ -41,7 +41,7 @@ module ice3d_lib
 
     implicit none
     real(dp), parameter :: SMALL=1.D-10, ZIP=1.D-30, BIG=1.D10
-    integer, parameter :: MAXITER = 100              ! For the non-linear iteration
+    integer, parameter :: MAXITER = 2000              ! For the non-linear iteration
     real(dp), parameter :: toler_adjust_factor=1.0
 
     real(dp) :: plastic_bed_regularization = 1e-2
@@ -904,6 +904,7 @@ max_vel = maxval(sqrt(ustar**2 + vstar**2))
 #ifdef VERY_VERBOSE
             write(*,*)"Begin Matrix Assembly"
 #endif
+
             do i=1,MAXX
                 do j=1,MAXY
                     if (point_mask(i,j) /= 0) then

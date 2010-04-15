@@ -151,9 +151,44 @@ mean may be poor). The provided configuration files have reasonable default
 values for the grid spacing, but in some cases these may need to be adjusted.
 
 For the Payne/Price core (diagnostic_scheme = 3), the "which_sparse" option must
-be set to either 0 or 1 (either BiCG or GMRES for the linear solver, respectively).
-Future releases will allow for more options, including access to 3rd party solver
-packages (e.g. Trilinos).
+be set to either 0 or 1 (either BiCG or GMRES for the linear solver,
+respectively).  Future releases will allow for more options, including access to
+3rd party solver packages (e.g. Trilinos).
 
+For the PBJ core, the following settings are known to give good results:
 
+============
+EXPERIMENT A
+============
 
+[grid]
+ewn = 20
+nsn = 20
+upn = 40
+
+[ho_options]
+diagnostic_scheme = 2
+prognostic_scheme = 0
+which_ho_sparse = 1
+
+============
+EXPERIMENT C
+============
+[grid]
+ewn = 51
+nsn = 51
+upn = 21
+
+[ho_options]
+diagnostic_scheme = 1
+prognostic_scheme = 0
+basal_stress_input = 3
+which_ho_sparse = 1
+
+Note that experiment C, 5km does not converge with these settings, but does
+with 
+
+[grid]
+ewn = 51
+nsn = 51
+upn = 21
