@@ -13,7 +13,7 @@ if len(argv) == 1 or argv[1][0] == '-':
   exit(0)
 
 ######## Import the required Python modules ########
-import numpy
+import numpy, thread
 from netCDF import *
 from Tkinter import *
 from math import log, exp
@@ -108,19 +108,17 @@ def new():
   animationloop()
 
 ######## A function to loop for animation ########
-DISABLE_ANIMATION = True
-call_plot  = True
-use_thread = False
-if use_thread: import thread
-
+ANIMATION_IS_DISABLED = True
 def animationloop():
 # If animation is not selected just do one plot
-  if DISABLE_ANIMATION or animation.get() == 0:
+  if ANIMATION_IS_DISABLED or animation.get() == 0:
     plot()
     return
 # Otherwise loop over time or level
 # This never worked; I think matplotlib's use of Tkinter caused problems
   import time
+  call_plot  = True
+  use_thread = False
   v = variables[int(variablelist.curselection()[0])]
   time_or_level = animation.get()-1
   if len(netCDFfile.variables[v].dimensions)<(3+time_or_level):
@@ -226,9 +224,11 @@ def plot():
     title += ' ('+netCDFfile.variables[v].units+')'
   pyplot.title(title)
   plotCounter += 1
-  if plotCounter == 1:
+  if suptitle != None:
+    pyplot.suptitle(suptitle)
+  elif plotCounter == 1:
     pyplot.suptitle('Some systems may require you to close this first window to continue...')
-  if plotCounter == 2:
+  elif plotCounter == 2:
     pyplot.suptitle('This second window may not close properly...')
   pyplot.show()
 
@@ -286,24 +286,40 @@ def printattributes():
 #   Initialization (occurs the first time printattributes is called)
     from glob import glob
     from os import remove
+    verbose = False
 #   Find a filename that does not already exist
     for i in xrange(1000000):
       filename = 'viewNetCDF'+str(i)+'.trash'
-      if not filename in glob('*.trash'): break
-    print 'Creating temporary file:',filename
+      if filename not in glob('*.trash'): break
+    if verbose:
+      print 'Creating temporary file:',filename
     trash = NetCDFFile(filename,'w')
+    print '\nGLOBAL ATTRIBUTES OF',argv[1]
+    for attribute in dir(netCDFfile):
+      if attribute not in dir(trash):
+        print attribute +":", getattr(netCDFfile,attribute )
     variable = trash.createVariable('trash','f',tuple())
     ignore = dir(variable)
     trash.close()
-    print 'Deleting',filename
+    if verbose:
+      print 'Deleting:',filename
     remove(filename)
 
   v = variables[int(variablelist.curselection()[0])]
   print '\nATTRIBUTES OF',v
   v = netCDFfile.variables[v]
   for attribute in dir(v):
-    if not attribute in ignore:
+    if attribute not in ignore:
       print attribute+':',getattr(v,attribute)
+
+######## A function to set the super title ########
+suptitle = None
+def setSuptitle():
+  thread.start_new_thread(threadedSetSuptitle,tuple())
+
+def threadedSetSuptitle():
+  global suptitle
+  suptitle = raw_input('Enter the title: ')
 
 ######## Create the GUI window ########
 root = Tk()
@@ -385,7 +401,7 @@ delayentry = Entry(animationframe,width=10)
 nonebutton.grid(row=0,columnspan=2,sticky=W)
 timebutton.grid(row=1,columnspan=2,sticky=W)
 levelbutton.grid(row=2,columnspan=2,sticky=W)
-if not DISABLE_ANIMATION:
+if not ANIMATION_IS_DISABLED:
   label.grid(row=3,column=0,sticky=E)
   delayentry.grid(row=3,column=1,padx=5,pady=2,sticky=W)
 
@@ -394,6 +410,7 @@ menu = Menu(root,tearoff=0)
 menu.add_command(label='clear figure',command=clf)
 menu.add_command(label='directional plots',command=directionalplot)
 menu.add_command(label='print attributes',command=printattributes)
+menu.add_command(label='set title',command=setSuptitle)
 origin = StringVar()
 menu.add_checkbutton(label='invert image',var=origin,onvalue='upper',offvalue='lower')
 
@@ -417,7 +434,7 @@ def toggleMenubar(*args):
     menu.add_command(label='close this menu')
     root.bind('<Button-3>',popup)
   else:
-    menu.delete(6) # Remove the 'close this menu' option
+    menu.delete(7) # Remove the 'close this menu' option
     root.config(menu=menu) # Put the menu in a menubar
     root.unbind('<Button-3>') # Disable the popup
 def popup(event):
