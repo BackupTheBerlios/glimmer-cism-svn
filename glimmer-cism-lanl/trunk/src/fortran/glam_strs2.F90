@@ -219,7 +219,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
-  integer, parameter :: cmax = 500                  ! max no. of iterations
+  integer, parameter :: cmax = 3000                  ! max no. of iterations
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -245,7 +245,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   uindx = indxvelostr(ewn, nsn, upn, umask,pcgsize(1))
 
 
-!*sfp* hack of mask for Ross exp.
+!!*sfp* hack of mask for Ross exp.
 !    do ns=1,nsn-1; do ew=1,ewn-1
 !        if( umask(ew,ns) == 21 .or. umask(ew,ns) == 5 )then
 !            umask(ew,ns) = 73
@@ -1128,7 +1128,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
   real (kind = dp), dimension(2,2,2), intent(in) :: local_efvs_in
 
-  ! "local_othervel" is the other vel component (i.e. u when v is being calc and vice versa), 
+  ! "local_othervel" is the other vel component (i.e. u when v is being calc and vice versa),
   ! which is taken as a known value (terms involving it are moved to the RHS and treated as sources)
   real (kind = dp), dimension(3,3,3), intent(in) :: local_othervel
 
@@ -1140,40 +1140,37 @@ subroutine bodyset(ew,  ns,  up,           &
   ! storage space for coefficients that go w/ the discretization at the local point up, ew, ns
   real (kind = dp), dimension(3,3,3) :: g
 
-  real (kind = dp), dimension(2,2,2) :: local_efvs 
+  real (kind = dp), dimension(2,2,2) :: local_efvs
 
-  ! source term for the rhs when using ice shelf lateral boundary condition, 
-  ! e.g. source = rho*g*H/(2*Neff) * ( 1 - rho_i / rho_w ) for ice shelf 
-  real (kind = dp) :: source 
+  ! source term for the rhs when using ice shelf lateral boundary condition,
+  ! e.g. source = rho*g*H/(2*Neff) * ( 1 - rho_i / rho_w ) for ice shelf
+  real (kind = dp) :: source
 
   real (kind = dp) :: slopex, slopey    ! local sfc (or bed) slope terms
 
-  ! lateral boundary normal and vector to indicate use of forward 
+  ! lateral boundary normal and vector to indicate use of forward
   ! or bacward one-sided diff. when including specified stress lateral bcs
   real (kind = dp), dimension(2) :: fwdorbwd, normal
+
+  real (kind = dp) :: nz   ! z dir normal vector component at sfc or bed (takes diff value for each)
 
   integer, dimension(2) :: bcflag  ! indicates choice of sfc and basal bcs ...
 
   real (kind = dp) :: efvstot   ! both of these vars are used for averaging of eff. vis. near lat boundaries
   integer :: efvscount, i, j, k
-  efvstot = 0.0d0; efvscount = 0; i = 0; j = 0; k = 0 
+  efvstot = 0.0d0; efvscount = 0; i = 0; j = 0; k = 0
 
-  locplusup = loc(1) + up       
+  locplusup = loc(1) + up
 
-  ! re-arrange local_efvs array when at the surface or bed so that the average visc. calculated there 
-  ! is closer to the value needed according to the way the sfc/bed stress bcs are implemented
-  ! (that, is by solving for a false velocity on the other side of the interface that makes the stress
-  ! bc true). This appears to give better results for the short wavelength experiements for ISMIP-HOM A
+  ! Temporary hack that adjusts efvs near boundaries. Gives better results w.r.t. 
+  ! ISMIP-HOM tests at short wavelengths
   local_efvs(1:2,:,:) = local_efvs_in(1:2,:,:)
-  if( up == 1 )then     
-        local_efvs(1,:,:) = local_efvs_in(2,:,:)
-  else if( up == upn)then
-        local_efvs(2,:,:) = local_efvs_in(1,:,:)
+  if( up == 1 )then
+        local_efvs(1,:,:) = local_efvs(2,:,:);
   end if
 
 
   if( lateralboundry )then
-
 
   ! *********************************************************************************************
   ! lateral boundary conditions 
@@ -1191,10 +1188,10 @@ subroutine bodyset(ew,  ns,  up,           &
     
         if( up == 1 )then
            locplusup = loc(1) + up - 1  ! reverse the sparse matrix / rhs vector row index by 1 ...
-           slopex = dusrfdew(ew,ns); slopey = dusrfdns(ew,ns)
+           slopex = -dusrfdew(ew,ns); slopey = -dusrfdns(ew,ns); nz = 1.0_dp
         else
            locplusup = loc(1) + up + 1  ! advance the sparse matrix / rhs row vector index by 1 ...
-           slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns)
+           slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns); nz = -1.0_dp
         end if
 
         g = normhorizmainbc_lat(dew,           dns,             &
@@ -1208,8 +1205,8 @@ subroutine bodyset(ew,  ns,  up,           &
 
         ! add on coeff. associated w/ du/digma  
         g(:,3,3) = g(:,3,3) & 
-                 + vertimainbc( stagthck(ew,ns),    bcflag,dup(up), &
-                                local_efvs,         betasquared )
+                 + vertimainbc( stagthck(ew,ns), bcflag,dup(up),     &
+                                local_efvs,      betasquared,    nz )
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
         ! (w.r.t. cols), on a new row ...
@@ -1333,10 +1330,11 @@ subroutine bodyset(ew,  ns,  up,           &
 
   if(  ( up == upn  .or. up == 1 ) .and. .not. lateralboundry) then
 
+
      if( up == 1 )then                ! specify necessary variables and flags for free sfc
         bcflag = (/1,0/)
         locplusup = loc(1) + up - 1   ! reverse the sparse matrix / rhs vector row index by 1 ...
-        slopex = dusrfdew(ew,ns); slopey = dusrfdns(ew,ns)
+        slopex = -dusrfdew(ew,ns); slopey = -dusrfdns(ew,ns); nz = 1.0_dp
      else                             ! specify necessary variables and flags for basal bc
 
         !bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well so commented out here...
@@ -1346,7 +1344,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                       ! where betasquared is MacAyeal-type traction parameter
 
         locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
-        slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns)
+        slopex = dusrfdew(ew,ns); slopey = dusrfdns(ew,ns); nz = -1.0_dp
      end if
 
      g = normhorizmainbc(dew,           dns,     &
@@ -1358,7 +1356,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
      ! add on coeff. associated w/ du/digma
      g(:,2,2) = g(:,2,2)   &
-              + vertimainbc(stagthck(ew,ns),bcflag,dup(up),local_efvs,betasquared)
+              + vertimainbc(stagthck(ew,ns), bcflag,dup(up), local_efvs, betasquared, nz)
 
      ! put the coeff. for the b.c. equation in the same place as the prev. equation
      ! (w.r.t. cols), on a new row ...
@@ -1665,14 +1663,15 @@ end function croshorizmain
 ! start of functions to deal with higher-order boundary conditions at sfc and bed
 ! ***************************************************************************
 
-function vertimainbc(thck,bcflag,dup,efvs,betasquared)
+function vertimainbc(thck, bcflag, dup, efvs, betasquared, nz)
 
 ! altered form of 'vertimain' that calculates coefficients for higher-order
 ! b.c. that go with the 'normhorizmain' term: -(X/H)^2 * dsigma/dzhat * du/dsigma 
    
     implicit none
 
-    real (kind = dp), intent(in) :: dup, thck, betasquared
+    real (kind = dp), intent(in) :: dup, thck, betasquared 
+    real (kind = dp), intent(in) :: nz                      ! sfc normal vect comp in z-dir
     real (kind = dp), intent(in), dimension(2,2,2) :: efvs
     integer, intent(in), dimension(2) :: bcflag
 
@@ -1684,7 +1683,7 @@ function vertimainbc(thck,bcflag,dup,efvs,betasquared)
     ! for higher-order FREE SURFACE B.C. for x ('which'=1) or y ('which'=2) direction ...
     if( bcflag(1) == 1 )then
 
-           c = - 1 / thck / (2*dup) * (len0**2 / thk0**2)   ! value of coefficient
+           c = (1.0_dp*nz) / thck / (2*dup) * (len0**2 / thk0**2)   ! value of coefficient
 
            vertimainbc(:) = 0.0_dp
            vertimainbc(3) = -c 
