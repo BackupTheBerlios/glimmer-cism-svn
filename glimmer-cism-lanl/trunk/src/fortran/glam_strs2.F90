@@ -394,7 +394,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     ! output the iteration status: iteration number, max residual, and location of max residual
     ! (send output to the screen or to the log file, per whichever line is commented out) 
-    print '(i3,3g20.6)', counter, resid(1), resid(2), minres
+    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
     !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
     !call write_log (message)
 

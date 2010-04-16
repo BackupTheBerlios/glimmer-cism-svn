@@ -48,6 +48,9 @@ module glam
         call geometry_derivs(model)
         call geometry_derivs_unstag(model)  
 
+        print *, ' '
+        print *, 'time = ', model%numerics%time
+
         ! This driver is called from "glide_velo_higher.F90"
         call run_ho_diagnostic(model)
 
@@ -78,6 +81,7 @@ module glam
         call horizontal_remap_out (model%remap_wk, model%geometry%thck,    &
                                    model%climate%acab, model%numerics%dt, &
                                    model%options%periodic_ew, model%options%periodic_ns)
+
 
     end subroutine inc_remap_driver 
 
