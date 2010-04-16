@@ -1263,6 +1263,7 @@ subroutine bodyset(ew,  ns,  up,           &
     ! Note that it is not really appropriate to apply option (1) to 1d flow, since terms other than du/dx in 
     ! eff. strain rate are ignored. For 2d flow, should use option (2) below. 
 !     source = source * normal(pt)
+!     source = source * tim0 ! make source term non-dim
     ! --------------------------------------------------------------------------------------
 
 
@@ -1276,11 +1277,11 @@ subroutine bodyset(ew,  ns,  up,           &
              sum( (local_efvs/local_efvs), local_efvs > 1.0d-12 ) )
 
     source = source * normal(pt) ! partition according to normal vector at lateral boundary
+                                 ! NOTE that source term is already non-dim here 
     ! --------------------------------------------------------------------------------------
 
     ! regardless of using method (1) or (2), the source term must be made non-dim at the end of this section
     ! (i.e. line below stays ACTIVE for either case)
-    source = source * tim0 ! non-dim source term
 
                         
     g = normhorizmainbc_lat(dew,           dns,        &
