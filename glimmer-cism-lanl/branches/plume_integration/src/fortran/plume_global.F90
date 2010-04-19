@@ -96,9 +96,7 @@ module plume_global
   real(kind=kdp) :: phi ! latitude
   real(kind=kdp) :: radian,f	
 
-  real(kind=kdp) :: dt1,dt2,dtswtim ! first timestep size
-                                    ! second timestep size
-                                    ! time at which to switch to second stepsize	
+  real(kind=kdp) :: dt1,dt2,dtswtim ! first timestep size, second timestep size, time at which to switch to second stepsize	
 
   !scalar fields
   real(kind=kdp),allocatable,dimension(:,:) :: rhop,temp,tempa,tins

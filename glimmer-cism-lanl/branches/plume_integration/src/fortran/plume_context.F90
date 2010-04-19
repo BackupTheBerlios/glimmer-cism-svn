@@ -5,7 +5,6 @@ module plume_context
 
   use plume_global
 
-
 contains
 
   subroutine topog_depth_inflow_set(set_inflow)

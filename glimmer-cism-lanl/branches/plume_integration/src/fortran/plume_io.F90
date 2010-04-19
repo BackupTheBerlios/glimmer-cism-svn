@@ -102,8 +102,7 @@ contains
 !!!! NB: this should be called AFTER plume_initialise so that certain global
     !        constants are sure to have been set.
 
-    character(len=*),intent(in) :: plume_output_nc_file !should be an absolute path
-                                                        !or relative to execution directory
+    character(len=*),intent(in) :: plume_output_nc_file !should be an absolute path or relative to execution directory
     logical,intent(in) :: suppress_ascii_output_in
 
     suppress_ascii_output = suppress_ascii_output_in

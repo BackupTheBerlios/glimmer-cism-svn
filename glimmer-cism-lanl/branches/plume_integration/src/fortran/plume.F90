@@ -271,7 +271,7 @@ contains
     end if
 
     if (.not. suppress_logging) &
-       call io_write_time(get_elapsed_sys_time(), ' elapsed system time ')
+         call io_write_time(get_elapsed_sys_time(), ' elapsed system time ')
 
   end subroutine plume_initialise
 
@@ -304,8 +304,7 @@ contains
     real(kind=kdp),dimension(:,:),intent(in) :: t_interior !in Celcius
     real(kind=kdp),dimension(:,:),intent(out) :: bmelt_out,btemp_out !in meters per year
     logical,intent(in) :: run_plume_to_steady, write_all_states
-    real(kind=kdp),intent(in) :: plume_stopping_tol ! percent change in meltrate need
-                                                    ! to continue plume time-stepping
+    real(kind=kdp),intent(in) :: plume_stopping_tol ! percent change in meltrate need to continue plume time-stepping
     real(kind=kdp),intent(in) :: min_run_time !in days
 
     !local variables
@@ -321,9 +320,9 @@ contains
     ipos = bpos - pdep
 
     where( landmask )
-        jcs = 0
+       jcs = 0
     elsewhere
-        jcs = 1
+       jcs = 1
     end where
 
     !TODO: assign t_interior and ice_dz to globals 
@@ -391,7 +390,7 @@ contains
     call io_append_output(trim(log_message))
 
     call io_write_long_step_output(icalcan,icalcen,kcalcan,kcalcen,&
-                                  varoutrat,negdep)
+         varoutrat,negdep)
 
     call io_write_surface_output(runtim,labtim)    
 
