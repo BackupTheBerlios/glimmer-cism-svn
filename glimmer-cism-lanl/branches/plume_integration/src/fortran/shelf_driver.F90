@@ -5,7 +5,7 @@
 #include "glide_mask.inc"
 
 program shelf_driver
-  
+
   use glide
   use glide_mask
   use glimmer_commandline
@@ -39,12 +39,12 @@ program shelf_driver
   real(kind=dp) :: plume_min_subcycle_time,plume_min_spinup_time,plume_steadiness_tol
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
   integer,parameter :: USE_PLUME = 1
-  
+
   call glimmer_GetCommandline()
-  
+
   ! start logging
   call open_log(unit=50, fname=logname(commandline_configname))
-  
+
   ! read configuration
   call ConfigRead(commandline_configname,config)
 
@@ -56,15 +56,15 @@ program shelf_driver
   call glide_config(model,config)
 
   if (model%options%use_plume == USE_PLUME) then
-    ! read [plume] section of glimmer config file
-      call plume_read_print_config(model,config,&
-                               plume_nl,&
-                               plume_ascii_output_dir, &
-                               plume_output_prefix, &
-                               plume_output_nc_file, &
-                               plume_suppress_ascii_output,&
-                               plume_suppress_logging, &
-                               plume_imin,plume_imax,plume_kmin,plume_kmax)
+     ! read [plume] section of glimmer config file
+     call plume_read_print_config(model,config,&
+          plume_nl,&
+          plume_ascii_output_dir, &
+          plume_output_prefix, &
+          plume_output_nc_file, &
+          plume_suppress_ascii_output,&
+          plume_suppress_logging, &
+          plume_imin,plume_imax,plume_kmin,plume_kmax)
   end if
 
   ! config the [Peterman shelf] section of the config file
@@ -94,44 +94,44 @@ program shelf_driver
 
   if (model%options%use_plume .eq. USE_PLUME) then
      ! we are using the plume
-          
+
      call plume_logging_initialize(trim(plume_ascii_output_dir), &
-                                   trim(plume_output_prefix), &
-                                    plume_suppress_logging)
+          trim(plume_output_prefix), &
+          plume_suppress_logging)
 
      call plume_initialise(trim(plume_nl), &
-                           plume_suppress_ascii_output, &
-                           plume_suppress_logging,&
-                           model%geometry%lsrf * thk0,&
-                           GLIDE_IS_LAND(model%geometry%thkmask) .or. &
-                           GLIDE_IS_GROUND(model%geometry%thkmask), &
-                           plume_imin,plume_imax,plume_kmin,plume_kmax)
-     
-     
-     call plume_io_initialize(plume_suppress_ascii_output, &
-                              trim(plume_output_nc_file))
+          plume_suppress_ascii_output, &
+          plume_suppress_logging,&
+          model%geometry%lsrf * thk0,&
+          GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+          GLIDE_IS_GROUND(model%geometry%thkmask), &
+          plume_imin,plume_imax,plume_kmin,plume_kmax)
 
- 
+
+     call plume_io_initialize(plume_suppress_ascii_output, &
+          trim(plume_output_nc_file))
+
+
      !run the plume to steady state with given shelf draft
      call plume_iterate(time, &
-                        model%numerics%tinc*1.d0, &
-                        model%geometry%lsrf * thk0, &
-                        GLIDE_IS_LAND(model%geometry%thkmask) .or. &
-                        GLIDE_IS_GROUND(model%geometry%thkmask), &
-                        model%temper%temp(model%general%upn-1,:,:), &
-                        (model%numerics%sigma(model%general%upn) - model%numerics%sigma(model%general%upn -1)) * &
-                        model%geometry%thck * thk0, &
-                        model%temper%bmlt, &
-                        model%temper%temp(model%general%upn,:,:), &        
-                        plume_steadiness_tol, &
-                        plume_min_spinup_time, &
-                        run_plume_to_steady = .true.,&
-                        write_all_states = plume_write_all_states)
-                                               
+          model%numerics%tinc*1.d0, &
+          model%geometry%lsrf * thk0, &
+          GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+          GLIDE_IS_GROUND(model%geometry%thkmask), &
+          model%temper%temp(model%general%upn-1,:,:), &
+          (model%numerics%sigma(model%general%upn) - model%numerics%sigma(model%general%upn -1)) * &
+          model%geometry%thck * thk0, &
+          model%temper%bmlt, &
+          model%temper%temp(model%general%upn,:,:), &        
+          plume_steadiness_tol, &
+          plume_min_spinup_time, &
+          run_plume_to_steady = .true.,&
+          write_all_states = plume_write_all_states)
 
- end if
 
- do while(time .le. model%numerics%tend)
+  end if
+
+  do while(time .le. model%numerics%tend)
 
      model%climate%acab(:,:) = climate_cfg%accumulation_rate
      model%climate%artm(:,:) = climate_cfg%artm
@@ -142,30 +142,30 @@ program shelf_driver
      call glide_tstep_p3(model)      ! isostasy, upper/lower surfaces
 
      time = time + model%numerics%tinc
-     
+
      if (model%options%use_plume .eq. USE_PLUME) then	
-	 
-          ! We would normally expect the plume to reach a steady state
-          ! with respect to the current ice after only a few days.
-          ! If necessary we run the plume over the entire ice timestep
-          ! but if the basal melt rate becomes constant to the specified
-          ! tolerance than we assume the plume melts the ice at the
-          ! steady rate for the rest of the ice timestep and we stop
-          ! timestepping the plume.
-          call plume_iterate(time, &
-                    model%numerics%tinc*1.d0, &
-                    model%geometry%lsrf(:,:) * thk0, &
-                     GLIDE_IS_LAND(model%geometry%thkmask) .or. &
-                     GLIDE_IS_GROUND(model%geometry%thkmask), &                      
-                    model%temper%temp(model%general%upn-1,:,:), &
-                    (model%numerics%sigma(model%general%upn) - model%numerics%sigma(model%general%upn -1)) * &
-                    model%geometry%thck(:,:) * thk0, &
-                    model%temper%bmlt(:,:), &
-                    model%temper%temp(model%general%upn,:,:), &            
-	            plume_steadiness_tol, &
-                    plume_min_subcycle_time, &
-                    run_plume_to_steady = .false., &
-                    write_all_states = plume_write_all_states)
+
+        ! We would normally expect the plume to reach a steady state
+        ! with respect to the current ice after only a few days.
+        ! If necessary we run the plume over the entire ice timestep
+        ! but if the basal melt rate becomes constant to the specified
+        ! tolerance than we assume the plume melts the ice at the
+        ! steady rate for the rest of the ice timestep and we stop
+        ! timestepping the plume.
+        call plume_iterate(time, &
+             model%numerics%tinc*1.d0, &
+             model%geometry%lsrf(:,:) * thk0, &
+             GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+             GLIDE_IS_GROUND(model%geometry%thkmask), &                      
+             model%temper%temp(model%general%upn-1,:,:), &
+             (model%numerics%sigma(model%general%upn) - model%numerics%sigma(model%general%upn -1)) * &
+             model%geometry%thck(:,:) * thk0, &
+             model%temper%bmlt(:,:), &
+             model%temper%temp(model%general%upn,:,:), &            
+             plume_steadiness_tol, &
+             plume_min_subcycle_time, &
+             run_plume_to_steady = .false., &
+             write_all_states = plume_write_all_states)
 
      end if
   end do
@@ -174,9 +174,9 @@ program shelf_driver
   call glide_finalise(model)
 
   if (model%options%use_plume .eq. USE_PLUME) then 
-    call plume_finalise()	
-    call plume_io_finalize()
-    call plume_logging_finalize()
+     call plume_finalise()	
+     call plume_io_finalize()
+     call plume_logging_finalize()
   end if
 
   call system_clock(clock,clock_rate)
@@ -188,23 +188,23 @@ contains
 
   subroutine shelf_config_initialise(climate_cfg,config)
     ! initialise shelf climate model
-    
+
     use glimmer_paramets, only: thk0, acc0, scyr
     use glimmer_config
     use glimmer_log
 
     type(shelf_climate) :: climate_cfg         !*FD structure holding climate info
     type(ConfigSection), pointer :: config  !*FD structure holding sections of configuration file   
-    
+
     ! local variables
     type(ConfigSection), pointer :: section
     character(len=100) :: message
 
     call GetSection(config,section,'Petermann shelf')
     if (associated(section)) then
-        call GetValue(section,'air_temperature',climate_cfg%artm)
-        call GetValue(section,'accumulation_rate',climate_cfg%accumulation_rate)   
-        call GetValue(section,'eustatic_sea_level',climate_cfg%eus)
+       call GetValue(section,'air_temperature',climate_cfg%artm)
+       call GetValue(section,'accumulation_rate',climate_cfg%accumulation_rate)   
+       call GetValue(section,'eustatic_sea_level',climate_cfg%eus)
     else
        !log error
        call write_log('No Petermann section',GM_FATAL)
@@ -219,18 +219,18 @@ contains
     call write_log(message)
     write(message,*) 'eustatic sea level:',climate_cfg%eus
     call write_log(message)
-           
- end subroutine shelf_config_initialise
 
- subroutine plume_read_print_config(model,config, &
-                                    plume_nl_file, &
-                                    plume_output_dir, &
-                                    plume_output_prefix, &
-                                    plume_output_nc_file, &
-                                    plume_suppress_ascii_output,&
-                                    plume_suppress_logging, &
-                                    plume_imin,plume_imax,&
-                                    plume_kmin,plume_kmax)
+  end subroutine shelf_config_initialise
+
+  subroutine plume_read_print_config(model,config, &
+       plume_nl_file, &
+       plume_output_dir, &
+       plume_output_prefix, &
+       plume_output_nc_file, &
+       plume_suppress_ascii_output,&
+       plume_suppress_logging, &
+       plume_imin,plume_imax,&
+       plume_kmin,plume_kmax)
 
     !*FD read configuration file for plume-related things
 
@@ -239,9 +239,9 @@ contains
 
     type(glide_global_type) :: model       
     type(ConfigSection), pointer :: config 
-                                           
+
     character(len=*),intent(out) :: plume_nl_file,plume_output_nc_file, &
-                                    plume_output_dir,plume_output_prefix
+         plume_output_dir,plume_output_prefix
     logical,intent(out) :: plume_suppress_ascii_output,plume_suppress_logging
     integer,intent(out) :: plume_imin,plume_imax,plume_kmin,plume_kmax
 
@@ -251,9 +251,9 @@ contains
 
     call GetSection(config,section,'plume')
     if (.not. associated(section)) then
-	call write_log('for shelf driver there must be a [plume] &
-                        section in config file',  &
-	          GM_FATAL)
+       call write_log('for shelf driver there must be a [plume] &
+            section in config file',  &
+            GM_FATAL)
     end if
     call GetValue(section, 'plume_nl_file', plume_nl_file)
     call GetValue(section, 'plume_output_dir', plume_output_dir)
@@ -292,8 +292,8 @@ contains
     write(message,*) 'imin',plume_imin,'imax',plume_imax,'kmin',plume_kmin,'kmax',plume_kmax
     call write_log(message)
 
-	
-end subroutine
+
+  end subroutine plume_read_print_config
 
 
 end program shelf_driver
