@@ -5,9 +5,9 @@ RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
 RESTART_COMMON=glimmer_restart_common.F90 glimmer_restart_pointarr.F90 \
                glimmer_restart_statarr.F90 glimmer_restart_statscal.F90
 
-lib_LIBRARIES = libglide.a libglimmer.a libglint.a libclimate.a 
+lib_LIBRARIES = libglide.a libglimmer.a libglint.a libclimate.a
 bin_PROGRAMS  =  simple_glide eis_glide glint_example glex_ebm eismint3_glide nc2config \
-                 spin_glide glide_thermal_equib 
+                 spin_glide glide_thermal_equib
 check_PROGRAMS = test_config test_setup test_ts test_lithot test_integrate test_commandline test_writestats \
                  glimmer_unittest
 
@@ -137,7 +137,7 @@ glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/li
 
 ALL_SRC=$(test_integrage_SOURCES) $(test_lithot_SOURCES) $(test_ts_SOURCES) $(test_setup_SOURCES) \
         $(test_config_SOURCES) $(nc2config_SOURCES) $(glex_ebm_SOURCES) $(glint_example_SOURCES) \
-	$(eis_glide_SOURCES) $(simple_glide_SOURCES)  $(eismint3_glide_SOURCES) $(libglimmer_a_SOURCES) \
+	$(eis_glide_SOURCES) $(simple_glide_SOURCES) $(eismint3_glide_SOURCES) $(libglimmer_a_SOURCES) \
 	$(libglide_a_SOURCES) $(libglint_a_SOURCES) $(libclimate_a_SOURCES) $(spin_glide_SOURCES) \
         $(glimmer_unittest_SOURCES) $(glide_thermal_equib_SOURCES) $(libplume_a_SOURCES) $(shelf_driver_SOURCES)
 

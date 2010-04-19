@@ -41,8 +41,6 @@ contains
         do ns = 1,nsn-1
             do ew = 1,ewn-1
 
-                
-                
                 !The following cases relate to Anne LeBroque's fix for nunataks
                 !ew,ns cell is ice free:
                 if (ipvr(ew,ns) <= thklim/thk0 .and. &
