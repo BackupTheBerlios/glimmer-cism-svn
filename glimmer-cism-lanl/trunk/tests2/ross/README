@@ -4,7 +4,7 @@ This experiment was designed to model the Ross Ice Shelf off Antarctica.
 For information about the experiment and its results see:
 http://homepages.vub.ac.be/~phuybrec/eismint/iceshelf.html
 
-The python scripts provided here (runGlimmer.py and plotResults.py, refered to
+The python scripts provided here (runRoss.py and plotRoss.py, refered to
 in the following as the Ross scripts) were created to run the experiment 
 using Glimmer/CISM and compare the results with measured velocities.
 
@@ -24,47 +24,47 @@ contain three subdirectories, "data", containing input data for the experiment,
 and "output" and "scratch", where the results of running the scripts will be 
 written.
 
-STEP 1. Run Glimmer/CISM by invoking the runGlimmer.py script:
+STEP 1. Run Glimmer/CISM by invoking the runRoss.py script:
 
-python runGlimmer.py
+python runRoss.py
 
 This step runs Glimmer using parameters specified in the ross.config file.
 
-STEP 2. Plot the results by invoking the plotResults.py script:
+STEP 2. Plot the results by invoking the plotRoss.py script:
 
-python plotResults.py
+python plotRoss.py
 
-The plotResults.py script can also be invoked using command line options to plot
+The plotRoss.py script can also be invoked using command line options to plot
 filled contours, change the color map, and mask the grounded region.  Example:
 
-python plotResults.py --ncontours=14 --vmax=1400 --cmap=gist_ncar --mask
+python plotRoss.py --ncontours=14 --vmax=1400 --cmap=gist_ncar --mask
 
 Short forms of the options are also available.  Example:
 
-python plotResults.py -n 14 -v 1400 -c gist_ncar -m
+python plotRoss.py -n 14 -v 1400 -c gist_ncar -m
 
 # Output files
 
 OUTPUT FILES:
-When you run runGlimmer.py, it creates three NetCDF files in the "output"
+When you run runRoss.py, it creates three NetCDF files in the "output"
 subdirectory.  These files can be examined using a tool such as ncview. Their
 contents are described below.
 
 1. raw.nc is netCDF file containing the experiment input data from the "data" 
 directory with minimal modification.  This file is really not necessary.
-2. ross.nc is an input file created by runGlimmer.py which provides input 
+2. ross.nc is an input file created by runRoss.py which provides input 
 information to Glimmer.
 3. ross.out.nc is an output file created by Glimmer.
 
 SCRATCH FILES:
 Glimmer creates some additional files in addition to its netCDF output file.
-At the end of its execution, runGlimmer.py moves any files in the current
+At the end of its execution, runRoss.py moves any files in the current
 working directory having names ending in either ".txt", ".log", or ".nc" to 
 the "scratch" subdirectory under the assumption that they were created by
 Glimmer and are not needed.  So... 
 WARNING: If you have files with names ending ".txt", ".log", or ".nc" in the
-directory from which you are running runGlimmer.py they will get moved
-to the "scratch" subdirectory when you run runGlimmer.py
+directory from which you are running runRoss.py they will get moved
+to the "scratch" subdirectory when you run runRoss.py
 
 
 TO DO / KNOWN ISSUES

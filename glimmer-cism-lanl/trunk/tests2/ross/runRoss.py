@@ -5,7 +5,7 @@
 # After creating the neccessary netCDF input file, Glimmer is run.
 # Glimmer writes an additional netCDF output file in the "output" subdirectory.
 # When finished, any additional files written by Glimmer are moved to the "scratch" subdirectory.
-# After running this script, run plotResults.py to plot the results.
+# After running this script, run plotRoss.py to plot the results.
 # See the accompanying README file for more information.
 # Written March 18, 2010 by Glen Granzow at the University of Montana.
 
@@ -16,8 +16,8 @@ import numpy
 import ConfigParser
 from netCDF import *
 
-create_files = True
-run_glimmer  = True
+create_files = True 
+run_glimmer  = True 
 executable   = 'simple_glide'
 fake_shelf   = False
 verbose      = False
