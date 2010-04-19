@@ -5,7 +5,7 @@ prescribes a set of experiments meant to test the implementation of
 higher-order physics.  For more information, see
 http://homepages.ulb.ac.be/~fpattyn/ismip/
 
-The python scripts provided here (runGlimmer.py and plotResults.py, refered to
+The python scripts provided here (runISMIPHOM.py and plotISMIPHOM, refered to
 in the following as the ISMIP-HOM scripts) were created to run the experiments 
 using Glimmer/CISM and compare the results with results from other models.
 
@@ -29,28 +29,28 @@ directory which contains the ISMIP-HOM scripts.  This directory should also
 contain two subdirectories, "output" and "scratch", in which the results from 
 running the scripts will be written.
 
-STEP 1. Run Glimmer/CISM by invoking the runGlimmer.py script:
+STEP 1. Run Glimmer/CISM by invoking the runISMIPHOM.py script:
 
-python runGlimmer.py
+python runISMIPHOM.py
 
 Invoking the script in this way runs a default set of experiments and domain
 sizes.  To specify experiments and/or domain sizes you include command line
 arguments when you invoke the script.  For example
 
-python runGlimmer.py --size=40,80,160
+python runISMIPHOM.py --size=40,80,160
 
 runs the default experiments with domain sizes 40, 80, and 160 km.
 
-python runGlimmer.py --exp=a,c
+python runISMIPHOM.py --exp=a,c
 
 runs experiments a and c using the default domain sizes.  Combine these as
 
-python runGlimmer.py --exp=a,c --size=40,80,160
+python runISMIPHOM.py --exp=a,c --size=40,80,160
 
 to run experiments a and c with domain sizes 40, 80, and 160 km.  Short
 versions of the arguments are also accepted;
 
-python runGlimmer.py -e a,c -s 40,80,160
+python runISMIPHOM.py -e a,c -s 40,80,160
 
 also runs experiments a and c with domain sizes 40, 80, and 160 km.
 
@@ -58,22 +58,22 @@ Glimmer may not converge for every experiment with the default values of the
 grid size and other parameters.  Some of the parameters (like grid size) can 
 be changed using command line arguments.  Run 
 
-python runGlimmer.py --help
+python runISMIPHOM.py --help
 
 to see all of the possible command line arguments.  You can also change
 Glimmer parameters by changing the example configuration files provided for
 each experiment, "ishom.a.config", "ishom.b.config", ... (I suggest you make
 a copy of the original before messing with any of these, though.)
 
-STEP 2. Plot the results by invoking the plotResults.py script:
+STEP 2. Plot the results by invoking the plotISMIPHOM script:
 
-python plotResults.py
+python plotISMIPHOM
 
 If you used command line arguments to specify the experiment (or experiments)
 and domain size (or sizes) when running Glimmer you should include these same
 arguments plotting the results.  For example
 
-python plotResults.py --exp=a,c --size==40,80,160
+python plotISMIPHOM --exp=a,c --size==40,80,160
 
 would plot the results from running experiments a and c with domain sizes 40,
 80, and 160 km.  If you request more than one domain size for an experiment,
@@ -82,25 +82,25 @@ two files, one for experiment a, one for experiment b each containing three
 plots.)  Plotting one domain size at a time results in larger plots; for 
 example
 
-python plotResults.py --exp=a,c --size=40
+python plotISMIPHOM --exp=a,c --size=40
 
 creates two files, each containing one (large) plot.
 
 The plots created are saved as ".png" files in the "output" subdirectory of
-the directory containing the plotResults.py script.  You can change the type
+the directory containing the plotISMIPHOM script.  You can change the type
 of file created by changing the value of the variable "plotType" in the
-plotResults.py script.  If you prefer to have the plots displayed on the screen
-instead of saved to file, set the variable "savePlotInFile" in plotResults.py
+plotISMIPHOM script.  If you prefer to have the plots displayed on the screen
+instead of saved to file, set the variable "savePlotInFile" in plotISMIPHOM
 to "False" instead of "True".  The variables "savePlotInFile" and "plotType"
-are set near the top of the plotResults.py script under the comment line
+are set near the top of the plotISMIPHOM script under the comment line
 
 # Output flags
 
-As with runGlimmer.py, all of the possible command line arguments for
-plotResults.py can be displayed using the command line argument "--help"
+As with runISMIPHOM.py, all of the possible command line arguments for
+plotISMIPHOM can be displayed using the command line argument "--help"
 (or "-h")
 
-python plotResults.py --help
+python plotISMIPHOM --help
 
 OUTPUT FILES:
 When you run the ISMIP-HOM scripts, they create files in the "output"
@@ -109,13 +109,13 @@ subdirectory.  These files are described below.
 Files whose names end ".config" are configuration files read by Glimmer.  They
 are created by copying the "example" configuration files ("ishom.a.config" for
 experiment a for example) and making changes based on the command line
-arguments passed to runGlimmer.py.  Configuration files are text files and can
+arguments passed to runISMIPHOM.py.  Configuration files are text files and can
 be viewed using a text editor.
 
 Files whose names end ".nc" are netCDF files.  The contents of these files can
 be examined using a tool such as ncview.
 There are two different netCDF files created each time Glimmer is run: 
-1. An input file created by runGlimmer.py which provides the ice thickness, 
+1. An input file created by runISMIPHOM.py which provides the ice thickness, 
 bed topography, and (sometimes) basal friction coefficient.
 2. An output file created by Glimmer.
 Each input file for Glimmer has a name ending "km.nc" while the output files
@@ -124,19 +124,71 @@ from Glimmer have a names ending ".out.nc".
 Files whose names end ".txt" are output files written in a format used by all
 models participating in the ISMIP-HOM experiment.  As their name implies these
 are text files that can be viewed using a text editor.  They are written by
-runGlimmer.py from information in the netCDF output files and subsequently
-read by plotResults.py for plotting.
+runISMIPHOM.py from information in the netCDF output files and subsequently
+read by plotISMIPHOM for plotting.
 
 Files whose names end ".png" are Portable Network Graphics files written by 
-plotResults.py containing the plotted data.  This is standard file type that
+plotISMIPHOM containing the plotted data.  This is standard file type that
 can be viewed using image viewer software or a web browser.
 
 SCRATCH FILES:
 Glimmer creates some additional files in addition to its netCDF output file.
-At the end of its execution, runGlimmer.py moves any files in the current
+At the end of its execution, runISMIPHOM.py moves any files in the current
 working directory having names ending in either ".txt", ".log", or ".nc" to 
 the "scratch" subdirectory under the assumption that they were created by
 Glimmer and are not needed.  So... 
 WARNING: If you have files with names ending ".txt", ".log", or ".nc" in the
-directory from which you are running runGlimmer.py they will get moved
-to the "scratch" subdirectory when you run runGlimmer.py
+directory from which you are running runISMIPHOM.py they will get moved
+to the "scratch" subdirectory when you run runISMIPHOM.py
+
+TO DO / KNOWN ISSUES
+
+For ISMIP-HOM tests A and C, at the 20, 10, and 5  km wavelengths, convergence may be 
+slow (for test C in particular).
+    In general, the code will converge faster for fewer horizontal grid
+points but the results may be less accurate (i.e. the match with the ISMIP-HOM 
+mean may be poor). The provided configuration files have reasonable default 
+values for the grid spacing, but in some cases these may need to be adjusted.
+
+For the Payne/Price core (diagnostic_scheme = 3), the "which_sparse" option must
+be set to either 0 or 1 (either BiCG or GMRES for the linear solver,
+respectively).  Future releases will allow for more options, including access to
+3rd party solver packages (e.g. Trilinos).
+
+For the PBJ core, the following settings are known to give good results:
+
+============
+EXPERIMENT A
+============
+
+[grid]
+ewn = 20
+nsn = 20
+upn = 40
+
+[ho_options]
+diagnostic_scheme = 2
+prognostic_scheme = 0
+which_ho_sparse = 1
+
+============
+EXPERIMENT C
+============
+[grid]
+ewn = 51
+nsn = 51
+upn = 21
+
+[ho_options]
+diagnostic_scheme = 1
+prognostic_scheme = 0
+basal_stress_input = 3
+which_ho_sparse = 1
+
+Note that experiment C, 5km does not converge with these settings, but does
+with 
+
+[grid]
+ewn = 51
+nsn = 51
+upn = 21

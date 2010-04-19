@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# This script runs ISMIP-HOM experiments using Glimmer.
+# This script runs ISMIP-HOM experiments using Glimmer-CISM.
 # Output files are written in the "output" subdirectory.
 # The script loops over experiments performing the following three steps:
 # 1. Create two input files, a configuration file and a netCDF input file.
@@ -7,9 +7,9 @@
 # 3. Write a standard ISMIP-HOM file from the data in the netCDF output file.
 # When finished, any additional files written by Glimmer are moved to the "scratch" subdirectory.
 
-# After running this script, run plotResults.py to plot the results.
+# After running this script, run plotISMIPHOM.py to plot the results.
 # See the accompanying README file for more information.
-# To see all command line options run: python runGlimmer.py --help
+# To see all command line options run: python runISMIPHOM.py --help
 # Written March 2, 2010 by Glen Granzow at the University of Montana.
 
 # OptionParser callback that splits a comma-separated list.
@@ -119,23 +119,28 @@ if __name__ == '__main__':
 #     Generate the ice thickness, bed topography, and (sometimes) 
 #     basal friction coefficient for the experiment
 
-      xx = [i*dx for i in range(nx)]
-      yy = [j*dy for j in range(ny)]
-#     More hacking of the grid
-      xx = [x *float(nx-1)/float(nx-2) for x in xx]
-      yy = [y *float(ny-1)/float(ny-2) for y in yy]
 
       thickness  = list()
       topography = list()
       basalFriction = list()
 
       if experiment in ('a','b'):
+        xx = [i*dx for i in range(nx)]
+        yy = [j*dy for j in range(ny)]
+        xx = [x *float(nx-1)/float(nx-2) for x in xx]
+        yy = [y *float(ny-1)/float(ny-2) for y in yy]
         alpha = 0.5 * pi/180
         zz = [4000-i*dx*tan(alpha) for i in range(nx)]
       elif experiment in ('c','d'):
+        xx = [i*dx for i in range(nx)]
+        yy = [j*dy for j in range(ny)]
+        xx = [x *float(nx-1)/float(nx-3) for x in xx]
+        yy = [y *float(ny-1)/float(ny-3) for y in yy]
         alpha = 0.1 * pi/180
         zz = [1000-i*dx*tan(alpha) for i in range(nx)]
       elif experiment == 'f':
+        xx = [i*dx for i in range(nx)]
+        yy = [j*dy for j in range(ny)]
         alpha = 3.0 * pi/180
         zz = [6000-i*dx*tan(alpha) for i in range(nx)]
         xc = (xx[0]+xx[-1])/2

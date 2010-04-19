@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # This script plots the results of running ISMIP-HOM experiments using Glimmer.
-# Before running this script, run runGlimmer.py to generate the results.
+# Before running this script, run runISMIPHOM.py to generate the results.
 # See the accompanying README file for more information.
 # To see all command line options run: python plotResults.py --help
 # Written February 26, 2010 by Glen Granzow at the University of Montana.
@@ -9,7 +9,7 @@ import os
 import matplotlib.figure
 from matplotlib import pyplot
 from optparse   import OptionParser
-from runGlimmer import appendToList, defaultExperiments, defaultSizes
+from runISMIPHOM import appendToList, defaultExperiments, defaultSizes
 from math       import sqrt
 
 # Output flags
