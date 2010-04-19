@@ -31,6 +31,17 @@ running the scripts will be written.
 
 STEP 1. Run Glimmer/CISM by invoking the runISMIPHOM.py script:
 
+Before running the script, copy the configuration files of the core you would
+like to run to the appropriately named configuation file. For instance to run
+the Payne-Price core:
+
+cp ishom.a.PP.config ishom.a.config
+cp ishom.c.PP.config ishom.c.config
+
+similarly, copy the PBJ files for the Pattyn, Bocek, Johnson core.
+
+Now run the script:
+
 python runISMIPHOM.py
 
 Invoking the script in this way runs a default set of experiments and domain
@@ -143,9 +154,10 @@ to the "scratch" subdirectory when you run runISMIPHOM.py
 
 TO DO / KNOWN ISSUES
 
-For ISMIP-HOM tests A and C, at the 20, 10, and 5  km wavelengths, convergence may be 
-slow (for test C in particular).
-    In general, the code will converge faster for fewer horizontal grid
+For ISMIP-HOM tests A and C, at the 20, 10, and 5  km wavelengths, convergence
+may be slow (for test C in particular).
+
+In general, the code will converge faster for fewer horizontal grid
 points but the results may be less accurate (i.e. the match with the ISMIP-HOM 
 mean may be poor). The provided configuration files have reasonable default 
 values for the grid spacing, but in some cases these may need to be adjusted.
@@ -155,40 +167,5 @@ be set to either 0 or 1 (either BiCG or GMRES for the linear solver,
 respectively).  Future releases will allow for more options, including access to
 3rd party solver packages (e.g. Trilinos).
 
-For the PBJ core, the following settings are known to give good results:
+For the PBJ core, note that experiment C, 5km does not converge with any other known settings.
 
-============
-EXPERIMENT A
-============
-
-[grid]
-ewn = 20
-nsn = 20
-upn = 40
-
-[ho_options]
-diagnostic_scheme = 2
-prognostic_scheme = 0
-which_ho_sparse = 1
-
-============
-EXPERIMENT C
-============
-[grid]
-ewn = 51
-nsn = 51
-upn = 21
-
-[ho_options]
-diagnostic_scheme = 1
-prognostic_scheme = 0
-basal_stress_input = 3
-which_ho_sparse = 1
-
-Note that experiment C, 5km does not converge with these settings, but does
-with 
-
-[grid]
-ewn = 51
-nsn = 51
-upn = 21
