@@ -108,9 +108,8 @@ def nc_from_config(configFilename):
 
 def setup_dimensions(nc, nx, ny, nz, deltax, deltay):
 
-    xgrid = numpy.vstack( [numpy.arange(nx)*deltax] * ny).transpose()
-
-    ygrid = numpy.vstack( [numpy.arange(ny)*deltay] * nx)
+    xgrid = numpy.vstack( [numpy.arange(nx)*deltax] * ny ).transpose()
+    ygrid = numpy.vstack( [numpy.arange(ny)*deltay] * nx )
 
     setup_dimensions_gridded(nc, xgrid, ygrid, nlevels=nz)
 
@@ -176,11 +175,11 @@ def setup_dimensions_gridded(nc,xgrid,ygrid, nlevels=1, temps = None, sealevel =
     timevar[0] = 0.
 
     # Note type coersion
-    x0var[:] = numpy.asarray((xgrid[0:-1,0] + xgrid[1:,0]) / 2.,dtype='float32').tolist()
-    y0var[:] = numpy.asarray((ygrid[0,0:-1] + ygrid[0,1:]) / 2.,dtype='float32').tolist()
+    x0var[:] = numpy.asarray((xgrid[0:-1,0] + xgrid[1:,0]) / 2.,dtype='float32')
+    y0var[:] = numpy.asarray((ygrid[0,0:-1] + ygrid[0,1:]) / 2.,dtype='float32')
 
-    x1var[:] = numpy.asarray(xgrid[:,0],dtype='float32').tolist()
-    y1var[:] = numpy.asarray(ygrid[0,:],dtype='float32').tolist()
+    x1var[:] = numpy.asarray(xgrid[:,0],dtype='float32')
+    y1var[:] = numpy.asarray(ygrid[0,:],dtype='float32')
 
 def set_global_attribute(nc, name, text):
     attr = nc.attr(name)

@@ -231,24 +231,6 @@ long_name:     area covered by ice
 factor:        len0*len0*1.e-6
 data:          data%geometry%iarea
 
-
-[iareag]
-dimensions:    time
-units:         km2
-long_name:     area covered by ice 
-factor:        len0*len0*1.e-6
-data:          data%geometry%iareag
-
-
-[iareaf]
-dimensions:    time
-units:         km2
-long_name:     area covered by ice 
-factor:        len0*len0*1.e-6
-data:          data%geometry%iareaf
-
-
-
 [thkmask]
 dimensions:    time, y1, x1
 long_name:     mask
@@ -359,15 +341,6 @@ data:          data%geomderv%dusrfdtm
 factor:        scale2d_f1
 coordinates:   lon lat
 
-[dthckdtm]
-dimensions:    time, y1,x1
-units:         meter/year
-long_name:     tendency of ice thickness
-data:          data%geomderv%dthckdtm
-factor:        scale2d_f1
-coordinates:   lon lat
-
-
 [uvel]
 dimensions:    time, level, y0, x0
 units:         meter/year
@@ -451,7 +424,7 @@ factor:        scale3d_f7
 coordinates:   lon lat
 
 [surfvel]
-dimensions:    time, level, y0, x0
+dimensions:    time, level, y1, x1
 units:         meter/year
 long_name:     ice surface velocity 
 data:          data%velocity%surfvel(up,:,:)

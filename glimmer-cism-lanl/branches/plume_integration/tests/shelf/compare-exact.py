@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 import glimcdf
 import pycdf
 from pycdf import NC

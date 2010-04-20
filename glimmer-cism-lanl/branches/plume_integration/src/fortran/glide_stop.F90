@@ -49,6 +49,8 @@ module glide_stop
   use glide_types
   use glimmer_log
   use remap_glamutils
+
+  ! *sfp* added for summer modeling school
   use fo_upwind_advect, only : fo_upwind_advect_final
 
   implicit none
@@ -140,16 +142,13 @@ contains
 
     call closeall_in(model)
     call closeall_out(model)
-
-    ! *sfp* Note that a finalization routine, "glam_velo_fordsiapstr_final", for the PP HO core needs 
-    ! to be written, added to "glam_strs2.F90", and called from "glide_stop".
-  
-    ! finalization for incremental remapping advection scheme 
+   
+    ! *tjb** added; finalization of LANL incremental remapping subroutine for thickness evolution
     if (model%options%whichevol== EVOL_INC_REMAP ) then
         call horizontal_remap_final(model%remap_wk)
     endif 
 
-   ! finalization for first-order upwinding advection scheme
+   ! *sfp* added for summer modeling school
     if (model%options%whichevol== EVOL_FO_UPWIND ) then
         call fo_upwind_advect_final()
     endif

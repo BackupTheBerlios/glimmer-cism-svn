@@ -141,25 +141,15 @@ module glide_types
   integer, parameter :: HO_EFVS_FULL = 0
   integer, parameter :: HO_EFVS_CONSTANT = 1
   integer, parameter :: HO_EFVS_MINIMUM = 2
+
+  integer, parameter :: HO_SOURCE_AVERAGED = 0
+  integer, parameter :: HO_SOURCE_EXPLICIT = 1
+  integer, parameter :: HO_SOURCE_DISABLED = 2
     !*FD Flag that indicates how effective viscosity is computed
     !*FD \begin{description}
     !*FD \item[0] compute from effective strain rate
     !*FD \item[1] constant value
     !*FD \item[2] minimum value
-
-  !*sfp* added the next two groups for HO T calcs.
-  integer, parameter :: SIA_DISP = 0
-  integer, parameter :: FIRSTORDER_DISP = 1
-  integer, parameter :: SSA_DISP = 2
-
-  integer, parameter :: SIA_BMELT = 0
-  integer, parameter :: FIRSTORDER_BMELT = 1
-  integer, parameter :: SSA_BMELT = 2
-
-  integer, parameter :: HO_SOURCE_AVERAGED = 0
-  integer, parameter :: HO_SOURCE_EXPLICIT = 1
-  integer, parameter :: HO_SOURCE_DISABLED = 2
-
   type glide_options
 
     !*FD Holds user options controlling the methods used in the ice-model
@@ -289,26 +279,31 @@ module glide_types
     !*FD \item[1] Plastic till sliding law, 
     !*FD $\tau_{b,i} = -\tau_c \frac{v_i}{\lVert v \rVert}
 
-    ! options for using the Payne/Price higher-order dynamical core
+!whlmod - added the following three options for Price-Payne higher-order (glam)
     integer :: which_ho_babc = 0
-    !*FD Flag that describes basal boundary condition (betasquared) for PP dyn core: 
+    !*FD Flag that describes basal boundary condition (betasquared) for glam: 
     !*FD \begin{description}
-    !*FD \item[0] constant value (hardcoded in, useful for debugging)
-    !*FD \item[1] simple pattern ("     ")
-    !*FD \item[2] beta^2 as proxy for till yield stress
-    !*FD \item[3] circular ice shelf
-    !*FD \item[4] no slip everywhere
-    !*FD \item[5] beta^2 field passed in from CISM
+    !*FD \item[0] constant value
+    !*FD \item[1] simple pattern (e.g., ice stream)
+    !*FD \item[2] read map from file
+    !*FD \item[3] proxy for till yield stress
+    !*FD \item[4] yield stress from basal processes model
+    !*FD \item[5] simple 2D ice shelf
+    !*FD \item[6] spatially periodic (ISMIP-HOM expt C)
+    !*FD \item[7] circular ice shelf
+    !*FD \item[8] frozen bed
+    !*FD \item[9] beta^2 field passed in from CISM
     !*FD \end{description}
 
     integer :: which_ho_efvs = 0
-    !*FD Flag that indicates how effective viscosity is computed for PP dyn core:
+    !*FD Flag that indicates how effective viscosity is computed
     !*FD \begin{description}
     !*FD \item[0] compute from effective strain rate
     !*FD \item[1] constant value
+    !*FD \item[2] minimum value
 
     integer :: which_ho_resid = 0
-    !*FD Flag that indicates method for computing residual in PP dyn core: 
+    !*FD Flag that indicates method for computing residual in glam iteration
     !*FD \begin{description}
     !*FD \item[0] maxval 
     !*FD \item[1] maxval ignoring basal velocity 
@@ -316,24 +311,6 @@ module glide_types
     !*FD \begin{description}
 
 !end whlmod
-
-    !*sfp* added
-    integer :: which_disp = 0
-    !*FD Flag that indicates method for computing the dissipation during the temperature calc.
-    !*FD \begin{description}
-    !*FD \item[0] for 0-order SIA approx
-    !*FD \item[1] for 1-st order solution (e.g. Blatter-Pattyn)
-    !*FD \item[2] for 1-st order depth-integrated solution (SSA)
-    !*FD \begin{description}
-
-    !*sfp* added
-    integer :: which_bmelt = 0
-    !*FD Flag that indicates method for computing the frictional melt rate terms during temperature calc.
-    !*FD \begin{description}
-    !*FD \item[0] for 0-order SIA approx
-    !*FD \item[1] for 1-st order solution (e.g. Blatter-Pattyn)
-    !*FD \item[2] for 1-st order depth-integrated solution (SSA)
-    !*FD \begin{description}
 
     integer :: which_ho_sparse = 0
     !*FD Flag that indicates method for solving the sparse linear system
@@ -394,7 +371,7 @@ module glide_types
 
     integer :: diagnostic_run = 0
 
-    integer :: use_plume = 0
+    integer :: which_bmlt = 0
     !*FD \begin{description}
     !*FD \item[0] standard bmlt calculation
     !*FD \item[1] use plume to calculate bmlt
@@ -449,7 +426,7 @@ module glide_types
     logical               :: empty = .true.
     !*FD True if there is no ice anywhere in the domain, false otherwise.
 
-    real(dp) :: ivol, iarea,iareag, iareaf !*FD ice volume and ice area
+    real(dp) :: ivol, iarea !*FD ice volume and ice area
 
   end type glide_geometry
 
@@ -705,7 +682,7 @@ module glide_types
   type glide_grnd
     real(dp),dimension(:,:),pointer :: gl_ew => null()
     real(dp),dimension(:,:),pointer :: gl_ns => null()
-    real(dp),dimension(:,:),pointer :: gline_flux => null() !*FD flux at the
+    real(sp),dimension(:,:),pointer :: gline_flux => null() !*FD flux at the
                                                             !grounding line
   end type glide_grnd
   

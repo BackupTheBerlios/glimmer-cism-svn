@@ -97,7 +97,7 @@ contains
        
        where (model%temper%bheatflx .ne. 0.)
          factor = model%temper%bheatflx/model%lithot%con_r
-        elsewhere
+       elsewhere
          factor = model%paramets%geot/model%lithot%con_r
        end where
        

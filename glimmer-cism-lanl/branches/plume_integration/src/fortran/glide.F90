@@ -244,10 +244,6 @@ contains
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
 
-    call calc_iareaf_iareag(model%numerics%dew,model%numerics%dns, & 
-                            model%geometry%iarea, model%geometry%thkmask, &
-                            model%geometry%iareaf, model%geometry%iareag)
-
     !calculate the normal at the marine margin
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
 
@@ -361,9 +357,6 @@ contains
     ! *sfp** added for summer modeling school
     use fo_upwind_advect, only: fo_upwind_advect_driver
 
-    ! *sfp* added so that stress tensor is populated w/ HO stress fields
-    use stress_hom, only: glide_stress
-
     implicit none
 
     type(glide_global_type) :: model        !*FD model instance
@@ -405,7 +398,6 @@ contains
             ! (Temperature is advected by glide_temp)
 
        call inc_remap_driver( model )
-       call glide_stress( model )       !*sfp* added for populating stress tensor w/ HO fields
 
     ! *sfp** added for summer modeling school
     case(EVOL_FO_UPWIND) ! Use first order upwind scheme for mass transport
@@ -434,10 +426,6 @@ contains
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
 
 
-    !calculate the grounding line flux after the mask is correct
-    call calc_gline_flux(model%geomderv%stagthck,model%velocity%surfvel, &
-    model%geometry%thkmask,model%ground%gline_flux, model%velocity%ubas, &
-    model%velocity%vbas, model%numerics%dew)
    ! ------------------------------------------------------------------------ 
     ! Remove ice which is either floating, or is present below prescribed
     ! depth, depending on value of whichmarn
@@ -470,10 +458,9 @@ contains
     call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
-    
-    call calc_iareaf_iareag(model%numerics%dew,model%numerics%dns, & 
-                            model%geometry%iarea, model%geometry%thkmask, &
-                            model%geometry%iareaf, model%geometry%iareag)
+    !calculate the grounding line flux after the mask is correct
+    call calc_gline_flux(model%geometry%thck,model%velocity%surfvel, &
+    model%geometry%thkmask,model%ground%gline_flux)
     ! ------------------------------------------------------------------------
     ! update ice/water load if necessary
     ! ------------------------------------------------------------------------

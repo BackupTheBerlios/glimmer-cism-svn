@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/opt/epd-5.0.0-rh5-x86_64/bin/python
 
 #This python script replaces the Makefile that used to be in this directory.
 #The makefile is replaced because it was growing difficult to avoid a lot of

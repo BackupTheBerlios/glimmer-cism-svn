@@ -64,10 +64,9 @@ libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \
                      glide_thckmask.F90 glide_nonlin.F90 glide_grids.F90\
                      glam.F90 glam_strs2.F90 glam_thck_ppm.F90\
                      remap_advection.F90 remap_glamutils.F90 glide_ground.F90 \
-                     fo_upwind_advect.F90 glide_stress.F90
-# *sfp* Added the last three lines above for addition of (1) Payne/Price HO dynamics,  
-# (2) LANL inc. remapping and a 1st-order upwind scheme for dH/dt calculation, and
-# (3) module for calc stresses from HO vels and visc and populating the stress tensor
+                     fo_upwind_advect.F90
+# *sfp* Added the last two lines above for addition of Payne/Price HO dynamics and  
+# *sfp* LANL inc. remapping for dH/dt calculation
 
 libglint_a_SOURCES = glint_climate.F90 glint_initialise.F90 glint_io.F90 \
                      glint_timestep.F90 glint_type.F90 glint_main.F90 \

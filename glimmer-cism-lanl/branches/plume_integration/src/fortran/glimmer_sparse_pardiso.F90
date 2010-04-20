@@ -1,43 +1,36 @@
-#ifdef HAVE_CONFIG_H
-#include "config.inc"
-#endif
-
 module glimmer_sparse_pardiso
     !*FD This module builds on the glimmer_sparse module to provide an 'easy'
     !*FD interface to PARDISO.
     
     use glimmer_sparse_type
-    use glimmer_global
-#ifdef HAVE_ISO_C_BINDING
-    use ISO_C_BINDING, only: C_INTPTR_T
-#endif
-#ifdef _OPENMP
-    use OMP_LIB
-#endif
+    use glimmer_global, only: dp
     implicit none
+
+#ifdef PARDISO_64BIT
+        integer, parameter :: parint = 8       
+#else
+        integer, parameter :: parint = 4
+#endif
+
 
     type pardiso_solver_workspace
         !*FD Memory addresses used internally by PARDISO
-#ifdef HAVE_ISO_C_BINDING
-        integer(kind=C_INTPTR_T), dimension(64) :: pt
-#else
-        integer(kind=size_t), dimension(64) :: pt
-#endif
+        integer(kind=parint), dimension(64) :: pt
        !*FD Error messages from pardisoinit: 0 no error, -10 no license, -11
         !*FD licence expired (?), -12 wrong user or hostname.
-        integer(kind=4) :: error
+        integer(kind=parint) :: error
         !*FD Work array for multi-recursive solver only
         real(kind=dp) :: dparm(64)
     end type pardiso_solver_workspace
 
     type pardiso_solver_options
         !*FD Matrix type, we are generally real, non-symmetric (11)
-        integer(kind=4) :: mtype
+        integer(kind=parint) :: mtype
         !*FD Solver, sparse direct is 0. If we ever have symmetric indefinate
         !*FD matrices, we might try 1; 'multi-recusive iterative'
-        integer(kind=4) :: solver
+        integer(kind=parint) :: solver
         !*FD Storage for passing parameters to and getting info from PARDISO
-        integer(kind=4), dimension(64) :: iparm
+        integer(kind=parint), dimension(64) :: iparm
         ! Tolerance only needed in multirecursive solver
         real(kind=dp) :: tolerance
         ! Tell PARDISO to use the hybrid iterative/direct CGS method
@@ -61,11 +54,7 @@ contains
         opt%solver = 0
         opt%tolerance = 1.d-6
         opt%iterative = .TRUE.  ! true for iterative/hybrid method
-#ifdef _OPENMP
-	opt%processors = OMP_GET_MAX_THREADS()
-#else
-        opt%processors = 1  ! Number of processors
-#endif
+        opt%processors = 8   ! Number of processors
     end subroutine pardiso_default_options
 
     subroutine pardiso_allocate_workspace(matrix, options, workspace, max_nonzeros_arg)
@@ -161,6 +150,7 @@ contains
            mesglvl = 0
         end if
 
+        mesglvl = 0
 #ifdef HAVE_PARDISO
         ! This is a hack, needed to check the state of the solver, seems
         ! to work, but the behavior of workspace%pt is undocumented.
@@ -183,11 +173,7 @@ contains
                      1, 1, options%iparm, &
                      mesglvl, rhs, solution, pardiso_solve,workspace%dparm)
 #endif
-        if (options%iterative) then
-            niters = options%iparm(20) ! CGS iterations
-	else
-            niters = options%iparm(7) ! Direct iterations
-	endif
+        niters = options%iparm(20) ! Direct methods report zeros iterations
         err=1.0
     end function pardiso_solve
 

@@ -27,7 +27,7 @@ module glide_velo_higher
     
     !TODO: Parameterize the following globals
     real(dp), parameter :: VEL2ERR  = 1e-4
-    real(dp), parameter :: TOLER    = 1e-6
+    real(dp), parameter :: TOLER    = 1e-5
     integer,  parameter :: CONVT    = 4
     real(dp), parameter :: SHTUNE   = 1.D-16
     integer,  parameter :: UPSTREAM = 0
@@ -475,8 +475,8 @@ contains
         !             tau_xz_t, tau_yz_t, tau_xx_t, tau_yy_t, tau_xy_t, flwn, zip, periodic_ew, periodic_ns) 
         
         
-        call stagvarb_3d_mask(uvel_unstag, uvel,ewn,nsn,upn,geometry_mask)
-        call stagvarb_3d_mask(vvel_unstag, vvel,ewn,nsn,upn,geometry_mask)
+        call stagvarb_3d(uvel_unstag, uvel,ewn,nsn,upn)
+        call stagvarb_3d(vvel_unstag, vvel,ewn,nsn,upn)
         
     end subroutine velo_hom_pattyn_nonstag
 

@@ -1,11 +1,8 @@
-
 module fo_upwind_advect
 
-! contains init, finalize, and driver subroutines for mass advection 
-! scheme based on 1st order upwinding (written by S.Price for summer
-! modeling school at Portland State, 2008)
-
 !----------------------------------------------------------------------
+
+    ! init, finalize, and driver subroutines for mass advection based on 1st order upwinding
 
     use glimmer_paramets, only: sp, dp, len0, thk0, tim0, vel0, tim0, acc0, scyr
     use glide_types
@@ -21,16 +18,13 @@ module fo_upwind_advect
                        flux_net, thck_grid,             & 
                        mask, thck_old 
 
-!--------------
     contains
-!--------------
-
 
 !----------------------------------------------------------------------
 
     subroutine fo_upwind_advect_init( ewn, nsn )
+    
     ! initialization for 1st-order upwinding mass advection
-    ! (when enabled, called from this init section of 'glide.F90')
 
     implicit none
    
@@ -51,8 +45,8 @@ module fo_upwind_advect
 !----------------------------------------------------------------------
 
     subroutine fo_upwind_advect_final( )
+
     ! finalization for 1st-order upwinding mass advection
-    ! (when enabled, called from 'glide_stop.F90')
 
     implicit none   
 
@@ -71,16 +65,13 @@ module fo_upwind_advect
 !----------------------------------------------------------------------
 
     subroutine fo_upwind_advect_driver( model )
+
     ! driver routine for the 1st order, upwind mass transport scheme
-    ! (when enabled, called from 'glide_tstep_p2' in 'glide.F90' )    
 
         type(glide_global_type), intent(inout) :: model
 
-        ! get velocities and fluxes from HO dynamic subroutines
-        ! ('run_ho_diagnostic' lives in 'glide_velo_higher.F90')
-        call run_ho_diagnostic(model)   
+        call run_ho_diagnostic(model)   ! get velocities and fluxes from HO dynamic subroutines
 
-        ! driver subroutine for 1st-order advection scheme (lives below)
         call fo_upwind_advect_main( model%geometry%thck,    model%geomderv%stagthck,    &
                                     model%climate%acab,     model%numerics%dt,          &
                                     model%velocity_hom%uflx,model%velocity_hom%vflx,    &
@@ -89,23 +80,22 @@ module fo_upwind_advect
 
     end subroutine fo_upwind_advect_driver
 
+
 !----------------------------------------------------------------------
 
     subroutine fo_upwind_advect_main( thck, stagthck, acab, dt, uflx, vflx, ewn, nsn, dew, dns )
 
     ! 1st-order upwinding mass advection that uses a finite-volume like scheme for 
     ! mass conservation. Velocities from the staggered grid (B-grid) are averaged onto the 
-    ! faces of the non-staggered grid (i.e. faces of the grid where scalers live).  
-    ! Thus, the averaged velocities live on a C-grid, allowing mass transport to be treated  
+    ! faces of the non-staggered grid (i.e. faces of the grid where scalers like thickness live).  
+    ! Thus, the averaged velocities exist on a C-grid, allowing mass transport to be treated  
     ! in a finite-volume manner; depth averaged velocities give the fluxes out of each cell 
-    ! centered on a thickness point and the value of the thickness to be advected is chosen 
-    ! according to upwinding.
+    ! centered on a thickness point and the thickness advected is chosen according to upwinding.
     ! 
-    ! Note that this works at a calving front because a non-zero staggered thickness there 
-    ! defines the velocities there (i.e. the finite-volume face on a C-grid would be flanked 
-    ! by two non-zero thickness points on the staggered thickness grid). Thus, a velocity on
-    ! the C-grid used to calculate fluxes out of the non-stag thickness cells is actually defined
-    ! right at the claving front.
+    ! Note that this works at the calving front because a non-zero staggered thickness there 
+    ! defines the velocities there. These velocites can be used to define the velocity at
+    ! the face of the last non-zero thickness cell (on the normal grid) which corresponds to
+    ! the location of the calving front. 
 
     implicit none
 
@@ -118,10 +108,8 @@ module fo_upwind_advect
     integer, intent(in)  :: ewn, nsn
 
     real (kind = dp) :: He, Hw, Hn, Hs, ue, uw, vn, vs  ! upwinding variables and interface velocities
-    real (kind = dp) :: cfl                             ! value of checking for CFL violation
-    integer :: ew, ns 
 
-    cfl = 0.5d0     ! if vel*dt > clf*grid_spacing a CFL violation will be triggered
+    integer :: ew, ns 
 
     where( stagthck > 0.0_dp )  ! calculate the depth-ave velocities
         ubar = uflx / stagthck
@@ -129,12 +117,12 @@ module fo_upwind_advect
     end where
 
     ! conservative CFL check
-    if( ( maxval( abs(ubar) )*dt > cfl*dew ) .or. ( maxval( abs(vbar) )*dt > cfl*dns ) )then
+    if( ( maxval( abs(ubar) )*dt > 0.5d0*dew ) .or. ( maxval( abs(vbar) )*dt > 0.5d0*dns ) )then
         print *,' '
         print *,'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! '
         print *,'! Advective CFL violation in 1st-order upwind mass advection scheme !'
         print *,'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! '
-        stop    ! Not a graceful exit - call glide_stop instead?
+        stop    ! probably the incorrect way to exit - use calls to glide_stop instead?
     end if
     
     where( thck > 0.0_dp )      ! mask for eventually removing flux outside of the original domain
@@ -194,23 +182,21 @@ module fo_upwind_advect
 
     thck = thck_old + ( 1 / (dns * dew) * flux_net ) * dt + (acab * dt)
 
-!    ! debugging
-!    print *, ' '
-!    print *, 'net volume change = ', sum( (thck-thck_old)*mask )*thk0 *dew*dns*len0**2 
-!    print *, 'net calving flux = ', sum( thck * (1.0d0-mask) )*thk0*dew*dns*len0**2
-!    print *, '(for the confined shelf experiment, the above two should sum to ~0)'
-!    print *, 'mean accum/ablat rate = ', sum( acab * mask ) / sum(mask) / (dt*tim0) * scyr
-!    print *, 'mean dH/dt = ', sum( (thck-thck_old)*mask )*thk0 / sum(mask) / (dt*tim0) * scyr
-!    print *, 'sum of flux change (should be ~0) = ', sum( flux_net*vel0*thk0*len0 ) 
-!    print *, ' '
-!!    pause
+    ! debugging
+    print *, ' '
+    print *, 'net volume change = ', sum( (thck-thck_old)*mask )*thk0 *dew*dns*len0**2 
+    print *, 'net calving flux = ', sum( thck * (1.0d0-mask) )*thk0*dew*dns*len0**2
+    print *, '(for the confined shelf experiment, the above two should sum to ~0)'
+    print *, 'mean accum/ablat rate = ', sum( acab * mask ) / sum(mask) / (dt*tim0) * scyr
+    print *, 'mean dH/dt = ', sum( (thck-thck_old)*mask )*thk0 / sum(mask) / (dt*tim0) * scyr
+    print *, 'sum of flux change (should be ~0) = ', sum( flux_net*vel0*thk0*len0 ) 
+    print *, ' '
+!    pause
 
     thck = thck * mask               ! remove any mass advected outside of initial domain
 
-    ! Gaurd against thickness going negative. Note that this is hack and should probably be
-    ! fixed to trigger another error, since this could make the scheme non-conservative.
-    where( thck < 0.0_dp )           
-        thck = 0.0_dp                
+    where( thck < 0.0_dp )           ! gaurd against thickness going negative
+        thck = 0.0_dp
     end where
 
     end subroutine fo_upwind_advect_main

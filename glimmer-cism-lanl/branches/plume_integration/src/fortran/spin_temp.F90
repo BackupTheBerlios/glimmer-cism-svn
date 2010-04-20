@@ -146,10 +146,7 @@ subroutine spin_temp_config(config,temp)
     call coordsystem_allocate(model%general%ice_grid, temp%presartm)
     call coordsystem_allocate(model%general%ice_grid, temp%arng)
     call coordsystem_allocate(model%general%ice_grid, temp%tinvp)
-    !Set inital temp field to 0 for antarctica
-    if (temp%model_type .eq. 0) then 
-      model%temper%temp = -10.0 
-    end if
+    
     if (len(trim(temp%ele_fname)) .ne. 0) then
       call glimmer_read_ts(temp%ele_ts,temp%ele_fname,1)
     end if
@@ -219,8 +216,6 @@ subroutine spin_temp_config(config,temp)
     real, intent(in) :: tperturb !*FD temperature forcing over time
     integer, intent(in) :: ewn, nsn !*FD # of grid points 
     real, dimension(ewn, nsn) :: glandhinv
-    
-    
     select case(model_type)
     
     case(0) !Antarctica Temperature Model, model_type = 0
@@ -249,7 +244,7 @@ subroutine spin_temp_config(config,temp)
       end where 
     
       !calculate the temperature half-range
-      arng = 30.78 - 0.006277 * usrf - 0.3262 * lati - artm + 2.0*tperturb 
+      arng = 30.38 - 0.006277 * glandhinv - 0.3262 * lati - artm + 2.0*tperturb 
     end select 
   
   
@@ -276,11 +271,11 @@ subroutine spin_temp_config(config,temp)
                                         !*FD at the site of the ice core
     real, intent(in) :: ele_correction
     !make adjustments for elevation changes at the core site here
-    
     if (ele_correction .ne. 0.0) then
       call calc_elevation_change(ele_correction, temp_ele,model_type)
       tperturb = tperturb + temp_ele
     end if
+
     select case(model_type)
     case(0) !Antarctica Temperature Model, model_type = 0
       !calculate the artm for Antarctica following Huybrechts method
@@ -294,7 +289,7 @@ subroutine spin_temp_config(config,temp)
     
       !calculate the temperature half range by subtracting the artm from the 
       !summer temperature
-      arng = 16.81 - 0.00692*usrf + 0.27937*lati - artm + tperturb 
+      arng = 16.81 - 0.00692*usrf + 0.27937*lati - artm + 2.0*tperturb 
     case(1) !Greenland Temp Model model_type 1 and 2
       !Huybrecht's temperature method for Greenland
       !create and calculate the inversion temperature elevation
@@ -309,8 +304,8 @@ subroutine spin_temp_config(config,temp)
       end where 
       
       !calculate the temperature half-range
-      arng = 30.78  - 0.006277 * usrf - 0.3262 * lati - artm + tperturb 
-      
+      arng = 30.78  - 0.006277 * usrf - 0.3262 * lati - artm + 2.0*tperturb 
+    
     case(2) !Fausto Temperature 
     
     
@@ -325,7 +320,7 @@ subroutine spin_temp_config(config,temp)
 
       !with land stations
       artm = 41.83 - (6.309*usrf/1000.0) - 0.7189*lati + 0.0672*(-loni) + tperturb
-      arng = 14.70 - (5.426*usrf/1000.0) - 0.1585*lati + 0.0518*(-loni) - artm +  tperturb
+      arng = 14.70 - (5.426*usrf/1000.0) - 0.1585*lati + 0.0518*(-loni) - artm + 2.0* tperturb
     end select
   end subroutine spin_surftemp
 

@@ -40,8 +40,8 @@ module ice3d_lib
     use glide_nonlin
 
     implicit none
-    real(dp), parameter :: SMALL=1.D-10, ZIP=1.D-30, BIG=1.D10
-    integer, parameter :: MAXITER = 2000              ! For the non-linear iteration
+    real(dp), parameter :: SMALL=1.D-10, ZIP=1.D-30, BIG=1.D30
+    integer, parameter :: MAXITER = 100              ! For the non-linear iteration
     real(dp), parameter :: toler_adjust_factor=1.0
 
     real(dp) :: plastic_bed_regularization = 1e-2
@@ -904,7 +904,6 @@ max_vel = maxval(sqrt(ustar**2 + vstar**2))
 #ifdef VERY_VERBOSE
             write(*,*)"Begin Matrix Assembly"
 #endif
-
             do i=1,MAXX
                 do j=1,MAXY
                     if (point_mask(i,j) /= 0) then
@@ -1428,7 +1427,7 @@ max_vel = maxval(sqrt(ustar**2 + vstar**2))
             dz_up2=(dz(k-2)-dz(k))/(dz(k)-dz(k-1))/(dz(k-1)-dz(k-2))
             dz_up3=(2.*dz(k)-dz(k-1)-dz(k-2))/(dz(k)-dz(k-1))/(dz(k)-dz(k-2))
 
-            if (beta(i,j) >= BIG) then !No sliding at the base
+            if (IS_NAN(beta(i,j))) then !No sliding at the base
                 coef(I_J_K)=1.
                 rhs=0.
             else !Compute sliding 
@@ -1931,7 +1930,7 @@ max_vel = maxval(sqrt(ustar**2 + vstar**2))
       !Adjust boundaries if using periodic boundary conditions.
       !REFACTORED CODE BELOW
       call periodic_boundaries_3d(txz,PERIODIC_X,PERIODIC_Y)
-      call periodic_boundaries_3d(tyz,PERIODIC_X,PERIODIC_Y)
+      call periodic_boundaries_3d(txy,PERIODIC_X,PERIODIC_Y)
       call periodic_boundaries_3d(txx,PERIODIC_X,PERIODIC_Y)
       call periodic_boundaries_3d(tyy,PERIODIC_X,PERIODIC_Y)
       call periodic_boundaries_3d(txy,PERIODIC_X,PERIODIC_Y)

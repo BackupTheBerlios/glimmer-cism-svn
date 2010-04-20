@@ -65,7 +65,6 @@ module glint_global_grid
 
      integer :: nx = 0  !*FD Number of points in the $x$-direction.
      integer :: ny = 0  !*FD Number of points in the $y$-direction.
-     integer :: nz = 0  !*FD Number of points in the $z$-direction.
 
      ! Locations of grid-points ---------------------------------
 
@@ -73,8 +72,6 @@ module glint_global_grid
      !*FD Latitudinal locations of data-points in global fields (degrees)
      real(rk),pointer,dimension(:) :: lons      => null() 
      !*FD Longitudinal locations of data-points in global fields (degrees)
-     real(rk),pointer,dimension(:) :: deps      => null() 
-     !*FD Depth locations of data-points in global fields (metres)
 
      ! Locations of grid-box boundaries -------------------------
 
@@ -82,8 +79,6 @@ module glint_global_grid
      !*FD Latitudinal boundaries of data-points in global fields (degrees)
      real(rk),pointer,dimension(:) :: lon_bound => null() 
      !*FD Longitudinal boundaries of data-points in global fields (degrees)
-     real(rk),pointer,dimension(:) :: dep_bound => null() 
-     !*FD Depth boundaries of data-points in global fields (metres)
 
      ! Areas of grid-boxes --------------------------------------
 
@@ -138,7 +133,7 @@ contains
 #undef RST_GLINT_GLOBAL_GRID
 #endif
 
-  subroutine new_global_grid(grid,lons,lats,deps,lonb,latb,depb,radius,correct)
+  subroutine new_global_grid(grid,lons,lats,lonb,latb,radius,correct)
 
     use glimmer_log
 
@@ -147,10 +142,8 @@ contains
     type(global_grid),             intent(inout) :: grid !*FD The grid to be initialised
     real(rk),dimension(:),         intent(in)    :: lons !*FD Longitudinal positions of grid-points (degrees)
     real(rk),dimension(:),         intent(in)    :: lats !*FD Latitudinal positions of grid-points (degrees)
-    real(rk),dimension(:),optional,intent(in)    :: deps !*FD Depth positions of grid-points (metres)
     real(rk),dimension(:),optional,intent(in)    :: lonb !*FD Longitudinal boundaries of grid-boxes (degrees)
     real(rk),dimension(:),optional,intent(in)    :: latb !*FD Latitudinal boundaries of grid-boxes (degrees)
-    real(rk),dimension(:),optional,intent(in)    :: depb !*FD Depth boundaries of grid-boxes (metres)
     real(rk),             optional,intent(in)    :: radius !*FD The radius of the Earth (m)
     logical,              optional,intent(in)    :: correct !*FD Set to correct for boundaries (default is .true.)
 
@@ -158,7 +151,7 @@ contains
 
     real(rk) :: radea=1.0
     integer :: i,j
-    logical :: cor,grid3d
+    logical :: cor
 
     ! Deal with optional non-correction
 
@@ -168,27 +161,17 @@ contains
        cor=.true.
     end if
 
-    ! handle 3d fields (with a depth component)
-
-    if (present(deps)) then
-       grid3d = .true.
-    else
-       grid3d = .false.
-    end if
-
     ! Check to see if things are allocated, and if so, deallocate them
 
     if (associated(grid%lats))      deallocate(grid%lats)
     if (associated(grid%lons))      deallocate(grid%lons)
-    if (associated(grid%deps))      deallocate(grid%deps)
     if (associated(grid%lat_bound)) deallocate(grid%lat_bound)
     if (associated(grid%lon_bound)) deallocate(grid%lon_bound)
-    if (associated(grid%dep_bound)) deallocate(grid%dep_bound)
     if (associated(grid%box_areas)) deallocate(grid%box_areas)
 
     ! Find size of grid
 
-    grid%nx=size(lons) ; grid%ny=size(lats) ; if (grid3d) grid%nz=size(deps)
+    grid%nx=size(lons) ; grid%ny=size(lats)
 
     ! Allocate arrays
 
@@ -197,10 +180,6 @@ contains
     allocate(grid%lon_bound(grid%nx+1))
     allocate(grid%lat_bound(grid%ny+1))
     allocate(grid%box_areas(grid%nx,grid%ny))
-    if (grid3d) then
-       allocate(grid%deps(grid%nz))
-       allocate(grid%dep_bound(grid%nz+1))
-    end if
 
     ! Check dimensions of boundary arrays, if supplied
 
@@ -216,17 +195,10 @@ contains
        endif
     endif
 
-    if (present(depb)) then
-       if (.not.size(depb)==grid%nz+1) then
-          call write_log('Depb mismatch in new_global_grid',GM_FATAL,__FILE__,__LINE__)
-       endif
-    endif
-
     ! Copy lats and lons over
 
     grid%lats=lats
     grid%lons=lons
-    if (grid3d) grid%deps=deps
 
     ! Calculate boundaries if necessary
 
@@ -242,15 +214,6 @@ contains
        call calc_bounds_lat(lats,grid%lat_bound)
     endif
 
-    if (grid3d) then
-       if (present(depb)) then
-          grid%dep_bound=depb
-       else
-          call write_log('Failed in new_global_grid: calc_bounds_dep NYI',GM_FATAL,__FILE__,__LINE__)
-          !       call calc_bounds_dep(deps,grid%dep_bound)
-       endif
-    endif
-    
     ! Set radius of earth if necessary
 
     if (present(radius)) radea=radius

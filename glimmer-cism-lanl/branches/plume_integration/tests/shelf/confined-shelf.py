@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/opt/epd-5.0.0-rh5-x86_64/bin/python
 
 import glimcdf
 import numpy
