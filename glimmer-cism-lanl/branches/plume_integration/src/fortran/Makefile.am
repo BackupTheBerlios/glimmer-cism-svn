@@ -138,7 +138,7 @@ ALL_SRC=$(test_integrage_SOURCES) $(test_lithot_SOURCES) $(test_ts_SOURCES) $(te
         $(test_config_SOURCES) $(nc2config_SOURCES) $(glex_ebm_SOURCES) $(glint_example_SOURCES) \
 	$(eis_glide_SOURCES) $(simple_glide_SOURCES) $(eismint3_glide_SOURCES) $(libglimmer_a_SOURCES) \
 	$(libglide_a_SOURCES) $(libglint_a_SOURCES) $(libclimate_a_SOURCES) $(spin_glide_SOURCES) \
-        $(glimmer_unittest_SOURCES) $(glide_thermal_equib_SOURCES) $(libplume_a_SOURCES) $(shelf_driver_SOURCES)
+        $(glimmer_unittest_SOURCES) $(libplume_a_SOURCES) $(shelf_driver_SOURCES)
 
 AM_FCFLAGS = $(NETCDF_CPPFLAGS) $(HDF5_CPPFLAGS)
 

@@ -55,7 +55,7 @@ program shelf_driver
   ! initialise GLIDE
   call glide_config(model,config)
 
-  if (model%options%which_bmlt == USE_PLUME) then
+  if (model%options%use_plume == USE_PLUME) then
      ! read [plume] section of glimmer config file
      call plume_read_print_config(model,config,&
           plume_nl,&
@@ -92,7 +92,7 @@ program shelf_driver
 
   time = model%numerics%tstart
 
-  if (model%options%which_bmlt .eq. USE_PLUME) then
+  if (model%options%use_plume .eq. USE_PLUME) then
      ! we are using the plume
 
      call plume_logging_initialize(trim(plume_ascii_output_dir), &
@@ -143,7 +143,7 @@ program shelf_driver
 
      time = time + model%numerics%tinc
 
-     if (model%options%which_bmlt .eq. USE_PLUME) then	
+     if (model%options%use_plume .eq. USE_PLUME) then	
 
         ! We would normally expect the plume to reach a steady state
         ! with respect to the current ice after only a few days.
@@ -173,7 +173,7 @@ program shelf_driver
   ! finalise GLIDE
   call glide_finalise(model)
 
-  if (model%options%which_bmlt .eq. USE_PLUME) then 
+  if (model%options%use_plume .eq. USE_PLUME) then 
      call plume_finalise()	
      call plume_io_finalize()
      call plume_logging_finalize()

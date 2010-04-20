@@ -410,7 +410,7 @@ contains
     call GetValue(section,'periodic_ew',model%options%periodic_ew)
     call GetValue(section,'periodic_ns',model%options%periodic_ns)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
-    call GetValue(section, 'which_bmlt',model%options%which_bmlt)
+    call GetValue(section, 'use_plume',model%options%use_plume)
   end subroutine handle_options
   
   !Higher order options
@@ -581,7 +581,7 @@ contains
     if (model%options%hotstart.eq.1) then
        call write_log('Hotstarting model')
     end if
-    if (model%options%which_bmlt.eq.1) then
+    if (model%options%use_plume.eq.1) then
        call write_log('Using plume model to calculate bmlt below floating ice')
     else
        call write_log('Using glimmer to calculate bmlt everywhere')

@@ -15,14 +15,14 @@
 /* defined if you have fortran 2003 intrinsics for parsing command line */
 #undef HAVE_2003ARGS
 
-/* defined if you have fortran 2003 intrinsics for C data type binding */
-#undef HAVE_ISO_C_BINDING
-
 /* Define to 1 if you have the `' library (-l). */
 #undef HAVE_LIB
 
 /* Define to 1 if you have the `amd' library (-lamd). */
 #undef HAVE_LIBAMD
+
+/* Define to 1 if you have the `netcdf' library (-lnetcdf). */
+#undef HAVE_LIBNETCDF
 
 /* Define to 1 if you have the `pardiso' library (-lpardiso). */
 #undef HAVE_LIBPARDISO
