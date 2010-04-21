@@ -49,10 +49,11 @@ x = dx*numpy.arange(nx,dtype='float32')
 y = dx*numpy.arange(ny,dtype='float32')
 
 netCDFfile.createVariable('time','f',('time',))[:] = [0]
-netCDFfile.createVariable('x1','f',('x1',))[:] = x
-netCDFfile.createVariable('y1','f',('y1',))[:] = y
-netCDFfile.createVariable('x0','f',('x0',))[:] = dx/2 + x[:-1] # staggered grid
-netCDFfile.createVariable('y0','f',('y0',))[:] = dy/2 + y[:-1]
+netCDFfile.createVariable('x1','f',('x1',))[:] = x.tolist()
+netCDFfile.createVariable('y1','f',('y1',))[:] = y.tolist()
+
+netCDFfile.createVariable('x0','f',('x0',))[:] = (dx/2 + x[:-1]).tolist()
+netCDFfile.createVariable('y0','f',('y0',))[:] = (dy/2 + y[:-1]).tolist()
 
 # Check to make sure that the flow law parameter in the config file is correct.
 default_flwa = float(parser.get('parameters','default_flwa'))
@@ -78,12 +79,12 @@ if not periodic_ew:
   kbc[:,nx-3:] = 1
 
 # Create the required variables in the netCDF file.
-netCDFfile.createVariable('thk',      'f',('time','y1','x1'))[:] = thk
-netCDFfile.createVariable('kinbcmask','i',('time','y1','x1'))[:] = kbc
+netCDFfile.createVariable('thk',      'f',('time','y1','x1'))[:] = thk.tolist()
+netCDFfile.createVariable('kinbcmask','i',('time','y1','x1'))[:] = kbc.tolist()
 netCDFfile.createVariable('topg',     'f',('time','y1','x1'))[:] = ny*[nx*[-2000]]
-netCDFfile.createVariable('beta',     'f',('time','y0','x0'))[:] = beta
-netCDFfile.createVariable('uvelhom',  'f',('time','level','y0','x0'))[:] = zero
-netCDFfile.createVariable('vvelhom',  'f',('time','level','y0','x0'))[:] = zero
+netCDFfile.createVariable('beta',     'f',('time','y0','x0'))[:] = beta.tolist()
+netCDFfile.createVariable('uvelhom',  'f',('time','level','y0','x0'))[:] = zero.tolist()
+netCDFfile.createVariable('vvelhom',  'f',('time','level','y0','x0'))[:] = zero.tolist()
 
 netCDFfile.close()
 

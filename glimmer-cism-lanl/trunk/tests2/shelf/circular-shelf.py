@@ -57,10 +57,12 @@ x = dx*numpy.arange(nx,dtype='float32')
 y = dx*numpy.arange(ny,dtype='float32')
 
 netCDFfile.createVariable('time','f',('time',))[:] = [0]
-netCDFfile.createVariable('x1','f',('x1',))[:] = x
-netCDFfile.createVariable('y1','f',('y1',))[:] = y
-netCDFfile.createVariable('x0','f',('x0',))[:] = dx/2 + x[:-1] # staggered grid
-netCDFfile.createVariable('y0','f',('y0',))[:] = dy/2 + y[:-1]
+netCDFfile.createVariable('x1','f',('x1',))[:] = x.tolist()
+netCDFfile.createVariable('y1','f',('y1',))[:] = y.tolist()
+dxs =  dx/2 + x[:-1] # staggered grid
+dys =  dy/2 + y[:-1] # staggered grid
+netCDFfile.createVariable('x0','f',('x0',))[:] = dxs.tolist()
+netCDFfile.createVariable('y0','f',('y0',))[:] = dys.tolist()
 
 # Calculate values for the required variables.
 thk  = numpy.zeros([ny,nx],dtype='float32')
@@ -91,9 +93,9 @@ if not options.smooth_beta:  # command line option is NOT present
   beta[ny/2-1:ny/2+2,nx/2-1:nx/2+2] = 1.0e10 # but large in the center
 
 # Create the required variables in the netCDF file.
-netCDFfile.createVariable('thk', 'f',('time','y1','x1'))[:] = thk
-netCDFfile.createVariable('topg','f',('time','y1','x1'))[:] = topg
-netCDFfile.createVariable('beta','f',('time','y0','x0'))[:] = beta
+netCDFfile.createVariable('thk', 'f',('time','y1','x1'))[:] = thk.tolist()
+netCDFfile.createVariable('topg','f',('time','y1','x1'))[:] = topg.tolist()
+netCDFfile.createVariable('beta','f',('time','y0','x0'))[:] = beta.tolist()
 
 if options.dirichlet_center:  # command line option
   uvelbc = netCDFfile.createVariable('uvelbc','f',('time','level','y0','x0'))
@@ -104,8 +106,8 @@ if options.dirichlet_center:  # command line option
 # boundary condition is 0 in the center
   bc[ny/2-1:ny/2+2,nx/2-1:nx/2+2] = 0
   for k in range(nz): # loop over levels
-    uvelbc[0,k,:,:] = bc
-    vvelbc[0,k,:,:] = bc
+    uvelbc[0,k,:,:] = bc.tolist()
+    vvelbc[0,k,:,:] = bc.tolist()
 
 netCDFfile.close()
 
