@@ -155,12 +155,14 @@ to the "scratch" subdirectory when you run runISMIPHOM.py
 TO DO / KNOWN ISSUES
 
 For ISMIP-HOM tests A and C, at the 20, 10, and 5  km wavelengths, convergence
-may be slow (for test C in particular).
+may be very slow (e.g., for test C at 5 km, order 10^3 iterations are needed for
+a converged solution).
 
 In general, the code will converge faster for fewer horizontal grid
 points but the results may be less accurate (i.e. the match with the ISMIP-HOM 
 mean may be poor). The provided configuration files have reasonable default 
-values for the grid spacing, but in some cases these may need to be adjusted.
+values for the grid spacing in order to "pass" the ISMIP-HOM tests at *most* of
+the wavelengths. In some cases these may need to be adjusted.
 
 For the Payne/Price core (diagnostic_scheme = 3), the "which_sparse" option must
 be set to either 0 or 1 (either BiCG or GMRES for the linear solver,
