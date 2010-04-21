@@ -1,7 +1,7 @@
 SUBDIRS = SLAP_library
 RESTART_STEM=glimmer_rst
-RESTART_INC_INS=$(RESTART_STEM)_body.inc.in $(RESTART_STEM)_head.inc.in
-RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
+#RESTART_INC_INS=$(RESTART_STEM)_body.inc.in $(RESTART_STEM)_head.inc.in
+#RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
 RESTART_COMMON=glimmer_restart_common.F90 glimmer_restart_pointarr.F90 \
                glimmer_restart_statarr.F90 glimmer_restart_statscal.F90
 
