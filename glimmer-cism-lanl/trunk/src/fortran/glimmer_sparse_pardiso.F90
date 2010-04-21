@@ -59,8 +59,8 @@ contains
         ! TODO: bring these in from configuration
         opt%mtype = 11
         opt%solver = 0
-        opt%tolerance = 1.d-6
-        opt%iterative = .TRUE.  ! true for iterative/hybrid method
+        opt%tolerance = 1.d-9
+        opt%iterative = .FALSE.  ! true for iterative/hybrid method
 #ifdef _OPENMP
 	opt%processors = OMP_GET_MAX_THREADS()
 #else
@@ -91,14 +91,15 @@ contains
             options%iparm(2) = 2   ! Use Metis reordering (2)
             options%iparm(3) = options%processors   ! Number of processors
             ! LU CGS iteration (1) to 10^-6 (61)
-            options%iparm(4) = int(-log10(options%tolerance) * 10 + 1)
+            options%iparm(4) = 0
+            !options%iparm(4) = int(-log10(options%tolerance) * 10 + 1)
             options%iparm(5) = 0   ! 0 Do not use permution 
             options%iparm(6) = 0   ! Write solution to seperate vector, not RHS
             options%iparm(8) = 0   ! Max iterative refinement steps
             options%iparm(10) = 13 ! eps pivot, 13 for non-symmetric, 8 symmetric
             options%iparm(11) = 1  ! Use non-symmetric scaling vector (1)
             options%iparm(12) = 0  ! Do not transpose matrix (0)
-            options%iparm(13) = 1  ! Non-symmetric matrices
+            options%iparm(13) = 2  ! Greater accuracy for indefinate matrix (2)
             options%iparm(18) = -1 ! Determine the number of non-zeros in LU (-1)
             options%iparm(19) = -1 ! Determine the Mflops for LU fact. (-1)
             options%iparm(21) = 1  ! Pivoting  1x1 and 2x2 Bunch-Kaufman
