@@ -41,7 +41,7 @@ module ice3d_lib
 
     implicit none
     real(dp), parameter :: SMALL=1.D-10, ZIP=1.D-30, BIG=1.D10
-    integer, parameter :: MAXITER = 2000              ! For the non-linear iteration
+    integer, parameter :: MAXITER = 2500              ! For the non-linear iteration
     real(dp), parameter :: toler_adjust_factor=1.0
 
     real(dp) :: plastic_bed_regularization = 1e-2
@@ -405,9 +405,9 @@ contains
         call sparse_solver_default_options(options%which_ho_sparse, matrix_options_u)
         call sparse_solver_default_options(options%which_ho_sparse, matrix_options_v)
         matrix_options_u%base%tolerance=TOLER
-        matrix_options_u%base%maxiters  = 150
+        matrix_options_u%base%maxiters  = 2500
         matrix_options_v%base%tolerance=TOLER
-        matrix_options_v%base%maxiters  = 150
+        matrix_options_v%base%maxiters  = 2500
 
         !Create the sparse matrix
         call new_sparse_matrix(ijktot, ijktot*STENCIL_SIZE, matrix_u)
