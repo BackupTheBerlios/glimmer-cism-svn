@@ -2,6 +2,7 @@ SUBDIRS = SLAP_library
 RESTART_STEM=glimmer_rst
 #RESTART_INC_INS=$(RESTART_STEM)_body.inc.in $(RESTART_STEM)_head.inc.in
 #RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
+RESTART_INCS=$(RESTART_STEM)_body.inc $(RESTART_STEM)_head.inc
 RESTART_COMMON=glimmer_restart_common.F90 glimmer_restart_pointarr.F90 \
                glimmer_restart_statarr.F90 glimmer_restart_statscal.F90
 
@@ -49,7 +50,8 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_restart_statscal.F90 glimmer_restart_statarr.F90 \
                        glimmer_restart_pointarr.F90 glimmer_anomcouple.F90 \
                        $(RESTART_INCS) glimmer_restart.F90 glimmer_filenames.F90 \
-                       glimmer_writestats.F90 writestats.c writestats.h
+                       glimmer_writestats.F90 writestats.c writestats.h \
+                       cfortran.h
 nodist_libglimmer_a_SOURCES = glimmer_vers.F90
 
 libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \
@@ -64,7 +66,8 @@ libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \
                      glide_thckmask.F90 glide_nonlin.F90 glide_grids.F90\
                      glam.F90 glam_strs2.F90 glam_thck_ppm.F90\
                      remap_advection.F90 remap_glamutils.F90 glide_ground.F90 \
-                     fo_upwind_advect.F90 glide_stress.F90
+                     fo_upwind_advect.F90 glide_stress.F90 \
+                     glide_mask.inc glide_nan.inc
 # *sfp* Added the last three lines above for addition of (1) Payne/Price HO dynamics,  
 # (2) LANL inc. remapping and a 1st-order upwind scheme for dH/dt calculation, and
 # (3) module for calc stresses from HO vels and visc and populating the stress tensor
