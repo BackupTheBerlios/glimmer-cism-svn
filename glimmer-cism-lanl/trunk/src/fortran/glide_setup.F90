@@ -507,12 +507,12 @@ contains
     character(len=*), dimension(0:5), parameter :: ho_whichbabc = (/ &
          'constant betasquared    ', &
          'simple pattern          ', &
-         'as till yield stress'    , &
+         'as till yield stress    ', &
          'circular ice shelf      ', &
          'frozen bed              ', &
          'B^2 passed from CISM    ' /)
     character(len=*), dimension(0:1), parameter :: ho_whichefvs = (/ &
-         'from eff strain rate    ', &
+         'from eff strain rate     ', &
          'constant value           ' /)
     character(len=*), dimension(0:2), parameter :: ho_whichresid = (/ &
          'max value               ', &
