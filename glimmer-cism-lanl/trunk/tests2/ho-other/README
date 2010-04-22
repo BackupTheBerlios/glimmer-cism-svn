@@ -13,6 +13,8 @@ command line argument.  For example:
 
 python hump.py your.config
 
+For example, to run with the PB&J core, first "cp hump.PBJ.config hump.config".
+
 The script performs the following three steps:
 1. Create a netCDF input file for Glimmer.
 2. Run Glimmer, creating a netCDF output file.
