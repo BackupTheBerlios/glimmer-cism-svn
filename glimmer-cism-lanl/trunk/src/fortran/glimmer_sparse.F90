@@ -36,7 +36,7 @@ contains
 
         opt%base%method = method
         opt%base%tolerance  = 1e-11
-        opt%base%maxiters = 100
+        opt%base%maxiters = 200
 
         !Solver specific options
         if (method == SPARSE_SOLVER_BICG) then

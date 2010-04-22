@@ -219,7 +219,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
-  integer, parameter :: cmax = 3000                  ! max no. of iterations
+  integer, parameter :: cmax = 3000                 ! max no. of iterations
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -245,12 +245,17 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   uindx = indxvelostr(ewn, nsn, upn, umask,pcgsize(1))
 
 
-!!*sfp* hack of mask for Ross exp.
-!    do ns=1,nsn-1; do ew=1,ewn-1
-!        if( umask(ew,ns) == 21 .or. umask(ew,ns) == 5 )then
-!            umask(ew,ns) = 73
-!        endif
-!    end do; end do
+!! A hack of the boundary condition mask needed for the Ross Ice Shelf exp.
+!! The quick check of whether or not this is the Ross experiment is to look
+!! at the domain size.
+ if( ewn == 151 .and. nsn == 115 )then
+    do ns=1,nsn-1; do ew=1,ewn-1
+        if( umask(ew,ns) == 21 .or. umask(ew,ns) == 5 )then
+            umask(ew,ns) = 73
+        endif
+    end do; end do
+ end if
+
 
   ! allocate space for storing temporary across-flow comp of velocity
   allocate(tvel(upn,ewn-1,nsn-1)) 
@@ -960,6 +965,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                sum( flwa(:,ew+1,ns)/flwa(:,ew+1,ns), 1, flwa(1,ew+1,ns)*vis0 < 1.0d-10 )/real(upn) + &
                sum( flwa(:,ew+1,ns+1)/flwa(:,ew+1,ns+1), 1, flwa(1,ew+1,ns+1)*vis0_glam < 1.0d-10 )/real(upn) )
 
+
     if( ns == 1 .and. ew == 1 ) then
            loc_array = getlocationarray(ewn, nsn, upn, mask )
     end if
@@ -1101,7 +1107,7 @@ subroutine bodyset(ew,  ns,  up,           &
                    thisdusrfdx,            &
                    dusrfdew, dusrfdns,     &
                    dlsrfdew, dlsrfdns,     &
-                   local_efvs_in,          &
+                   local_efvs,             &
                    local_othervel,         &
                    betasquared,            &
                    local_thisvel,          &
@@ -1120,13 +1126,12 @@ subroutine bodyset(ew,  ns,  up,           &
   integer, dimension(ewn-1,nsn-1), intent(in) :: loc_array
   integer, dimension(6), intent(in) :: loc
 
-
   real (kind = dp), dimension(:,:), intent(in) :: stagthck
   real (kind = dp), dimension(:,:), intent(in) :: dusrfdew, dusrfdns
   real (kind = dp), dimension(:,:), intent(in) :: dlsrfdew, dlsrfdns
   real (kind = dp), dimension(:,:), intent(in) :: thisdusrfdx
 
-  real (kind = dp), dimension(2,2,2), intent(in) :: local_efvs_in
+  real (kind = dp), dimension(2,2,2), intent(in) :: local_efvs
 
   ! "local_othervel" is the other vel component (i.e. u when v is being calc and vice versa),
   ! which is taken as a known value (terms involving it are moved to the RHS and treated as sources)
@@ -1139,8 +1144,6 @@ subroutine bodyset(ew,  ns,  up,           &
 
   ! storage space for coefficients that go w/ the discretization at the local point up, ew, ns
   real (kind = dp), dimension(3,3,3) :: g
-
-  real (kind = dp), dimension(2,2,2) :: local_efvs
 
   ! source term for the rhs when using ice shelf lateral boundary condition,
   ! e.g. source = rho*g*H/(2*Neff) * ( 1 - rho_i / rho_w ) for ice shelf
@@ -1162,21 +1165,13 @@ subroutine bodyset(ew,  ns,  up,           &
 
   locplusup = loc(1) + up
 
-  ! Temporary hack that adjusts efvs near boundaries. Gives better results w.r.t. 
-  ! ISMIP-HOM tests at short wavelengths
-  local_efvs(1:2,:,:) = local_efvs_in(1:2,:,:)
-  if( up == 1 )then
-        local_efvs(1,:,:) = local_efvs(2,:,:);
-  end if
-
-
   if( lateralboundry )then
 
   ! *********************************************************************************************
   ! lateral boundary conditions 
   
   ! if at sfc or bed, source due to seawater pressure is 0 and bc normal vector
-  ! should contain components (ds/dx, ds/dy) or (db/dx, db,dy)
+  ! should contain sfc/bed slope components, e.g. (-ds/dx, -ds/dy, 1) or (db/dx, db/dy, -1)
      source = 0.0_dp
 
      call getlatboundinfo( ew,  ns,  up,                            &
@@ -1243,6 +1238,13 @@ subroutine bodyset(ew,  ns,  up,           &
     ! ... only one of these options should be active at a time (comment the other lines out)
     ! The default setting is (2), the more general case that should also work in the 1d case.
 
+    ! In some cases, the two options can be used together to improve performance, e.g. for the Ross
+    ! ice shelf experiment, a number of early iterations use the more simple bc (option 1) and then
+    ! when the solution has converged a bit, we switch to the more realistic implementation (option 2).
+    ! That is achieved in the following if construct ...
+
+  if( cc < 10 )then
+
     ! --------------------------------------------------------------------------------------
     ! (1) source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
     ! --------------------------------------------------------------------------------------
@@ -1253,19 +1255,20 @@ subroutine bodyset(ew,  ns,  up,           &
     ! ... as of summer 2009, this hack has been removed (no more factor of 2) and replaced by a new stagthck
     ! averaging scheme at the margins, which uses only the non-zero values of thickness on the normal grid to
     ! calc. the value of the stag. thickness
-!    source = abar*vis0_glam * ( 1.0_dp/4.0_dp * rhoi * grav * stagthck(ew,ns)*thk0 * ( 1.0_dp - rhoi/rhoo))**3.0_dp
+    source = abar*vis0_glam * ( 1.0_dp/4.0_dp * rhoi * grav * stagthck(ew,ns)*thk0 * ( 1.0_dp - rhoi/rhoo))**3.0_dp
 
     ! multiply by 4 so that case where v=0, du/dy = 0, LHS gives: du/dx = du/dx|_shelf 
     ! (i.e. LHS = 4*du/dx, requires 4*du/dx_shelf)
-!    source = source * 4.0_dp
+    source = source * 4.0_dp
 
     ! split source based on the boundary normal orientation and non-dimensinoalize
     ! Note that it is not really appropriate to apply option (1) to 1d flow, since terms other than du/dx in 
     ! eff. strain rate are ignored. For 2d flow, should use option (2) below. 
-!     source = source * normal(pt)
-!     source = source * tim0 ! make source term non-dim
+     source = source * normal(pt)
+     source = source * tim0 ! make source term non-dim
     ! --------------------------------------------------------------------------------------
 
+  else
 
     ! --------------------------------------------------------------------------------------
     ! (2) source term (strain rate at shelf/ocean boundary) from MacAyeal depth-ave solution. 
@@ -1280,8 +1283,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                  ! NOTE that source term is already non-dim here 
     ! --------------------------------------------------------------------------------------
 
-    ! regardless of using method (1) or (2), the source term must be made non-dim at the end of this section
-    ! (i.e. line below stays ACTIVE for either case)
+  end if
 
                         
     g = normhorizmainbc_lat(dew,           dns,        &
@@ -1345,7 +1347,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                       ! where betasquared is MacAyeal-type traction parameter
 
         locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
-        slopex = dusrfdew(ew,ns); slopey = dusrfdns(ew,ns); nz = -1.0_dp
+        slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns); nz = -1.0_dp
      end if
 
      g = normhorizmainbc(dew,           dns,     &
@@ -1684,7 +1686,7 @@ function vertimainbc(thck, bcflag, dup, efvs, betasquared, nz)
     ! for higher-order FREE SURFACE B.C. for x ('which'=1) or y ('which'=2) direction ...
     if( bcflag(1) == 1 )then
 
-           c = (1.0_dp*nz) / thck / (2*dup) * (len0**2 / thk0**2)   ! value of coefficient
+           c = nz / thck / (2*dup) * (len0**2 / thk0**2)   ! value of coefficient
 
            vertimainbc(:) = 0.0_dp
            vertimainbc(3) = -c 
