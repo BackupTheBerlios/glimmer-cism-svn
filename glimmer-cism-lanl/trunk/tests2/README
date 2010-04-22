@@ -12,12 +12,22 @@ subdirectories to use whichever of the three python netCDF file packages,
 Scientific.IO.NetCDF, netCDF4, or pycdf, that the user has installed.  There 
 are links to this module in each of the subdirectories.
 
+Of the three python netCDF file packages, pycdf is NOT recommended.  There have
+been problems with some versions of this module on some computers.  If you run 
+netCDF.py by entering the following on a command line
+
+python netCDF.py
+
+a line should be output telling you which netCDF package will be used when  
+running the Glimmer/CISM scripts on your computer.
+
 viewNetCDF.py
 =============
 viewNetCDF.py is a script for viewing the netCDF files that are read and/or
 written by Glimmer/CISM.  There are other tools available for doing this, such
-as ncview; You may (or may not) prefer viewNetCDF.py.  To run viewNetCDF.py
-enter the following on a command line:
+as ncview; You may (or may not) prefer viewNetCDF.py; it works better on some
+systems than others.  To run viewNetCDF.py enter the following on a command 
+line:
 
 python viewNetCDF.py filename.nc
 

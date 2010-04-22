@@ -9,14 +9,15 @@ Confined Shelf Experiment
 To run the confined shelf experiment, enter the following on a terminal 
 command line:
 
-python confined-shelf.py
+python confined-shelf.py filename.config
 
-This will run the script using the configuration file "confined-shelf.config" 
-which is also found in this directory.  If you want to run the experiment using
-a different configuration file you can include the filename as an optional
-command line argument.  For example:
-
-python confined-shelf.py your.config
+This will run the script using the configuration file that you specify.
+There are two configuration files, "confined-shelf.PBJ.config" and
+"confined-shelf.PP.config" in this directory.  The first ("PBJ") uses the
+Pattyn/Bocek/Johnson implementation of the higher-order approximation while the
+second ("PP") uses the Payne/Price implementation.  If you want to run the 
+experiment using a different configuration file you can include that filename 
+as the command line argument.
 
 The script performs the following three steps:
 1. Create a netCDF input file for Glimmer.
@@ -25,9 +26,9 @@ The script performs the following three steps:
 
 The netCDF files are written in the "output" subdirectory. This is controlled
 by a parameter in the configuration file so if you use your own configuration
-file the output may be written elsewhere.  Unless someone changed 
-confined-shelf.config since I wrote this, confined-shelf.config includes the 
-lines:
+file the output may be written elsewhere.  Unless someone changed them since I 
+wrote this, "confined-shelf.PBJ.config" and "confined-shelf.PP.config" each 
+include the lines:
 
 [CF input]
 name = output/confined-shelf.nc
@@ -59,14 +60,15 @@ Circular Shelf Experiment
 To run the circular shelf experiment, enter the following on a terminal 
 command line:
 
-python circular-shelf.py
+python circular-shelf.py filename.config
 
-This will run the script using the configuration file "circular-shelf.config" 
-which is also found in this directory.  If you want to run the experiment using
-a different configuration file you can include the filename as an optional
-command line argument.  For example:
-
-python circular-shelf.py your.config
+This will run the script using the configuration file that you specify.
+There are two configuration files, "circular-shelf.PBJ.config" and
+"circular-shelf.PP.config" in this directory.  The first ("PBJ") uses the
+Pattyn/Bocek/Johnson implementation of the higher-order approximation while the
+second ("PP") uses the Payne/Price implementation.  If you want to run the 
+experiment using a different configuration file you can include that filename 
+as the command line argument.
 
 In addition to specifying a configuration file, you can also specify one or 
 more of the following options on the command line:
@@ -87,7 +89,7 @@ a flat top).
 
 To summarize, the syntax for running the circular shelf experiment is:
 
-python circular-shelf.py [FILE.CONFIG] [-b|--smooth-beta] [-d|--dirichlet-center] [-s|--sloped]
+python circular-shelf.py filename.config [-b|--smooth-beta] [-d|--dirichlet-center] [-s|--sloped]
 
 The script performs the following three steps:
 1. Create a netCDF input file for Glimmer.
@@ -96,9 +98,9 @@ The script performs the following three steps:
 
 The netCDF files are written in the "output" subdirectory. This is controlled
 by a parameter in the configuration file so if you use your own configuration
-file the output may be written elsewhere.  Unless someone changed 
-circular-shelf.config since I wrote this, circular-shelf.config includes the 
-lines:
+file the output may be written elsewhere.  Unless someone changed them since I 
+wrote this, "circular-shelf.PBJ.config" and "circular-shelf.PP.config" each 
+include the lines:
 
 [CF input]
 name = output/circular-shelf.nc

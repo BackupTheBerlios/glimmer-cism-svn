@@ -105,7 +105,16 @@ def clf():
 ######## A function to plot in a new window ########
 def new():
   pyplot.figure()
+  pyplot.gcf().canvas.mpl_connect('button_press_event',getValue)
   animationloop()
+
+######## A function to get a value from a plot ########
+def getValue(event):
+  x, y = map(int,map(round,[event.xdata, event.ydata]))
+  if len(numpy.shape(data)) == 1:
+    print 'The value of',v,'at',x,'is',data[x]
+  else:
+    print 'The value of',v,'at ('+str(x)+','+str(y)+') is',data[y,x]
 
 ######## A function to loop for animation ########
 ANIMATION_IS_DISABLED = True
@@ -117,7 +126,6 @@ def animationloop():
 # Otherwise loop over time or level
 # This never worked; I think matplotlib's use of Tkinter caused problems
   import time
-  call_plot  = True
   use_thread = False
   v = variables[int(variablelist.curselection()[0])]
   time_or_level = animation.get()-1
@@ -148,7 +156,7 @@ def actualloop(start,finish,entryWidget,delay):
   for i in xrange(start,finish):
     entryWidget.delete(0,END)
     entryWidget.insert(0,str(i))
-    if call_plot: plot()
+    plot()
     if stopflag: break
     time.sleep(delay)
   plotbutton.config(text='Plot',fg='black',command=animationloop)
@@ -160,7 +168,7 @@ def stopanimation():
 ######## The function that does the plotting ########
 plotCounter = 0
 def plot():
-  global plotCounter
+  global plotCounter, v, data
   v = variables[int(variablelist.curselection()[0])]
   dimensions = len(numpy.array(netCDFfile.variables[v].dimensions))
   if clearfigure.get():
@@ -209,6 +217,7 @@ def plot():
       ticks = vmin + numpy.arange(n+1) * (vmax-vmin)/n
       if logarithm.get() == 1:
         ticks = map(exp,log(vmin) + numpy.arange(n+1) * (log(vmax)-log(vmin))/n)
+    pyplot.subplot(*subplot)
     pyplot.imshow(data,origin=origin.get(),interpolation='nearest',vmin=vmin,vmax=vmax,cmap=colormap,norm=norm)
     if colorbar.get():
       cb = pyplot.colorbar(ticks=ticks)
@@ -230,6 +239,8 @@ def plot():
     pyplot.suptitle('Some systems may require you to close this first window to continue...')
   elif plotCounter == 2:
     pyplot.suptitle('This second window may not close properly...')
+  if plotCounter == 1:
+    pyplot.gcf().canvas.mpl_connect('button_press_event',getValue)
   pyplot.show()
 
 ######## A function for directional (1D) plotting ########
@@ -321,6 +332,22 @@ def threadedSetSuptitle():
   global suptitle
   suptitle = raw_input('Enter the title: ')
 
+######## A function to set subplot parameters ########
+subplot = (1,1,1)
+def setSubplot():
+  thread.start_new_thread(threadedSetSubplot,tuple())
+
+def threadedSetSubplot():
+  global subplot
+  subplot = raw_input('Enter nrows, ncolumns, row, column: ').strip()
+  if subplot.find(',') > 0: 
+    subplot = subplot.split(',')
+  elif subplot.find(' ') > 0: 
+    subplot = subplot.split(' ')
+  subplot = map(int,subplot)
+  if len(subplot) > 3:
+    subplot = subplot[:2] + [(subplot[2]-1)*subplot[1]+subplot[3]]
+
 ######## Create the GUI window ########
 root = Tk()
 root.title(argv[1])
@@ -411,6 +438,8 @@ menu.add_command(label='clear figure',command=clf)
 menu.add_command(label='directional plots',command=directionalplot)
 menu.add_command(label='print attributes',command=printattributes)
 menu.add_command(label='set title',command=setSuptitle)
+menu.add_command(label='set subplot',command=setSubplot)
+#menu.add_command(label='get value',command=getValue)
 origin = StringVar()
 menu.add_checkbutton(label='invert image',var=origin,onvalue='upper',offvalue='lower')
 
@@ -434,7 +463,7 @@ def toggleMenubar(*args):
     menu.add_command(label='close this menu')
     root.bind('<Button-3>',popup)
   else:
-    menu.delete(7) # Remove the 'close this menu' option
+    menu.delete(8) # Remove the 'close this menu' option
     root.config(menu=menu) # Put the menu in a menubar
     root.unbind('<Button-3>') # Disable the popup
 def popup(event):
