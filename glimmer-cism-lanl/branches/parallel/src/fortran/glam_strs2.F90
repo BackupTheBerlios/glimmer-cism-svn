@@ -509,6 +509,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !    print *, 'L2 norm (k)= ', counter, sqrt(DOT_PRODUCT(F_vec,F_vec))
 
+!      if (counter .eq. 20) then
+!         call output_res( ewn, nsn, upn, uindx, counter, &
+!                          size(v_k_1), v_k_1, 1 )
+!      endif
+
 !==============================================================================
 ! RN_20100129: Including non-matrix-conversion scheme
 !==============================================================================
