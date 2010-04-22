@@ -4,16 +4,15 @@ This directory contains a Python script for running an experiment involving
 an ice sheet with an elipsoidal "hump" shape on a flat base.  To run the
 experiment, enter the following on a terminal command line:
 
-python hump.py
+python hump.py filename.config
 
-This will run the script using the configuration file "hump.config" which is
-also found in this directory.  If you want to run the experiment using a 
-different configuration file you can include the filename as an optional
-command line argument.  For example:
-
-python hump.py your.config
-
-For example, to run with the PB&J core, first "cp hump.PBJ.config hump.config".
+This will run the script using the configuration file that you specify.
+There are two configuration files, "hump.PBJ.config" and "hump.PP.config" in 
+this directory.  The first ("PBJ") uses the Pattyn/Bocek/Johnson 
+implementation of the higher-order approximation while the second ("PP") uses 
+the Payne/Price implementation.  If you want to run the experiment using a 
+different configuration file you can include that filename as the command line 
+argument.
 
 The script performs the following three steps:
 1. Create a netCDF input file for Glimmer.
@@ -22,8 +21,8 @@ The script performs the following three steps:
 
 The netCDF files are written in the "output" subdirectory. This is controlled
 by a parameter in the configuration file so if you use your own configuration
-file the output may be written elsewhere.  Unless someone changed hump.config
-since I wrote this, hump.config includes the lines:
+file the output may be written elsewhere.  Unless someone changed them since I 
+wrote this, "hump.PBJ.config" and "hump.PP.config" each include the lines:
 
 [CF input]
 name = output/hump.nc

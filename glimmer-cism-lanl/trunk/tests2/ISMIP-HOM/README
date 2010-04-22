@@ -23,24 +23,28 @@ and unzip to a directory named ismip_all. (Make ismip_all a subdirectory of
 the directory containing the ISMIP-HOM scripts.)
 
 RUNNING THE TESTS:
-Running the tests is a two step process.  Each step invokes a python script by
-entering a command on the command line.  The working directory should be the
-directory which contains the ISMIP-HOM scripts.  This directory should also 
-contain two subdirectories, "output" and "scratch", in which the results from 
-running the scripts will be written.
+Running the tests is a three step process.  The last two steps invoke python 
+scripts by entering commands on the command line.  The working directory 
+should be the directory which contains the ISMIP-HOM scripts and the 
+configuration files copied in step one.  This directory should also contain 
+two subdirectories, "output" and "scratch", in which the results from running 
+the scripts will be written.
 
-STEP 1. Run Glimmer/CISM by invoking the runISMIPHOM.py script:
+STEP 1. Copy configuration files:
 
-Before running the script, copy the configuration files of the core you would
-like to run to the appropriately named configuation file. For instance to run
-the Payne-Price core:
+Before running the scripts, copy the configuration files for the core you would
+like to run to appropriately named configuation file(s). For instance, to run 
+experiments A and C using the Payne-Price core:
 
 cp ishom.a.PP.config ishom.a.config
 cp ishom.c.PP.config ishom.c.config
 
-similarly, copy the PBJ files for the Pattyn, Bocek, Johnson core.
+or, to run the Pattyn/Bocek/Johnson core copy the PBJ configuration files:
 
-Now run the script:
+cp ishom.a.PBJ.config ishom.a.config
+cp ishom.c.PBJ.config ishom.c.config
+
+STEP 2. Run Glimmer/CISM by invoking the runISMIPHOM.py script:
 
 python runISMIPHOM.py
 
@@ -72,11 +76,10 @@ be changed using command line arguments.  Run
 python runISMIPHOM.py --help
 
 to see all of the possible command line arguments.  You can also change
-Glimmer parameters by changing the example configuration files provided for
-each experiment, "ishom.a.config", "ishom.b.config", ... (I suggest you make
-a copy of the original before messing with any of these, though.)
+Glimmer parameters by changing the configuration files for each experiment, 
+"ishom.a.config", "ishom.b.config", ... 
 
-STEP 2. Plot the results by invoking the plotISMIPHOM script:
+STEP 3. Plot the results by invoking the plotISMIPHOM script:
 
 python plotISMIPHOM
 

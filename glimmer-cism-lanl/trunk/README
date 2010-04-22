@@ -2,14 +2,14 @@
 GLIMMER README file:
 ===================
 
-GLIMMER is a land ice model designed to be used as part of 
-an earth-system or climate model. Full documentation can be found 
-in the doc directory. 
+Glimmer-CISM is a land ice model designed to be used as part of 
+an earth-system model or stand-alone model. Full documentation can 
+be found in the doc directory. 
 
 Licensing:
 =========
 
-GLIMMER is issued under the GNU General Public Licence. 
+Glimmer-CISM is issued under the GNU General Public Licence. 
 See LICENCE in the main directory.
 
 Note that this licence DOES NOT APPLY to the SLAP linear algebra library, 
@@ -17,16 +17,24 @@ which is contained in its own directory, and is in the public domain.
 
 Mailing list
 ============
-The mailing list archive can be found here
-http://forge.nesc.ac.uk/pipermail/glimmer-discuss/
-You can subscribe to it here:
-http://forge.nesc.ac.uk/mailman/listinfo/glimmer-discuss
+There are two mailing lists:
+1. the general user mailing list
+   archive:   https://lists.berlios.de/pipermail/glimmer-cism-user/
+   subscribe: https://lists.berlios.de/mailman/listinfo/glimmer-cism-user
+
+2. the developer mailing list
+   archive:   https://lists.berlios.de/pipermail/glimmer-cism-devel/
+   subscribe: https://lists.berlios.de/mailman/listinfo/glimmer-cism-devel
+
+3. the commit mailing list
+   archive:   https://lists.berlios.de/mailman/private/glimmer-cism-commit/
+   subscribe: https://lists.berlios.de/mailman/listinfo/glimmer-cism-commit
 
 Bugs:
 ====
 
 Please send all bug reports (preferably with fixes!) to the glimmer mailing list:
-glimmer-discuss@forge.nesc.ac.uk
+glimmer-cism-devel@lists.berlios.de
 
 Compiling:
 =========
@@ -34,14 +42,23 @@ Compiling:
 The model should build reasonably straightforwardly using make. 
 Additional notes are provided in COMPILE in the main directory.
 
+Documentation
+=============
+The doc directory contains the LaTeX sources for the documentation. When
+configuring the build system you can enable the documentation build by
+supplying the --enable-doc-pdf and/or --enable-doc-ps. If you have doxygen
+installed you can build the API documentation by running make doxygen-doc
+in the doc directory.
+
+Running make www will produce a tar ball containing html versions of the
+manual and the API documentation.
+
 References:
 ==========
 
-The ice model which froms the core of GLIMMER is described in:
+The ice model which froms the core of Glimmer-CISM is described in:
+Rutt, I. C., M. Hagdorn, N. R. J. Hulton, and A. J. Payne (2009), 
+The Glimmer community ice sheet model, J. Geophys. Res., 114, F02004, 
+doi:10.1029/2008JF001015. 
 
-Payne, A.J. (1999) A thermomechanical model of ice flow in West Antarctica
-Climate Dynamics, 15:115-125
-
-Payne, A.J. and P.W. Dongelmans (1997) Self-organisation in the
-thermomechanical flow of ice sheets. J. Geophysical Research, 102 (B6)
-12219-12233
+Please cite this paper in any publication arising from using Glimmer-CISM.
