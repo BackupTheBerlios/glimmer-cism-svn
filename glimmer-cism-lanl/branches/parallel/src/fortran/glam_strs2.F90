@@ -371,8 +371,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, 'iter#    uvel resid         vvel resid        target resid'
   print *, ' '
 
-  call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
-                         u_k_1, v_k_1, uvel, vvel, g_flag) ! jfl_20100430
+!  call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
+!                         u_k_1, v_k_1, uvel, vvel, g_flag) ! jfl_20100430
 
   do while ( maxval(resid) > minres .and. counter < cmax)
 !  do while ( resid(1) > minres .and. counter < cmax)  ! *sfp** for 1d solutions (d*/dy=0) 
@@ -418,9 +418,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 ! calc of residual is wrong for k=1 because u_k_1 and v_k_1 are not known
 
-    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag )
+!    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag )
 
-      F_vec(1:pcgsize(1)) = v_k_1(:)
+!      F_vec(1:pcgsize(1)) = v_k_1(:)
       
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
@@ -453,7 +453,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     !write(*,*) 'whichsparse', whichsparse
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
-    v_k_1 = answer ! jfl
+!    v_k_1 = answer ! jfl
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
 
@@ -511,11 +511,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! jfl 20100412: residual for u comp: Fu= C(u_k-1,v_k-1)u_k-1 = d(u_k-1,v_k-1)  
 !==============================================================================
 
-    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag )
+!    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag )
 
-    F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
+!    F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
 
-    print *, 'L2 norm (k)= ', counter, sqrt(DOT_PRODUCT(F_vec,F_vec))
+!    print *, 'L2 norm (k)= ', counter, sqrt(DOT_PRODUCT(F_vec,F_vec))
 
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
@@ -548,7 +548,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
-    u_k_1 = answer ! jfl
+!    u_k_1 = answer ! jfl
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
@@ -588,8 +588,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    call write_log (message)
   end do
 
-  call ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
-                          ughost, vghost )
+!  call ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
+!                          ughost, vghost )
 
 !*sfp* removed call to 'calcstrsstr' here (stresses now calculated externally)
 
