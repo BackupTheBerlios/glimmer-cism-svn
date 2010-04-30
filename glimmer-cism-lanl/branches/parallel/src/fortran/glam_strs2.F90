@@ -44,6 +44,9 @@ implicit none
   real (kind = dp), allocatable, dimension(:,:),       save :: valubbc
   real (kind = dp), allocatable, dimension(:),         save :: dup, dupm
 
+  real (kind = dp), allocatable, dimension(:,:,:), save  :: ughost 
+  real (kind = dp), allocatable, dimension(:,:,:), save  :: vghost
+
   integer, dimension(:,:), allocatable :: typebbc
   integer, dimension(:,:), allocatable :: uindx
   integer, dimension(:,:), allocatable :: umask 
@@ -140,6 +143,8 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     allocate( cdsds(upn) )
     allocate( cds(upn) )
     allocate( fvert(upn,3) )
+    allocate(ughost(2,ewn-1,nsn-1))  
+    allocate(vghost(2,ewn-1,nsn-1))  
 
     ! *sfp** Note that "dup" is defined as a vector (to allow to be read in from file - not working!!) 
     ! *sfp*  ... assume constant value for dup based on linearly spaced sigma coord
@@ -227,7 +232,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:,:),   intent(in)  :: stagthck
   real (kind = dp), dimension(:,:),   intent(in)  :: minTauf
   real (kind = dp), dimension(:,:,:), intent(in)  :: flwa
-
+  
   !*sfp* This is the betasquared field from CISM (externally specified), and should eventually
   ! take the place of the subroutine 'calcbetasquared' below (for now, using this value instead
   ! will simply be included as another option within that subroutine) 
@@ -366,6 +371,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, 'iter#    uvel resid         vvel resid        target resid'
   print *, ' '
 
+  call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
+                         u_k_1, v_k_1, uvel, vvel, g_flag) ! jfl_20100430
+
   do while ( maxval(resid) > minres .and. counter < cmax)
 !  do while ( resid(1) > minres .and. counter < cmax)  ! *sfp** for 1d solutions (d*/dy=0) 
 
@@ -402,7 +410,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, counter )
 
     ! *sfp** solve 'Av=b' for the Y component of velocity (v)
-    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel, g_flag)
+    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
 
 !==============================================================================
 ! jfl 20100412: residual for v comp: Fv= A(u_k-1,v_k-1)v_k-1 = b(u_k-1,v_k-1)  
@@ -410,9 +418,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 ! calc of residual is wrong for k=1 because u_k_1 and v_k_1 are not known
 
-!    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag )
+    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag )
 
-!      F_vec(1:pcgsize(1)) = v_k_1(:)
+      F_vec(1:pcgsize(1)) = v_k_1(:)
       
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
@@ -445,7 +453,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     !write(*,*) 'whichsparse', whichsparse
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
-!    v_k_1 = answer ! jfl
+    v_k_1 = answer ! jfl
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
 
@@ -497,17 +505,17 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 
     ! *sfp** solve 'Cu=d' for the X component of velocity (u)
-    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel, g_flag)
+    call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel )
 
 !==============================================================================
 ! jfl 20100412: residual for u comp: Fu= C(u_k-1,v_k-1)u_k-1 = d(u_k-1,v_k-1)  
 !==============================================================================
 
-!    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag)
+    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag )
 
-!    F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
+    F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
 
-!    print *, 'L2 norm (k)= ', counter, sqrt(DOT_PRODUCT(F_vec,F_vec))
+    print *, 'L2 norm (k)= ', counter, sqrt(DOT_PRODUCT(F_vec,F_vec))
 
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
@@ -540,7 +548,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
-!    u_k_1 = answer ! jfl
+    u_k_1 = answer ! jfl
 
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
@@ -580,10 +588,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    call write_log (message)
   end do
 
+  call ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
+                          ughost, vghost )
 
 !*sfp* removed call to 'calcstrsstr' here (stresses now calculated externally)
 
-  
   do ns = 1,nsn-1
       do ew = 1,ewn-1 
       ! *sfp** calc. fluxes from converged vel. fields (for input to thickness evolution subroutine)
@@ -897,7 +906,7 @@ end function getlocationarray
 
 !***********************************************************************
 
-subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel, g_flag)
+subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel)
 
   !*sfp* This subroutine puts sparse matrix variables in SLAP triad format into 
   ! "matrxi" derived type, so that it can be passed to generic solver wrapper
@@ -906,7 +915,6 @@ subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel, g_flag)
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
-  integer, dimension(:), intent(out) :: g_flag ! jfl
   real (kind = dp), dimension(:,:,:), intent(in) :: vel
   integer, dimension(:,:), intent(in) :: uindx
   type(sparse_matrix_type), intent(inout) :: matrix
@@ -925,8 +933,6 @@ subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel, g_flag)
   matrix%col = pcgcol
   matrix%val = pcgval
 
-  g_flag = 0 ! flag for ghost cells
-
   !! *sfp** initial estimate for vel. field; take from 3d array and put into
   !! format of a solution vector.
   do ns = 1,nsn-1
@@ -936,8 +942,6 @@ subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel, g_flag)
             answer(loc(1):loc(2)) = vel(:,ew,ns)
             answer(loc(1)-1) = vel(1,ew,ns)
             answer(loc(2)+1) = vel(upn,ew,ns)
-            g_flag(loc(1)-1) = 1 ! jfl
-            g_flag(loc(2)+1) = 1 ! jfl
         end if
     end do
   end do
@@ -972,6 +976,86 @@ subroutine solver_postprocess( ewn, nsn, upn, uindx, answrapped, ansunwrapped )
   end do
 
 end subroutine solver_postprocess
+
+!***********************************************************************
+
+subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, & 
+                             u_k_1, v_k_1, uvel, vvel, g_flag)
+
+! puts vel values in  u_k_1, v_k_1 (including ghost values) and creates the
+! ghost flag vector. u_k_1, v_k_1 and the ghost flag vector are used for 
+! the residual calculation (jfl 20100430)
+
+  implicit none
+
+  integer, intent(in) :: ewn, nsn, upn
+  integer, dimension(:,:), intent(in) :: uindx
+  integer, dimension(:), intent(out) :: g_flag 
+  real (kind = dp), dimension(2,ewn-1,nsn-1), intent(in) ::ughost,vghost 
+  real (kind = dp), dimension(:,:,:), intent(in) :: uvel, vvel
+  real (kind = dp), dimension(:), intent(out) :: u_k_1, v_k_1 
+
+  integer :: ew, ns
+  integer, dimension(2) :: loc
+
+  g_flag = 0 ! flag for ghost cells
+
+  do ns = 1,nsn-1
+   do ew = 1,ewn-1
+        if (uindx(ew,ns) /= 0) then
+            loc = getlocrange(upn, uindx(ew,ns))
+            u_k_1(loc(1):loc(2)) = uvel(:,ew,ns)
+            u_k_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at base
+            u_k_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at top
+
+            v_k_1(loc(1):loc(2)) = vvel(:,ew,ns)
+            v_k_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at base
+            v_k_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at top
+
+            g_flag(loc(1)-1) = 1 
+            g_flag(loc(2)+1) = 1 
+        end if
+    end do
+  end do
+
+end subroutine ghost_preprocess
+
+!***********************************************************************
+
+subroutine ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
+                              ughost, vghost )
+
+! puts ghost values (which are now in  u_k_1 and v_k_1) into ughost and 
+! vghost so that they can be used fro the next time step (jfl 20100430)
+
+  implicit none
+
+  integer, intent(in) :: ewn, nsn, upn
+  integer, dimension(:,:), intent(in) :: uindx
+  real (kind = dp), dimension(:), intent(in) :: u_k_1, v_k_1
+  real (kind = dp), dimension(2,ewn-1,nsn-1), intent(out) :: ughost,vghost
+
+  integer :: ew, ns
+  integer, dimension(2) :: loc
+
+  do ns = 1,nsn-1
+      do ew = 1,ewn-1
+          if (uindx(ew,ns) /= 0) then
+            loc = getlocrange(upn, uindx(ew,ns))
+            ughost(1,ew,ns) = u_k_1(loc(1)-1) ! ghost at base
+            ughost(2,ew,ns) = u_k_1(loc(2)+1) ! ghost at top
+            vghost(1,ew,ns) = v_k_1(loc(1)-1) ! ghost at base
+            vghost(2,ew,ns) = v_k_1(loc(2)+1) ! ghost at top
+          else 
+            ughost(1,ew,ns) = 0d0
+            ughost(2,ew,ns) = 0d0
+            vghost(1,ew,ns) = 0d0
+            vghost(2,ew,ns) = 0d0
+          end if
+      end do
+  end do
+
+end subroutine ghost_postprocess
 
 !***********************************************************************
 
