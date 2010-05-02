@@ -210,7 +210,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer, intent(in) :: whichsparse  ! options for which method for doing elliptic solve
   logical, intent(in) :: periodic_ew, periodic_ns  ! options for applying periodic bcs or not
 
-  real (kind = dp), dimension(:,:,:), intent(out) :: uvel, vvel  ! horiz vel components: u(z), v(z)
+  real (kind = dp), dimension(:,:,:), intent(inout) :: uvel, vvel  ! horiz vel components: u(z), v(z)
   real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx  ! horiz fluxs: u_bar*H, v_bar*H
   real (kind = dp), dimension(:,:,:), intent(out) :: efvs        ! effective viscosity
 

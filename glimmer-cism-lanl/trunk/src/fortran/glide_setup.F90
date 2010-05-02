@@ -410,6 +410,7 @@ contains
     call GetValue(section,'periodic_ew',model%options%periodic_ew)
     call GetValue(section,'periodic_ns',model%options%periodic_ns)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
+    call GetValue(section, 'use_plume',model%options%use_plume)
   end subroutine handle_options
   
   !Higher order options
@@ -536,6 +537,10 @@ contains
          'GMRES with LU precondition      ', &
          'UMFPACK Unsymmetric Multifrontal',&
          'PARDISO Parllel Direct Method   '/)
+   character(len=*),dimension(0:1), parameter :: use_plume = (/ &
+         'Use glimmer for bmlt (floating ice)      ', &
+         'Use plume model for bmlt (floating ice)  ' /)
+
     call write_log('GLIDE options')
     call write_log('-------------')
     write(message,*) 'I/O parameter file      : ',trim(model%funits%ncfile)
@@ -588,6 +593,7 @@ contains
     if (model%options%hotstart.eq.1) then
        call write_log('Hotstarting model')
     end if
+    
 
     !HO options
     call write_log("***Higher-order options:")
@@ -657,6 +663,12 @@ contains
     call write_log(message)
     if (model%options%which_bmelt < 0 .or. model%options%which_bmelt >= size(bmeltwhich)) then
         call write_log('Error, which bmelt input out of range', GM_FATAL)
+    end if
+    write(message,*) 'use_plume         :',model%options%use_plume,  &
+                      use_plume(model%options%use_plume)
+    call write_log(message)
+    if (model%options%use_plume < 0 .or. model%options%use_plume >= size(bmeltwhich)) then
+        call write_log('Error, use_plume input out of range', GM_FATAL)
     end if
     write(message,*) 'ho_whichsparse        :',model%options%which_ho_sparse,  &
                       ho_whichsparse(model%options%which_ho_sparse)

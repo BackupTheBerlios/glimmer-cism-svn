@@ -933,7 +933,7 @@ contains
     type(glide_global_type) :: model
     real(dp), dimension(:,0:,0:), intent(in) :: temp
     real(dp), dimension(:,:), intent(in) :: thck,  stagthck, dusrfdew, dusrfdns, ubas, vbas  
-    real(dp), dimension(:,:), intent(out) :: bmlt
+    real(dp), dimension(:,:), intent(inout) :: bmlt
     logical, dimension(:,:), intent(in) :: floater
     integer, intent(in) :: whichbmelt
 
@@ -1038,9 +1038,12 @@ contains
 
              end if
 
-          else
+          else if (model%options%use_plume == 1) then
 
-             bmlt(ew,ns) = 0.0d0
+		! do nothing because the plume model will have written the bmlt field
+	       else
+
+                  bmlt(ew,ns) = 0.0d0
 
           end if
        end do

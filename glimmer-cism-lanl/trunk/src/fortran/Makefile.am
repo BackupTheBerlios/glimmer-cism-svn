@@ -86,6 +86,18 @@ libclimate_a_SOURCES = eismint3_forcing.F90 eismint3_types.F90 \
                        eismint3_io.F90 spin_forcing.F90 spin_mb.F90 \
                        spin_temp.F90 spin_slc.F90 spin_io.F90 \
                        testsfg.F90 spin_types.F90 
+
+if BUILD_PLUME
+lib_LIBRARIES += libplume.a
+bin_PROGRAMS += shelf_driver
+libplume_a_SOURCES = plume_global.F90 plume_functions.F90 plume_context.F90 \
+                     plume.F90 plume_io.F90
+shelf_driver_SOURCES = shelf_driver.F90 
+shelf_driver_LDADD = libclimate.a libglide.a libglimmer.a \
+	             SLAP_library/libslap.a libplume.a \
+                     $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) 
+endif BUILD_PLUME
+
 if PARDISO
 RESTART_CODE += glimmer_sparse_pardiso.F90
 libglimmer_a_SOURCES += glimmer_sparse_pardiso.F90
@@ -130,7 +142,7 @@ ALL_SRC=$(test_integrage_SOURCES) $(test_lithot_SOURCES) $(test_ts_SOURCES) $(te
         $(test_config_SOURCES) $(nc2config_SOURCES) $(glex_ebm_SOURCES) $(glint_example_SOURCES) \
 	$(eis_glide_SOURCES) $(simple_glide_SOURCES) $(eismint3_glide_SOURCES) $(libglimmer_a_SOURCES) \
 	$(libglide_a_SOURCES) $(libglint_a_SOURCES) $(libclimate_a_SOURCES) $(spin_glide_SOURCES) \
-        $(glimmer_unittest_SOURCES) $(glide_thermal_equib_SOURCES)
+        $(glimmer_unittest_SOURCES) $(glide_thermal_equib_SOURCES) $(libplume_a_SOURCES) $(shelf_driver_SOURCES)
 
 AM_FCFLAGS = $(NETCDF_CPPFLAGS) $(HDF5_CPPFLAGS)
 

@@ -394,6 +394,12 @@ module glide_types
 
     integer :: diagnostic_run = 0
 
+    integer :: use_plume = 0
+    !*FD \begin{description}
+    !*FD \item[0] standard bmlt calculation
+    !*FD \item[1] use plume to calculate bmlt
+    !*FD \end{description}
+
   end type glide_options
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
