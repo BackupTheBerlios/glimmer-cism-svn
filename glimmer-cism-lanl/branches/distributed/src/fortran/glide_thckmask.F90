@@ -6,7 +6,7 @@ contains
   subroutine glide_maskthck(thck,massb,include_adjacent,thklim,dom,pointno,totpts,empty)
     
     !*FD Calculates the contents of the mask array.
-
+    use parallel
     use glimmer_global, only : dp, sp 
 
     !-------------------------------------------------------------------------

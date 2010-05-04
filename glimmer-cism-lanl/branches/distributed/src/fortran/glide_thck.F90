@@ -554,7 +554,6 @@ contains
 
      model%geomderv%stagusrf = model%geomderv%staglsrf + model%geomderv%stagthck
 
-      
      call df_field_2d_staggered(model%geometry%usrf, &
                                      model%numerics%dew, model%numerics%dns, &
                                      model%geomderv%dusrfdew, & 

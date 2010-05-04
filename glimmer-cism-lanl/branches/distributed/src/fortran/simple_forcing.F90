@@ -288,6 +288,7 @@ contains
   end subroutine simple_printconfig
 
   subroutine simple_massbalance(climate,model,time)
+    use parallel
     !*FD calculate simple mass balance
     use glimmer_global, only:rk
     use glide_types
@@ -328,6 +329,7 @@ contains
           rel = climate%nmsb(3)
        end if
 
+       call not_parallel(__FILE__,__LINE__)
        do ns = 1,model%general%nsn
           do ew = 1,model%general%ewn
              dist = grid * sqrt(periodic_bc*(real(ew) - ewct)**2 + (real(ns) - nsct)**2)
@@ -338,6 +340,7 @@ contains
        ! EISMINT-2
        rel = climate%nmsb(3)
 
+       call not_parallel(__FILE__,__LINE__)
        do ns = 1,model%general%nsn
           do ew = 1,model%general%ewn
              dist = grid * sqrt(periodic_bc*(real(ew) - ewct)**2 + (real(ns) - nsct)**2)
@@ -349,12 +352,14 @@ contains
        model%climate%acab = climate%nmsb(1)
     case(5)
        !verification 
+       call not_parallel(__FILE__,__LINE__)
        call exact_surfmass(climate,model,time,1.0,climate%airt(2))
     end select
   end subroutine simple_massbalance
 
   subroutine simple_surftemp(climate,model,time)
     !*FD calculate simple air surface temperature
+    use parallel
     use glide_types
     use glimmer_global, only:rk
     use glimmer_paramets, only : len0
@@ -381,6 +386,7 @@ contains
 
     select case(climate%eismint_type)
     case(1)
+       call not_parallel(__FILE__,__LINE__)
        ! EISMINT-1 fixed margin
        do ns = 1,model%general%nsn
           do ew = 1,model%general%ewn
@@ -398,6 +404,7 @@ contains
           model%climate%artm(:,:) = model%climate%artm(:,:) + 10.*sin(2.*pi*time/climate%period)
        end if
     case(3)
+       call not_parallel(__FILE__,__LINE__)
        ! EISMINT-2
        do ns = 1,model%general%nsn
           do ew = 1,model%general%ewn
@@ -408,6 +415,7 @@ contains
     case(4)
        model%climate%artm = climate%airt(1)
     case(5)
+       call not_parallel(__FILE__,__LINE__)
        !call both massbalance and surftemp at the same time to save computing time. 
        call exact_surfmass(climate,model,time,0.0,climate%airt(2))
     end select

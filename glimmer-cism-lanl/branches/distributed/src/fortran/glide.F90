@@ -142,7 +142,7 @@ contains
     call glide_scale_params(model)
     ! set up coordinate systems
     ! time to change to the parallel values of ewn and nsn
-    call parallel_grid(model%general%ewn,model%general%nsn)
+    call distributed_grid(model%general%ewn,model%general%nsn)
     model%general%ice_grid = coordsystem_new(0.d0, 0.d0, &
          model%numerics%dew, model%numerics%dns, &
          model%general%ewn, model%general%nsn)
@@ -251,7 +251,6 @@ contains
     call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
-    !TREY
     !calculate the normal at the marine margin
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
 
@@ -274,6 +273,7 @@ contains
   subroutine glide_tstep_p1(model,time)
     !*FD Performs first part of time-step of an ice model instance.
     !*FD calculate velocity and temperature
+    use parallel
     use glimmer_global, only : rk
     use glide_thck
     use glide_velo
@@ -305,6 +305,7 @@ contains
 #ifdef PROFILING
     call glide_prof_start(model,model%glide_prof%ice_mask1)
 #endif
+    !TREY This sets local values of dom, mask, totpts, and empty
     call glide_maskthck(&
          model%geometry% thck,      &
          model%climate%  acab,      &
@@ -322,6 +323,7 @@ contains
     ! calculate geothermal heat flux
     ! ------------------------------------------------------------------------ 
     if (model%options%gthf.gt.0) then
+       call not_parallel(__FILE__,__LINE__)
        call calc_lithot(model)
     end if
 
@@ -350,6 +352,7 @@ contains
   subroutine glide_tstep_p2(model,no_write)
     !*FD Performs second part of time-step of an ice model instance.
     !*FD write data and move ice
+    use parallel
     use glide_thck
     use glide_velo
     use glide_ground
@@ -374,6 +377,7 @@ contains
     logical,optional :: no_write
 
     logical nw
+    integer :: dummy
 
     ! ------------------------------------------------------------------------ 
     ! write to netCDF file
@@ -383,9 +387,10 @@ contains
     else
        nw=.false.
     end if 
-
+    !TREY
     if (.not. nw) call glide_io_writeall(model,model)
-
+    dummy = parallel_close(model%funits%out_first%nc%id)
+    call parallel_stop(__FILE__,__LINE__)
     ! ------------------------------------------------------------------------ 
     ! Calculate flow evolution by various different methods
     ! ------------------------------------------------------------------------ 

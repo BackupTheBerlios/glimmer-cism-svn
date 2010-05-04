@@ -608,7 +608,7 @@ contains
     !*FD -\sigma\left(\frac{\partial H}{\partial t}+\mathbf{U}\cdot\nabla H\right)
     !*FD \]
     !*FD Compare this with equation A1 in {\em Payne and Dongelmans}.
-
+    use parallel
     implicit none 
 
     !------------------------------------------------------------------------------------
@@ -658,7 +658,7 @@ contains
         end if
       end do
     end do
-
+    call parallel_ice_halo(wgrd)
   end subroutine gridwvel
 
 !------------------------------------------------------------------------------------------
@@ -674,7 +674,7 @@ contains
     !*FD \]
     !*FD (This is equation 13 in {\em Payne and Dongelmans}.) Note that this is only 
     !*FD done if the thickness is greater than the threshold given by \texttt{numerics\%thklim}.
-
+    use parallel
     implicit none
 
     !------------------------------------------------------------------------------------
@@ -771,7 +771,7 @@ contains
         end if
       end do
     end do
-
+    call parallel_ice_halo(wvel)
   end subroutine wvelintg
 
   subroutine wvel_ew(model)
@@ -791,7 +791,7 @@ contains
 
     !*FD Constrain the vertical velocity field to obey a kinematic upper boundary 
     !*FD condition.
-
+    use parallel
     use glimmer_global, only : sp 
 
     implicit none
@@ -846,7 +846,7 @@ contains
          end if
       end do
     end do
-
+    call parallel_ice_halo(wvel)
   end subroutine chckwvel
 
 !------------------------------------------------------------------------------------------

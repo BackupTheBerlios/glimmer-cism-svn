@@ -124,6 +124,7 @@ contains
           ! write standard variables
           call NAME_io_write(oc,data)
 #ifdef HAVE_AVG
+          call not_parallel(__FILE__,__LINE__)
           if (oc%do_averages) then
              call NAME_avg_reset(oc,data)
           end if

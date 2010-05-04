@@ -142,8 +142,7 @@ contains
          end if
        end do
     end do
-    call parallel_print(mask)
-    call parallel_stop(__FILE__,__LINE__)
+    call parallel_ice_halo(mask)
   end subroutine glide_set_mask
 
   subroutine augment_kinbc_mask(mask, kinbcmask)
@@ -177,8 +176,8 @@ contains
 
     integer :: i,j
 
-    do i = 1+parallel_halo, size(thck,1)-parallel_halo
-        do j = 1+parallel_halo, size(thck,2)-parallel_halo
+    do i = 1+lhalo, size(thck,1)-uhalo
+        do j = 1+lhalo, size(thck,2)-uhalo
             if (thck(i,j) > 0) then
                 iarea = iarea + 1
                 ivol = ivol + thck(i,j)
@@ -193,6 +192,7 @@ contains
   end subroutine get_area_vol
 
     subroutine glide_marine_margin_normal(thck, mask, marine_bc_normal)
+      use parallel
         use glimmer_physcon, only:pi
         implicit none
         !*FD This subroutine derives from the given mask the normal to an ice shelf
@@ -265,7 +265,7 @@ contains
                 end if
             end do
         end do
-        
+        call parallel_ice_halo(marine_bc_normal)
     end subroutine
 
     function calc_normal_45deg(thck3x3)

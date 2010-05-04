@@ -183,7 +183,9 @@ contains
     !*FD on a staggered grid.  If periodic in one dimension is set, that 
     !*FD dimension for derivatives must be the same size as the value's dimension.
     !*FD Otherwise, it should be one less
+
         subroutine df_field_2d_staggered(f, deltax, deltay, out_dfdx, out_dfdy, periodic_x, periodic_y)
+          use parallel
                 implicit none
         real(dp), dimension(:, :), intent(in) :: f
         real(dp), intent(in) :: deltax, deltay
@@ -705,6 +707,7 @@ contains
 
     !TODO: Rewrite this using the existing derivative machinery
     subroutine d2f_field_stag(f, deltax, deltay, d2fdx2, d2fdy2, periodic_x, periodic_y)
+      use parallel
     implicit none 
 
     real(dp), intent(out), dimension(:,:) :: d2fdx2, d2fdy2

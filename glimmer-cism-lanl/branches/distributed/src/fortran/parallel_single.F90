@@ -1,6 +1,7 @@
 module parallel
   use netcdf,&
        distributed_get_var=>nf90_get_var,&
+       distributed_put_var=>nf90_put_var,&
        parallel_close=>nf90_close,&
        parallel_create=>nf90_create,&
        parallel_def_dim=>nf90_def_dim,&
@@ -21,9 +22,10 @@ module parallel
        parallel_sync=>nf90_sync
   implicit none
 
+  integer,parameter :: lhalo = 0
   logical,parameter :: main_task = .true.
-  integer,parameter :: parallel_halo = 0
   integer,parameter :: this_rank = 0
+  integer,parameter :: uhalo = 0
 
   integer,save :: global_ewn,global_nsn
 
@@ -35,9 +37,21 @@ module parallel
      module procedure broadcast_real8_1d
   end interface
 
+  interface parallel_ice_halo
+     module procedure parallel_ice_halo_integer_2d
+     module procedure parallel_ice_halo_real8_2d
+     module procedure parallel_ice_halo_real8_3d
+  end interface
+
   interface parallel_print
      module procedure parallel_print_integer_2d
      module procedure parallel_print_real8_2d
+     module procedure parallel_print_real8_3d
+  end interface
+
+  interface parallel_velo_halo
+     module procedure parallel_velo_halo_real8_2d
+     module procedure parallel_velo_halo_real8_3d
   end interface
 
 contains
@@ -65,6 +79,14 @@ contains
   subroutine broadcast_real8_1d(a)
     implicit none
     real(8),dimension(:) :: a
+  end subroutine
+
+  subroutine distributed_grid(ewn,nsn)
+    implicit none
+    integer :: ewn,nsn
+    ! begin
+    global_ewn = ewn
+    global_nsn = nsn
   end subroutine
 
   subroutine global_sum(x,y)
@@ -96,17 +118,19 @@ contains
     implicit none
   end subroutine
 
-  subroutine parallel_grid(ewn,nsn)
-    implicit none
-    integer :: ewn,nsn
-    ! begin
-    global_ewn = ewn
-    global_nsn = nsn
-  end subroutine
-
-  subroutine parallel_ice_halo(a)
+  subroutine parallel_ice_halo_integer_2d(a)
     implicit none
     integer,dimension(:,:) :: a
+  end subroutine
+
+  subroutine parallel_ice_halo_real8_2d(a)
+    implicit none
+    real(8),dimension(:,:) :: a
+  end subroutine
+
+  subroutine parallel_ice_halo_real8_3d(a)
+    implicit none
+    real(8),dimension(:,:,:) :: a
   end subroutine
 
   subroutine parallel_initialise
@@ -141,6 +165,20 @@ contains
     end do
   end subroutine
 
+  subroutine parallel_print_real8_3d(a)
+    implicit none
+    real(8),dimension(:,:,:) :: a
+    
+    integer :: i,j
+    ! begin
+    do j = 1,size(a,3)
+       do i = 1,size(a,2)
+          print '(2i6,100g15.5e3)',j,i,a(:,i,j)
+       end do
+       print '()'
+    end do
+  end subroutine
+
   subroutine parallel_stop(file,line)
     implicit none
     integer :: line
@@ -148,6 +186,21 @@ contains
     ! begin
     write(0,*) "STOP in ",file," at line ",line
     stop
+  end subroutine
+
+  subroutine parallel_temp_halo(a)
+    implicit none
+    real(8),dimension(:,:,:) :: a
+  end subroutine
+
+  subroutine parallel_velo_halo_real8_2d(a)
+    implicit none
+    real(8),dimension(:,:) :: a
+  end subroutine
+
+  subroutine parallel_velo_halo_real8_3d(a)
+    implicit none
+    real(8),dimension(:,:,:) :: a
   end subroutine
 
 end module parallel
