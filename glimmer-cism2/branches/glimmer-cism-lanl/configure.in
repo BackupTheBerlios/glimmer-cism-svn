@@ -1,0 +1,311 @@
+dnl Process this file with autoconf to produce a configure script.
+
+dnl set version
+m4_define([glimmer_major_version], [1])
+m4_define([glimmer_minor_version], [5])
+m4_define([glimmer_micro_version], [1])
+m4_define([glimmer_version],
+	[glimmer_major_version.glimmer_minor_version.glimmer_micro_version])
+
+AC_INIT([GLIMMER-CISM],[glimmer_version],[glimmer-cism-devel@lists.berlios.de])
+AC_CONFIG_HEADERS(config.inc)
+AM_INIT_AUTOMAKE
+
+GLIMMER_MAJOR_VERSION=glimmer_major_version
+GLIMMER_MINOR_VERSION=glimmer_minor_version
+GLIMMER_MICRO_VERSION=glimmer_micro_version
+GLIMMER_VERSION=glimmer_version
+AC_SUBST(GLIMMER_MAJOR_VERSION)
+AC_SUBST(GLIMMER_MINOR_VERSION)
+AC_SUBST(GLIMMER_MICRO_VERSION)
+AC_SUBST(GLIMMER_VERSION)
+
+AC_CONFIG_SRCDIR([glimmer-cism-config.in])
+
+# save compiler flags, autoconf will change them later
+glimmer_FCFLAGS=$FCFLAGS
+glimmer_FFLAGS=$FFLAGS
+AC_DEFINE_UNQUOTED(GLIMMER_FCFLAGS,"${glimmer_FCFLAGS}",[fortran compiler flags the model is configured with])
+
+# we are building fortran libraries so, let's make them static
+AC_DISABLE_SHARED
+AC_PROG_LIBTOOL
+AC_PROG_CC
+AC_PROG_CXX
+AC_PROG_FC
+AC_PROG_F77
+AC_PROG_EGREP
+FCFLAGS=$glimmer_FCFLAGS
+FFLAGS=$glimmer_FFLAGS
+AC_LANG(Fortran)
+AC_FC_SRCEXT(f90)
+# get the correct flag to set module include path
+AX_F90_MODULE_FLAG
+F90_MODFLAG=$ax_cv_f90_modflag
+AC_SUBST(F90_MODFLAG)
+AX_F90_NO_LINE_LIMIT_FLAG
+FCFLAGS="$FCFLAGS $ax_cv_f90_ff_nolimit"
+
+# checking for f2003 command line parser
+AC_MSG_CHECKING([for f2003 command line parser])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([],
+               [i=command_argument_count()
+                call get_command_argument(i)  ])],
+               [AC_DEFINE(HAVE_2003ARGS,,[defined if you have fortran 2003 intrinsics for parsing command line])
+                AC_MSG_RESULT(yes)], [AC_MSG_RESULT(no)])
+
+# which Fortran compiler are we running?
+AC_MSG_CHECKING([which fortran compiler])
+f95v="no idea"
+f95string=`$FC -V 2>&1`
+f95_preprocessor="-fpp"
+# testing for SUN f95 compiler
+fs=`echo $f95string |$EGREP "Sun|Forte"`
+if test "$fs" != "" ; then
+  f95v="SUN f95"
+  CFORTRAN_CFLAGS=-DsunFortran
+fi
+# testing for NAG f95 compiler
+fs=`echo $f95string |$EGREP "NAGWare"`
+if test "$fs" != "" ; then
+  f95v="NAGWare f95"
+  CFORTRAN_CFLAGS=-DNAGf90Fortran
+fi
+# testing for INTEL ifort compiler
+fs=`echo $f95string |$EGREP "Intel"`
+if test "$fs" != "" ; then
+  f95v="Intel ifort"
+  CFORTRAN_CFLAGS=-DpgiFortran
+fi
+# testing for gfortran
+f95string=`$FC -v 2>&1`
+fs=`echo $f95string |$EGREP "gcc"`
+if test "$fs" != "" ; then
+  f95v="gfortran"
+  f95_preprocessor="-x f95-cpp-input"
+  CFORTRAN_CFLAGS=-DpgiFortran
+fi
+# testing for Portland group
+f95string=`$FC -V 2>&1`
+fs=`echo $f95string |$EGREP "Portland"`
+if test "$fs" != "" ; then
+  f95v="Portland pgf90"
+  f95_preprocessor="-Mpreprocess"
+  CFORTRAN_CFLAGS=-DpgiFortran
+fi
+AC_SUBST(CFORTRAN_CFLAGS)
+
+AC_MSG_RESULT([$f95v])
+
+FCFLAGS="$FCFLAGS"
+FFLAGS="$FFLAGS"
+
+dnl Checking for python
+AM_PATH_PYTHON([2.3],,[AC_MSG_RESULT(need at least python 2.3)])
+
+# checking for BLAS library
+ac_gl_have_blas=0
+ACX_BLAS([ac_gl_have_blas=1])
+AM_CONDITIONAL(EXT_BLAS,test "$ac_gl_have_blas" == 1)
+
+# checking for netCDF
+AC_LANG_PUSH([C++])
+ac_gl_have_netcdf_cxx=0
+ACX_NETCDF([ac_gl_have_netcdf_cxx=1],[])
+NETCDF_CXX_LIBS=$NETCDF_LIBS
+AC_SUBST(NETCDF_CXX_LIBS)
+if test "$ac_gl_have_netcdf_cxx" != 1; then
+  AC_MSG_WARN([Cannot build netCDF compare utility because C++ bindings to netCDF are not available])
+fi
+AM_CONDITIONAL(BUILD_COMPARE, test "$ac_gl_have_netcdf_cxx" == 1)
+AC_LANG_POP([C++])
+ACX_NETCDF([],[AC_MSG_ERROR(cannot find netCDF fortran library)])
+
+# checking for ENMABAL
+AC_ARG_WITH(enmabal,AS_HELP_STRING([--with-enmabal],[location ENMABAL library]),[ac_cv_enmabal_prefix=$withval])
+if test "$ac_cv_enmabal_prefix" != ""; then
+  LIBS="$LIBS -lsmb"
+  AC_MSG_RESULT(enmabal location: $ac_cv_enmabal_prefix)
+  AC_DEFINE(USE_ENMABAL,1,[Define to 1 if you want to use ENMABAL])
+  FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_enmabal_prefix"
+  LDFLAGS="$LDFLAGS -L$ac_cv_enmabal_prefix"
+  AC_MSG_CHECKING([for f90 ENMABAL interface])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[use smb_mecons])],AC_MSG_RESULT([yes]),AC_MSG_FAILURE([no]))
+fi
+
+# building the documentation
+have_latex=1
+AC_CHECK_PROGS(LATEX,[latex])
+if test x"$LATEX"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(BIBTEX,[bibtex])
+if test x"$BIBTEX"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(DVIPS,[dvips]) 
+if test x"$DVIPS"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(GNUPLOT,[gnuplot]) 
+if test x"$GNUPLOT"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(DIA,[dia]) 
+if test x"$DIA"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(FIG2DEV,[fig2dev]) 
+if test x"$FIG2DEV"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(PS2EPSI,[ps2epsi]) 
+if test x"$PS2EPSI"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(INKSCAPE, [inkscape])
+if test x"$INKSCAPE"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(SED,[sed])
+if test x"$SED"x == xx; then
+  have_latex=0
+fi
+AC_CHECK_PROGS(DVIPDFT,[dvipdft dvipdfm])
+
+# build postscript documentation
+do_doc_ps=0
+AC_MSG_CHECKING([whether postscript documentation should be built])
+AC_ARG_ENABLE(doc-ps, AS_HELP_STRING([--enable-doc-ps],[build postscript documentation]),
+[case "${enableval}" in
+ yes)  if test $have_latex == 0; then
+          AC_MSG_RESULT([no])
+          AC_MSG_WARN([did not find all the required tools])
+       else
+          AC_MSG_RESULT([yes])
+          do_doc_ps=1
+       fi;;
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-doc-ps) ;;
+esac],[AC_MSG_RESULT([no])])
+AM_CONDITIONAL([DO_DOC_PS],  [test $do_doc_ps == 1])
+
+# build pdf documentation
+do_doc_pdf=0
+AC_MSG_CHECKING([whether PDF documentation should be built])
+AC_ARG_ENABLE(doc-pdf, AS_HELP_STRING([--enable-doc-pdf],[build PDF documentation]),
+[case "${enableval}" in
+ yes)  if test $have_latex == 0 || test x"$DVIPDFT"x == xx; then
+          AC_MSG_RESULT([no])
+          AC_MSG_WARN([did not find all the required tools])
+       else
+          AC_MSG_RESULT([yes])
+          do_doc_pdf=1
+       fi;;
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-pdf) ;;
+esac],[AC_MSG_RESULT([no])])
+AM_CONDITIONAL([DO_DOC_PDF],  [test $do_doc_pdf == 1])
+
+# doxygen documentation
+DX_HTML_FEATURE(ON)
+DX_CHM_FEATURE(OFF)
+DX_CHI_FEATURE(OFF)
+DX_MAN_FEATURE(OFF)
+DX_RTF_FEATURE(OFF)
+DX_XML_FEATURE(OFF)
+DX_PDF_FEATURE(OFF)
+DX_PS_FEATURE(OFF)
+DX_INIT_DOXYGEN([Glimmer-CISM],glimmer-cism.cfg)
+
+# some options
+AC_MSG_CHECKING([whether profilng is enabled])
+AC_ARG_ENABLE(profile, AS_HELP_STRING([--enable-profile],[Turn on profiling]),
+[case "${enableval}" in
+ yes)  AC_DEFINE(PROFILING,1,[Define to 1 if you want to enable extra profiling])
+       FCFLAGS="$FCFLAGS -pg"
+       AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-profile) ;;
+esac],[AC_MSG_RESULT([no])])
+
+AC_MSG_CHECKING([whether command-line arguments are enabled])
+AC_ARG_ENABLE(command-line, AS_HELP_STRING([--enable-command-line],[Turn on command-line arguments]),
+[case "${enableval}" in
+ yes)  AC_DEFINE(COMMAND_LINE,1,[Define to 1 if you want to enable command-line arguments])
+       AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-command-line) ;;
+esac],[AC_MSG_RESULT([no])])
+
+#AC_MSG_CHECKING([whether extended restarts are enabled])
+#AC_ARG_ENABLE(restarts, AS_HELP_STRING([--enable-restarts],[Build extended restart code]),
+#[case "${enableval}" in
+# yes)  AC_DEFINE(RESTARTS,1,[Define to 1 if you want to enable extended restarts])
+#       AC_MSG_RESULT([yes]);;	
+# no)   AC_MSG_RESULT([no]);;
+# *) AC_MSG_ERROR(bad value ${enableval} for --enable-restarts) ;;
+#esac],[AC_MSG_RESULT([no])])
+#AM_CONDITIONAL([BUILD_RESTARTS],[test "$enable_restarts" == "yes"])
+
+AC_MSG_CHECKING([whether the build is single precision])
+AC_ARG_ENABLE(sp, AS_HELP_STRING([--enable-sp],[Build code as single precision]),
+[case "${enableval}" in
+ yes)  AC_DEFINE(GLIMMER_SP,1,[Define to 1 if you want to enable extended restarts])
+       AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-sp) ;;
+esac],[AC_MSG_RESULT([no])])
+
+# should we run the tests
+#AC_MSG_CHECKING([whether we should run the tests])
+#AC_ARG_ENABLE(tests, AS_HELP_STRING([--enable-tests],[Run short tests]),
+#[case "${enableval}" in
+# yes)  AC_MSG_RESULT([yes]);;	
+# no)   AC_MSG_RESULT([no]);;
+# *) AC_MSG_ERROR(bad value ${enableval} for --enable-tests) ;;
+#esac],[AC_MSG_RESULT([no])])
+#AM_CONDITIONAL([RUN_TESTS], [test "$enable_tests" == "yes"])
+
+dnl checking if model runs should be submitted to SGE
+SGE_OPTS=""
+AC_MSG_CHECKING([whether model runs should be submitted to SGE])
+AC_ARG_WITH(sge-jobs,AS_HELP_STRING([--with-sge-jobs],[use Sun Grid Engine to run models]),[
+  SGE_OPTS="-s"
+  if test x"$with_sge_jobs"x != xyesx; then
+    SGE_OPTS="$SGE_OPTS -o \"$with_sge_jobs\""
+  fi 
+  AC_MSG_RESULT([$withval])],[AC_MSG_RESULT([no])])
+AC_SUBST(SGE_OPTS)
+
+# Checking if sources are from subversion
+AC_CHECK_FILE($srcdir/libglimmer/.svn/entries,have_svn_entries="yes",have_svn_entries="no")
+GLIMMER_SVN_VERS=""
+if test "$have_svn_entries" == "yes"; then
+   GLIMMER_SVN_VERS=" svn_vers_string"
+fi
+AC_SUBST(GLIMMER_SVN_VERS)
+AM_CONDITIONAL([HAVE_SVN],[test "$have_svn_entries" == "yes"])
+
+AC_CONFIG_FILES([Makefile m4macros/Makefile scripts/Makefile \
+                utils/Makefile libglimmer/Makefile \
+                libglimmer-solve/Makefile libglimmer-solve/SLAP/Makefile \
+                libglimmer-solve/blas/Makefile libglint/Makefile \
+                libglide/Makefile tests/Makefile example-drivers/Makefile \
+                tests/EISMINT/Makefile tests/EISMINT/src/Makefile tests/EISMINT/benchmarks/Makefile \
+                tests/EISMINT/EISMINT-1/Makefile  tests/EISMINT/EISMINT-2/Makefile \
+                tests/EISMINT/isos/Makefile  tests/EISMINT/lin-non_lin/Makefile \
+                tests/exact-isothermal/Makefile tests/exact-isothermal/src/Makefile \
+                tests/exact-isothermal/matlab/Makefile tests/exact-isothermal/scripts/Makefile \
+                tests/exact-isothermal/tests/Makefile \
+                example-drivers/eis/Makefile example-drivers/eis/src/Makefile \
+                example-drivers/eis/fenscan/Makefile example-drivers/EISMINT-3/EISMINT-3/Makefile \
+                example-drivers/EISMINT-3/Makefile example-drivers/EISMINT-3/src/Makefile \
+                example-drivers/glint/Makefile example-drivers/glint/src/Makefile \
+                doc/Makefile doc/common/Makefile doc/dg/Makefile doc/dg/figures/Makefile \
+                doc/ug/Makefile doc/ug/figs/Makefile \
+                doc/num/Makefile doc/num/figs/Makefile doc/num/gnu/Makefile \
+                doc/doclets/Makefile doc/doclets/figs/Makefile \
+                doc/tut/Makefile])
+AC_OUTPUT([doc/common/version.tex])
+AC_OUTPUT([glimmer-cism-config libglimmer/glimmer_vers.F90.in])
