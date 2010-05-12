@@ -1,6 +1,7 @@
 #include <iostream>
 #include "Epetra_Comm.h"
 #include "Epetra_Map.h"
+#include "Epetra_LocalMap.h"
 #ifdef HAVE_MPI
 #include "mpi.h"
 #include "Epetra_MpiComm.h"
@@ -17,6 +18,7 @@ class Simple_Interface {
 public:
   // Constructor
   Simple_Interface(int bandwidth, int matrixOrder, const Epetra_Comm& comm);
+  Simple_Interface(int bandwidth, int mySize, int* myIndices, const Epetra_Comm& comm);
 
   // Destructor
   ~Simple_Interface();
@@ -25,7 +27,8 @@ public:
   int isFillCompleted() {return isFillCompleted_;};
   const int bandwidth() const {return bandwidth_;};
   const int matrixOrder() const {return matrixOrder_;};
-  const Epetra_Map& getMap() const {return *globalMap_;};
+  //const Epetra_Map& getMap() const {return *rowMap_;};
+  const Epetra_Map& getFullMap() const {return *fullMap_;};
   Teuchos::RCP<Epetra_CrsMatrix>& getOperator() {return operator_;};
 
   // Mutators
@@ -39,5 +42,6 @@ private:
   int matrixOrder_;
   const Epetra_Comm& comm_;
   Teuchos::RCP<Epetra_CrsMatrix> operator_;
-  Teuchos::RCP<Epetra_Map> globalMap_;
+  Teuchos::RCP<Epetra_Map> rowMap_;
+  Teuchos::RCP<Epetra_Map> fullMap_;
 };

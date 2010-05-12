@@ -1,3 +1,5 @@
+#include "Teuchos_ConfigDefs.hpp"
+
 #ifdef HAVE_MPI
 #include "mpi.h"
 #include "Epetra_MpiComm.h"
@@ -19,7 +21,6 @@
 
 #include "Trilinos_Util.h"
 
-#include "Teuchos_ConfigDefs.hpp"
 #include "Teuchos_FancyOStream.hpp"
 #include "Teuchos_ParameterList.hpp"
 #include "Teuchos_XMLParameterListHelpers.hpp"

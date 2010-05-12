@@ -102,7 +102,6 @@ implicit none
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
 
 
-
 !***********************************************************************
 
 contains
@@ -266,6 +265,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer :: iter
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
 
+#ifdef TRILINOS
+! AGS: migrating the interface to accept partition info
+  integer, allocatable, dimension(:) :: myIndices
+  integer :: mySize = -1
+#endif
+
+
 ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
 
@@ -340,9 +346,20 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 #ifdef TRILINOS
   if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
-     call initialize(20, pcgsize(1))
+!     call initialize(20, pcgsize(1))
      write(*,*) 'size of the matrix', pcgsize(1)
-     !write(*,*) 'Working on it!'
+
+! AGS: Get partition -- later this will be known by distributed glimmer
+     call dopartition(pcgsize(1), mySize)
+     write(*,*) 'my size of the partitioned matrix', mySize
+     allocate(myIndices(mySize))
+     call getpartition(mySize, myIndices)
+     write(*,*) 'my first row of the partitioned matrix', myIndices(1)
+
+! Now send this partition to Trilinos initialization routines
+     call inittrilinos(20, mySize, myIndices)
+
+     deallocate(myIndices)
   endif
 #endif
 

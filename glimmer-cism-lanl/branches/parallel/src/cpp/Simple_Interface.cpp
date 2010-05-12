@@ -1,12 +1,30 @@
 #include <iostream>
 #include "Simple_Interface.hpp"
 
-// Constructor
-Simple_Interface::Simple_Interface(int bandwidth, int matrixSize, const Epetra_Comm& comm) : bandwidth_(bandwidth), matrixOrder_(matrixSize), comm_(comm) {
-  globalMap_ =  Teuchos::rcp(new Epetra_Map(matrixSize, 0, comm) );
+// Constructor (NO LONGER USED)
+Simple_Interface::Simple_Interface(int bandwidth, int matrixSize, const Epetra_Comm& comm)
+  : bandwidth_(bandwidth), matrixOrder_(matrixSize), comm_(comm) {
+  rowMap_ =  Teuchos::rcp(new Epetra_Map(matrixSize, 1, comm) );
   
-  operator_ = Teuchos::rcp(new Epetra_CrsMatrix(Copy, *globalMap_, bandwidth) );
+  operator_ = Teuchos::rcp(new Epetra_CrsMatrix(Copy, *rowMap_, bandwidth) );
   isFillCompleted_ = 0;
+
+  // create map of full vector
+  fullMap_ =  Teuchos::rcp(new Epetra_LocalMap(matrixSize, 1, comm));
+}
+
+// Constructor
+Simple_Interface::Simple_Interface(int bandwidth, int mySize, int* myIndices, const Epetra_Comm& comm)
+  : bandwidth_(bandwidth), matrixOrder_(-1), comm_(comm) {
+  
+  rowMap_ =  Teuchos::rcp(new Epetra_Map(-1, mySize, myIndices, 1, comm) );
+  matrixOrder_ = rowMap_->NumGlobalElements();
+
+  operator_ = Teuchos::rcp(new Epetra_CrsMatrix(Copy, *rowMap_, bandwidth) );
+  isFillCompleted_ = 0;
+
+  // create map of full vector
+  fullMap_ =  Teuchos::rcp(new Epetra_LocalMap(matrixOrder_, 1, comm));
 }
 
 // Destructor
@@ -23,8 +41,8 @@ void Simple_Interface::updateBandwidth(int bandwidth) {
   bandwidth_ = bandwidth;
 }
 
-// Update the operator and also the corresponding global map.
+// Update the operator and also the corresponding row map.
 void Simple_Interface::updateOperator(Teuchos::RCP<Epetra_CrsMatrix> newOperator) {
   operator_ = newOperator;
-  globalMap_ = Teuchos::rcp(new Epetra_Map(operator_->RowMap() ) );
+  rowMap_ = Teuchos::rcp(new Epetra_Map(operator_->RowMap() ) );
 }
