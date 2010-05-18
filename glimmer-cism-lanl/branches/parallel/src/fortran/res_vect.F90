@@ -1,4 +1,4 @@
-!  uvec is either u^l-1 or v^k-1 on input and Av_b or Cu_d on output
+!  uvec is either u^l-1 or v^k-1 on input and Av-b or Cu-d on output
 
 subroutine res_vect ( matrix, uvec, bvec, nu, counter, g_flag )
 
@@ -22,7 +22,7 @@ real (kind = dp), dimension(nu) :: Au_b
 
       Au_b = 0d0
       
-      do nele = 1, matrix%nonzeros !they are a bunch of zeros at the end...
+      do nele = 1, matrix%nonzeros 
  
          i = matrix%row(nele)
          if (g_flag(i) .eq. 0) then
