@@ -17,9 +17,9 @@ program nc_gen_input
        <chan_amp> <chan_init_length> & 
        <kinbc_width> <nsswitch>"
 
-  character(len=512) :: ghost_shelf_params = "<fname> <nx> <ny> <n_level> <hx> <hy> &
+  character(len=512) :: ghost_shelf_params = "<fname> <nx> <ny> <kinbcw> <n_level> <hx> <hy> &
        <upstream_thk> <upstream_vel> <front_thk> &
-       <k_x> <chan_amp> <ramp_width>"
+       <k_x> <chan_amp> <ramp_width> <landw>"
 
   character (len=2) :: type_code
 
@@ -78,9 +78,9 @@ contains
 
   subroutine make_ghost_shelf()
 
-    ! <fname> <nx> <ny> <n_level> <hx> <hy> 
+    ! <fname> <nx> <ny> <kinbcw> <n_level> <hx> <hy> 
     ! <upstream_thk> <front_thk> 
-    ! <k_x> <chan_amp> <ramp_width>
+    ! <k_x> <chan_amp> <ramp_width> <landw>
 
     ! local variables
     integer :: landw, landw_north 
@@ -92,9 +92,9 @@ contains
     integer :: ramp_width
     real :: hx,hy,up_thk,if_thk,k_x,chan_amp,chan_depth,upstream_vel
     real :: otopg,ltopg
-    real :: cutoff_usrf,rhoi_rhow
+    real :: cutoff_usrf,rhoi_rhow,central_amp
 
-    if (command_argument_count() /= 13) then
+    if (command_argument_count() /= 15) then
        write(*,*)"Incorrect number of parameters. Ghost shelf requires:  ",trim(ghost_shelf_params)
        stop 1
     end if
@@ -112,44 +112,55 @@ contains
     write(*,*) 'ny:',ny
 
     call get_command_argument(firstarg + 3,argstr)
+    read(argstr,'(i5)') kinbcw
+    write(*,*) 'kinbcw:', kinbcw
+
+    call get_command_argument(firstarg + 4,argstr)
     read(argstr,'(i5)') n_level
     write(*,*) 'n_level:',n_level
 
-    call get_command_argument(firstarg + 4,argstr)
+    call get_command_argument(firstarg + 5,argstr)
     read(argstr,'(f18.12)') hx
     write(*,*) 'hx',hx
 
-    call get_command_argument(firstarg + 5,argstr)
+    call get_command_argument(firstarg + 6,argstr)
     read(argstr,'(f18.12)') hy
     write(*,*) 'hy',hy
 
-    call get_command_argument(firstarg + 6,argstr)
+    call get_command_argument(firstarg + 7,argstr)
     read(argstr,'(f18.12)') up_thk
     write(*,*) 'up_thk',up_thk
 
-    call get_command_argument(firstarg + 7,argstr)
+    call get_command_argument(firstarg + 8,argstr)
     read(argstr,'(f18.12)') upstream_vel
     write(*,*) 'upstream_vel',upstream_vel
 
-    call get_command_argument(firstarg + 8,argstr)
+    call get_command_argument(firstarg + 9,argstr)
     read(argstr,'(f18.12)') if_thk
     write(*,*) 'if_thk',if_thk
 
-    call get_command_argument(firstarg + 9,argstr)
+    call get_command_argument(firstarg + 10,argstr)
     read(argstr,'(f18.12)') k_x
     write(*,*) 'k_x',k_x
 
-    call get_command_argument(firstarg + 10,argstr)
+    call get_command_argument(firstarg + 11,argstr)
     read(argstr,'(f18.12)') chan_amp
     write(*,*) 'chan_amp',chan_amp
 
-    call get_command_argument(firstarg + 11,argstr)
+    call get_command_argument(firstarg + 12,argstr)
     read(argstr,'(i5)') ramp_width
     write(*,*) 'ramp_width',ramp_width
 
+    call get_command_argument(firstarg+13,argstr)
+    read(argstr,'(i5)') landw
+    write(*,*) 'landw', landw
+
     allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
     allocate(level(n_level))
-    allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
+    allocate(topog(nx,ny),thck(nx,ny))
+
+    allocate(kinbcmask(nx,ny-1))
+
     allocate(uvelhom(nx-1,ny-1,n_level), vvelhom(nx-1,ny-1,n_level))
 
     !now populate the dimension variables
@@ -165,25 +176,28 @@ contains
 
     ! safe values so the ice never touches the bottom or breaches the land
 
-    landw = 3
     landw_north = 0
 
-    kinbcw = 3
-
     otopg = -up_thk * 2.0
-    ltopg = up_thk * 0.5
+    ltopg = up_thk * 1.0
     ifpos = 5
 
-    rhoi_rhow = 0.9
+    rhoi_rhow = 910.0 / 1028.0
+    central_amp = 0.0
 
     !define topg
     topog = -abs(otopg)
     topog(:,(ny+1-landw_north):ny) = abs(ltopg)   ! North edge is flat and high
 
-    do j=1,(ny-landw_north)
-       topog(1:ramp_width,j) = (/ ( ltopg +(otopg-ltopg)*i/(ramp_width-1),i=0,(ramp_width-1) ) /)
-       topog((nx+1-ramp_width):nx,j) = (/ ( otopg +(ltopg-otopg)*i/(ramp_width-1),i=0,(ramp_width-1) ) /)
-    end do
+    if (landw > 0) then
+        topog(1:landw,:) = abs(ltopg)
+        topog((nx+1-landw):nx,:) = abs(ltopg)
+    
+        do j=1,(ny-landw_north)
+            topog(landw:(ramp_width-1+landw),j) = (/ ( ltopg +(otopg-ltopg)*i/(ramp_width-1),i=0,(ramp_width-1) ) /)
+            topog((nx-landw+2-ramp_width):(nx-landw+1),j) = (/ ( otopg +(ltopg-otopg)*i/(ramp_width-1),i=0,(ramp_width-1) ) /)
+        end do
+    end if
 
     !define kinbcmask
     kinbcmask = 0
@@ -206,8 +220,6 @@ contains
 
     thck(:,1:(ifpos-1)) = 0.d0 ! zero ahead of ice front position
 
-!    thck(:,(ny+1-landw_north):ny) = up_thk
-
     do j= ifpos,(ny - landw_north)
 
        cutoff_usrf = maxval(thck((ramp_width+1):(nx+1-ramp_width),j)*(1 - rhoi_rhow))
@@ -222,7 +234,11 @@ contains
     uvelhom = 0.0
     vvelhom = 0.0
 
-    vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
+    do i = 1,(nx-1)
+        vvelhom(i,(ny-kinbcw):(ny-1),:) = upstream_vel* &
+                   (1.0 + central_amp*4.0*real(i-landw)/real(nx-1-2*landw) * real(nx-landw-i)/real(nx-1-2*landw))
+    end do
+!    vvelhom = upstream_vel
 
     call write_nc_file(.true.)
 
@@ -759,7 +775,8 @@ contains
     call check( nf90_put_att(nc_id, topog_varid, 'long_name', 'topography') )
     call check( nf90_put_att(nc_id, topog_varid, 'units', 'meter') )
 
-    call check( nf90_def_var(nc_id,'kinbcmask',NF90_DOUBLE,(/xstag_dimid,ystag_dimid,time_dimid/),kinbcmask_varid) )
+!    call check( nf90_def_var(nc_id,'kinbcmask',NF90_DOUBLE,(/xstag_dimid,ystag_dimid,time_dimid/),kinbcmask_varid) )
+    call check( nf90_def_var(nc_id,'kinbcmask',NF90_DOUBLE,(/x_dimid,ystag_dimid,time_dimid/),kinbcmask_varid) )
     call check( nf90_put_att(nc_id, kinbcmask_varid, 'long_name', 'kinematic boundary condition mask') )
 
     if (write_vel) then

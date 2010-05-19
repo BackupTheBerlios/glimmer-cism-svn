@@ -14,6 +14,7 @@ program nc_regrid
   integer :: t_read
 
   integer :: nx_new, ny_new, ny_old, nx_old, nt_old
+  integer :: nlevel                                !only allow new nlevel = old nlevel
   real :: hx_old, hy_old, hx_new, hy_new
   real :: hx_new_kin, hy_new_kin
 
@@ -21,9 +22,11 @@ program nc_regrid
   real,dimension(2) :: x1_old,y1_old
 
   !data arrays
+  real,dimension(:),allocatable :: levels
   real,dimension(:),allocatable :: xs_new,ys_new
   real,dimension(:),allocatable :: xstag_new,ystag_new
   real,dimension(:,:),allocatable :: thck_old,thck_new,topog_old,topog_new
+  real,dimension(:,:,:),allocatable :: uvelhom_old,uvelhom_new,vvelhom_old,vvelhom_new
   integer,dimension(:,:),allocatable :: kinbcmask_old,kinbcmask_new
   
   call main()
@@ -125,13 +128,15 @@ subroutine main()
   allocate(xstag_new(nx_new-1),ystag_new(ny_new-1))
   allocate(topog_new(nx_new,ny_new),thck_new(nx_new,ny_new))
   allocate(kinbcmask_new(nx_new-1,ny_new-1))
+  allocate(uvelhom_new(nx_new-1,ny_new-1,nlevel),vvelhom_new(nx_new-1,ny_new-1,nlevel))
 
   call define_new_data()
   
   call write_nc_file()
 
   deallocate(xs_new,ys_new,xstag_new,ystag_new,&
-             thck_new,topog_new,kinbcmask_new)
+             thck_new,topog_new,kinbcmask_new, &
+             uvelhom_new,vvelhom_new)
 
 end subroutine main
 
@@ -231,28 +236,35 @@ subroutine read_old_nc_file()
 
   !local variables  
   integer :: nc_id
-  integer :: time_dimid,time_varid,x_dimid,y_dimid
-  integer :: x_varid,y_varid
+  integer :: time_dimid,time_varid,x_dimid,y_dimid,level_dimid
+  integer :: x_varid,y_varid,level_varid
   integer :: thck_varid,topog_varid,kinbcmask_varid
+  integer :: uvelhom_varid,vvelhom_varid
 
-  character(len=NF90_MAX_NAME) :: x1_name,y1_name,t_name
+  character(len=NF90_MAX_NAME) :: x1_name,y1_name,t_name,level_name
   
   call check(nf90_open(trim(nc_file_in), NF90_NOWRITE, nc_id))  
 
   call check(nf90_inq_dimid(nc_id, 'x1', x_dimid))
   call check(nf90_inq_dimid(nc_id, 'y1', y_dimid))
+  call check(nf90_inq_dimid(nc_id, 'time', time_dimid))
+  call check(nf90_inq_dimid(nc_id, 'level', level_dimid))
+
   call check(nf90_inq_varid(nc_id, 'x1', x_varid))
   call check(nf90_inq_varid(nc_id, 'y1', y_varid))
-  call check(nf90_inq_dimid(nc_id, 'time', time_dimid))
   call check(nf90_inq_varid(nc_id, 'time', time_varid))
-
+  call check(nf90_inq_varid(nc_id, 'level', level_varid))
+  
   call check(nf90_inq_varid(nc_id, 'thk', thck_varid))
   call check(nf90_inq_varid(nc_id, 'topg', topog_varid))
   call check(nf90_inq_varid(nc_id, 'kinbcmask', kinbcmask_varid))
+  call check(nf90_inq_varid(nc_id, 'uvelhom', uvelhom_varid))
+  call check(nf90_inq_varid(nc_id, 'vvelhom', vvelhom_varid))
 
   call check(nf90_inquire_dimension(nc_id, x_dimid, x1_name, nx_old))
   call check(nf90_inquire_dimension(nc_id, y_dimid, y1_name, ny_old))
   call check(nf90_inquire_dimension(nc_id, time_dimid, t_name, nt_old))
+  call check(nf90_inquire_dimension(nc_id, level_dimid, level_name, nlevel))
 
   call check(nf90_get_var(nc_id, x_varid, x1_old, start= (/ 1 /), &
 						  count= (/ 2 /) ))
@@ -261,7 +273,7 @@ subroutine read_old_nc_file()
   call check(nf90_get_var(nc_id, y_varid, y1_old, start= (/ 1 /), &
       						  count= (/ 2 /) ))
   hy_old = y1_old(2) - y1_old(1)
-
+ 
   if (t_read < 1) then
 	write(*,*) 't_read can not be negative'
 	stop 1
@@ -274,6 +286,12 @@ subroutine read_old_nc_file()
 
   allocate(thck_old(nx_old,ny_old),topog_old(nx_old,ny_old))
   allocate(kinbcmask_old(nx_old-1, ny_old-1))
+  allocate(uvelhom_old(nx_old-1,ny_old-1,nlevel),vvelhom_old(nx_old-1,ny_old-1,nlevel))
+  allocate(levels(nlevel))
+
+  call check(nf90_get_var(nc_id, level_varid, levels, &
+                          start= (/ 1 /), &
+                          count= (/ nlevel /)))
 
   call check(nf90_get_var(nc_id, thck_varid, thck_old,&
                           start= (/ 1,1,t_read /), &
@@ -284,6 +302,13 @@ subroutine read_old_nc_file()
   call check(nf90_get_var(nc_id, kinbcmask_varid, kinbcmask_old, &
 			start= (/ 1,1,t_read /), &
 		        count= (/ (nx_old-1),(ny_old-1),1 /) ))
+
+  call check(nf90_get_var(nc_id, uvelhom_varid, uvelhom_old, &
+                        start= (/ 1,1,1,t_read /), &
+                        count= (/ (nx_old-1),(ny_old-1),nlevel,1 /) ))
+  call check(nf90_get_var(nc_id, vvelhom_varid, vvelhom_old, &
+                        start= (/ 1,1,1,t_read /), &
+                        count= (/ (nx_old-1),(ny_old-1),nlevel,1 /) ))
 
 end subroutine read_old_nc_file
 
@@ -314,6 +339,8 @@ subroutine define_new_data()
   topog_new = 0.0
   thck_new = 0.0
   kinbcmask_new_real = 0.0
+  uvelhom_new = 0.0
+  vvelhom_new = 0.0
 
   call write_real_margins(topog_old,topog_new, +1.0, 0.0,&
                           nx_old, nx_new,ny_old, ny_new, &
@@ -329,11 +356,25 @@ subroutine define_new_data()
   call write_interior(thck_old,thck_new,nx_old,nx_new,ny_old,ny_new,&
                       thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin)
 
-  kinbcmask_new_real = 0.0
   call write_real_margins(real(kinbcmask_old), kinbcmask_new_real, +1.0,0.0,&
                           nx_old-1, nx_new-1, ny_old-1, ny_new-1, &
 			  kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin)
   kinbcmask_new = int(kinbcmask_new_real)
+
+
+  do j=1,nlevel
+     call write_real_margins(uvelhom_old(:,:,j),uvelhom_new(:,:,j), 1.0, 0.0,&
+                             nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
+                             0,0,0,0)
+     call write_real_margins(vvelhom_old(:,:,j),vvelhom_new(:,:,j), 1.0, 0.0,&
+                             nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
+                             0,0,0,0)
+     call write_interior(uvelhom_old(:,:,j),uvelhom_new(:,:,j), nx_old-1,nx_new-1, &
+                         ny_old-1,ny_new-1,0,0,0,0)
+
+     call write_interior(vvelhom_old(:,:,j),vvelhom_new(:,:,j), nx_old-1,nx_new-1, &
+                         ny_old-1,ny_new-1,0,0,0,0)
+  end do
 
 end subroutine define_new_data
 
@@ -341,9 +382,9 @@ subroutine write_nc_file()
     
     !local variables
     integer :: nc_id
-    integer :: time_dimid,x_dimid,y_dimid,xstag_dimid,ystag_dimid
-    integer :: x_varid,y_varid,time_varid
-    integer :: thck_varid,topog_varid,kinbcmask_varid
+    integer :: time_dimid,x_dimid,y_dimid,xstag_dimid,ystag_dimid,level_dimid
+    integer :: x_varid,y_varid,time_varid,level_varid
+    integer :: thck_varid,topog_varid,kinbcmask_varid,uvelhom_varid,vvelhom_varid
     integer :: xstag_varid,ystag_varid
     
     call check( nf90_create(trim(nc_file_out), NF90_CLOBBER, nc_id) )
@@ -354,8 +395,12 @@ subroutine write_nc_file()
     call check( nf90_def_dim(nc_id,'y1',ny_new,y_dimid) )
     call check( nf90_def_dim(nc_id,'x0',nx_new-1,xstag_dimid) )
     call check( nf90_def_dim(nc_id,'y0',ny_new-1,ystag_dimid) )
- 
+    call check( nf90_def_dim(nc_id,'level',nlevel,level_dimid) )
+
     ! define variables
+    call check( nf90_def_var(nc_id,'level',NF90_DOUBLE,(/level_dimid/),level_varid) )
+    call check( nf90_put_att(nc_id, level_varid, 'long_name', 'sigma level') )
+  
     call check( nf90_def_var(nc_id,'time',NF90_DOUBLE,(/time_dimid/),time_varid) )
     call check( nf90_put_att(nc_id, time_varid, 'long_name', 'time') )
     call check( nf90_put_att(nc_id, time_varid, 'units', 'seconds') )
@@ -392,6 +437,16 @@ subroutine write_nc_file()
     call check( nf90_put_att(nc_id, kinbcmask_varid, 'long_name',  &
                                  'kinematic boundary condition mask') )
 
+    call check( nf90_def_var(nc_id,'uvelhom', NF90_DOUBLE, &
+                             (/xstag_dimid,ystag_dimid,level_dimid,time_dimid/),uvelhom_varid))
+    call check( nf90_put_att(nc_id, uvelhom_varid, 'long_name', &
+                                 'x velocity') )
+
+    call check( nf90_def_var(nc_id,'vvelhom', NF90_DOUBLE, &
+                             (/xstag_dimid,ystag_dimid,level_dimid,time_dimid/),vvelhom_varid))
+    call check( nf90_put_att(nc_id, vvelhom_varid, 'long_name', &
+                                 'y velocity') )
+
     call check( nf90_enddef(nc_id) )
 
     call check( nf90_put_var(nc_id,x_varid,xs_new) )
@@ -405,6 +460,9 @@ subroutine write_nc_file()
     call check( nf90_put_var(nc_id, topog_varid, topog_new) )
     call check( nf90_put_var(nc_id, kinbcmask_varid, kinbcmask_new) )
 
+    call check( nf90_put_var(nc_id, uvelhom_varid, uvelhom_new) )
+    call check( nf90_put_var(nc_id, vvelhom_varid, vvelhom_new) )
+
     call check( nf90_close(nc_id) )
 
   end subroutine write_nc_file
@@ -414,7 +472,7 @@ subroutine write_nc_file()
     integer,intent(in) :: status_code
 
     if (status_code /= 0) then
-       write(*,*) 'fatal netcdf error:',nf90_strerror(status_code)
+       write(*,*) 'Fatal netcdf error:',nf90_strerror(status_code)
        stop 1
     end if
 

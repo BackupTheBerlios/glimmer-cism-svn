@@ -46,7 +46,7 @@ class PlumeNamelist(object):
                      'restart' : False,
                      'frazil' : False,
                      'nonlin' : True,
-                     'horturb' : False,
+                     'horturb' : True,
                      'entrain' : True,
                      'entype' : 1,
                      'basmelt' : True,
@@ -78,8 +78,8 @@ class PlumeNamelist(object):
                      'temptop' : None,
                      'tempbot' : None,
                      'phi' : None,
-                     'ah' : 0.0,   
-                     'kh' : 0.0,
+                     'ah' : None,   
+                     'kh' : None,
                      'cdb' : 2.5e-3,    
                      'cl' : 1.775e-2,   
                      'ef' : 5.0e-1,     
@@ -88,7 +88,8 @@ class PlumeNamelist(object):
                      'nice' : 10,
                      'seedtype' : 2,
                      'cseedfix' : 1.0e-7,
-                     'cinffix'  : 0.0
+                     'cinffix'  : 0.0,
+                     'context' : 'none',
                      }
                      
     def update_vals(self, specificVals):
@@ -120,10 +121,10 @@ class GCConfig(object):
 
     def __init__(self):
         
-        self.vals = { 'parameters' : { 'geothermal' : -42.0e-3,
+        self.vals = { 'parameters' : { 'geothermal' :   0.0,
                                        'default_flwa' : 4.6e-18,
                                        'flow_factor' : 1,
-                                       #'ice_limit' : 10.0,
+                                       'ice_limit' : None,
                                        #'marine_limit' : 0.0
                                        #'calving_fraction' : 0.0,
                                        #'hydro_time' : 0.0,
@@ -134,20 +135,21 @@ class GCConfig(object):
                       'Petermann shelf' : {  'air_temperature' : None,
                                              'accumulation_rate' : None,
                                              'eustatic_sea_level' : 0.0 },
-                      'options' : {'flow_law' : 1,
+                      'options' : {'flow_law' : 0,
                                    'evolution' : 3,
                                    'temperature' : 1,
                                    'vertical_integration' : 1,
                                    'marine_margin' : 0,
                                    'topo_is_relaxed' : 1,
-                                   'slip_coeff' : 1,
+                                   'slip_coeff' : 0,
                                    'sliding_law' : 4,
                                    'stress_calc' : 2,
                                    'periodic_ew' : 0,
                                    'periodic_ns' : 0,
                                    'hotstart' : 0,
-                                   'basal_water' : 2,
+                                   'basal_water' : 3,
                                    'use_plume' : None,
+                                   'diagnostic_run' : 0,
                                    },
                       'grid' : { 'sigma_builtin' : 1,
                                  'upn' : None,
@@ -163,6 +165,7 @@ class GCConfig(object):
                                        'guess_specified' : 1,
                                        'which_ho_sparse' : 0,
                                        'diagnostic_scheme' : 3,
+                                       'prognostic_scheme' : 0,
                                        'include_thin_ice' : 0,
                                        'which_ho_efvs' : 0},
                       'CF default' : { 'comment' : None,
@@ -176,12 +179,13 @@ class GCConfig(object):
                                                               'uvelhom',
                                                               'vvelhom',
                                                               'uvelhom_srf',
-                                                              'uvelhom_bas',
                                                               'vvelhom_srf',
-                                                              'vvelhom_bas',
                                                               'thkmask','topg',
                                                               'kinbcmask',
-                                                              'beta','btrc']),
+                                                              'beta','btrc',
+                                                              'taux','tauy',
+                                                              'tau_hom_xx','tau_hom_yy',
+                                                              'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
                                       'frequency' : None,
                                       'name' : None },
                       'time' : { 'tstart' : 0.0,
@@ -286,7 +290,8 @@ def main(config_filename):
         cmd.extend(nc_regrid_args)
         cmd = [fortran_style('nc_regrid', c) for c in cmd]
     else:
-        raise Exception('No arguments to generate netcdf input')
+        cmd = ['echo','Reading input from a given file']
+#        raise Exception('No arguments to generate netcdf input')
     
     retcode = subprocess.call(cmd)
     if (retcode != 0):
