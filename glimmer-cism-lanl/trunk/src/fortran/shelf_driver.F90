@@ -12,7 +12,7 @@ program shelf_driver
   use glimmer_writestats_module
   use plume
   use plume_io
-
+ 
   use glimmer_paramets, only: thk0
   use glide_temp, only: timeevoltemp
 
@@ -32,6 +32,7 @@ program shelf_driver
   real(kind=rk) :: time
   real(kind=dp) :: t1,t2
   integer :: clock,clock_rate
+  real(kind=rk),dimension(:),allocatable :: upstream_thck
 
   !PLUME configuration values
   character(len=512) :: plume_nl,plume_output_nc_file,plume_output_prefix,plume_ascii_output_dir
@@ -83,6 +84,10 @@ program shelf_driver
   !inside glide_initialise
   model%climate%acab(:,:) = climate_cfg%accumulation_rate
   model%climate%artm(:,:) = climate_cfg%artm
+  
+  allocate(upstream_thck(model%general%ewn))
+
+  upstream_thck = model%geometry%thck(:,model%general%nsn)
 
   ! this just sets the ice column temperature to the ambient air temperature
   call timeevoltemp(model,0)
@@ -131,6 +136,15 @@ program shelf_driver
 
  end if
 
+if (plume_write_all_states) then
+    write(*,*) 'Stopping because plume_write_all_states is true'
+    call plume_finalise()
+    call plume_io_finalize()
+    call plume_logging_finalize()
+
+    stop
+end if
+
  do while(time .le. model%numerics%tend)
 
      model%climate%acab(:,:) = climate_cfg%accumulation_rate
@@ -139,10 +153,18 @@ program shelf_driver
 
      call glide_tstep_p1(model,time) ! temp evolution
      call glide_tstep_p2(model)      ! velocities, thickness advection
+     ! adjust the heights in the upstream row
+     model%geometry%thck(:,model%general%nsn) = upstream_thck
+     model%geometry%thck(:,model%general%nsn-1) = upstream_thck
+     
+     ! impose dh/dx = 0 along the lateral side walls
+     model%geometry%thck(model%general%ewn,:) = model%geometry%thck(model%general%ewn-1,:)
+     model%geometry%thck(                1,:) = model%geometry%thck(                  2,:)
+
      call glide_tstep_p3(model)      ! isostasy, upper/lower surfaces
 
      time = time + model%numerics%tinc
-     
+
      if (model%options%use_plume .eq. USE_PLUME) then	
 	 
           ! We would normally expect the plume to reach a steady state
@@ -168,9 +190,15 @@ program shelf_driver
                     write_all_states = plume_write_all_states)
 
      end if
+   
   end do
 
+  call glide_io_writeall(model,model)
+
   ! finalise GLIDE
+
+  deallocate(upstream_thck)
+
   call glide_finalise(model)
 
   if (model%options%use_plume .eq. USE_PLUME) then 
