@@ -76,7 +76,7 @@ long_name:     latitude
 standard_name: latitude
 data:          data%climate%lati
 load:          1
-hot:           1
+#hot:           1
 standard_name: latitude
 
 [lon]
@@ -94,7 +94,7 @@ long_name:     relaxed bedrock topography
 data:          data%isos%relx
 factor:        thk0
 load:          1
-hot:           1
+#hot:           1
 coordinates:   lon lat
 
 [eus]
@@ -157,6 +157,7 @@ long_name:     higher-order bed stress coefficient
 data:          data%velocity_hom%beta
 factor:        scale2d_f6
 load:          1
+hot:	       1
 
 [ubas]
 dimensions:    time, y0, x0
@@ -165,7 +166,7 @@ long_name:     basal slip velocity in x direction
 data:          data%velocity%ubas
 factor:        scale2d_f5
 standard_name: land_ice_basal_x_velocity
-load:          1
+#load:          1
 average:       1
 
 [vbas]
@@ -175,18 +176,18 @@ long_name:     basal slip velocity in y direction
 data:          data%velocity%vbas
 factor:        scale2d_f5
 standard_name: land_ice_basal_y_velocity
-load:          1
+#load:          1
 average:       1
 
 [taux]
-dimensions:    time, y0, x0
+dimensions:    time, y1, x1
 units:         kilopascal
 long_name:     basal shear stress in x direction
 data:          data%velocity%tau_x
 factor:        1e-3*thk0*thk0/len0
 
 [tauy]
-dimensions:    time, y0, x0
+dimensions:    time, y1, x1
 units:         kilopascal
 long_name:     basal shear stress in y direction
 data:          data%velocity%tau_y
@@ -199,6 +200,7 @@ long_name:     ice thickness
 data:          data%geometry%thck
 factor:        thk0
 standard_name: land_ice_thickness
+load:	       1
 hot:           1
 coordinates:   lon lat
 
@@ -245,9 +247,10 @@ units:         meter
 long_name:     ice upper surface elevation
 data:          data%geometry%usrf
 factor:        thk0
-load:          1
 standard_name: surface_altitude
 coordinates:   lon lat
+load:          1
+hot:           1
 
 [lsurf]
 dimensions:    time, y1, x1
@@ -263,8 +266,8 @@ units:         meter
 long_name:     bedrock topography
 data:          data%geometry%topg
 factor:        thk0
-load:          1
 standard_name: bedrock_altitude
+load:          1
 hot:           1
 coordinates:   lon lat
 
@@ -277,15 +280,17 @@ factor:        scale2d_f1
 standard_name: land_ice_surface_specific_mass_balance
 coordinates:   lon lat
 average:       1
+load:          1
+hot:           1
 
 [bheatflx]
 dimensions:    time, y1, x1
 units:         watt/meter2
 long_name:     basal heat flux
 data:          data%temper%bheatflx
+coordinates:   lon lat
 load:          1
 hot:           1
-coordinates:   lon lat
 
 [bmlt]
 dimensions:    time, y1, x1
@@ -294,9 +299,10 @@ long_name:     basal melt rate
 data:          data%temper%bmlt
 factor:        scale2d_f1
 standard_name: land_ice_basal_melt_rate
-hot:           1
 coordinates:   lon lat
 average:       1
+hot:           1
+load:	       1
 
 [bwat]
 dimensions:    time, y1, x1
@@ -304,8 +310,9 @@ units:         meter
 long_name:     basal water depth
 data:          data%temper%bwat
 factor:        thk0
-hot:           1
 coordinates:   lon lat
+hot:           1
+load:	       1
 
 [bwatflx]
 dimensions:    time, y1, x1
@@ -324,6 +331,8 @@ data:          data%climate%artm
 standard_name: surface_temperature
 cell_methods:  time: mean
 coordinates:   lon lat
+load:          1
+hot:           1
 
 [btemp]
 dimensions:    time, y1, x1
@@ -340,6 +349,15 @@ long_name:     rate of upper ice surface elevation change
 data:          data%geomderv%dusrfdtm
 factor:        scale2d_f1
 coordinates:   lon lat
+
+[dthckdtm]
+dimensions:    time, y1,x1
+units:         meter/year
+long_name:     tendency of ice thickness
+data:          data%geomderv%dthckdtm
+factor:        scale2d_f1
+coordinates:   lon lat
+
 
 [uvel]
 dimensions:    time, level, y0, x0
@@ -365,6 +383,7 @@ data:          data%velocity_hom%uvel(up,:,:)
 factor:        scale3d_f1
 standard_name: land_ice__x_velocity
 load:          1
+hot:	       1
 
 [vvelhom]
 dimensions:    time, level, y0, x0
@@ -374,14 +393,16 @@ data:          data%velocity_hom%vvel(up,:,:)
 factor:        scale3d_f1
 standard_name: land_ice_y_velocity
 load:          1
+hot:	       1
 
 [kinbcmask]
 dimensions:   time, y0, x0
 units:        1
 long_name:    Mask of locations where uvelhom, vvelhom value should be held
-data:         data%velocity_hom%kinbcmask(:,:)
+data:         data%velocity_hom%kinbcmask
 type:         int
 load:         1
+hot:	      1
 
 [velnormhom]
 dimensions:    time, level, y1, x1
@@ -390,6 +411,8 @@ long_name:     Ice velocity magnitude according to higher-order model
 data:          data%velocity_hom%velnorm(up,:,:)
 factor:        scale3d_f1
 coordinates:   lon lat
+load:         1
+hot:	      1
 
 #Vertical shear stresses, required for ISMIP-HOM intercomparison
 [tau_xz]
@@ -424,7 +447,7 @@ factor:        scale3d_f7
 coordinates:   lon lat
 
 [surfvel]
-dimensions:    time, level, y1, x1
+dimensions:    time, level, y0, x0
 units:         meter/year
 long_name:     ice surface velocity 
 data:          data%velocity%surfvel(up,:,:)
@@ -439,6 +462,7 @@ long_name:     Pre-exponential flow law parameter
 data:          data%temper%flwa(up,:,:)
 factor:        scale3d_f8
 hot:           1
+load:	       1
 coordinates:   lon lat
 
 [temp]
@@ -448,6 +472,7 @@ long_name:     ice temperature
 data:          data%temper%temp(up,1:data%general%ewn,1:data%general%nsn)
 standard_name: land_ice_temperature
 hot:           1
+load:	       1
 coordinates:   lon lat
 
 [litho_temp]
@@ -455,7 +480,7 @@ dimensions:    time, lithoz, y1, x1
 units:         degree_Celsius
 long_name:     lithosphere temperature
 data:          data%lithot%temp
-hot:           1
+#hot:           1
 coordinates:   lon lat
 
 [age]
@@ -465,7 +490,7 @@ long_name:     ice age
 data:          data%geometry%age(up,:,:)
 standard_name: land_ice_age
 factor:        tim0/scyr
-hot:           1
+#hot:           1
 coordinates:   lon lat
 
 [gl_ew]
