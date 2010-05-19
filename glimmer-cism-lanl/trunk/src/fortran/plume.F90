@@ -311,7 +311,9 @@ contains
     !local variables
     real(kind=kdp) :: subcycling_time,ice_dt_in_sec
     real(kind=kdp),dimension(m_grid,n_grid) :: bmelt_old !in meters per year
-    real(kind=kdp) :: max_rel_bmelt_change,prev_rel_change,min_run_time_sec
+    real(kind=kdp),dimension(m_grid,n_grid) :: speed_old,speed
+    real(kind=kdp) :: max_rel_bmelt_change,max_rel_speed_change
+    real(kind=kdp) :: prev_rel_change,prev_rel_speed_change,min_run_time_sec
     logical :: reached_steady
     character(len=512) :: log_message
 
@@ -330,14 +332,19 @@ contains
     ! so that thermodynamics will pick up heat conduction into ice
 
     bmelt_old = bmelt
+    speed_old = sqrt(su * su + sv * sv)
+    
 
     subcycling_time = 0.0
     ice_dt_in_sec = ice_dt * 365.25d0*24.0d0*3600.d0
     min_run_time_sec = min_run_time * 3600.d0 * 24.d0
     reached_steady = .false.
     prev_rel_change = 1.d0
+    prev_rel_speed_change = 1.d0
+
 
     ! while not steady
+
 
     do while ((subcycling_time .le. ice_dt_in_sec) .or. run_plume_to_steady )
 
@@ -359,12 +366,22 @@ contains
        max_rel_bmelt_change = maxval(abs(bmelt_old - bmelt)/ &
             (abs(bmelt)+1.d-30))
 
+       speed = sqrt(su*su + sv*sv)
+
+       max_rel_speed_change = maxval(abs(speed_old - speed)/ &
+            (abs(speed)+1.d-30))
+
        if (subcycling_time >= min_run_time_sec .and. (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
           prev_rel_change = max_rel_bmelt_change
           write(*,*) 'max_rel_bmelt_change',max_rel_bmelt_change, '   stopping tol',plume_stopping_tol
        end if
 
-       if (max_rel_bmelt_change < plume_stopping_tol) then
+       if((subcycling_time >= min_run_time_sec) .and. (max_rel_speed_change/prev_rel_speed_change < 1.d-1)) then
+          prev_rel_speed_change = max_rel_speed_change
+          write(*,*) 'max_rel_speed_change',max_rel_speed_change, '   stopping tol', plume_stopping_tol
+       end if
+
+       if ((max_rel_bmelt_change < plume_stopping_tol) .and. (max_rel_speed_change < plume_stopping_tol)) then
           if (subcycling_time .ge. (min_run_time_sec)) then
              reached_steady = .true.
              exit
@@ -373,6 +390,7 @@ contains
 
        subcycling_time = subcycling_time + dt
        bmelt_old = bmelt
+       speed_old = speed
 
     end do
 
