@@ -636,6 +636,537 @@ end subroutine glam_velo_fordsiapstr
 
 !***********************************************************************
 
+subroutine JFNK                 (ewn,      nsn,    upn,  &
+                                 dew,      dns,          &
+                                 sigma,    stagsigma,    &
+                                 thck,     usrf,         &
+                                 lsrf,     topg,         &
+                                 dthckdew, dthckdns,     &
+                                 dusrfdew, dusrfdns,     & 
+                                 dlsrfdew, dlsrfdns,     &
+                                 stagthck, flwa,         & 
+                                 mintauf,                & 
+                                 umask,                  & 
+                                 whichbabc,              &
+                                 whichefvs,              &
+                                 whichresid,             &
+                                 whichsparse,            &
+                                 periodic_ew,periodic_ns,&
+                                 beta,                   & 
+                                 uvel,     vvel,         &
+                                 uflx,     vflx,         &
+                                 efvs )
+
+  implicit none
+
+  integer, intent(in) :: ewn, nsn, upn
+  integer, dimension(:,:),   intent(inout)  :: umask  !*sfp* replaces the prev., internally calc. mask
+                                                      ! ... 'inout' status allows for a minor alteration
+                                                      ! to cism defined mask, which don't necessarily 
+                                                      ! associate all/any boundaries as a unique mask value.
+  real (kind = dp), intent(in) :: dew, dns
+
+  real (kind = dp), dimension(:),     intent(in)  :: sigma, stagsigma
+  real (kind = dp), dimension(:,:),   intent(in)  :: thck, usrf, lsrf, topg
+  real (kind = dp), dimension(:,:),   intent(in)  :: dthckdew, dthckdns
+  real (kind = dp), dimension(:,:),   intent(in)  :: dusrfdew, dusrfdns
+  real (kind = dp), dimension(:,:),   intent(in)  :: dlsrfdew, dlsrfdns
+  real (kind = dp), dimension(:,:),   intent(in)  :: stagthck
+  real (kind = dp), dimension(:,:),   intent(in)  :: minTauf
+  real (kind = dp), dimension(:,:,:), intent(in)  :: flwa
+  
+  !*sfp* This is the betasquared field from CISM (externally specified), and should eventually
+  ! take the place of the subroutine 'calcbetasquared' below (for now, using this value instead
+  ! will simply be included as another option within that subroutine) 
+  real (kind = dp), dimension(:,:),   intent(in)  :: beta 
+
+
+!whl - to do - Merge whichbabc with whichbtrc?
+  integer, intent(in) :: whichbabc
+  integer, intent(in) :: whichefvs
+  integer, intent(in) :: whichresid
+  integer, intent(in) :: whichsparse
+  logical, intent(in) :: periodic_ew, periodic_ns
+
+  real (kind = dp), dimension(:,:,:), intent(out) :: uvel, vvel
+  real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx
+  real (kind = dp), dimension(:,:,:), intent(out) :: efvs
+
+  integer :: ew, ns, up, nele
+
+  real (kind = dp), parameter :: NL_tol = 1.0d-06
+
+  integer, parameter :: cmax = 100, img = 10, img1 = img+1
+  integer :: counter , k
+  character(len=100) :: message
+
+!*sfp* needed to incorporate generic wrapper to solver
+  type(sparse_matrix_type) :: matrixA, matrixC, matrixtp
+  real (kind = dp), dimension(:), allocatable :: answer, u_k_1, v_k_1
+  real (kind = dp), dimension(:), allocatable :: vectp, u_k_1_plus, v_k_1_plus
+  real (kind = dp), dimension(:), allocatable :: du, duc, dvc, F_vec, F_vec_plus
+  real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
+  real (kind = dp), dimension(:,:), allocatable :: vv, wk
+  real (kind = dp) :: err, L2norm, L2norm_wig, L2square, eps, epsilon,NL_target
+  real (kind = dp) :: crap
+  integer :: tot_its, iter, maxiteGMRES, iout, icode
+  integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
+
+#ifdef TRILINOS
+! AGS: migrating the interface to accept partition info
+  integer, allocatable, dimension(:) :: myIndices
+  integer :: mySize = -1
+#endif
+
+
+! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
+  whatsparse = whichsparse
+
+
+!whl - Moved initialization stuff to glam_velo_fordsiapstr_init
+
+!whl - Took these out of initialization because these will change
+!      for prognostic thickness
+
+  ! *sfp** geometric 1st deriv. for generic input variable 'ipvr',
+  !      output as 'opvr' (includes 'upwinding' for boundary values)
+  call geom2ders(ewn, nsn, dew, dns, usrf, stagthck, d2usrfdew2, d2usrfdns2)
+  call geom2ders(ewn, nsn, dew, dns, thck, stagthck, d2thckdew2, d2thckdns2)
+
+  ! *sfp** geometric (2nd) cross-deriv. for generic input variable 'ipvr', output as 'opvr'
+  call geom2derscros(dew, dns, thck, stagthck, d2thckdewdns)
+  call geom2derscros(dew, dns, usrf, stagthck, d2usrfdewdns)
+
+  ! *sfp* These are passed a number of times below, but I don't think they are used anymore - remove?
+!  valubbc = 0.0_dp
+!  typebbc = 0.0_dp
+
+  ! *sfp** make a 2d array identifying if the associated point has zero thickness,
+  !      has non-zero thickness and is interior, or has non-zero thickness
+  !      and is along a boundary
+
+  !*sfp* This subroutine has been altered from its original form (was a function, still included
+  ! below w/ subroutine but commented out) to allow for a tweak to the CISM calculated mask (adds
+  ! in an unique number for ANY arbritray boundary, be it land, water, or simply at the edge of
+  ! the calculation domain). 
+  !
+  ! As of late July 2009, call to this function should no longer be necessary, as the mask and 
+  ! code here have been altered so that the general mask can be used for flagging the appropriate
+  ! boundary conditions.
+  ! call maskvelostr(ewn, nsn, thck, stagthck, umask)
+
+  allocate(uindx(ewn-1,nsn-1))
+
+  ! *sfp** if a point from the 2d array 'mask' is associated with non-zero ice thickness,
+  !      either a boundary or interior point, give it a unique number. If not, give it a zero			 
+  uindx = indxvelostr(ewn, nsn, upn,  &
+                      umask,pcgsize(1))
+
+  allocate(tvel(upn,ewn-1,nsn-1)) 
+  tvel = 0.0_dp
+ 
+  ! *sfp** allocate space for variables used by 'mindcrash' function
+  allocate(corr(upn,ewn-1,nsn-1,2,2),usav(upn,ewn-1,nsn-1,2))
+
+  ! *sfp** an initial guess at the size of the sparse matrix
+  pcgsize(2) = pcgsize(1) * 20
+
+!==============================================================================
+! RN_20100126: Non-matrix-conversion scheme
+!==============================================================================
+
+#ifdef TRILINOS
+  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
+!     call initialize(20, pcgsize(1))
+     write(*,*) 'size of the matrix', pcgsize(1)
+
+! AGS: Get partition -- later this will be known by distributed glimmer
+     call dopartition(pcgsize(1), mySize)
+     write(*,*) 'my size of the partitioned matrix', mySize
+     allocate(myIndices(mySize))
+     call getpartition(mySize, myIndices)
+     write(*,*) 'my first row of the partitioned matrix', myIndices(1)
+
+! Now send this partition to Trilinos initialization routines
+     call inittrilinos(20, mySize, myIndices)
+
+     deallocate(myIndices)
+  endif
+#endif
+
+!==============================================================================
+! RN_20100126: End of the block
+!==============================================================================
+
+  ! *sfp** allocate space matrix variables
+  allocate (pcgrow(pcgsize(2)),pcgcol(pcgsize(2)),rhsd(pcgsize(1)), &
+            pcgval(pcgsize(2)))
+  allocate(matrixA%row(pcgsize(2)), matrixA%col(pcgsize(2)), &
+            matrixA%val(pcgsize(2)), answer(pcgsize(1)))
+  allocate(matrixC%row(pcgsize(2)), matrixC%col(pcgsize(2)), &
+            matrixC%val(pcgsize(2)))
+
+
+  allocate(matrixtp%row(pcgsize(2)), matrixtp%col(pcgsize(2)), &
+            matrixtp%val(pcgsize(2)))
+
+  allocate( u_k_1(pcgsize(1)), v_k_1(pcgsize(1)),g_flag(pcgsize(1)) )
+
+  allocate( duc(pcgsize(1)), dvc(pcgsize(1)), vectp(pcgsize(1)))
+
+  allocate( u_k_1_plus(pcgsize(1)), v_k_1_plus(pcgsize(1)))
+
+  allocate( F_vec(2*pcgsize(1)), F_vec_plus(2*pcgsize(1)), du(2*pcgsize(1)))
+
+  allocate( wk1(2*pcgsize(1)), wk2(2*pcgsize(1)), rhs(2*pcgsize(1)))
+
+  allocate( vv(2*pcgsize(1),img1), wk(2*pcgsize(1), img))
+
+  !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
+  
+  counter = 1
+
+  ! *sfp** main iteration on stress, vel, and eff. visc. solutions,
+  print *, ' '
+  print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
+! JFNK_solver
+  call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
+                         u_k_1, v_k_1, uvel, vvel, g_flag) ! jfl_20100430
+
+  do k = 1, cmax
+
+!      print *, 'beginning of iteration ', k
+
+  ! RN_20100129
+  ocn = counter
+
+    ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
+    call findefvsstr(ewn,  nsn,  upn,      &
+                     stagsigma,  counter,    &
+                     whichefvs,  efvs,     &
+                     uvel,       vvel,     &
+                     flwa,       thck,     &
+                     dusrfdew,   dthckdew, &
+                     dusrfdns,   dthckdns, &
+                     umask)
+
+!==============================================================================
+! jfl 20100412: residual for v comp: Fv= A(u_k-1,v_k-1)v_k-1 - b(u_k-1,v_k-1)  
+!==============================================================================
+
+    ! *sfp** calculation of coeff. for stress balance calc. 
+    call findcoefstr(ewn,  nsn,   upn,            &
+                     dew,  dns,   sigma,          &
+                     2,           efvs,           &
+                     vvel,        uvel,           &
+                     thck,        dusrfdns,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     valubbc,     typebbc,        &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, counter )
+
+    call solver_preprocess( ewn, nsn, upn, uindx, matrixA, answer, vvel )
+! could be modified above as we only need the matrix to be formed...not answer
+    
+    vectp = v_k_1
+    call res_vect( matrixA, vectp, rhsd, size(rhsd), counter, g_flag, L2square ) !rhsd = b
+    L2norm = L2square
+    F_vec(1:pcgsize(1)) = vectp(:)
+      
+!==============================================================================
+! jfl 20100412: residual for u comp: Fu= C(u_k-1,v_k-1)u_k-1 - d(u_k-1,v_k-1)  
+!==============================================================================
+
+    call findcoefstr(ewn,  nsn,   upn,            &
+                     dew,  dns,   sigma,          &
+                     1,           efvs,           &
+                     uvel,        vvel,           &
+                     thck,        dusrfdew,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     valubbc,     typebbc,        &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, counter )
+
+
+    call solver_preprocess( ewn, nsn, upn, uindx, matrixC, answer, uvel )
+! could be modified above as we only need the matrix to be formed...not answer
+    
+    vectp = u_k_1
+    call res_vect( matrixC, vectp, rhsd, size(rhsd), counter, g_flag, L2square )!rhsd = d
+    L2norm = sqrt(L2norm + L2square)
+
+    F_vec(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)! F_vec(u_k-1,v_k-1)= [ Fv, Fu ]
+
+    L2norm_wig = sqrt(DOT_PRODUCT(F_vec,F_vec)) ! with ghost
+
+!    if (k .eq. 1) NL_target = NL_tol * L2norm_wig
+    if (k .eq. 1) NL_target = NL_tol * L2norm
+
+!    print *, 'L2 with, without ghost (k)= ', counter, L2norm_wig, L2norm
+    print *, L2norm
+    if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
+
+!      print *, 'REMOVE ANSWER vector?, matrxtp?'
+!      print *, 'target with L2norm with or without ghost?'
+
+!    stop
+
+!==============================================================================
+! solve J(u_k-1,v_k-1)du = -F(u_k-1,v_k-1) with fgmres, du = [dv, du]  
+!==============================================================================
+
+      rhs = -1d0*F_vec
+
+      du  = 0d0 ! initial guess
+
+      eps = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
+
+      epsilon = 1d-06 ! for Jx approximation
+
+      maxiteGMRES = 200
+
+      iout   = 6    ! set  higher than 0 to have res(ite)
+
+      icode = 0
+
+ 10   CONTINUE
+      
+!      call fgmres (2*pcgsize(1),img,rhs,du,iter,vv,wk,wk1,wk2, &
+!                   eps,maxiteGMRES,iout,icode,tot_its)
+
+      IF ( icode == 1 ) THEN      ! precond step
+
+      if (12 .gt. 11) then
+
+! precondition v component 
+       
+         matrixtp%order = pcgsize(1) 
+         matrixtp%nonzeros = pcgsize(2)
+         matrixtp%symmetric = .false.
+
+         matrixtp%row = matrixA%row
+         matrixtp%col = matrixA%col
+         matrixtp%val = matrixA%val
+
+      answer = 0d0 ! initial guess
+      vectp(:) = wk1(1:pcgsize(1)) ! rhs for precond v
+      call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
+      wk2(1:pcgsize(1)) = answer(:)
+
+! precondition u component 
+       
+         matrixtp%order = pcgsize(1) 
+         matrixtp%nonzeros = pcgsize(2)
+         matrixtp%symmetric = .false.
+
+         matrixtp%row = matrixC%row
+         matrixtp%col = matrixC%col
+         matrixtp%val = matrixC%val
+
+      answer = 0d0 ! initial guess
+      vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! rhs for precond u
+      call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
+      wk2(pcgsize(1)+1:2*pcgsize(1)) = answer(:)
+
+!      do nele = 1, 2*pcgsize(1)
+!         print *, 'precond', nele, wk2(nele)
+!      enddo
+
+      endif
+
+!      print *, 'precond step'
+!      wk2 = wk1
+
+      GOTO 10
+
+      ELSEIF ( icode >= 2 ) THEN  ! matvec step
+
+!         print *, 'matvec step'
+
+! form F( u_k-1 + epsilon*wk1u, v_k-1 + epsilon*wk1u )
+         
+         vectp(:) = wk1(1:pcgsize(1)) ! for v
+         v_k_1_plus = v_k_1 + epsilon*vectp
+
+         call solver_postprocess( ewn, nsn, upn, uindx, v_k_1_plus, vvel )
+
+         vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! for u
+         u_k_1_plus = u_k_1 + epsilon*vectp
+
+         call solver_postprocess( ewn, nsn, upn, uindx, u_k_1_plus, uvel )
+
+
+   ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
+    call findefvsstr(ewn,  nsn,  upn,      &
+                     stagsigma,  counter,    &
+                     whichefvs,  efvs,     &
+                     uvel,       vvel,     &
+                     flwa,       thck,     &
+                     dusrfdew,   dthckdew, &
+                     dusrfdns,   dthckdns, &
+                     umask)
+
+!==============================================================================
+! jfl 20100412: residual for v plus comp: Fv_plus  
+!==============================================================================
+
+    ! *sfp** calculation of coeff. for stress balance calc. 
+    call findcoefstr(ewn,  nsn,   upn,            &
+                     dew,  dns,   sigma,          &
+                     2,           efvs,           &
+                     vvel,        uvel,           &
+                     thck,        dusrfdns,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     valubbc,     typebbc,        &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, counter )
+
+    call solver_preprocess( ewn, nsn, upn, uindx, matrixtp, answer, vvel )
+! could be modified above as we only need the matrix to be formed...not answer
+    
+    vectp = v_k_1_plus
+    call res_vect( matrixtp, vectp, rhsd, size(rhsd), counter, g_flag, crap )
+
+    F_vec_plus(1:pcgsize(1)) = vectp(:)
+      
+!==============================================================================
+! jfl 20100412: residual for u plus comp: Fu_plus   
+!==============================================================================
+
+    call findcoefstr(ewn,  nsn,   upn,            &
+                     dew,  dns,   sigma,          &
+                     1,           efvs,           &
+                     uvel,        vvel,           &
+                     thck,        dusrfdew,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     valubbc,     typebbc,        &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, counter )
+
+    call solver_preprocess( ewn, nsn, upn, uindx, matrixtp, answer, uvel )
+! could be modified above as we only need the matrix to be formed...not answer
+    
+    vectp = u_k_1_plus
+    call res_vect( matrixtp, vectp, rhsd, size(rhsd), counter, g_flag, crap )
+
+    F_vec_plus(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)
+
+! put result of Jacfreevec in wk2
+
+    wk2 =  ( F_vec_plus - F_vec ) / epsilon
+
+!      do nele = 1, 2*pcgsize(1)
+!         print *, 'matvec', nele, wk2(nele),F_vec_plus(nele), F_vec(nele)
+!      enddo
+
+         GOTO 10
+      ENDIF
+
+!------------------------------------------------------------------------
+!      End of FGMRES method    
+!------------------------------------------------------------------------
+
+      if (tot_its .eq. maxiteGMRES) then
+         print *,'WARNING: FGMRES has not converged'
+         stop
+      endif
+
+! icode = 0 means that fgmres has finished and sol contains the app. solution
+
+!------------------------------------------------------------------------
+!      Update solution vectors and 3D fields
+!------------------------------------------------------------------------
+
+      dvc = du(1:pcgsize(1))
+      duc = du(pcgsize(1)+1:2*pcgsize(1))
+
+      v_k_1 = v_k_1 + dvc
+      u_k_1 = u_k_1 + duc
+
+!      do nele = 1, pcgsize(1)
+
+!         print *, 'ici',nele, du(nele), v_k_1(nele), dvc(nele), u_k_1(nele), duc(nele)
+
+!      enddo
+
+      call solver_postprocess( ewn, nsn, upn, uindx, v_k_1, vvel )
+      call solver_postprocess( ewn, nsn, upn, uindx, u_k_1, uvel )
+
+
+! WATCHOUT FOR PERIODIC BC      
+
+    counter = counter + 1
+
+  end do
+
+  call ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
+                          ughost, vghost )
+
+!*sfp* removed call to 'calcstrsstr' here (stresses now calculated externally)
+
+  do ns = 1,nsn-1
+      do ew = 1,ewn-1 
+      ! *sfp** calc. fluxes from converged vel. fields (for input to thickness evolution subroutine)
+         if (umask(ew,ns) > 0) then
+             uflx(ew,ns) = vertintg(upn, sigma, uvel(:,ew,ns)) * stagthck(ew,ns)
+             vflx(ew,ns) = vertintg(upn, sigma, vvel(:,ew,ns)) * stagthck(ew,ns)
+         end if
+      end do
+  end do
+
+      print *,  'velocity value JFNK =', uvel(2,4,4),  vvel(2,4,4)
+
+  ! *sfp* de-allocation of sparse matrix solution variables 
+  deallocate(tvel)
+  deallocate(uindx,corr,usav)
+  deallocate(pcgval,pcgrow,pcgcol,rhsd)
+  deallocate(matrixA%row, matrixA%col, matrixA%val)
+  deallocate(matrixC%row, matrixC%col, matrixC%val)
+  deallocate(matrixtp%row, matrixtp%col, matrixtp%val)
+  deallocate(u_k_1, v_k_1, g_flag)
+  deallocate(answer, du, duc, dvc, vectp, u_k_1_plus, v_k_1_plus )
+  deallocate(F_vec, F_vec_plus)
+  deallocate(wk1, wk2)
+  deallocate(vv, wk)
+
+  return
+
+end subroutine JFNK
+
+!***********************************************************************
+
 function indxvelostr(ewn,  nsn,  upn,  &
                      mask, pointno)
 

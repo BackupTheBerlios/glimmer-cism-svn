@@ -10,7 +10,7 @@
 module glide_velo_higher
     !Includes for the higher-order velocity computations that this calls out to
     use ice3d_lib
-    use glam_strs2, only: glam_velo_fordsiapstr, umask
+    use glam_strs2, only: glam_velo_fordsiapstr, JFNK, umask
 
     !globals
     use glimmer_global, only : dp
@@ -75,6 +75,7 @@ contains
         !For HO masking
         logical :: empty
         integer :: totpts
+        integer :: solver 
         real(sp), dimension(model%general%ewn-1, model%general%nsn-1) :: stagmassb
 
         !TEMPORARY arrays, these should at some point be placed in Model
@@ -87,6 +88,8 @@ contains
         ! to get things compiling ... 
 
         minTauf = 0.0d0
+
+        solver = 1 ! input by user, 1: Picard, 2: JFNK
 
         !Beta field computations that change in time
         if (model%options%which_ho_beta_in == HO_BETA_USE_BTRC) then
@@ -177,6 +180,9 @@ contains
                                       model%velocity_hom%uflx,    model%velocity_hom%vflx) 
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
+
+           if (solver .eq. 1) then ! Picard (standard solver)
+
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
                                         model%numerics%dew,      model%numerics%dns,                &
@@ -199,6 +205,34 @@ contains
                                         model%velocity_hom%uvel, model%velocity_hom%vvel,           &
                                         model%velocity_hom%uflx, model%velocity_hom%vflx,           &
                                         model%velocity_hom%efvs )
+
+          elseif (solver .eq. 2) then ! JFNK (solver in development...)
+
+            call JFNK                 ( model%general%ewn,       model%general%nsn,                 &
+                                        model%general%upn,                                          &
+                                        model%numerics%dew,      model%numerics%dns,                &
+                                        model%numerics%sigma,    model%numerics%stagsigma,          &
+                                        model%geometry%thck,     model%geometry%usrf,               &
+                                        model%geometry%lsrf,     model%geometry%topg,               &
+                                        model%geomderv%dthckdew, model%geomderv%dthckdns,           &
+                                        model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
+                                        model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
+                                        model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
+                                        model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
+                                        minTauf, geom_mask_stag,                                    &
+                                        model%options%which_ho_babc,                                &
+                                        model%options%which_ho_efvs,                                &
+                                        model%options%which_ho_resid,                               &
+                                        model%options%which_ho_sparse,                              &
+                                        model%options%periodic_ew,                                  &
+                                        model%options%periodic_ns,                                  &
+                                        model%velocity_hom%beta,                                    & 
+                                        model%velocity_hom%uvel, model%velocity_hom%vvel,           &
+                                        model%velocity_hom%uflx, model%velocity_hom%vflx,           &
+                                        model%velocity_hom%efvs )
+                    
+           end if
+
          end if
         !Compute the velocity norm - this is independant of the methods used to compute the u and v components so
         !we put it out here
