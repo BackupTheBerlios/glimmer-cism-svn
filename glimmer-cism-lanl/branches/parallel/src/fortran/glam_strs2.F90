@@ -261,7 +261,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !*sfp* needed to incorporate generic wrapper to solver
   type(sparse_matrix_type) :: matrix
   real (kind = dp), dimension(:), allocatable :: answer, u_k_1, v_k_1, F_vec
-  real (kind = dp) :: err
+  real (kind = dp) :: err, L2norm, L2square
   integer :: iter
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
 
@@ -433,8 +433,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! jfl 20100412: residual for v comp: Fv= A(u_k-1,v_k-1)v_k-1 - b(u_k-1,v_k-1)  
 !==============================================================================
 
-    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag )
+    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag, L2square )
 
+      L2norm  = L2square
       F_vec(1:pcgsize(1)) = v_k_1(:)
       
 !      if (counter .eq. 20) then
@@ -526,11 +527,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! jfl 20100412: residual for u comp: Fu= C(u_k-1,v_k-1)u_k-1 - d(u_k-1,v_k-1)  
 !==============================================================================
 
-    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag )
+    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag, L2square )
 
+    L2norm = sqrt(L2norm + L2square)
     F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
 
-!    print *, 'L2 norm (k)= ', counter, sqrt(DOT_PRODUCT(F_vec,F_vec))
+!    print *, 'L2 with/without ghost (k)= ', counter, &
+!              sqrt(DOT_PRODUCT(F_vec,F_vec)), L2norm
 
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
