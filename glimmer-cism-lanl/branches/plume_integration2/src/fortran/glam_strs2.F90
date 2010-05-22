@@ -24,10 +24,14 @@ use glide_mask
 use glimmer_sparse_type
 use glimmer_sparse
 
+use xls
+
 implicit none
 
   integer, save :: locplusup
   logical, save :: lateralboundry = .false.
+  logical, save :: no_shear_stress_sidewalls = .false.
+
   integer, dimension(6), save :: loc_latbc
 
   real (kind = dp), allocatable, dimension(:,:,:),     save :: flwafact
@@ -223,6 +227,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
+  character(len=100) :: fname
+
   ! variables used for incorporating generic wrapper to sparse solver
   type(sparse_matrix_type) :: matrix
   real (kind = dp), dimension(:), allocatable :: answer
@@ -303,6 +309,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dusrfdns,   dthckdns, &
                      umask)
 
+    no_shear_stress_sidewalls = .true.
+
     ! calculate coeff. for stress balance in y-direction 
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &
@@ -320,6 +328,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
                      beta, counter )
+
+    no_shear_stress_sidewalls = .false.
 
     ! put vels and coeffs from 3d arrays into sparse vector format
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
@@ -840,6 +850,16 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
     resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)  
     locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
 
+!write(*,*) 'locat', locat
+
+!call write_xls('resid6.txt',abs((usav(6,:,:,pt) - vel(6,:,:)) / (vel(6,:,:) + 1e-20)))
+!call write_xls('resid5.txt',abs((usav(5,:,:,pt) - vel(5,:,:)) / (vel(5,:,:) + 1e-20)))
+!call write_xls('resid4.txt',abs((usav(4,:,:,pt) - vel(4,:,:)) / (vel(4,:,:) + 1e-20)))
+!call write_xls('resid3.txt',abs((usav(3,:,:,pt) - vel(3,:,:)) / (vel(3,:,:) + 1e-20)))
+!call write_xls('resid2.txt',abs((usav(2,:,:,pt) - vel(2,:,:)) / (vel(2,:,:) + 1e-20)))
+!call write_xls('resid1.txt',abs((usav(1,:,:,pt) - vel(1,:,:)) / (vel(1,:,:) + 1e-20)))
+!call write_xls('resid7.txt',abs((usav(7,:,:,pt) - vel(7,:,:)) / (vel(7,:,:) + 1e-20)))
+
    case(1)
     nr = size( vel, dim=1 ) ! number of grid points in vertical ...
     resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
@@ -869,7 +889,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
     usav(:,:,:,pt) = vel
 
     ! Additional debugging line, useful when trying to determine if convergence is being consistently 
-    ! help up by the residual at one or a few particular locations in the domain.
+    ! held up by the residual at one or a few particular locations in the domain.
 !    print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
 
   return
@@ -1069,15 +1089,50 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         lateralboundry = .false.
 
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    elseif ( GLIDE_HAS_ICE(mask(ew,ns)) .and. ( GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) .or. &
-             GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns)) ) .or. GLIDE_IS_LAND_MARGIN(mask(ew,ns))) &
-    then
-!    print *, 'At a NON-SHELF boundary ... ew, ns = ', ew, ns
+    elseif ( GLIDE_HAS_ICE(mask(ew,ns)) .and. ( GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)))) then
+!        write(*,*) 'at Dirichlet boundary', ew, ns
+        locplusup = loc(1)
+        call valueset(0.0_dp)
+        locplusup = loc(1) + upn + 1
+        call valueset(0.0_dp)
+        do up = 1,upn
+           locplusup = loc(1) + up
+           call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
+!           call valueset( 0.0_dp )                ! vel at margin set to 0 
+        end do
+    
+    elseif (GLIDE_HAS_ICE(mask(ew,ns)) .and. ( GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns)) ) & 
+                                          .or. GLIDE_IS_LAND_MARGIN(mask(ew,ns)))  then
+!       print *, 'At a NON-SHELF boundary ... ew, ns = ', ew, ns
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+    
+      if (no_shear_stress_sidewalls) then
+!	   write(*,*)'imposing no shear stress at ',ew,ns
+           !impose no shear stress condition and no normal flow, which means 
+           !   dv/dx = 0
+           !      u  = 0
+           locplusup = loc(1)
+           call valueset(0.0_dp)
+           locplusup = loc(1) + upn + 1
+           call valueset(0.0_dp)
+
+           do up = 1,upn !0,(upn+1)
+              !locplusup = loc_array(ew,ns) + up
+              call putpcgc(1.0_dp,loc_array(ew,ns)+up,loc_array(ew,ns)+up)
+              if (ew < ewn/2) then
+                 call putpcgc(-1.0_dp,loc_array(ew+1,ns)+up,loc_array(ew,ns)+up)
+	      else	
+                 call putpcgc(-1.0_dp,loc_array(ew-1,ns)+up,loc_array(ew,ns)+up)
+              end if
+              rhsd(loc_array(ew,ns)+up) = 0.0_dp
+          end do
+        
+      else
         ! Put specified value for vel on rhs. NOTE that this is NOT zero by default 
         ! unless the initial guess is zero. It will be set to whatever the initial value 
         ! for the vel at location up,ew,ns is in the initial array!
+!        write(*,*) 'Setting velocity at ew,ns:',ew,ns
         locplusup = loc(1)
         call valueset(0.0_dp)
         locplusup = loc(1) + upn + 1
@@ -1088,6 +1143,12 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 !           call valueset( 0.0_dp )                ! vel at margin set to 0 
         end do
 
+     end if
+
+    elseif (.not. GLIDE_HAS_ICE(mask(ew,ns))) then
+        !that's OK
+    else
+        write(*,*) 'WTF?',ew,ns
     end if
 
     end do;     ! ew 
