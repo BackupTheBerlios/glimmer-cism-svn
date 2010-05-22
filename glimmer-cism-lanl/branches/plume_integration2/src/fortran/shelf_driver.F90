@@ -279,9 +279,9 @@ contains
 
     call GetSection(config,section,'plume')
     if (.not. associated(section)) then
-	call write_log('for shelf driver there must be a [plume] &
-                        section in config file',  &
-	          GM_FATAL)
+	call write_log('for shelf driver there must be a [plume] section &
+                     & in config file',  &
+                       GM_FATAL)
     end if
     call GetValue(section, 'plume_nl_file', plume_nl_file)
     call GetValue(section, 'plume_output_dir', plume_output_dir)

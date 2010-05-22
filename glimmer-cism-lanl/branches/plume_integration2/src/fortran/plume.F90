@@ -859,7 +859,7 @@ contains
 
     if (use_min_plume_thickness .and. mixlayer) then
        call io_append_output('Can not run using useminthickness = .t. &
-            and mixlayer = .t.')
+       	                     &and mixlayer = .t.')
        stop
     end if
 
