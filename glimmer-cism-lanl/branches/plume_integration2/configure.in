@@ -1,0 +1,347 @@
+dnl Process this file with autoconf to produce a configure script.
+
+dnl set version
+m4_define([glimmer_major_version], [1])
+m4_define([glimmer_minor_version], [7])
+m4_define([glimmer_micro_version], [0])
+m4_define([glimmer_version],
+	[glimmer_major_version.glimmer_minor_version.glimmer_micro_version])
+
+AC_INIT([GLIMMER],[glimmer_version],[glimmer-discuss@forge.nesc.ac.uk])
+AC_CONFIG_HEADERS(config.inc)
+AM_INIT_AUTOMAKE
+
+GLIMMER_MAJOR_VERSION=glimmer_major_version
+GLIMMER_MINOR_VERSION=glimmer_minor_version
+GLIMMER_MICRO_VERSION=glimmer_micro_version
+GLIMMER_VERSION=glimmer_version
+AC_SUBST(GLIMMER_MAJOR_VERSION)
+AC_SUBST(GLIMMER_MINOR_VERSION)
+AC_SUBST(GLIMMER_MICRO_VERSION)
+AC_SUBST(GLIMMER_VERSION)
+
+AC_CONFIG_SRCDIR([glimmer-config.in])
+
+AC_PROG_RANLIB
+
+#Define this here in case nothing else does.
+ax_cv_f90_modflag=-I
+
+# save compiler flags, autoconf will change them later
+glimmer_FCFLAGS=$FCFLAGS
+glimmer_FFLAGS=$FFLAGS
+AC_DEFINE_UNQUOTED(GLIMMER_FCFLAGS,"${glimmer_FCFLAGS}",[fortran compiler flags the model is configured with])
+
+AC_PROG_CC
+AC_PROG_FC
+AC_PROG_F77
+AC_PROG_EGREP
+FCFLAGS=$glimmer_FCFLAGS
+FFLAGS=$glimmer_FFLAGS
+AC_LANG(Fortran)
+AC_FC_SRCEXT(f90)
+AX_F90_MODULE_FLAG
+
+# checking for f2003 command line parser
+AC_MSG_CHECKING([for f2003 command line parser])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([],
+               [i=command_argument_count()
+                call get_command_argument(i)  ])],
+               [AC_DEFINE(HAVE_2003ARGS,,[defined if you have fortran 2003 intrinsics for parsing command line])
+                AC_MSG_RESULT(yes)], [AC_MSG_RESULT(no)])
+
+# which Fortran compiler are we running?
+AC_MSG_CHECKING([which fortran compiler])
+f95v="no idea"
+f95string=`$FC -V 2>&1`
+f95_preprocessor="-fpp"
+# testing for SUN f95 compiler
+fs=`echo $f95string |$EGREP "Sun|Forte"`
+if test "$fs" != "" ; then
+  f95v="SUN f95"
+  CFORTRAN_CFLAGS=-DsunFortran
+fi
+# testing for NAG f95 compiler
+fs=`echo $f95string |$EGREP "NAGWare"`
+if test "$fs" != "" ; then
+  f95v="NAGWare f95"
+  CFORTRAN_CFLAGS=-DNAGf90Fortran
+fi
+# testing for INTEL ifort compiler
+fs=`echo $f95string |$EGREP "Intel"`
+if test "$fs" != "" ; then
+  f95v="Intel ifort"
+  CFORTRAN_CFLAGS=-DpgiFortran
+fi
+# testing for gfortran
+f95string=`$FC -v 2>&1`
+fs=`echo $f95string |$EGREP "gcc"`
+if test "$fs" != "" ; then
+  f95v="gfortran"
+  f95_preprocessor="-x f95-cpp-input"
+  CFORTRAN_CFLAGS=-DpgiFortran
+fi
+# testing for Portland group
+f95string=`$FC -V 2>&1`
+fs=`echo $f95string |$EGREP "Portland"`
+if test "$fs" != "" ; then
+  f95v="Portland pgf90"
+  f95_preprocessor="-Mpreprocess"
+  CFORTRAN_CFLAGS=-DpgiFortran
+fi
+AC_SUBST(CFORTRAN_CFLAGS)
+
+AC_MSG_RESULT([$f95v])
+
+FCFLAGS="$FCFLAGS"
+FFLAGS="$FFLAGS"
+
+dnl Checking for python
+AM_PATH_PYTHON([2.3],,[AC_MSG_RESULT(need at least python 2.3)])
+
+# checking for BLAS library
+AC_ARG_WITH(blas,AS_HELP_STRING([--with-blas],[how to link external BLAS library]),[ac_cv_blas=$withval])
+ac_cv_haveblas=0
+if test "$ac_cv_blas" != ""; then
+  LIBS="$LIBS $ac_cv_blas"
+  AC_MSG_CHECKING([for external BLAS lib])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([],[f=ddot(1,1.,1.,1.,1.)])],ac_cv_haveblas=1,ac_cv_haveblas=0)
+  if test "$ac_cv_haveblas" == 1; then
+    AC_MSG_RESULT([yes])
+  else
+    AC_MSG_RESULT([no])
+    AC_MSG_ERROR([An external BLAS library was specified but could not be linked against])
+  fi
+fi
+AM_CONDITIONAL(EXT_BLAS,test "$ac_cv_haveblas" == 1)
+
+#NEW VERSION of BLAS check (disabled for now):
+#ac_gl_have_blas=0
+#ACX_BLAS([ac_gl_have_blas=1])
+#AM_CONDITIONAL(EXT_BLAS,test "$ac_gl_have_blas" == 1)
+#LDFLAGS="$LDFLAGS $BLAS_LIBS"
+
+# checking for LAPACK library(required for PARDISO)
+AC_ARG_WITH(lapack,AS_HELP_STRING([--with-lapack],[how to link external LAPACK library]),[ac_cv_lapack=$withval])
+ac_cv_havelapack=0
+if test "$ac_cv_lapack" != ""; then
+  LIBS="$LIBS $ac_cv_lapack"
+  AC_MSG_CHECKING([for external LAPACK lib])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([],[call sgesv])],ac_cv_havelapack=1,ac_cv_havelapack=0)
+  if test "$ac_cv_havelapack" == 1; then
+    AC_MSG_RESULT([yes])
+  else
+    AC_MSG_RESULT([no])
+    AC_MSG_ERROR([An external LAPACK library was specified but could not be linked against])
+  fi
+fi
+AM_CONDITIONAL(EXT_LAPACK,test "$ac_cv_havelapack" == 1)
+
+# checking for GOMP library(required for some builds of PARDISO)
+AC_ARG_WITH(gomp,AS_HELP_STRING([--with-gomp],[how to link external GOMP (OpenMP) library]),[ac_cv_gomp=$withval])
+ac_cv_havegomp=0
+if test "$ac_cv_gomp" != ""; then
+  LIBS="$LIBS $ac_cv_gomp"
+  AC_MSG_CHECKING([for GOMP])
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([],[])],ac_cv_havegomp=1,ac_cv_havegomp=0)
+  if test "$ac_cv_havegomp" == 1; then
+    AC_MSG_RESULT([yes])
+  else
+    AC_MSG_RESULT([no])
+    AC_MSG_ERROR([A GOMP library was specified but could not be linked against])
+  fi
+fi
+AM_CONDITIONAL(EXT_GOMP,test "$ac_cv_havegomp" == 1)
+
+
+# checking for netCDF
+AC_ARG_WITH(netcdf,AS_HELP_STRING([--with-netcdf],[location where netCDF is installed]),[ac_cv_netcdf_prefix=$withval])
+if test "$ac_cv_netcdf_prefix" != ""; then
+  AC_MSG_RESULT(netCDF location: $ac_cv_netcdf_prefix)
+  FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_netcdf_prefix/include"
+  LDFLAGS="$LDFLAGS -L$ac_cv_netcdf_prefix/lib"
+fi
+AC_SEARCH_LIBS(NF_INQ_LIBVERS,[netcdf netcdff],,[AC_MSG_ERROR(cannot find netCDF fortran library)])
+AC_MSG_CHECKING([for f90 netCDF interface])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[use netcdf])],AC_MSG_RESULT([yes]),AC_MSG_FAILURE([no]))
+
+#Checking for alternate linear solvers
+AC_ARG_WITH(umfpack,AS_HELP_STRING([--with-umfpack],[Optional location of umfpack linear solver]),[ac_cv_umfpack_prefix=$withval])
+AC_ARG_WITH(pardiso,AS_HELP_STRING([--with-pardiso],[Optional location of pardiso linear solver]),[ac_cv_pardiso_prefix=$withval])
+
+#Call AC_CHECK_LIB for C librarieswith no arguments so the macro gets expanded here
+AC_LANG_PUSH(C)
+AC_CHECK_LIB([],[main])
+AC_LANG_POP(C)
+
+#UMFPACK
+if test "$ac_cv_umfpack_prefix" != ""; then
+        AC_MSG_RESULT([Using Umfpack to solve sparse linear systems (located at $ac_cv_umfpack_prefix)])
+        LDFLAGS="$LDFLAGS -L$ac_cv_umfpack_prefix/Lib"
+        FCFLAGS="$FCFLAGS -DHAVE_UMFPACK" 
+        
+        if test "$ac_cv_haveblas" == 0; then
+            AC_MSG_ERROR([
+Using UMFPACK requires use of an external BLAS library.  
+Please use the --with-blas flag and try again.
+If you are not sure what to do here but have BLAS installed in a standard location, try --with-blas=-lblas])
+        fi
+
+        #We should have already checked for BLAS, so we'll get on with checking for AMD and UMFPACK
+        #AMD is one of UMFPACK'S dependancies.  This means that the user needs to be careful:
+        #if UMFPACK is compiled with an external BLAS, then Glimmer will need to be as well.
+        #TODO: Relax this restriction?  Is there any advantage to NOT compiling Glimmer with external BLAS?
+
+        #Note that this assumes that AMD is installed to one of the standard library directories or
+        #to the same place as UMFPACK!!!
+        #To check these libraries, we need to use C, not Fortran, because of C-to-fortran linking issues
+        #that will be resolved below.
+        AC_LANG_PUSH(C)
+        AC_CHECK_LIB([amd], [amd_l_valid], , 
+                     AC_MSG_ERROR([Libamd not found. required to use --with-umfpack.  See http://www.cise.ufl.edu/research/sparse/umfpack]))
+                    
+        AC_CHECK_LIB([umfpack], [main], ,  AC_MSG_ERROR([Libumfpack not found.]), [-lamd])
+        AC_LANG_POP(C)
+
+        #A peculiarity of UMFPACK is that we need an *object* file (not a library) with the fortran77 bindings.  I'm going to say
+        #that this should be placed in the same directory as libumfpack (e.g. in the lib directory).  Check for that.
+        LDFLAGS="$LDFLAGS $ac_cv_umfpack_prefix/Lib/umf4_f77wrapper.o"
+        AC_MSG_CHECKING(for UMFPACK F77 bindings)
+        AC_LINK_IFELSE(AC_LANG_PROGRAM([],[]), AC_MSG_RESULT(yes), 
+                       [AC_MSG_RESULT(no)
+                        AC_MSG_ERROR([
+In order to use UFMPACK you need to compile umf4_f77wrapper.c 
+(located in the Demo subdirectory of the source distribution) 
+and place the resulting object file in the same directory as 
+libumfpack.  This is not done with a standard UMFPACK install.  
+If you downloaded a binary distribution of Umfpack, you may 
+need to obtain the source at: 
+http://www.cise.ufl.edu/research/sparse/umfpack.])])
+fi
+
+#PARDISO
+if test "$ac_cv_pardiso_prefix" != ""; then
+            AC_MSG_RESULT([Using Pardiso to solve sparse linear systems, (located at $ac_cv_pardiso_prefix)])
+            if test "$ac_cv_haveblas" == 0; then
+                AC_MSG_ERROR([
+Using Pardiso requires use of an external BLAS library.  
+Please use the --with-blas flag and try again.
+If you are not sure what to do here but have BLAS installed in a standard location, try --with-blas=-lblas])
+            fi
+
+            if test "$ac_cv_havelapack" == 0; then
+                AC_MSG_ERROR([
+Using Pardiso requires use of an external LAPACK library.  
+Please use the --with-blas flag and try again.
+If you are not sure what to do here but have LAPACK installed in a standard location, try --with-lapack=-llapack])
+            fi
+
+            if test "$ac_cv_havegomp" == 0; then
+                AC_MSG_WARN([
+Some parallel builds of Pardiso requires use of the GOMP library.  
+If the following Pardiso check fails, please use the --with-gomp flag and try again.])
+            fi
+
+
+            AC_MSG_CHECKING(for Pardiso)
+            FCFLAGS="$FCFLAGS -DHAVE_PARDISO"
+            LDFLAGS="$LDFLAGS -L$ac_cv_pardiso_prefix -lpardiso"
+            AC_CHECK_LIB([pardiso],[pardiso], , AC_MSG_ERROR([Libpardiso not found.]))
+fi
+
+AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
+AM_CONDITIONAL(PARDISO, test "$ac_cv_pardiso_prefix" != "")
+
+#AC_LANG_POP(Fortran)
+
+# checking for ENMABAL
+AC_ARG_WITH(enmabal,AS_HELP_STRING([--with-enmabal],[location ENMABAL library]),[ac_cv_enmabal_prefix=$withval])
+if test "$ac_cv_enmabal_prefix" != ""; then
+  LIBS="$LIBS -lsmb"
+  AC_MSG_RESULT(enmabal location: $ac_cv_enmabal_prefix)
+  AC_DEFINE(USE_ENMABAL,1,[Define to 1 if you want to use ENMABAL])
+  FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_enmabal_prefix"
+  LDFLAGS="$LDFLAGS -L$ac_cv_enmabal_prefix"
+  AC_MSG_CHECKING([for f90 ENMABAL interface])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[use smb_mecons])],AC_MSG_RESULT([yes]),AC_MSG_FAILURE([no]))
+fi
+
+# some options
+AC_MSG_CHECKING([whether profilng is enabled])
+AC_ARG_ENABLE(profile, AS_HELP_STRING([--enable-profile],[Turn on profiling]),
+[case "${enableval}" in
+ yes)  AC_DEFINE(PROFILING,1,[Define to 1 if you want to enable extra profiling])
+       FCFLAGS="$FCFLAGS -pg"
+       AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-profile) ;;
+esac],[AC_MSG_RESULT([no])])
+
+AC_MSG_CHECKING([whether command-line arguments are enabled])
+AC_ARG_ENABLE(command-line, AS_HELP_STRING([--enable-command-line],[Turn on command-line arguments]),
+[case "${enableval}" in
+ yes)  AC_DEFINE(COMMAND_LINE,1,[Define to 1 if you want to enable command-line arguments])
+       AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-command-line) ;;
+esac],[AC_MSG_RESULT([no])])
+
+AC_MSG_CHECKING([whether extended restarts are enabled])
+AC_ARG_ENABLE(restarts, AS_HELP_STRING([--enable-restarts],[Build extended restart code]),
+[case "${enableval}" in
+ yes)  AC_DEFINE(RESTARTS,1,[Define to 1 if you want to enable extended restarts])
+       AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-restarts) ;;
+esac],[AC_MSG_RESULT([no])])
+AM_CONDITIONAL([BUILD_RESTARTS],[test "$enable_restarts" == "yes"])
+
+# should we build the plume code
+AC_MSG_CHECKING([whether we should build plume code])
+AC_ARG_ENABLE(plume, AS_HELP_STRING([--enable-plume],[Build plume code]),
+[case "${enableval}" in
+ yes) AC_DEFINE(BUILD_PLUME,1,[Define to 1 if you want to build plume code])
+      AC_MSG_RESULT([yes]);;
+ no)  AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-plume) ;;
+esac], [AC_MSG_RESULT([no])])
+AM_CONDITIONAL([BUILD_PLUME], [test "$enable_plume" == "yes"])
+
+AC_MSG_CHECKING([whether the build is single precision])
+AC_ARG_ENABLE(sp, AS_HELP_STRING([--enable-sp],[Build code as single precision]),
+[case "${enableval}" in
+ yes)  AC_DEFINE(GLIMMER_SP,1,[Define to 1 if you want to enable extended restarts])
+       AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-sp) ;;
+esac],[AC_MSG_RESULT([no])])
+
+# should we run the tests
+AC_MSG_CHECKING([whether we should run the tests])
+AC_ARG_ENABLE(tests, AS_HELP_STRING([--enable-tests],[Run short tests]),
+[case "${enableval}" in
+ yes)  AC_MSG_RESULT([yes]);;	
+ no)   AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-tests) ;;
+esac],[AC_MSG_RESULT([no])])
+AM_CONDITIONAL([RUN_TESTS], [test "$enable_tests" == "yes"])
+
+# Checking if sources are from CVS
+AC_CHECK_FILE($srcdir/src/fortran/CVS/Entries,have_cvs_entries="yes",have_cvs_entries="no")
+GLIMMER_CVS_VERS=""
+if test "$have_cvs_entries" == "yes"; then
+   GLIMMER_CVS_VERS=" cvs_vers_string"
+fi
+AC_SUBST(GLIMMER_CVS_VERS)
+AM_CONDITIONAL([HAVE_CVS],[test "$have_cvs_entries" == "yes"])
+
+# checking for f2003 command line parser
+AC_MSG_CHECKING([for f2003 intrinsic ISO_C_BINDING module])
+AC_LINK_IFELSE([AC_LANG_PROGRAM([],
+               [ use ISO_C_BINDING, only: C_INTPTR_T ])],
+               [AC_DEFINE(HAVE_ISO_C_BINDING,,[defined if you have fortran 2003 intrinsics for C data type binding])
+                AC_MSG_RESULT(yes)], [AC_MSG_RESULT(no)])
+
+
+AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile])
+AC_OUTPUT([glimmer-config src/fortran/glimmer_vers.F90.in])
