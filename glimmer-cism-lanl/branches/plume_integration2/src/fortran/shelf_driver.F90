@@ -36,7 +36,8 @@ program shelf_driver
 
   !PLUME configuration values
   character(len=512) :: plume_nl,plume_output_nc_file,plume_output_prefix,plume_ascii_output_dir
-  logical :: plume_suppress_ascii_output,plume_suppress_logging,plume_write_all_states
+  logical :: plume_suppress_ascii_output,plume_suppress_logging
+  logical :: plume_write_all_states= .false.
   real(kind=dp) :: plume_min_subcycle_time,plume_min_spinup_time,plume_steadiness_tol
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
   integer,parameter :: USE_PLUME = 1
