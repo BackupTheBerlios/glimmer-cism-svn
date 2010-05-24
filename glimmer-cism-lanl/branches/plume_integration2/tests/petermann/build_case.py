@@ -188,7 +188,7 @@ class GCConfig(object):
                                                               'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
                                       'frequency' : None,
                                       'name' : None },
-                      'time' : { 'tstart' : 0.0,
+                      'time' : { 'tstart' : None,
                                  'tend' : None,
                                  'dt' : None,
                                  'niso' : 1.0,

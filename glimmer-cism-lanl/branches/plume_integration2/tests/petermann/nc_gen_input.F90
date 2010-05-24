@@ -11,15 +11,15 @@ program nc_gen_input
        &nc_filename [params] &
        &<type_code> = [cs|ts]"
   character(len=512) :: conf_shelf_params = "<fname> <nx> <ny> <hx> <hy> &
-       <slope_start_pos> <grounded_ice_thk> &
-       <ice_front_pos> <ice_front_thick> &
-       <ocean_topg> <land_topg> <k_x> & 
-       <chan_amp> <chan_init_length> & 
-       <kinbc_width> <nsswitch>"
+       &<slope_start_pos> <grounded_ice_thk> &
+       &<ice_front_pos> <ice_front_thick> &
+       &<ocean_topg> <land_topg> <k_x> & 
+       &<chan_amp> <chan_init_length> & 
+       &<kinbc_width> <nsswitch>"
 
   character(len=512) :: ghost_shelf_params = "<fname> <nx> <ny> <kinbcw> <n_level> <hx> <hy> &
-       <upstream_thk> <upstream_vel> <front_thk> &
-       <k_x> <chan_amp> <ramp_width> <landw>"
+       &<upstream_thk> <upstream_vel> <front_thk> &
+       &<k_x> <chan_amp> <ramp_width> <landw> <ifpos>"
 
   character (len=2) :: type_code
 
@@ -80,7 +80,7 @@ contains
 
     ! <fname> <nx> <ny> <kinbcw> <n_level> <hx> <hy> 
     ! <upstream_thk> <front_thk> 
-    ! <k_x> <chan_amp> <ramp_width> <landw>
+    ! <k_x> <chan_amp> <ramp_width> <landw> <ifpos>
 
     ! local variables
     integer :: landw, landw_north 
@@ -94,7 +94,7 @@ contains
     real :: otopg,ltopg
     real :: cutoff_usrf,rhoi_rhow,central_amp
 
-    if (command_argument_count() /= 15) then
+    if (command_argument_count() /= 16) then
        write(*,*)"Incorrect number of parameters. Ghost shelf requires:  ",trim(ghost_shelf_params)
        stop 1
     end if
@@ -154,6 +154,10 @@ contains
     call get_command_argument(firstarg+13,argstr)
     read(argstr,'(i5)') landw
     write(*,*) 'landw', landw
+    
+    call get_command_argument(firstarg+14,argstr)
+    read(argstr,'(i5)') ifpos
+    write(*,*) 'ifpos', ifpos
 
     allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
     allocate(level(n_level))
@@ -180,7 +184,7 @@ contains
 
     otopg = -up_thk * 2.0
     ltopg = up_thk * 1.0
-    ifpos = 5
+
 
     rhoi_rhow = 910.0 / 1028.0
     central_amp = 0.0
@@ -323,7 +327,7 @@ contains
     write(*,*) 'kinbc_width',kinbcw
 
     call get_command_argument(firstarg + 14,argstr)
-    read(argstr,'(l)') ns_switch
+    read(argstr,'(l1)') ns_switch
     write(*,*) 'ns_switch',ns_switch
 
     allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
@@ -493,7 +497,7 @@ contains
     write(*,*) 'kinbc_width',kinbcw
 
     call get_command_argument(firstarg + 14,argstr)
-    read(argstr,'(l)') ns_switch
+    read(argstr,'(l1)') ns_switch
     write(*,*) 'ns_switch',ns_switch
 
     allocate(xs(nx),ys(ny),xstag(nx-1),ystag(ny-1))
@@ -595,9 +599,9 @@ contains
     real :: chan_depth,otopg,ltopg
 
     character(len=512) :: two_sided_shelf_params = "<fname> <nx> <ny> <hx> <hy> &
-         <center_thk> <icefront_pos> &
-         <icefront_thk> <otopg> <ltopg> &
-         <kx> <chan_amp> <chan_init_l> <kinbcw>"
+         &<center_thk> <icefront_pos> &
+         &<icefront_thk> <otopg> <ltopg> &
+         &<kx> <chan_amp> <chan_init_l> <kinbcw>"
 
     if (command_argument_count() /= 15) then
        write(*,*)"Incorrect number of parameters. Two-sided shelf requires: ",&
