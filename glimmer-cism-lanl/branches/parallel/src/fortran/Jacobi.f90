@@ -20,7 +20,7 @@ use glimmer_sparse_type
   real (kind = dp), dimension(nu), intent(inout) :: dutp
   real (kind = dp), dimension(nu) :: Pdu, Diag
 
-  Npite = 1000 ! nb of precond iterations
+  Npite = 100 ! nb of precond iterations
 
   do p = 1, Npite
 

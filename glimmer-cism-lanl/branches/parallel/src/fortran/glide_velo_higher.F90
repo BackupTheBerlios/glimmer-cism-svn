@@ -76,6 +76,7 @@ contains
         logical :: empty
         integer :: totpts
         integer :: solver 
+        integer, save :: tstep ! JFL to be removed
         real(sp), dimension(model%general%ewn-1, model%general%nsn-1) :: stagmassb
 
         !TEMPORARY arrays, these should at some point be placed in Model
@@ -89,6 +90,7 @@ contains
 
         minTauf = 0.0d0
 
+        tstep = tstep + 1 ! JFL to be removed
         solver = 1 ! input by user, 1: Picard, 2: JFNK
 
         !Beta field computations that change in time
