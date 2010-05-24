@@ -939,7 +939,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       maxiteGMRES = 300
       
-      precond  = 2 ! 1: solver of Picard, 2: identity, 3: SOR
+      precond  = 2 ! 1: solver of Picard, 2: identity, 3: Jacobi
 
       iout   = 0    ! set  higher than 0 to have res(ite)
 
