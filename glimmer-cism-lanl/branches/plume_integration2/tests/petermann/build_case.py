@@ -239,12 +239,13 @@ class GCConfig(object):
             sections.append('[%s]\n%s\n' % (k, '\n'.join(section_vals)))
                         
         return '\n'.join(sections)
-            
-def main(config_filename):
 
-    newVals = {}
+
+def get_config(config_filename):
+
+    configVals = {}
     
-    execfile(config_filename, globals(), newVals)
+    execfile(config_filename, globals(), configVals)
 
     req_vars = ['plume_vals',
                 'gc_vals',
@@ -252,22 +253,28 @@ def main(config_filename):
                 'gc_config_filename',
                 'nc_gen_input_args',
                 'nc_regrid_args',
+                'input_style'
                 ]
 
     for req_var in req_vars:
-        if (not req_var in newVals):
+        if (not req_var in configVals):
             raise Exception('Did not find %s defined in %s' % (req_var,
                                                                config_filename))
+
+    return configVals
+
+def build_case(configVals):
+
     pnl = PlumeNamelist()    
-    pnl.update_vals(newVals['plume_vals'])
+    pnl.update_vals(configVals['plume_vals'])
 
     gc_config = GCConfig()
-    gc_config.update_vals(newVals['gc_vals'])
+    gc_config.update_vals(configVals['gc_vals'])
 
-    pnl_name = newVals['plume_nl_filename']
-    gc_config_name = newVals['gc_config_filename']
-    nc_gen_input_args = newVals['nc_gen_input_args']
-    nc_regrid_args = newVals['nc_regrid_args']
+    pnl_name = configVals['plume_nl_filename']
+    gc_config_name = configVals['gc_config_filename']
+    nc_gen_input_args = configVals['nc_gen_input_args']
+    nc_regrid_args = configVals['nc_regrid_args']
     
     f = open(pnl_name,'w')
     try:
@@ -281,28 +288,36 @@ def main(config_filename):
     finally:
         g.close()
 
-    if (nc_gen_input_args):
+    inputStyle = configVals['input_style']
+    
+    if (inputStyle == 'gen_input'):
         cmd = ['nc_gen_input']
         cmd.extend(nc_gen_input_args)
         cmd = [fortran_style('nc_gen_input', c) for c in cmd]
-    elif (nc_regrid_args):
+    elif (inputStyle == 'regrid'):
         cmd =['nc_regrid']
         cmd.extend(nc_regrid_args)
         cmd = [fortran_style('nc_regrid', c) for c in cmd]
-    else:
+    elif (inputStyle == 'given'):
         cmd = ['echo','Reading input from a given file']
 #        raise Exception('No arguments to generate netcdf input')
+    else:
+        raise Exception('Invalid input_style: %s' % inputStyle)
     
     retcode = subprocess.call(cmd)
     if (retcode != 0):
         raise Exception('Error running:\n %s' ' '.join(cmd))
 
-if __name__ == '__main__':
+def main():
+
     if (len(sys.argv) < 2):
         raise Exception('Need to call with config file as last argument')
     
     config_filename = sys.argv[-1] #last argument
-    main(config_filename)
+    configVals = get_config(config_filename)
+    build_case(configVals)
 
+if __name__ == '__main__':
+    main()
     
     

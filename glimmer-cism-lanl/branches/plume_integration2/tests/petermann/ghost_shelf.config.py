@@ -27,18 +27,18 @@ gc_config_filename = '%s.config' % run_name
 nc_input_fname = '%s.in.nc' % run_name
 
 # This is to do a restart
-input_nc_file = 'restart.nc'
-input_nc_file_t_read = 3
+input_nc_file = 'test.in.nc'
+input_nc_file_t_read = 1
 
 nc_regrid_args = [input_nc_file,
                   '%s.in.nc'% run_name, input_nc_file_t_read,
                   m,n,0,0,0,0,0,0,0,0,
                   2,0,0,0]
-#nc_regrid_args = []
 
-#nc_gen_input_args = ['gs',nc_input_fname, m,n,kinbcw, n_level,
-#                     hx,hy,up_thk, up_vel, ifdep,kx, chan_depth,ramp_width,landw]
-nc_gen_input_args = []
+nc_gen_input_args = ['gs',nc_input_fname, m,n,kinbcw, n_level,
+                     hx,hy,up_thk, up_vel, ifdep,kx, chan_depth,ramp_width,landw]
+
+input_style = 'regrid'
 
 plume_vals = {'ifdep' : ifdep, 
               'plume_min_thickness' : 10.0,
@@ -69,7 +69,8 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
                        'plume_output_dir' : '/scratch/plume_netcdf_output',
 			'plume_output_file' : 'plume.%s.out.nc' % run_name,
 	                'plume_nl_file' : plume_nl_filename},
-            'time' : {'tend' : tend,
+           'time' : {'tstart' : 0.0,
+                     'tend' : tend,
  		      'dt' : dt },
 	    'grid' : { 'upn' : n_level,
 			'ewn' : m,
