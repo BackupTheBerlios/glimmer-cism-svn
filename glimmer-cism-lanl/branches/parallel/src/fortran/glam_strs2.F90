@@ -697,7 +697,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: NL_tol = 1.0d-06
 
   integer, parameter :: cmax = 100, img = 10, img1 = img+1
-  integer :: counter , k
+  integer :: counter , k, precond
   character(len=100) :: message
 
 !*sfp* needed to incorporate generic wrapper to solver
@@ -918,14 +918,12 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 !    if (k .eq. 1) NL_target = NL_tol * L2norm_wig
     if (k .eq. 1) NL_target = NL_tol * L2norm
 
-!    print *, 'L2 with, without ghost (k)= ', counter, L2norm_wig, L2norm
-    print *, L2norm
+    print *, 'L2 with, without ghost (k)= ', counter, L2norm_wig, L2norm
+
     if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
 
 !      print *, 'REMOVE ANSWER vector?, matrxtp?'
 !      print *, 'target with L2norm with or without ghost?'
-
-!    stop
 
 !==============================================================================
 ! solve J(u_k-1,v_k-1)du = -F(u_k-1,v_k-1) with fgmres, du = [dv, du]  
@@ -939,20 +937,22 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       epsilon = 1d-06 ! for Jx approximation
 
-      maxiteGMRES = 200
+      maxiteGMRES = 300
+      
+      precond  = 2 ! 1: solver of Picard, 2: identity, 3: SOR
 
-      iout   = 6    ! set  higher than 0 to have res(ite)
+      iout   = 0    ! set  higher than 0 to have res(ite)
 
       icode = 0
 
  10   CONTINUE
       
-!      call fgmres (2*pcgsize(1),img,rhs,du,iter,vv,wk,wk1,wk2, &
-!                   eps,maxiteGMRES,iout,icode,tot_its)
+      call fgmres (2*pcgsize(1),img,rhs,du,iter,vv,wk,wk1,wk2, &
+                   eps,maxiteGMRES,iout,icode,tot_its)
 
       IF ( icode == 1 ) THEN      ! precond step
 
-      if (12 .gt. 11) then
+      if (precond .eq. 1) then ! standard linear solver of Picard 
 
 ! precondition v component 
        
@@ -984,14 +984,27 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
       wk2(pcgsize(1)+1:2*pcgsize(1)) = answer(:)
 
-!      do nele = 1, 2*pcgsize(1)
-!         print *, 'precond', nele, wk2(nele)
-!      enddo
+      elseif (precond .eq. 2) then ! identity precond
 
+         wk2 = wk1 
+
+      elseif (precond .eq. 3) then ! Jacobi precond
+
+! precondition v component 
+
+         answer = 0d0           ! initial guess
+         vectp(:) = wk1(1:pcgsize(1)) ! rhs for precond v
+         call Jacobi(matrixA, vectp, answer, size(answer))
+         wk2(1:pcgsize(1)) = answer(:)
+
+! precondition u component 
+
+         answer = 0d0           ! initial guess
+         vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! rhs for precond u
+         call Jacobi(matrixC, vectp, answer, size(answer))
+         wk2(pcgsize(1)+1:2*pcgsize(1)) = answer(:)
+         
       endif
-
-!      print *, 'precond step'
-!      wk2 = wk1
 
       GOTO 10
 
