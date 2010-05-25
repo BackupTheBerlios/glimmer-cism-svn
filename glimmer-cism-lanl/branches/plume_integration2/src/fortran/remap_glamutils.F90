@@ -170,11 +170,11 @@ module remap_glamutils
     !is needed on the left.  However, unlike thickness, *two* extra rows are needed
     !on the right, to account for the extra B-grid row.  Same goes for top and bottom.
     where( stagthck > 0.0_dp )
-        wk%ubar_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = uflx/stagthck*vel0;
-        wk%vbar_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = vflx/stagthck*vel0;
+        wk%ubar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = uflx/stagthck*vel0;
+        wk%vbar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = vflx/stagthck*vel0;
     elsewhere
-        wk%ubar_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = 0.0_dp
-        wk%vbar_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = 0.0_dp
+        wk%ubar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = 0.0_dp
+        wk%vbar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = 0.0_dp
     endwhere
 
     call periodic_boundaries(wk%thck_ir(:,:,1), periodic_ew, periodic_ns, 2)
