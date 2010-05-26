@@ -59,7 +59,8 @@ def checkpoint_run(config_file):
         base_config['input_style'] = 'regrid'
         base_config['nc_regrid_args'][0] = insert_cp_index(gc_output_fname_base,i-1) #input file
         base_config['nc_regrid_args'][1] = insert_cp_index(gc_input_fname_base,i)    #outpt file
-        base_config['nc_regrid_args'][2] = num_slices_per_cp
+        base_config['nc_regrid_args'][2] = -1 # this means read last time slice,
+                                              # replacing num_slices_per_cp
         
         base_config['gc_vals']['time']['tstart'] = ts
         base_config['gc_vals']['time']['tend'] =  min(te, ts + cp_dur)

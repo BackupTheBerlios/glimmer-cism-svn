@@ -275,8 +275,8 @@ subroutine read_old_nc_file()
   hy_old = y1_old(2) - y1_old(1)
  
   if (t_read < 1) then
-	write(*,*) 't_read can not be negative'
-	stop 1
+	write(*,*) 'reading last time slice'
+	t_read = nt_old
   end if
 
   if (nt_old < t_read) then
