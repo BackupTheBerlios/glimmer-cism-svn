@@ -50,7 +50,7 @@ def checkpoint_run(config_file):
     cmd = ['shelf_driver', gc_config_fname_base]
     retcode = subprocess.call(cmd)
     if (retcode != 0):
-        raise Exception('Error running:\n %s' ' '.join(cmd))
+        raise Exception('Error running:\n %s' % ' '.join(cmd))
 
     for i in range(2,n_checkpoints+1):
 

@@ -2,36 +2,32 @@
 
 # Note: Uses python syntax, so this file must be a valid python file
 
-_m = 21
-_n = 21
+_run_name = 'c15'
+
+_m = 41
+_n = 81
 _kinbcw = 2
 _ramp_width = 0
 _landw = 0
-_n_level = 7
-_hx = 200.0
-_hy = 200.0
+_n_level = 5
+_hx = 250.0
+_hy = 250.0
 _kx = 1.0
-_chan_depth = 50.0
+_chan_depth = 20.0
 
 _dt = 0.05
 _tstart = None
 _tend = None
 
 _ifpos = 5
-_ifdep = 500.0
+_ifdep = 600.0
 _gldep = 600.0
 _wcdep = 200.0
 _up_thk = _gldep
 _up_vel = -1000.0
 
-_run_name = 'test_run'
 
 _nc_input_fname = '%s.in.nc' % _run_name
-
-# This is to do a restart
-_restart_nc_file = 'restart.nc'
-_restart_nc_file_t_read = 3
-
 
 #############################################################
 
@@ -39,8 +35,8 @@ plume_nl_filename = '%s.nl' % _run_name
 gc_config_filename = '%s.config' % _run_name
 
 
-nc_regrid_args = [_restart_nc_file,
-                  '%s.in.nc'% _run_name, _restart_nc_file_t_read,
+nc_regrid_args = [None,
+                  '%s.in.nc'% _run_name, None,
                   _m,_n,0,0,0,0,0,0,0,0,
                   _kinbcw,0,0,0]
 
@@ -53,9 +49,9 @@ nc_gen_input_args = ['gs',
 
 input_style = 'gen_input'
 
-checkpoint_duration = 2.0
+checkpoint_duration = 0.10
 checkpoint_tstart =  0.0
-checkpoint_tend   =  50.0
+checkpoint_tend   =  1.0
 checkpoint_initial_input_style = 'gen_input'
 
 plume_vals = {'ifdep' : _ifdep, 
@@ -101,7 +97,7 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
 	                   'time' : 1 },
 	    'CF default' : { 'comment' : '',
 			     'title' : _run_name },
-           'options' : { 'flow_law' : 2,
+           'options' : { 'flow_law' : 0,
                          'use_plume' : 0},
 
 	}
