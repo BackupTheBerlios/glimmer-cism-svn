@@ -18,7 +18,7 @@
 !matrix.  They should be disabled unless the higher-order code needs debugging.
 
 !Define to output a NetCDF file of the partial iterations
-#define OUTPUT_PARTIAL_ITERATIONS
+!#define OUTPUT_PARTIAL_ITERATIONS
 !#define VERY_VERBOSE
 !#define NOSHELF
 !#define ENFORCE_PBC
@@ -246,6 +246,7 @@ contains
 !
       SUBROUTINE veloc1(dzdx,dzdy,h,flwa,zeta,uvel,vvel,u,v,&
         MAXX,MAXY,NZETA,FLOWN,PERIODIC_X,PERIODIC_Y)
+        use parallel
 !
         INTEGER MAXX,MAXY,NZETA
         real(dp) :: dzdx(:,:)
@@ -289,7 +290,8 @@ contains
         v(i,j)=diffus*dzdy(i,j)
    20   CONTINUE
    10 CONTINUE
-
+        call parallel_halo(u)
+        call parallel_halo(v)
     END subroutine
      !
 !
@@ -303,7 +305,7 @@ contains
                 TOLER, options, STAGGERED, delta_x, delta_y, &
                 point_mask, active_points, geometry_mask, kinematic_bc_u, kinematic_bc_v, &
                 marine_bc_normal)
-                
+      use parallel
 
         INTEGER MAXY,MAXX,NZETA,MANIFOLD
 
@@ -405,9 +407,10 @@ contains
         call new_sparse_matrix(ijktot, ijktot*STENCIL_SIZE, matrix)
         call sparse_allocate_workspace(matrix, matrix_options, matrix_workspace, ijktot*STENCIL_SIZE)
 
-        write(*,*)"flwa", minval(flwa), maxval(flwa)
-        call write_xls("h.txt",h)
-        call write_xls_3d("flwa.txt",flwa)
+        !write(*,*)"flwa", minval(flwa), maxval(flwa)
+        call parallel_show_minmax("flwa",flwa)
+        call parallel_print("h",h)
+        call parallel_print("flwa",flwa)
 
 #ifdef DEBUG_FIELDS
         call write_xls("dzdx.txt",dzdx)
@@ -444,6 +447,7 @@ contains
         !Compute basal traction
 
 #ifdef OUTPUT_PARTIAL_ITERATIONS        
+        call not_parallel(__FILE__,__LINE__)
         ncid_debug = begin_iteration_debug(maxx, maxy, nzeta)
         call iteration_debug_step(ncid_debug, 0, efvs, uvel, vvel, geometry_mask)
 #endif
@@ -452,6 +456,7 @@ contains
         !  =========================================
         !  Non-linear iteration on velocities
         !  =========================================
+        if (main_task) then
 
         print *, "Entering the non-linear iteration on velocities (1st order Pattyn)."
         print "(a,es10.3)","Error Tolerance is:", error
@@ -459,6 +464,7 @@ contains
         write (*,*) "Nonlin.      Lin. Solv.     Error            Max        CPU time"
         write (*,*) " Iter.         Iter.                       Velocity             "
         write (*,*) "================================================================"
+        end if
 
         nonlinear_iteration: do while (cont .and. l <= MAXITER)
             call cpu_time(iter_start_time)
@@ -484,14 +490,22 @@ contains
             if (options%which_ho_bstress == HO_BSTRESS_LINEAR) then
                 tau = beta
             else
+               call not_parallel(__FILE__,__LINE__)
                 call plastic_bed(tau, beta, uvel(nzeta,:,:), vvel(nzeta,:,:))
             end if
 
+            !TREY
             !Compute velocity derivatives
             call velderivs(uvel, vvel, dzdx, dzdy, geometry_mask, &
                            delta_x, delta_y, zeta, .false., &
                            direction_x, direction_y, &
                            dudx, dudy, dudz, dvdx, dvdy, dvdz)
+            call parallel_print("uvel",uvel)
+            call parallel_print("vvel",vvel)
+            call parallel_print("dudx",dudx)
+            call parallel_print("dudy",dudy)
+            call parallel_print("dudz",dudz)
+            call parallel_stop(__FILE__,__LINE__)
 #ifdef DEBUG_FIELDS
             call write_xls_3d("dudx.txt",dudx)
             call write_xls_3d("dudy.txt",dudy)

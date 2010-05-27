@@ -87,7 +87,7 @@ contains
     case default
       bwat = 0.0d0
     end select
-    call parallel_ice_halo(bwat) !same as model%temper%bwat
+    call parallel_halo(bwat) !same as model%temper%bwat
     
     ! now also calculate basal water in velocity (staggered) coord system
     call stagvarb(model%temper%bwat, &

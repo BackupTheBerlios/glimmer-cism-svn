@@ -60,10 +60,10 @@ module parallel
      module procedure parallel_get_var_real4_1d
   end interface
 
-  interface parallel_ice_halo
-     module procedure parallel_ice_halo_integer_2d
-     module procedure parallel_ice_halo_real8_2d
-     module procedure parallel_ice_halo_real8_3d
+  interface parallel_halo
+     module procedure parallel_halo_integer_2d
+     module procedure parallel_halo_real8_2d
+     module procedure parallel_halo_real8_3d
   end interface
 
   interface parallel_print
@@ -559,6 +559,15 @@ contains
     if (south>=tasks) south = south-tasks
   end subroutine
 
+  function distributed_owner(ew,ewn,ns,nsn)
+    implicit none
+    logical :: distributed_owner
+    integer :: ew,ewn,ns,nsn
+    ! begin
+    distributed_owner = (ew>lhalo.and.ew<=ewn-uhalo.and.&
+         ns>lhalo.and.ns<=nsn-uhalo)
+  end function
+
   function distributed_put_var_integer_2d(ncid,varid,values,start)
     use mpi
     implicit none
@@ -952,15 +961,15 @@ contains
     call mpi_barrier(comm,ierror)
   end subroutine
 
-  function parallel_boundary(ew,ns)
+  function parallel_boundary(ew,ewn,ns,nsn)
     implicit none
     logical :: parallel_boundary
-    integer :: ew,ns
+    integer :: ew,ewn,ns,nsn
     ! begin
     parallel_boundary = (ewlb<1.and.ew==1+lhalo).or.&
-         (ewub>global_ewn.and.ew==local_ewn-uhalo).or.&
+         (ewub>global_ewn.and.ew==ewn-uhalo).or.&
          (nslb<1.and.ns==1+lhalo).or.&
-         (nsub>global_nsn.and.ns==local_nsn-uhalo)
+         (nsub>global_nsn.and.ns==nsn-uhalo)
   end function
 
   function parallel_close(ncid)
@@ -1112,17 +1121,27 @@ contains
     call broadcast(values)
   end function
 
-  subroutine parallel_ice_halo_integer_2d(a)
+  subroutine parallel_halo_integer_2d(a)
     use mpi
     implicit none
-    integer,dimension(local_ewn,local_nsn) :: a
+    integer,dimension(:,:) :: a
     
     integer :: erequest,ierror,nrequest,srequest,wrequest
     integer,dimension(lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
     integer,dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
     integer,dimension(local_ewn,lhalo) :: nrecv,ssend
     integer,dimension(local_ewn,uhalo) :: nsend,srecv
+
     ! begin
+
+    ! staggered grid
+    if (size(a,1)==local_ewn-1.and.size(a,2)==local_nsn-1) return
+
+    ! unknown grid
+    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) &
+         call parallel_stop(__FILE__,__LINE__)
+
+    ! unstaggered grid
     call mpi_irecv(wrecv,size(wrecv),mpi_integer,west,west,&
          comm,wrequest,ierror)
     call mpi_irecv(erecv,size(erecv),mpi_integer,east,east,&
@@ -1154,17 +1173,27 @@ contains
     a(:,:lhalo) = nrecv(:,:)
   end subroutine
 
-  subroutine parallel_ice_halo_real8_2d(a)
+  subroutine parallel_halo_real8_2d(a)
     use mpi
     implicit none
-    real(8),dimension(local_ewn,local_nsn) :: a
+    real(8),dimension(:,:) :: a
     
     integer :: erequest,ierror,nrequest,srequest,wrequest
     real(8),dimension(lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
     real(8),dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
     real(8),dimension(local_ewn,lhalo) :: nrecv,ssend
     real(8),dimension(local_ewn,uhalo) :: nsend,srecv
+
     ! begin
+
+    ! staggered grid
+    if (size(a,1)==local_ewn-1.and.size(a,2)==local_nsn-1) return
+
+    ! unknown grid
+    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) &
+         call parallel_stop(__FILE__,__LINE__)
+
+    ! unstaggered grid
     call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
          comm,wrequest,ierror)
     call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,&
@@ -1196,17 +1225,27 @@ contains
     a(:,:lhalo) = nrecv(:,:)
   end subroutine
 
-  subroutine parallel_ice_halo_real8_3d(a)
+  subroutine parallel_halo_real8_3d(a)
     use mpi
     implicit none
-    real(8),dimension(:,:,:) :: a !(:,local_ewn,local_nsn)
+    real(8),dimension(:,:,:) :: a
     
     integer :: erequest,ierror,one,nrequest,srequest,wrequest
     real(8),dimension(size(a,1),lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
     real(8),dimension(size(a,1),uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
     real(8),dimension(size(a,1),local_ewn,lhalo) :: nrecv,ssend
     real(8),dimension(size(a,1),local_ewn,uhalo) :: nsend,srecv
+
     ! begin
+
+    ! staggered grid
+    if (size(a,2)==local_ewn-1.and.size(a,3)==local_nsn-1) return
+
+    ! unknown grid
+    if (size(a,2)/=local_ewn.or.size(a,3)/=local_nsn) &
+         call parallel_stop(__FILE__,__LINE__)
+
+    ! unstaggered grid
     call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
          comm,wrequest,ierror)
     call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,&
@@ -1360,64 +1399,232 @@ contains
     call broadcast(parallel_open)
   end function
 
-  subroutine parallel_print_integer_2d(a)
+  subroutine parallel_print_integer_2d(name,values)
+    use mpi
     implicit none
-    integer,dimension(:,:) :: a
+    character(*) :: name
+    integer,dimension(:,:) :: values
     
-    integer :: i,j,k
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    integer,dimension(:),allocatable :: recvbuf
+    integer,dimension(:,:),allocatable :: global_values,sendbuf
+
     ! begin
-    do k = 0,tasks-1
-       call parallel_barrier
-       if (k==this_rank) then
-          do j = 1+lhalo,local_nsn-uhalo
-             do i = 1+lhalo,local_ewn-uhalo
-                print *,j+nslb-1,i+ewlb-1,a(i,j)
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_integer,&
+         recvbuf,recvcounts,displs,mpi_integer,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+       write(ts,'(i3.3)') tasks
+       open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+       if (size(values,1)<local_ewn) then
+          do j = lbound(global_values,2),ubound(global_values,2)-1
+             do i = lbound(global_values,1),ubound(global_values,1)-1
+                write(u,*) j,i,global_values(i,j)
              end do
-             print '()'
+             write(u,'()')
           end do
-          print '(//)'
+       else
+          do j = lbound(global_values,2),ubound(global_values,2)
+             do i = lbound(global_values,1),ubound(global_values,1)
+                write(u,*) j,i,global_values(i,j)
+             end do
+             write(u,'()')
+          end do
        end if
-    end do
+       close(u)
+    end if
+    ! automatic deallocation
   end subroutine
 
-  subroutine parallel_print_real8_2d(a)
+  subroutine parallel_print_real8_2d(name,values)
+    use mpi
     implicit none
-    real(8),dimension(:,:) :: a
+    character(*) :: name
+    real(8),dimension(:,:) :: values
     
-    integer :: i,j,k
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(8),dimension(:),allocatable :: recvbuf
+    real(8),dimension(:,:),allocatable :: global_values,sendbuf
+
     ! begin
-    do k = 0,tasks-1
-       call parallel_barrier
-       if (k==this_rank) then
-          do j = 1+lhalo,local_nsn-uhalo
-             do i = 1+lhalo,local_ewn-uhalo
-                print *,j+nslb-1,i+ewlb-1,a(i,j)
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
+         recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+       write(ts,'(i3.3)') tasks
+       open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+       if (size(values,1)<local_ewn) then
+          do j = lbound(global_values,2),ubound(global_values,2)-1
+             do i = lbound(global_values,1),ubound(global_values,1)-1
+                write(u,*) j,i,global_values(i,j)
              end do
-             print '()'
+             write(u,'()')
           end do
-          print '(//)'
+       else
+          do j = lbound(global_values,2),ubound(global_values,2)
+             do i = lbound(global_values,1),ubound(global_values,1)
+                write(u,*) j,i,global_values(i,j)
+             end do
+             write(u,'()')
+          end do
        end if
-    end do
+       close(u)
+    end if
+    ! automatic deallocation
   end subroutine
 
-  subroutine parallel_print_real8_3d(a)
+  subroutine parallel_print_real8_3d(name,values)
+    use mpi
     implicit none
-    real(8),dimension(:,:,:) :: a
+    character(*) :: name
+    real(8),dimension(:,:,:) :: values
     
-    integer :: i,j,k
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(8),dimension(:),allocatable :: recvbuf
+    real(8),dimension(:,:,:),allocatable :: global_values,sendbuf
+
     ! begin
-    do k = 0,tasks-1
-       call parallel_barrier
-       if (k==this_rank) then
-          do j = 1+lhalo,local_nsn-uhalo
-             do i = 1+lhalo,local_ewn-uhalo
-                print '(2i6,100g15.5e3)',j+nslb-1,i+ewlb-1,a(:,i,j)
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       allocate(global_values(size(values,1),minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)*size(values,1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(size(values,1),mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:,:) = values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
+         recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(:,bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/size(values,1),bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+       write(ts,'(i3.3)') tasks
+       open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+       if (size(values,2)<local_ewn) then
+          do j = lbound(global_values,3),ubound(global_values,3)-1
+             do i = lbound(global_values,2),ubound(global_values,2)-1
+                write(u,'(2i6,100g15.5e3)') j,i,global_values(:,i,j)
              end do
-             print '()'
+             write(u,'()')
           end do
-          print '(//)'
+       else
+          do j = lbound(global_values,3),ubound(global_values,3)
+             do i = lbound(global_values,2),ubound(global_values,2)
+                write(u,'(2i6,100g15.5e3)') j,i,global_values(:,i,j)
+             end do
+             write(u,'()')
+          end do
        end if
-    end do
+       close(u)
+    end if
+    ! automatic deallocation
   end subroutine
 
   function parallel_put_att_character(ncid,varid,name,values)
@@ -1515,13 +1722,23 @@ contains
     call broadcast(parallel_redef)
   end function
 
-  function parallel_sync(ncid)
+  subroutine parallel_show_minmax(label,values)
+    use mpi
     implicit none
-    integer :: ncid,parallel_sync
+    character(*) :: label
+    real(8),dimension(:,:,:) :: values
+    
+    integer :: ierror
+    real(8) :: allmin,allmax,mymin,mymax
     ! begin
-    if (main_task) parallel_sync = nf90_sync(ncid)
-    call broadcast(parallel_sync)
-  end function
+    mymin = minval(values(:,lhalo:size(values,2)-uhalo,&
+         lhalo:size(values,3)-uhalo))
+    mymax = maxval(values(:,lhalo:size(values,2)-uhalo,&
+         lhalo:size(values,3)-uhalo))
+    call mpi_reduce(mymin,allmin,1,mpi_real8,mpi_min,main_rank,comm,ierror)
+    call mpi_reduce(mymax,allmax,1,mpi_real8,mpi_max,main_rank,comm,ierror)
+    if (main_task) print *,label,allmin,allmax
+  end subroutine
 
   subroutine parallel_stop(file,line)
     use mpi
@@ -1534,6 +1751,14 @@ contains
     call mpi_finalize(ierror)
     stop "PARALLEL STOP"
   end subroutine
+
+  function parallel_sync(ncid)
+    implicit none
+    integer :: ncid,parallel_sync
+    ! begin
+    if (main_task) parallel_sync = nf90_sync(ncid)
+    call broadcast(parallel_sync)
+  end function
 
   subroutine parallel_temp_halo(a)
     use mpi

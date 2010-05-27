@@ -658,7 +658,7 @@ contains
         end if
       end do
     end do
-    call parallel_ice_halo(wgrd)
+    call parallel_halo(wgrd)
   end subroutine gridwvel
 
 !------------------------------------------------------------------------------------------
@@ -771,7 +771,7 @@ contains
         end if
       end do
     end do
-    call parallel_ice_halo(wvel)
+    call parallel_halo(wvel)
   end subroutine wvelintg
 
   subroutine wvel_ew(model)
@@ -846,7 +846,7 @@ contains
          end if
       end do
     end do
-    call parallel_ice_halo(wvel)
+    call parallel_halo(wvel)
   end subroutine chckwvel
 
 !------------------------------------------------------------------------------------------

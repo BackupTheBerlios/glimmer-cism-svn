@@ -68,6 +68,7 @@ contains
     !model right now because the analysis on what needs to be passed has yet to
     !be done.
     subroutine run_ho_diagnostic(model)
+      use parallel
         use glide_thckmask
         use glide_mask
         
@@ -89,19 +90,21 @@ contains
         minTauf = 0.0d0
 
         !Beta field computations that change in time
+        !TREY "hump.config" sets this to 0, so the "if"s are skipped
         if (model%options%which_ho_beta_in == HO_BETA_USE_BTRC) then
+           call not_parallel(__FILE__,__LINE__)
            where (model%velocity%btrc /= 0)
                model%velocity_hom%beta = 1/model%velocity%btrc
             elsewhere
                 model%velocity_hom%beta = NAN
             end where
         else if (model%options%which_ho_beta_in == HO_BETA_SLIP_RATIO) then
+           call not_parallel(__FILE__,__LINE__)
             call calc_slip_ratio(model%temper%flwa(model%general%upn,:,:), model%geomderv%stagthck, &
                                  model%paramets%slip_ratio, model%velocity_hom%beta)
         end if
 
         !Compute the "geometry mask" (type of square) for the staggered grid
-
         call glide_set_mask(model%numerics, model%geomderv%stagthck, model%geomderv%stagtopg, &
                                 model%general%ewn-1, model%general%nsn-1, model%climate%eus, &
                                 geom_mask_stag) 
@@ -113,7 +116,9 @@ contains
         !Compute the normal vectors to the marine margin for the staggered grid
         call glide_marine_margin_normal(model%geomderv%stagthck, geom_mask_stag, latbc_norms_stag)
 
+        ! "hump.config" uses HO_DIAG_PATTYN_STAGGERED
         if (model%options%which_ho_diagnostic == HO_DIAG_PATTYN_STAGGERED) then
+           
 #ifdef VERY_VERBOSE
             write(*,*)"Running Pattyn staggered"
 #endif
@@ -122,11 +127,10 @@ contains
             !staggered grid.  
             stagmassb = 0
 
-            
             call glide_maskthck(model%geomderv%stagthck, stagmassb, .true., model%numerics%thklim,&
                                 model%geometry%dom, model%velocity_hom%velmask, totpts, empty)
-                 
-               
+
+            !TREY
             call velo_hom_pattyn(model%general%ewn, model%general%nsn, model%general%upn, &
                                  model%numerics%dew, model%numerics%dns, model%numerics%sigma, &
                                  model%geomderv%stagthck, model%geomderv%stagusrf, model%geomderv%staglsrf, &
@@ -152,6 +156,7 @@ contains
                                       model%velocity_hom%uflx,    model%velocity_hom%vflx) 
 
         else if (model%options%which_ho_diagnostic == HO_DIAG_PATTYN_UNSTAGGERED) then
+           call not_parallel(__FILE__,__LINE__)
 #ifdef VERY_VERBOSE
             write(*,*)"Running Pattyn unstaggered"
 #endif
@@ -177,6 +182,7 @@ contains
                                       model%velocity_hom%uflx,    model%velocity_hom%vflx) 
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
+           call not_parallel(__FILE__,__LINE__)
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
                                         model%numerics%dew,      model%numerics%dns,                &
@@ -215,6 +221,7 @@ contains
                                options, &
                                marine_bc_normal, &
                                uvel, vvel, valid_initial_guess, uflx, vflx, efvs, tau, gdsx, gdsy)
+      use parallel
                            
         integer, intent(in)  :: ewn !*FD Number of cells X
         integer, intent(in)  :: nsn !*FD Number of cells Y
@@ -291,6 +298,7 @@ contains
         call init_rescaled_coordinates(dthckdew,dlsrfdew,dthckdns,dlsrfdns,usrf,thck,lsrf,&
                                                dusrfdew,dusrfdns,d2zdx2,d2zdy2,d2hdx2,d2hdy2,&
                                                sigma,ax,ay,bx,by,cxy,dew,dns,direction_x,direction_y)
+
         !"Spin up" estimate with Pattyn's SIA model runs if we don't already
         !have a good initial guess
         if (.not. valid_initial_guess) then
@@ -299,7 +307,9 @@ contains
             !If we are performing the plastic bed iteration, the SIA is not
             !enough and we need to spin up a better estimate by shoehorning the
             !tau0 values into a linear bed estimate
+            
             if (options%which_ho_bstress == HO_BSTRESS_PLASTIC) then
+               call not_parallel(__FILE__,__LINE__)
                 call veloc2(efvs, uvel, vvel, flwa_stag, dusrfdew, dusrfdns, thck, ax, ay, &
                         sigma, bx, by, cxy, btrc/100, dlsrfdew, dlsrfdns, FLWN, ZIP, VEL2ERR, &
                         TOLER, options, .true., dew, dns,point_mask, &
@@ -314,6 +324,7 @@ contains
         !Because of the transposition, ewn=maxy and nsn=maxx.  However, veloc2
         !passes maxy in *first*, so these really get passed in the same order
         !that they normally would.
+           !TREY
         call veloc2(efvs, uvel, vvel, flwa_stag, dusrfdew, dusrfdns, thck, ax, ay, &
                     sigma, bx, by, cxy, btrc, dlsrfdew, dlsrfdns, FLWN, ZIP, VEL2ERR, &
                     TOLER, options, .true., dew, dns, &

@@ -40,6 +40,7 @@ module glimmer_sparse
 
 contains
     subroutine sparse_solver_default_options(method, opt)
+      use parallel
         integer, intent(in) :: method
         type(sparse_solver_options) :: opt
 
@@ -49,13 +50,16 @@ contains
 
         !Solver specific options
         if (method == SPARSE_SOLVER_BICG) then
+           call not_parallel(__FILE__,__LINE__)
             call slap_default_options(opt%slap, opt%base) 
 
         else if (method == SPARSE_SOLVER_GMRES) then
+           call not_parallel(__FILE__,__LINE__)
             call slap_default_options(opt%slap, opt%base)
             opt%slap%use_gmres = .true.
 
         else if (method == SPARSE_SOLVER_UMF) then
+           call not_parallel(__FILE__,__LINE__)
             call umf_default_options(opt%umf)
 
 #ifdef TRILINOS
@@ -70,6 +74,7 @@ contains
     end subroutine
 
     subroutine sparse_allocate_workspace(matrix, options, workspace, max_nonzeros_arg)
+      use parallel
         !*FD Allocate solver workspace.  This needs to be done once
         !*FD (when the maximum number of nonzero entries is first known)
         !*FD This function need not be safe to call on already allocated memory
@@ -90,10 +95,12 @@ contains
 
         if (options%base%method == SPARSE_SOLVER_BICG .or. &
             options%base%method == SPARSE_SOLVER_GMRES) then
+           call not_parallel(__FILE__,__LINE__)
             allocate(workspace%slap)
             call slap_allocate_workspace(matrix, options%slap, workspace%slap, max_nonzeros)
 
         else if (options%base%method == SPARSE_SOLVER_UMF) then
+           call not_parallel(__FILE__,__LINE__)
             allocate(workspace%umf)
             call umf_allocate_workspace(matrix, options%umf, workspace%umf, max_nonzeros)
 

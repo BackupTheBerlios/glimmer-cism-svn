@@ -37,10 +37,10 @@ module parallel
      module procedure broadcast_real8_1d
   end interface
 
-  interface parallel_ice_halo
-     module procedure parallel_ice_halo_integer_2d
-     module procedure parallel_ice_halo_real8_2d
-     module procedure parallel_ice_halo_real8_3d
+  interface parallel_halo
+     module procedure parallel_halo_integer_2d
+     module procedure parallel_halo_real8_2d
+     module procedure parallel_halo_real8_3d
   end interface
 
   interface parallel_print
@@ -89,6 +89,14 @@ contains
     global_nsn = nsn
   end subroutine
 
+  function distributed_owner(ew,ewn,ns,nsn)
+    implicit none
+    logical :: distributed_owner
+    integer :: ew,ewn,ns,nsn
+    ! begin
+    distributed_owner = .true.
+  end function
+
   subroutine global_sum(x,y)
     implicit none
     real(8) :: x,y
@@ -106,29 +114,29 @@ contains
     implicit none
   end subroutine
 
-  function parallel_boundary(ew,ns)
+  function parallel_boundary(ew,ewn,ns,nsn)
     implicit none
     logical :: parallel_boundary
-    integer :: ew,ns
+    integer :: ew,ewn,ns,nsn
     ! begin
-    parallel_boundary = (ew==1.or.ew==global_ewn.or.ns==1.or.ns==global_nsn)
+    parallel_boundary = (ew==1.or.ew==ewn.or.ns==1.or.ns==nsn)
   end function
 
   subroutine parallel_finalise
     implicit none
   end subroutine
 
-  subroutine parallel_ice_halo_integer_2d(a)
+  subroutine parallel_halo_integer_2d(a)
     implicit none
     integer,dimension(:,:) :: a
   end subroutine
 
-  subroutine parallel_ice_halo_real8_2d(a)
+  subroutine parallel_halo_real8_2d(a)
     implicit none
     real(8),dimension(:,:) :: a
   end subroutine
 
-  subroutine parallel_ice_halo_real8_3d(a)
+  subroutine parallel_halo_real8_3d(a)
     implicit none
     real(8),dimension(:,:,:) :: a
   end subroutine
@@ -137,46 +145,66 @@ contains
     implicit none
   end subroutine
 
-  subroutine parallel_print_integer_2d(a)
+  subroutine parallel_print_integer_2d(name,a)
     implicit none
+    character(*) :: name
     integer,dimension(:,:) :: a
     
+    integer,parameter :: u = 33
     integer :: i,j
     ! begin
+    open(unit=u,file=name//".txt",form="formatted",status="replace")
     do j = 1,size(a,2)
        do i = 1,size(a,1)
-          print *,j,i,a(i,j)
+          write(u,*) j,i,a(i,j)
        end do
-       print '()'
+       write(u,'()')
     end do
+    close(u)
   end subroutine
 
-  subroutine parallel_print_real8_2d(a)
+  subroutine parallel_print_real8_2d(name,a)
     implicit none
+    character(*) :: name
     real(8),dimension(:,:) :: a
     
+    integer,parameter :: u = 33
     integer :: i,j
     ! begin
+    open(unit=u,file=name//".txt",form="formatted",status="replace")
     do j = 1,size(a,2)
        do i = 1,size(a,1)
-          print *,j,i,a(i,j)
+          write(u,*) j,i,a(i,j)
        end do
-       print '()'
+       write(u,'()')
     end do
+    close(u)
   end subroutine
 
-  subroutine parallel_print_real8_3d(a)
+  subroutine parallel_print_real8_3d(name,a)
     implicit none
+    character(*) :: name
     real(8),dimension(:,:,:) :: a
     
+    integer,parameter :: u = 33
     integer :: i,j
     ! begin
+    open(unit=u,file=name//".txt",form="formatted",status="replace")
     do j = 1,size(a,3)
        do i = 1,size(a,2)
-          print '(2i6,100g15.5e3)',j,i,a(:,i,j)
+          write(u,'(2i6,100g15.5e3)') j,i,a(:,i,j)
        end do
-       print '()'
+       write(u,'()')
     end do
+    close(u)
+  end subroutine
+
+  subroutine parallel_show_minmax(label,values)
+    implicit none
+    character(*) :: label
+    real(8),dimension(:,:,:) :: values
+    ! begin
+    print *,label,minval(values),maxval(values)
   end subroutine
 
   subroutine parallel_stop(file,line)

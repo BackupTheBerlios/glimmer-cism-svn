@@ -387,10 +387,7 @@ contains
     else
        nw=.false.
     end if 
-    !TREY
     if (.not. nw) call glide_io_writeall(model,model)
-    dummy = parallel_close(model%funits%out_first%nc%id)
-    call parallel_stop(__FILE__,__LINE__)
     ! ------------------------------------------------------------------------ 
     ! Calculate flow evolution by various different methods
     ! ------------------------------------------------------------------------ 
@@ -400,25 +397,29 @@ contains
     select case(model%options%whichevol)
     case(EVOL_PSEUDO_DIFF) ! Use precalculated uflx, vflx -----------------------------------
 
+       call not_parallel(__FILE__,__LINE__)
        call thck_lin_evolve(model,model%temper%newtemps)
 
     case(EVOL_ADI) ! Use explicit leap frog method with uflx,vflx -------------------
 
+       call not_parallel(__FILE__,__LINE__)
        call stagleapthck(model,model%temper%newtemps)
 
     case(EVOL_DIFFUSION) ! Use non-linear calculation that incorporates velocity calc -----
 
+       call not_parallel(__FILE__,__LINE__)
        call thck_nonlin_evolve(model,model%temper%newtemps)
 
     case(EVOL_INC_REMAP) ! Use incremental remapping scheme for advecting ice thickness ---
             ! (Temperature is advected by glide_temp)
-
+       !TREY
        call inc_remap_driver( model )
        call glide_stress( model )       !*sfp* added for populating stress tensor w/ HO fields
 
     ! *sfp** added for summer modeling school
     case(EVOL_FO_UPWIND) ! Use first order upwind scheme for mass transport
 
+       call not_parallel(__FILE__,__LINE__)
        call fo_upwind_advect_driver( model )
  
     end select

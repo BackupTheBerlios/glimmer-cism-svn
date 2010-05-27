@@ -67,6 +67,7 @@ module glam
         ! *tjb** Moved the PP dynamics call to glide_velo_higher.  This needs to prompt some more rethinking
         !        regarding what's "glide", what's "glam", and what's "glissade" so that we have
         !        more logical separation between high-level modules
+        !TREY
         call run_ho_diagnostic(model)
 
         ! *sfp** put necessary variables in format for inc. remapping

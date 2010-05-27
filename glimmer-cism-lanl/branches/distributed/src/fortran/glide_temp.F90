@@ -361,13 +361,13 @@ contains
                 + model%velocity_hom%vvel(:,ew-1,ns) + model%velocity_hom%vvel(:,ew,ns-1) + model%velocity_hom%vvel(:,ew,ns) )
           end do
        end do
-       call parallel_ice_halo(model%tempwk%hadv_u)
-       call parallel_ice_halo(model%tempwk%hadv_v)
+       call parallel_halo(model%tempwk%hadv_u)
+       call parallel_halo(model%tempwk%hadv_v)
 
        call hadvall(model, &
             model%temper%temp, &
             model%geometry%thck)
-       call parallel_ice_halo(model%tempwk%initadvt)
+       call parallel_halo(model%tempwk%initadvt)
 
        ! zeroth iteration
        iter = 0
@@ -923,7 +923,7 @@ contains
 !    end do
 
     end select
-    call parallel_ice_halo(model%tempwk%dissip)
+    call parallel_halo(model%tempwk%dissip)
   end subroutine finddisp
 
   !-----------------------------------------------------------------------------------
@@ -1057,7 +1057,7 @@ contains
           bmlt(model%general%ewn,ns) = bmlt(2,ns)
        end do
     end if
-    call parallel_ice_halo(bmlt)
+    call parallel_halo(bmlt)
   end subroutine calcbmlt
 
 !-------------------------------------------------------------------
@@ -1354,7 +1354,7 @@ contains
       flwa = default_flwa
   
     end select
-    call parallel_ice_halo(flwa)
+    call parallel_halo(flwa)
 
   end subroutine calcflwa 
 

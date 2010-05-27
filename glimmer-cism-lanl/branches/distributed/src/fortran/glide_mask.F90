@@ -137,12 +137,12 @@ contains
 
          !Mark domain boundaries
          !if (ns == 1 .or. ns == nsn .or. ew == 1 .or. ew == ewn) then
-          if (parallel_boundary(ew,ns)) then
+          if (parallel_boundary(ew,ewn,ns,nsn)) then
             mask(ew, ns) = ior(mask(ew, ns), GLIDE_MASK_COMP_DOMAIN_BND)
          end if
        end do
     end do
-    call parallel_ice_halo(mask)
+    call parallel_halo(mask)
   end subroutine glide_set_mask
 
   subroutine augment_kinbc_mask(mask, kinbcmask)
@@ -265,7 +265,7 @@ contains
                 end if
             end do
         end do
-        call parallel_ice_halo(marine_bc_normal)
+        call parallel_halo(marine_bc_normal)
     end subroutine
 
     function calc_normal_45deg(thck3x3)
@@ -361,6 +361,7 @@ contains
     !marine ice margin, where upwinding and downwinding is used to avoid
     !differencing across the boundary.
     subroutine upwind_from_mask(mask, direction_x, direction_y)
+      use parallel
         integer, dimension(:,:), intent(in) :: mask
         double precision, dimension(:,:), intent(out) :: direction_x, direction_y
 
@@ -436,6 +437,8 @@ contains
                 end if
             end do
         end do
+        call parallel_halo(direction_x)
+        call parallel_halo(direction_y)
     end subroutine
 
 end module glide_mask
