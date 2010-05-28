@@ -172,6 +172,7 @@ module glide_types
     !*FD \item[0] Set column to surface air temperature
     !*FD \item[1] Do full temperature solution (also find vertical velocity
     !*FD and apparent vertical velocity)
+    !*FD \item[2] Do NOTHING - hold temperatures constant at initial value  
     !*FD \end{description}
 
     integer :: whichflwa = 0

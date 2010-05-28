@@ -446,8 +446,9 @@ contains
     character(len=500) :: message
 
     ! local variables
-    character(len=*), dimension(0:1), parameter :: temperature = (/ &
+    character(len=*), dimension(0:2), parameter :: temperature = (/ &
          'isothermal', &
+         'steady', &
          'full      '/)
     character(len=*), dimension(0:2), parameter :: flow_law = (/ &
          'Patterson and Budd               ', &
