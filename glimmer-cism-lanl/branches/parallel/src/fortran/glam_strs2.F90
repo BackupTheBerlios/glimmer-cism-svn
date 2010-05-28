@@ -254,7 +254,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: minres = 1.0d-04
   real (kind = dp), save, dimension(2) :: resid  
 
-  integer, parameter :: cmax = 100
+  integer, parameter :: cmax = 50
   integer :: counter 
   character(len=100) :: message
 
@@ -2095,7 +2095,9 @@ subroutine bodyset(ew,  ns,  up,           &
     ! we would access stagthck(i-1,j-1) and apply that to the bc rather than stagthck(i,j). For a point
     ! w/ a normal of 1/sqrt(2)*[1,-1], we would access stagthck(i-1,j+1), etc. 
 
-    if( cc < 10 )then
+!    if( cc < 10 )then   ! use this to "pre-condition" the shelf BC w/ the simple, 1d version
+!    if( cc >= 0 )then   ! use this to use only the 1d version
+    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
 
     ! (1) 
     ! source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
