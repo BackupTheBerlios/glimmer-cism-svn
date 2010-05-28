@@ -74,7 +74,6 @@ contains
     !    relative to sea level (therefore negative)
     real(kind=kdp),dimension(:,:),intent(in),optional :: lsrf_ext
 
-
     !local variables
     integer :: i,k,l
     integer :: itmp
@@ -298,15 +297,18 @@ contains
     ! set to .true. then the plume iterates to steady even if it
     ! takes longer than ice_dt.
 
-    real(kind=kdp),intent(in) :: time,ice_dt !in years
-    real(kind=kdp),dimension(:,:),intent(in) :: lsrf,ice_dz !in meters
-    logical,dimension(:,:),intent(in) :: landmask !equal to 1 in land areas or grounded ice
-    real(kind=kdp),dimension(:,:),intent(in) :: t_interior !in Celcius
-    real(kind=kdp),dimension(:,:),intent(out) :: bmelt_out,btemp_out !in meters per year
-    logical,intent(in) :: run_plume_to_steady, write_all_states
-    real(kind=kdp),intent(in) :: plume_stopping_tol ! percent change in meltrate need
-                                                    ! to continue plume time-stepping
-    real(kind=kdp),intent(in) :: min_run_time !in days
+    real(kind=kdp),               intent(in) :: time,ice_dt !in years
+    real(kind=kdp),dimension(m_grid,n_grid),intent(in) :: lsrf,ice_dz !in meters
+    logical,       dimension(m_grid,n_grid),intent(in) :: landmask !equal to 1 in land or grounded ice
+    real(kind=kdp),dimension(m_grid,n_grid),intent(in) :: t_interior !in Celcius
+    logical,                      intent(in) :: run_plume_to_steady, write_all_states
+    real(kind=kdp),               intent(in) :: plume_stopping_tol ! rel change in 
+		                                		 ! meltrate need
+                                                         ! to continue plume time-stepping
+    real(kind=kdp),               intent(in) :: min_run_time !in days
+
+    real(kind=kdp),dimension(m_grid,n_grid),intent(out) :: bmelt_out,btemp_out !in meters per year
+    
 
     !local variables
     real(kind=kdp) :: subcycling_time,ice_dt_in_sec
@@ -325,15 +327,14 @@ contains
     where( landmask )
         jcs = 0
     elsewhere
-        jcs = 1
+         jcs = 1
     end where
-
+   
     !TODO: assign t_interior and ice_dz to globals 
     ! so that thermodynamics will pick up heat conduction into ice
 
     bmelt_old = bmelt
     speed_old = sqrt(su * su + sv * sv)
-    
 
     subcycling_time = 0.0
     ice_dt_in_sec = ice_dt * 365.25d0*24.0d0*3600.d0
@@ -342,12 +343,9 @@ contains
     prev_rel_change = 1.d0
     prev_rel_speed_change = 1.d0
 
-
     ! while not steady
 
-
     do while ((subcycling_time .le. ice_dt_in_sec) .or. run_plume_to_steady )
-
 
        call plume_runstep()
 
