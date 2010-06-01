@@ -169,7 +169,14 @@ module remap_glamutils
     !on the left and right.  This means that, like thickness, a second row
     !is needed on the left.  However, unlike thickness, *two* extra rows are needed
     !on the right, to account for the extra B-grid row.  Same goes for top and bottom.
-    where( stagthck > 0.0_dp )
+
+    ! *cgladish* in the following where statement, the arrays on the left and right sides
+    ! of the assignment statements should have the same size.  I subtracted 1 from  
+    ! the upper limits for each index slot to make the arrays of size (ewn-1)x(nsn-1) on
+    ! both sides of the assignment.  When the arrays have different sizes it seems to be
+    ! ok (compiles and produces expected output) with some compilers 
+    ! (ie gfortran and sun f90) but not with others (ie g95).  
+    where(stagthck > 0.0_dp )
         wk%ubar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = uflx/stagthck*vel0;
         wk%vbar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = vflx/stagthck*vel0;
     elsewhere
