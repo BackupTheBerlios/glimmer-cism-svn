@@ -47,6 +47,8 @@ program shelf_driver
   logical :: plume_write_all_states= .false.
   real(kind=dp) :: plume_min_subcycle_time,plume_min_spinup_time,plume_steadiness_tol
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
+  logical :: plume_const_bmlt
+  real(kind=dp) :: plume_const_bmlt_rate
 
   call glimmer_GetCommandline()
   
@@ -65,14 +67,8 @@ program shelf_driver
 
   if (model%options%use_plume == USE_PLUME) then
     ! read [plume] section of glimmer config file
-      call plume_read_print_config(model,config,&
-                               plume_nl,&
-                               plume_ascii_output_dir, &
-                               plume_output_prefix, &
-                               plume_output_nc_file, &
-                               plume_suppress_ascii_output,&
-                               plume_suppress_logging, &
-                               plume_imin,plume_imax,plume_kmin,plume_kmax)
+      call plume_read_print_config(model,config) 
+
   end if
 
   ! config the [Peterman shelf] section of the config file
@@ -95,15 +91,12 @@ program shelf_driver
   allocate(upstream_thck(model%general%ewn))
   upstream_thck = model%geometry%thck(:,model%general%nsn)
 
-  ! this just sets the ice column temperature to the ambient air temperature
-  call timeevoltemp(model,0)
-
   ! fill dimension variables
   call glide_nc_fillall(model)
 
   time = model%numerics%tstart
 
-  if (model%options%use_plume .eq. USE_PLUME) then
+  if ((model%options%use_plume == USE_PLUME) .and. .not. plume_const_bmlt) then
      ! we are using the plume
 
      allocate(plume_land_mask(  model%general%ewn+2*fake_landw, &
@@ -159,8 +152,8 @@ program shelf_driver
                         plume_btemp_out, &
                         plume_steadiness_tol, &
                         plume_min_spinup_time, &
-                        run_plume_to_steady = .true.,&
-                        write_all_states = plume_write_all_states)
+                        .true.,&
+                        plume_write_all_states)
                                                
 
        call write_real_ice_array(plume_bmelt_out,model%temper%bmlt, &
@@ -169,6 +162,10 @@ program shelf_driver
                                  model%general%ewn, model%general%nsn, fake_landw)
 
  end if
+
+  if (plume_const_bmlt) then
+        model%temper%bmlt = plume_const_bmlt_rate
+     end if
 
 if (plume_write_all_states) then
     write(*,*) 'Stopping because plume_write_all_states is true'
@@ -199,7 +196,7 @@ end if
 
      time = time + model%numerics%tinc
 
-     if (model%options%use_plume .eq. USE_PLUME) then	
+     if ((model%options%use_plume == USE_PLUME) .and.  (.not. plume_const_bmlt)) then	
 	 
           ! We would normally expect the plume to reach a steady state
           ! with respect to the current ice after only a few days.
@@ -235,16 +232,19 @@ end if
                     plume_btemp_out, &            
 	            plume_steadiness_tol, &
                     plume_min_subcycle_time, &
-                    run_plume_to_steady = .false., &
-                    write_all_states = plume_write_all_states)
+                    .false., &
+                    plume_write_all_states)
 
           call write_real_ice_array(plume_bmelt_out,model%temper%bmlt, &
                                     model%general%ewn, model%general%nsn, fake_landw)
-       call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
-                                     model%general%ewn, model%general%nsn, fake_landw)
-
+          call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
+                                    model%general%ewn, model%general%nsn, fake_landw)
      end if
-   
+
+     if (plume_const_bmlt) then
+        model%temper%bmlt = plume_const_bmlt_rate
+     end if
+    
   end do
 
 !  call glide_io_writeall(model,model)
@@ -255,7 +255,8 @@ end if
 
   call glide_finalise(model)
 
-  if (model%options%use_plume .eq. USE_PLUME) then 
+  if ((model%options%use_plume .eq. USE_PLUME) .and. (.not. plume_const_bmlt)) then 
+
     call plume_finalise()	
     call plume_io_finalize()
     call plume_logging_finalize()
@@ -342,15 +343,7 @@ contains
            
  end subroutine shelf_config_initialise
 
- subroutine plume_read_print_config(model,config, &
-                                    plume_nl_file, &
-                                    plume_output_dir, &
-                                    plume_output_prefix, &
-                                    plume_output_nc_file, &
-                                    plume_suppress_ascii_output,&
-                                    plume_suppress_logging, &
-                                    plume_imin,plume_imax,&
-                                    plume_kmin,plume_kmax)
+ subroutine plume_read_print_config(model,config) 
 
     !*FD read configuration file for plume-related things
 
@@ -358,12 +351,7 @@ contains
     use glimmer_config
 
     type(glide_global_type) :: model       
-    type(ConfigSection), pointer :: config 
-                                           
-    character(len=*),intent(out) :: plume_nl_file,plume_output_nc_file, &
-                                    plume_output_dir,plume_output_prefix
-    logical,intent(out) :: plume_suppress_ascii_output,plume_suppress_logging
-    integer,intent(out) :: plume_imin,plume_imax,plume_kmin,plume_kmax
+    type(ConfigSection), pointer :: config                                            
 
     ! local variables
     type(ConfigSection), pointer :: section
@@ -375,8 +363,8 @@ contains
                      & in config file',  &
                        GM_FATAL)
     end if
-    call GetValue(section, 'plume_nl_file', plume_nl_file)
-    call GetValue(section, 'plume_output_dir', plume_output_dir)
+    call GetValue(section, 'plume_nl_file', plume_nl)
+    call GetValue(section, 'plume_output_dir', plume_ascii_output_dir)
     call GetValue(section, 'plume_output_file', plume_output_nc_file)
     call GetValue(section, 'suppress_ascii_output', plume_suppress_ascii_output)
     call GetValue(section, 'suppress_logging', plume_suppress_logging)
@@ -389,9 +377,11 @@ contains
     call GetValue(section, 'plume_imax',plume_imax)
     call GetValue(section, 'plume_kmin',plume_kmin)
     call GetValue(section, 'plume_kmax',plume_kmax)
+    call GetValue(section, 'plume_const_bmlt', plume_const_bmlt)
+    call GetValue(section, 'plume_const_bmlt_rate', plume_const_bmlt_rate)
 
     call write_log('Plume config')
-    write(message,*) 'plume namelist file:', trim(plume_nl_file)
+    write(message,*) 'plume namelist file:', trim(plume_nl)
     call write_log(message)
     write(message,*) 'suppressing plume output:',plume_suppress_ascii_output
     call write_log(message)
@@ -399,7 +389,7 @@ contains
     call write_log(message)
     write(message,*) 'plume output written to netcdf file:', trim(plume_output_nc_file)
     call write_log(message)
-    write(message,*) 'plume old-style output written to directory:', trim(plume_output_dir)
+    write(message,*) 'plume old-style output written to directory:', trim(plume_ascii_output_dir)
     call write_log(message)
     write(message,*) 'plume output file prefix (jobid):', trim(plume_output_prefix)
     call write_log(message)
@@ -411,7 +401,8 @@ contains
     call write_log(message)
     write(message,*) 'imin',plume_imin,'imax',plume_imax,'kmin',plume_kmin,'kmax',plume_kmax
     call write_log(message)
-
+    write(message,*) 'plume_const_bmlt', plume_const_bmlt, 'plume_const_bmlt_rate', plume_const_bmlt_rate
+    call write_log(message)
 	
 end subroutine
 

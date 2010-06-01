@@ -16,8 +16,8 @@ _kx = 1.0
 _chan_depth = 20.0
 
 _dt = 0.05
-_tstart = None
-_tend = None
+_tstart = 0.0
+_tend = 1.0
 
 _ifpos = 5
 _ifdep = 600.0
@@ -79,6 +79,8 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
 			'plume_output_prefix' : _run_name,
 			'plume_output_file' : 'plume.%s.out.nc' % _run_name,
 	                'plume_nl_file' : plume_nl_filename},
+                        'plume_const_bmlt' : 0,
+                        'plume_const_bmlt_rate' : 0.0},
            'time' : {'tstart' : _tstart,
                      'tend' : _tend,
  		      'dt' : _dt },

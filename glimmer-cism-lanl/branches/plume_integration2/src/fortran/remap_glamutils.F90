@@ -216,7 +216,7 @@ module remap_glamutils
 
 !----------------------------------------------------------------------
 
-    subroutine horizontal_remap_out( wk, thck, acab, dt, periodic_ew, periodic_ns )
+    subroutine horizontal_remap_out( wk, thck, acab, bmlt, dt, periodic_ew, periodic_ns )
     ! take output from inc. remapping and put back into format that model likes
 
     implicit none
@@ -226,6 +226,7 @@ module remap_glamutils
 
     real (kind = dp), intent(in) :: dt
     real (kind = sp), intent(in), dimension(:,:) :: acab
+    real( kind = dp), intent(in), dimension(:,:) :: bmlt
     real (kind = dp), dimension(:,:), intent(inout) :: thck
     logical, intent(in) :: periodic_ew, periodic_ns
 
@@ -243,7 +244,10 @@ module remap_glamutils
     thck = wk%thck_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn,1) / thk0
     
     !Apply accumulation
-    thck = thck + acab
+    thck = thck + acab * dt
+
+    !Apply basal melting
+    thck = thck - bmlt * dt
     
     ! *sfp* Remove thickness from previously ice free locations.
     ! NOTE: this really only applys to a domain where we don't want the
