@@ -409,6 +409,7 @@ contains
     call GetValue(section,'hotstart',model%options%hotstart)
     call GetValue(section,'periodic_ew',model%options%periodic_ew)
     call GetValue(section,'periodic_ns',model%options%periodic_ns)
+    call GetValue(section,'x_invariant',model%options%x_invariant)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
     call GetValue(section, 'use_plume',model%options%use_plume)
   end subroutine handle_options

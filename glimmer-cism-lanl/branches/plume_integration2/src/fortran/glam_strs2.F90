@@ -179,6 +179,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  whichresid,             &
                                  whichsparse,            &
                                  periodic_ew,periodic_ns,&
+                                 x_invariant,            &
                                  beta,                   & 
                                  uvel,     vvel,         &
                                  uflx,     vflx,         &
@@ -213,6 +214,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer, intent(in) :: whichresid   ! options for method to use when calculating vel residul
   integer, intent(in) :: whichsparse  ! options for which method for doing elliptic solve
   logical, intent(in) :: periodic_ew, periodic_ns  ! options for applying periodic bcs or not
+  logical, intent(in) :: x_invariant   ! flag to specify that d*/dx = 0 
 
   real (kind = dp), dimension(:,:,:), intent(inout) :: uvel, vvel  ! horiz vel components: u(z), v(z)
   real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx  ! horiz fluxs: u_bar*H, v_bar*H
@@ -296,7 +298,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
  
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  do while ( maxval(resid) > minres .and. counter < cmax)
+  do while ( ((resid(1) > minres .and. .not. x_invariant) .or. &
+             (resid(2) > minres)) .and. &
+             counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
     ! calc effective viscosity using previously calc vel. field

@@ -146,6 +146,7 @@ class GCConfig(object):
                                    'stress_calc' : 2,
                                    'periodic_ew' : 0,
                                    'periodic_ns' : 0,
+	                           'x_invariant' : 0,
                                    'hotstart' : None,
                                    'basal_water' : 3,
                                    'use_plume' : None,

@@ -370,6 +370,8 @@ module glide_types
 
     logical :: periodic_ns = .false.
 
+    logical :: x_invariant = .false.
+
     integer :: gthf = 0
     !*FD \begin{description}
     !*FD \item[0] no geothermal heat flux calculations
