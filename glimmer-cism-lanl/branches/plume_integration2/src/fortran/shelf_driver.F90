@@ -249,11 +249,7 @@ end if
 
 !  call glide_io_writeall(model,model)
 
-  ! finalise GLIDE
 
-  deallocate(upstream_thck)
-
-  call glide_finalise(model)
 
   if ((model%options%use_plume .eq. USE_PLUME) .and. (.not. plume_const_bmlt)) then 
 
@@ -265,6 +261,10 @@ end if
                plume_t_interior, plume_bmelt_out, plume_btemp_out)
 
   end if
+
+  ! finalise GLIDE
+  deallocate(upstream_thck)
+  call glide_finalise(model)
 
   call system_clock(clock,clock_rate)
   t2 = real(clock,kind=dp)/real(clock_rate,kind=dp)
