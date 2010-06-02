@@ -25,7 +25,7 @@ AC_CONFIG_SRCDIR([glimmer-config.in])
 AC_PROG_RANLIB
 
 #Define this here in case nothing else does.
-ax_cv_f90_modflag=-I
+#ax_cv_f90_modflag=-I
 
 # save compiler flags, autoconf will change them later
 glimmer_FCFLAGS=$FCFLAGS
