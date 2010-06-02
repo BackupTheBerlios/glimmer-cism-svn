@@ -1143,17 +1143,20 @@ contains
     deallocate(model%general%x1) 
     deallocate(model%general%y1) 
 
+! *cgladish* I don't know why but I get a runtime memory error 
+! when I let the following lines execute.  That's with the plume 
+! code running, which may be interferring (don't see how that could be).
 
-    deallocate(model%temper%temp)
-    deallocate(model%temper%flwa)
-    deallocate(model%temper%bheatflx)
-    deallocate(model%temper%bwat)
-    deallocate(model%temper%bwatflx)
-    deallocate(model%temper%stagbwat)
-    deallocate(model%temper%bmlt)
-    deallocate(model%temper%bmlt_tavg)
+!    deallocate(model%temper%temp)
+!    deallocate(model%temper%flwa)
+!    deallocate(model%temper%bheatflx)
+!    deallocate(model%temper%bwat)
+!    deallocate(model%temper%bwatflx)
+!    deallocate(model%temper%stagbwat)
+!    deallocate(model%temper%bmlt)
+!    deallocate(model%temper%bmlt_tavg)
 
-    
+
     deallocate(model%ground%gl_ns)
     deallocate(model%ground%gl_ew)
     deallocate(model%ground%gline_flux)
@@ -1166,7 +1169,7 @@ contains
     deallocate(model%velocity%wvel)
     deallocate(model%velocity%wgrd)
     deallocate(model%velocity%surfvel)
-    
+
     deallocate(model%velocity%uflx)
     deallocate(model%velocity%vflx)
     deallocate(model%velocity%diffu)
@@ -1259,7 +1262,7 @@ contains
     deallocate(model%thckwk%float)
     deallocate(model%numerics%sigma)
     deallocate(model%numerics%stagsigma)
-    
+
     deallocate(model%pcgdwk%rhsd,model%pcgdwk%answ)
     call del_sparse_matrix(model%pcgdwk%matrix)
 
