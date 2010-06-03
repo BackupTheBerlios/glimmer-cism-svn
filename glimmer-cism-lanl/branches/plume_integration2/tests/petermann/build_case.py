@@ -50,19 +50,19 @@ class PlumeNamelist(object):
                      'entrain' : True,
                      'entype' : 1,
                      'basmelt' : True,
-                     'rholinear' : True,
+                     'rholinear' : None,
                      'thermobar' : False,
                      'intrace' : False,
                      'vardrag' : False,
                      'topedit' : False,
-                     'tangle' : False, 
+                     'tangle' : None, 
                      'negfrz' : False,
                      'use_min_plume_thickness' : True,
                      'tottim'  : 0.0,
-                     'outtim'  : 0.5,
-                     'labtim'  : 0.25,
-                     'snottim' : 0.25,
-                     'lnottim' : 1.0,
+                     'outtim'  : 0.0,
+                     'labtim'  : 0.0,
+                     'snottim' : 0.0,
+                     'lnottim' : 0.0,
                      'dt1'     : None,
                      'm_grid' : None,
                      'n_grid' : None,          
@@ -85,7 +85,7 @@ class PlumeNamelist(object):
                      'ef' : 5.0e-1,     
                      'nus' : +1.0,     
                      'nbar' : 1.0e3,
-                     'nice' : 10,
+                     'nice' : 1,
                      'seedtype' : 2,
                      'cseedfix' : 1.0e-7,
                      'cinffix'  : 0.0,
@@ -121,59 +121,154 @@ class GCConfig(object):
 
     def __init__(self):
         
-        self.vals = { 'parameters' : { 'geothermal' :   0.0,
-                                       'default_flwa' : 4.6e-18,
-                                       'flow_factor' : 1,
-                                       'ice_limit' : None,
-                                       #'marine_limit' : 0.0
-                                       #'calving_fraction' : 0.0,
-                                       #'hydro_time' : 0.0,
-                                       # 'basal_tract' : ,
-                                       # 'basal_tract_const' : ,
+        self.vals = { 'parameters' : { 'geothermal' :   0.0,      # geothermal heat flux 
+                                                                  # model%paramets%geot
+                                       'default_flwa' : 4.6e-18,  # Glen's law A to use in isothermal case 
+                                                                  # model%paramets%default_flwa
+                                       'flow_factor' : 1,         # enhancement factor for glen's A 
+                                                                  # model%paramets%flow_factor
+                                       'ice_limit' : None,        # minimum thickness for running ice dynamics
+                                                                  # model%numerics%thklim
+                                       'marine_limit' : 0.0,       # When to chop off marine ice
+                                                                  # NB: not used if marine_margin = 0 is used
+                                                                  # model%numerics%mlimit
+                                       'calving_fraction' : 0.0,  # fraction of ice to remove from floating ice
+                                                                  # when using marine_margin = 3
+                                                                  # model%numerics%calving_fraction
+                                       'hydro_time' : 0.0,        # time constant for basal hydrology
+                                                                  # model%paramets%hydtim
+                                       # 'basal_tract' :          # 5-value parameters - obsolete
+                                       'basal_tract_const' : 0.0, # basal_tract_const used over whole ice base
+                                                                  # model%paramets%btrac_const
+                                       # 'basal_tract_max' :      # model%paramets%btrac_max
+                                       # 'basal_tract_slope' :    # dependence of basal traction on basal water depth
+                                                                  # model%paramets%btrac_slope
+                                       # 'stressin':              # initial backstress in areas of positive thickness
+                                                                  # NB: only used in case marine_margin = 5
+                                                                  # model%climate%stressin
+                                       # 'stressout' :            # initial backstress assigned to other areas
+                                                                  # model%climate%stressout
+                                                                  # NB: only used in case slip_coeff = 5
+                                       # 'sliding_constant' : =   # model%climate%slidconst
                                        'log_level' : 6,
                                        },
-                      'Petermann shelf' : {  'air_temperature' : None,
-                                             'accumulation_rate' : None,
-                                             'eustatic_sea_level' : 0.0 },
-                      'options' : {'flow_law' : 0,
-                                   'evolution' : 3,
-                                   'temperature' : 1,
-                                   'vertical_integration' : 1,
-                                   'marine_margin' : 0,
-                                   'topo_is_relaxed' : 1,
-                                   'slip_coeff' : 0,
-                                   'sliding_law' : 4,
-                                   'stress_calc' : 2,
-                                   'periodic_ew' : 0,
-                                   'periodic_ns' : 0,
-	                           'x_invariant' : 0,
-                                   'hotstart' : None,
-                                   'basal_water' : 3,
-                                   'use_plume' : None,
-                                   'diagnostic_run' : 0,
-                                   },
-                      'grid' : { 'sigma_builtin' : 1,
-                                 'upn' : None,
-                                 'ewn' : None,
-                                 'nsn' : None,
-                                 'dew' : None,
-                                 'dns' : None },
+                      'Petermann shelf' : {  'air_temperature' : None,     # Temp assigned to ice in isothermal case
+                                             'accumulation_rate' : None,   # In meters per year
+                                             'eustatic_sea_level' : 0.0 }, # Height of sea level relative to initial height
+                      'options' : {'flow_law' : 0,     # flow_law = 2 means constant A 
+                                                       # model%options%whichflwa
+                                   'evolution' : 3,    # evolution = 0 means pseudo-diffusion
+                                                       #           = 1 means ADI scheme
+                                                       #           = 2 means iterated diffusion
+                                                       #           = 3 means LANL incrementral remapping method
+                                                       #           = 4 upwind advection
+                                                       # model%options%whichevol
+                                   'temperature' : 1,            # temperature = 1 means full 3D thermal evolution
+                                                                 #             = 0 means set to air temperature
+                                                                 # model%options%whichtemp
+                                   'vertical_integration' : 1,  #vertical_integration = 1 constrained to obey kinematic BC
+                                                                # model%options%whichwvel
+                                   'marine_margin' : 0,         # marine_margin 
+                                                                # = 0 means ignore marine margin (no chopping)
+                                                                # model%options%whichmarn
+                                   'topo_is_relaxed' : 1,       # topo_is_relaxed = 1 means the init.l topography is relaxed
+                                                                # model%options%whichrelaxed
 
-                      'ho_options' : { 'which_ho_sparse_fallback' : -1,
-                                       'basal_stress_input' : 3,
-                                       'which_ho_resid' : 0,
-                                       'which_ho_babc' : 0,
-                                       'guess_specified' : 1,
-                                       'which_ho_sparse' : 0,
-                                       'diagnostic_scheme' : 3,
-                                       'prognostic_scheme' : 0,
-                                       'include_thin_ice' : 0,
-                                       'which_ho_efvs' : 0},
-                      'CF default' : { 'comment' : None,
+                                   'slip_coeff' : 1,   # slip_coeff = 0 means set equal to zero everywhere
+                                                       #      = 1 means basal traction is constant (basal_tract_const)
+                                                       # = 2 means Set to (non--zero) constant where where temperature
+                                                       #  is at pressure melting point of ice, otherwise to zero
+                                                       #= 3 means function of basal water depth 
+                                                       # model%options%whichbtrc
+                                   'periodic_ew' : 0,  # model%options%periodic_ew
+                                   'periodic_ns' : 0,  # model%options%periodic_ns
+	                           'x_invariant' : None,  # = 1 means variables don't change in x direction
+                                                          # model%options%x_invariant
+                                   'diagnostic_run' : 0,  # = 1 makes glide stop after diagnosing velocities
+                                                          # model%options%diagnostic_run
+                                   'hotstart' : None,   # are we doing a restart (1 = yes, 0 = no)
+                                                        # model%options%hotstart
+                                   'basal_water' : 3,   # basal_water = 0 means calc from local basal water balance
+                                                        #  = 1 means compute basal water flux then find depth via cal
+                                                        #  = 2 means no basal water
+                                                        # model%options%whichbwat
+
+                                   'use_plume' : None,  # use_plume = 0 means use usual Glimmer-CISM method to calc bmlt
+                                                        #  = 1 means use plume model to calculate bmlt above floating ice
+                                                        # model%options%use_plume
+                                   # 'ioparams' :                #i/o parameters file
+                                   },
+                      'grid' : { 'sigma_builtin' : 1,   # sigma_builtin = 0 means use the default sigma levels 
+                                                        #	        = 1 means ???
+                                                        # model%options%which_sigma_builtin
+                                 'upn' : None,      # number of vertical levels : model%general%upn
+                                 'ewn' : None,      # number of grid nodes in east-west direction : model%general%ewn
+                                 'nsn' : None,      # number of grid nodes in north-south direction : model%general%nsn
+                                 'dew' : None,      # east-west grid spacing : model%numerics%dew
+                                 'dns' : None       # north-south grid spacing : model%numerics%dns
+                                 },
+                      #'sigma' : { # 'sigma_levels' : 0.0 0.5 1.0    # model%numerics%sigma
+                                   # 'sigma_file' : }
+                      'ho_options' : { 'which_ho_sparse_fallback' : -1, # fallback solver method:
+                                                                        # which_ho_sparse_fallback = -1 means no fallback
+                                                                        # model%options%which_ho_sparse_fallback
+                                       'basal_stress_input' : 2,    # how to compute beta:
+                                                                    # = 2 means basal traction is given directly
+                                                                    # model%options%which_ho_beta_in
+                                       'basal_stress_type' : 0,      # basal_stress_type = 0 means linear
+                                                                    #                     1 means plastic
+                                                                    # NB: only used in velo_hom_pattyn and veloc2
+                                                                    # model%options%which_ho_bstess
+                                       'which_ho_source' : 0,   # how to compute source term for an ice shelf: 
+                                                                # = 0 means vertically averaged
+                                                                # = 1 means pressure dependent on depth
+                                                                # = 2 means shelf front disabled  
+                                                                # NB: only used inside Pattyn's veloc2 subroutine
+                                                                # model%options%which_ho_source
+                                       'which_disp' : None,         # dissipation
+                                                                    # model%options%which_disp
+                                       'which_ho_resid' : 0,  # method of calculating residual: 
+                                                              # = 0 means use max value
+                                                              # NB: only used in glam_velo_fordsiapstr
+                                                              # model%options%which_ho_resid
+                                       'which_bmelt' : None,   # basal melting
+                                                              # model%options%which_bmelt
+                                       'which_ho_babc' : 0,       # basal boundary condition: 
+                                                                  # = 5 means simple ice-shelf 
+                                                                  # = 7 means circular ice-shelf
+                                                                  # NB: only used when using Payne-Price diagnostic scheme
+                                                                  # model%options%which_ho_babc
+                                       'guess_specified' : 1,     # model%velocity_hom%is_velocity_valid
+                                       'which_ho_sparse' : 0,     # which sparse solver to use:
+                                                                  #  = 0 means biCG with incomplete LU precond. 
+                                                                  #  = 1 means GMRES
+                                                                  #  = 2 means UMF (?)
+                                                                  #  = 3 means PARADISO (?)
+                                                                  # model%options%which_ho_sparse
+                                       'diagnostic_scheme' : 3,  # which higher-order diagnostic scheme to use:
+                                                                 # = 3 means Payne-Price scheme
+                                                                 # = 2 means Pattyn staggered ?            
+                                                                 # model%options%which_ho_diagnostic
+                                       'prognostic_scheme' : 0,   # which higher-order prognostic scheme to use
+                                                                  # thickness evolution (only used in thick_nonline_evolve
+                                                                  # and thick_lin_evolve, but not in incremental remapping)
+                                                                  # model%options%which_ho_prognostic
+                                       'include_thin_ice' : 0,   # whether or not to include thin ice in HO calculation
+                                                                 # 1 means true
+                                                                 # model%options%ho_include_thinice
+                                       'which_ho_efvs' : 0     # ho effective viscosity 
+                                                               # = 0 means calculate from strain rate
+                                                               # model%options%which_ho_efvs
+                                       },
+                      'CF default' : { 'comment' : '',
                                        'title' : None,
-                                       'institution' : 'NYU'},
-                      'CF input' : { 'name' : None,
-                                     'time' : None },
+                                       'institution' : 'NYU',
+                                       'references' : ''
+                                       },
+
+                      'CF input' : { 'name' : None,     #name of netcdf file containing input data fields
+                                     'time' : None      #which time slice to read input data from
+                                     },
                       'CF output' : { 'variables' : ' '.join(['lsurf','usurf',
                                                               'thk','bmlt',
                                                               'acab',
@@ -187,29 +282,50 @@ class GCConfig(object):
                                                               'taux','tauy','temp',
                                                               'tau_hom_xx','tau_hom_yy',
                                                               'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
-                                      'frequency' : None,
-                                      'name' : None },
-                      'time' : { 'tstart' : None,
-                                 'tend' : None,
-                                 'dt' : None,
-                                 'niso' : 1.0,
-                                 'ntem' : 1.0,
-                                 'nvel' : 1.0 },
-                      'plume' : { 'plume_nl_file' : None,
-                                  'plume_output_file' : None,
-                                  'suppress_ascii_output' : True,
-                                  'suppress_logging' : False,
-                                  'plume_output_prefix' : None,
-                                  'plume_output_dir' : './',
-                                  'plume_write_all_states' : False,
-                                  'plume_min_spinup_time' : 5.0,
-                                  'plume_min_subcycle_time' : 0.5,
-                                  'plume_steadiness_tol' : 1.0e-6,
-                                  'plume_imin' : None,
+                                      ### NB: there is a (250) character limit on line length!!!
+
+                                      # the following is a list of all possible output variables:
+                                      # level lithoz x0 x1 y0 y1 acab acab_tavg age artm backstress
+                                      # beta bheatflx bmlt bmlt_tavg btemp btrc bwat bwatflx calving 
+                                      # diffu dusrfdtm eus flwa gl_ew gl_ns gline_flux iarea ivol
+                                      # kinbcmask lat litho_temp lon lsurf relx slc soft surfvel tau_xz tau_yz
+                                      # taux tauy temp thk thkmask topg ubas ubas_tavg uflx usurf 
+                                      # uvel uvelhom vbas vbas_tavg velnormhom vflx vvel vvelhom wgrd wvel
+
+                                      'frequency' : None,  # time in between writing state to output file (in years)
+                                      'name' : None,       # name of output file
+                                      'start' : None,
+                                      'stop'  : None,
+                                      },
+                      'time' : { 'tstart' : None,   # start time of model run (years) : model%numerics%tstart
+                                 'tend' : None,     # end time of model run (years) : model%numerics%tend
+                                 'dt' : None,      # time step (years) : model%numerics%tinc
+                                 'niso' : 1.0,     # isostasy dt factor
+                                 'ntem' : 1.0,     # thermal dt factor : model%numerics%ntem
+                                 'nvel' : 1.0,      # velocity dt factor : model%numerics%nvel
+                                 # 'ndiag' :        # diagnostic frequency : model%numerics%ndiag
+                                 # 'profile' :      # profile period : model%numerics%profile_period
+                                 },
+                      'plume' : { 'plume_nl_file' : None, # path to plume namelist file
+                                  'plume_output_file' : None,   # netcdf file with plume output
+                                  'suppress_ascii_output' : True,  #  suppress all old-style ASCII data output
+                                  'suppress_logging' : False,    # suppress all screen and file output (logging)
+                                  'plume_output_prefix' : None, # prefix to put on the old style ASCII output
+                                  'plume_output_dir' : './',     # where to write the output files
+                                  'plume_write_all_states' : False,   # option to write out all states (all timesteps)
+                                                                      # NB it is very storage hungry
+
+                                  'plume_min_spinup_time' : 5.0,    # minimum time to spinup the plume, in days
+                                  'plume_min_subcycle_time' : 0.5,   # minimum subcycle time, in days
+                                  'plume_steadiness_tol' : 1.0e-6,  # plume steadiness tolerance 
+                                                                    # (max relative change in bmelt and speed)
                                   'plume_imax' : None,
                                   'plume_kmin' : None,
-                                  'plume_kmax' : None }
-                      }
+                                  'plume_kmax' : None,
+                                  'plume_const_bmlt' : False,       # Apply a uniform melt rate under floating ice
+                                  'plume_const_bmlt_rate' : 0.0     # At given rate in meters per year
+                                  }
+}
         
     def update_vals(self, specificVals):
 
