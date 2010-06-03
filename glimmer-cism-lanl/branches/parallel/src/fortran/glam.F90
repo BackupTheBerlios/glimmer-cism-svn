@@ -75,14 +75,14 @@ module glam
                                   ntrace_ir,               nghost_ir,                             &
                                   model%numerics%dew,      model%numerics%dns,                    &
                                   model%velocity_hom%uflx, model%velocity_hom%vflx,               &
-                                  model%geomderv%stagthck,      &
+                                  model%geomderv%stagthck, model%numerics%thklim,                 &
                                   model%options%periodic_ew,             model%options%periodic_ns)
 
         ! *sfp** call remapping code
 
-         call horizontal_remap  ( model%remap_wk%dt_ir,                                  & 
-                                  model%remap_wk%ewn_ir,      model%remap_wk%nsn_ir,             &
-                                  ntrace_ir,   nghost_ir,         &
+         call horizontal_remap  ( model%remap_wk%dt_ir,                                         & 
+                                  model%remap_wk%ewn_ir,      model%remap_wk%nsn_ir,            &
+                                  ntrace_ir,   nghost_ir,                                       &
                                   model%remap_wk%ubar_ir,     model%remap_wk%vbar_ir,           &
                                   model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
                                   model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
