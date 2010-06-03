@@ -274,7 +274,7 @@ contains
             m(1:nlayers, maxy-nlayers+1:maxy) = m(maxx-nlayers*2+1:maxx-nlayers, nlayers+1:2*nlayers)
             m(nlayers+1:2*nlayers, maxy-nlayers*2+1:maxy-nlayers) = m(maxx-nlayers+1:maxx, 1:nlayers)
         end if
-        call parallel_halo(m)
+        call parallel_velo_halo(m)
     end subroutine periodic_boundaries
     
     subroutine periodic_boundaries_3d(m, apply_to_x, apply_to_y, nlayers_arg)

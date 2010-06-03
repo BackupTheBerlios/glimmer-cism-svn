@@ -494,25 +494,19 @@ contains
                 call plastic_bed(tau, beta, uvel(nzeta,:,:), vvel(nzeta,:,:))
             end if
 
-            !TREY
+            !TREY WARNING: may be incorrect for upwind derivatives
             !Compute velocity derivatives
             call velderivs(uvel, vvel, dzdx, dzdy, geometry_mask, &
                            delta_x, delta_y, zeta, .false., &
                            direction_x, direction_y, &
                            dudx, dudy, dudz, dvdx, dvdy, dvdz)
-            call parallel_print("uvel",uvel)
-            call parallel_print("vvel",vvel)
-            call parallel_print("dudx",dudx)
-            call parallel_print("dudy",dudy)
-            call parallel_print("dudz",dudz)
-            call parallel_stop(__FILE__,__LINE__)
 #ifdef DEBUG_FIELDS
-            call write_xls_3d("dudx.txt",dudx)
-            call write_xls_3d("dudy.txt",dudy)
-            call write_xls_3d("dudz.txt",dudz)
-            call write_xls_3d("dvdx.txt",dvdx)
-            call write_xls_3d("dvdy.txt",dvdy)
-            call write_xls_3d("dvdz.txt",dvdz)
+            call write_xls_3d("dudx",dudx)
+            call write_xls_3d("dudy",dudy)
+            call write_xls_3d("dudz",dudz)
+            call write_xls_3d("dvdx",dvdx)
+            call write_xls_3d("dvdy",dvdy)
+            call write_xls_3d("dvdz",dvdz)
 #endif
 
 
@@ -530,7 +524,7 @@ contains
             !Sparse matrix routine for determining velocities.  The new
             !velocities will get spit into ustar and vstar, while uvel and vvel
             !will still hold the old velocities.
-
+            !TREY
             iter=sparuv(efvs,dzdx,dzdy,ax,ay,bx,by,cxy,h,&
                 uvel,vvel,dudx,dudy,dudz,dvdx,dvdy,dvdz,&
                 ustar,vstar,tau,dhbdx,dhbdy,ijktot,MAXY,&
@@ -890,6 +884,7 @@ contains
                     if (point_mask(i,j) /= 0) then
                         do k=1,NZETA
                             coef = 0
+                            !TREY
                             stencil_center_idx = csp_masked(I_J_K,i,j,k,point_mask,NZETA) 
                             if (.not. GLIDE_HAS_ICE( geometry_mask(i,j) ) .or. &
                                       GLIDE_IS_LAND_MARGIN( geometry_mask(i,j) ) .or. &
@@ -924,6 +919,8 @@ contains
                                 rhs=velpara(k,i,j)
  
 #ifdef ENFORCE_PBC
+                                if (options%periodic_ew.or.options%periodic_ns) &
+                                     call not_parallel(__FILE__,__LINE__)
                                 if (i .eq. 1 .and. options%periodic_ew) then
                                     rhs = 0
                                     call sparse_insert_val(matrix, &
@@ -995,6 +992,7 @@ contains
                                     if (si > 0 .and. si <= maxy .and. &
                                         sj > 0 .and. sj <= maxx .and. &
                                         sk > 0 .and. sk <= nzeta) then
+                                       TREY
                                             if (point_mask(sj,si) == 0) then
                                                 write(*,*) "ERROR: point is off mask."
                                                 write(*,*) "component:",componentstr
@@ -1095,6 +1093,7 @@ contains
       
       !NOTE: When referring to stencils, i refers to the y coordinate
       function stencil_y(pos, i)
+        use parallel
         integer, intent(in) :: pos, i
         integer :: stencil_y
         if (pos <= 5) then
@@ -1102,8 +1101,10 @@ contains
         else if (pos <= 16 .or. pos == 24 .or. pos == 25) then
             stencil_y = i
         else if (pos == 22) then
+           call not_parallel(__FILE__,__LINE__)
             stencil_y = i - 2
         else if (pos == 23) then
+           call not_parallel(__FILE__,__LINE__)
             stencil_y = i + 2
         else
             stencil_y = i + 1
@@ -1112,6 +1113,7 @@ contains
 
       !NOTE: When referring to stencils, j refers to the x coordinate
       function stencil_x(pos, j)
+        use parallel
         integer, intent(in) :: pos, j
         integer :: stencil_x
         select case(pos)
@@ -1120,8 +1122,10 @@ contains
             case(5, 14, 15, 16, 21)
                 stencil_x = j + 1
             case(24)
+               call not_parallel(__FILE__,__LINE__)
                 stencil_x = j - 2
             case(25)
+               call not_parallel(__FILE__,__LINE__)
                 stencil_x = j + 2
             case default
                 stencil_x = j
@@ -1369,6 +1373,7 @@ contains
 #ifndef NOSHELF        
         if (GLIDE_IS_CALVING(mask(i,j)) .and. &
             WHICH_SOURCE /= HO_SOURCE_DISABLED) then !Marine margin dynamic (Neumann) boundary condition
+           call not_parallel(__FILE__,__LINE__)
             call sparse_marine_margin(component,i,j,k,h,latbc_normal, dzdx, dzdy, dhbdx, dhbdy, &
                                       vel_perp, efvs, dx, dy, ax, ay, dz,coef, rhs, &
                                       dudx_field,dudy_field,dudz_field,dvdx_field,dvdy_field,dvdz_field,&

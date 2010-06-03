@@ -49,11 +49,6 @@ module parallel
      module procedure parallel_print_real8_3d
   end interface
 
-  interface parallel_velo_halo
-     module procedure parallel_velo_halo_real8_2d
-     module procedure parallel_velo_halo_real8_3d
-  end interface
-
 contains
 
   subroutine broadcast_character(c)
@@ -221,14 +216,9 @@ contains
     real(8),dimension(:,:,:) :: a
   end subroutine
 
-  subroutine parallel_velo_halo_real8_2d(a)
+  subroutine parallel_velo_halo(a)
     implicit none
     real(8),dimension(:,:) :: a
-  end subroutine
-
-  subroutine parallel_velo_halo_real8_3d(a)
-    implicit none
-    real(8),dimension(:,:,:) :: a
   end subroutine
 
 end module parallel

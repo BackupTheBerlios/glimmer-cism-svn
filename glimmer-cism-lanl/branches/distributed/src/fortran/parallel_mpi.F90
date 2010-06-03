@@ -85,12 +85,6 @@ module parallel
      module procedure parallel_put_var_real8_1d
   end interface
 
-  ! not used and/or wrong?
-  interface parallel_velo_halo
-     module procedure parallel_velo_halo_real8_2d
-     module procedure parallel_velo_halo_real8_3d
-  end interface
-
 contains
 
   subroutine broadcast_character(c)
@@ -564,8 +558,8 @@ contains
     logical :: distributed_owner
     integer :: ew,ewn,ns,nsn
     ! begin
-    distributed_owner = (ew>lhalo.and.ew<=ewn-uhalo.and.&
-         ns>lhalo.and.ns<=nsn-uhalo)
+    distributed_owner = (ew>lhalo.and.ew<=local_ewn-uhalo.and.&
+         ns>lhalo.and.ns<=local_nsn-uhalo)
   end function
 
   function distributed_put_var_integer_2d(ncid,varid,values,start)
@@ -1399,6 +1393,34 @@ contains
     call broadcast(parallel_open)
   end function
 
+  subroutine parallel_print_all(name,values)
+    implicit none
+    character(*) :: name
+    real(8),dimension(:,:,:) :: values
+
+    integer,parameter :: u = 33
+    integer :: i,j,t
+    ! begin
+    if (main_task) then
+       open(unit=u,file=name,form="formatted",status="replace")
+       close(u)
+    end if
+    do t = 0,tasks-1
+       call parallel_barrier
+       if (t==this_rank) then
+          open(unit=u,file=name,form="formatted",position="append")
+          do j = 1,size(values,3)
+             do i = 1,size(values,2)
+                write(u,'(2i5,100g15.5e3)') nslb+j-1,ewlb+i-1,values(:,i,j)
+             end do
+             write(u,'()')
+          end do
+          write(u,'(//)')
+          close(u)
+       end if
+    end do
+  end subroutine
+
   subroutine parallel_print_integer_2d(name,values)
     use mpi
     implicit none
@@ -1802,88 +1824,33 @@ contains
     a(:,:,:lhalo+1) = nrecv(:,:,:)
   end subroutine
 
-  subroutine parallel_velo_halo_real8_2d(a)
+  subroutine parallel_velo_halo(a)
     use mpi
     implicit none
-    real(8),dimension(local_ewn-1,local_nsn-1) :: a
+    real(8),dimension(:,:) :: a
+    
+    integer :: ierror,srequest,wrequest
+    real(8),dimension(size(a,2)-lhalo-uhalo+1) :: esend,wrecv
+    real(8),dimension(size(a,1)-lhalo) :: nsend,srecv
 
-    integer :: erequest,ierror,nrequest,srequest,wrequest
-    integer,dimension(lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
-    integer,dimension(uhalo-1,local_nsn-lhalo-uhalo) :: esend,wrecv
-    integer,dimension(local_ewn-1,lhalo) :: nrecv,ssend
-    integer,dimension(local_ewn-1,uhalo-1) :: nsend,srecv
     ! begin
+    if (size(a,1)/=local_ewn-1.or.size(a,2)/=local_nsn-1) &
+         call parallel_stop(__FILE__,__LINE__)
+
     call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
          comm,wrequest,ierror)
-    call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,&
-         comm,erequest,ierror)
     call mpi_irecv(srecv,size(srecv),mpi_real8,south,south,&
          comm,srequest,ierror)
-    call mpi_irecv(nrecv,size(nrecv),mpi_real8,north,north,&
-         comm,nrequest,ierror)
 
-    esend(:,:) = a(1+lhalo:1+lhalo+uhalo-2,1+lhalo:local_nsn-uhalo)
+    esend(:) = a(1+lhalo,1+lhalo:size(a,2)-uhalo+1)
     call mpi_send(esend,size(esend),mpi_real8,east,this_rank,comm,ierror)
-    wsend(:,:) = &
-         a(local_ewn-lhalo-uhalo+1:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
-    call mpi_send(wsend,size(wsend),mpi_real8,west,this_rank,comm,ierror)
-
     call mpi_wait(wrequest,mpi_status_ignore,ierror)
-    a(local_ewn-uhalo+1:,1+lhalo:local_nsn-uhalo) = wrecv(:,:)
-    call mpi_wait(erequest,mpi_status_ignore,ierror)
-    a(:lhalo,1+lhalo:local_nsn-uhalo) = erecv(:,:)
+    a(size(a,1),1+lhalo:size(a,2)-uhalo+1) = wrecv(:)
 
-    nsend(:,:) = a(:,1+lhalo:1+lhalo+uhalo-2)
+    nsend(:) = a(1+lhalo:,1+lhalo)
     call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
-    ssend(:,:) = a(:,local_nsn-lhalo-uhalo+1:local_nsn-uhalo)
-    call mpi_send(ssend,size(ssend),mpi_real8,south,this_rank,comm,ierror)
-
     call mpi_wait(srequest,mpi_status_ignore,ierror)
-    a(:,local_nsn-uhalo+1:) = srecv(:,:)
-    call mpi_wait(nrequest,mpi_status_ignore,ierror)
-    a(:,:lhalo) = nrecv(:,:)
-  end subroutine
-
-  subroutine parallel_velo_halo_real8_3d(a) 
-    use mpi
-    implicit none
-    real(8),dimension(:,:,:) :: a !(:,local_ewn-1,local_nsn-1)
-
-    integer :: erequest,ierror,nrequest,srequest,wrequest
-    integer,dimension(size(a,1),lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
-    integer,dimension(size(a,1),uhalo-1,local_nsn-lhalo-uhalo) :: esend,wrecv
-    integer,dimension(size(a,1),local_ewn-1,lhalo) :: nrecv,ssend
-    integer,dimension(size(a,1),local_ewn-1,uhalo-1) :: nsend,srecv
-    ! begin
-    call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
-         comm,wrequest,ierror)
-    call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,&
-         comm,erequest,ierror)
-    call mpi_irecv(srecv,size(srecv),mpi_real8,south,south,&
-         comm,srequest,ierror)
-    call mpi_irecv(nrecv,size(nrecv),mpi_real8,north,north,&
-         comm,nrequest,ierror)
-
-    esend(:,:,:) = a(:,1+lhalo:1+lhalo+uhalo-2,1+lhalo:local_nsn-uhalo)
-    call mpi_send(esend,size(esend),mpi_real8,east,this_rank,comm,ierror)
-    wsend(:,:,:) = &
-         a(:,local_ewn-lhalo-uhalo+1:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
-    call mpi_send(wsend,size(wsend),mpi_real8,west,this_rank,comm,ierror)
-
-    call mpi_wait(wrequest,mpi_status_ignore,ierror)
-    a(:,local_ewn-uhalo+1:,1+lhalo:local_nsn-uhalo) = wrecv(:,:,:)
-    call mpi_wait(erequest,mpi_status_ignore,ierror)
-    a(:,:lhalo,1+lhalo:local_nsn-uhalo) = erecv(:,:,:)
-
-    nsend(:,:,:) = a(:,:,1+lhalo:1+lhalo+uhalo-2)
-    call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
-    ssend(:,:,:) = a(:,:,local_nsn-lhalo-uhalo+1:local_nsn-uhalo)
-    call mpi_send(ssend,size(ssend),mpi_real8,south,this_rank,comm,ierror)
-
-    call mpi_wait(srequest,mpi_status_ignore,ierror)
-    a(:,:,local_nsn-uhalo+1:) = srecv(:,:,:)
-    call mpi_wait(nrequest,mpi_status_ignore,ierror)
-    a(:,:,:lhalo) = nrecv(:,:,:)
+    a(1+lhalo:,size(a,2)) = srecv(:)
   end subroutine
 
 end module parallel
