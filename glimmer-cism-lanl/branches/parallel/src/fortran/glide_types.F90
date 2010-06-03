@@ -97,6 +97,7 @@ module glide_types
   !Constants that describe the options available
   integer, parameter :: TEMP_SURFACE_AIR_TEMP = 0
   integer, parameter :: TEMP_FULL_SOLUTION = 1
+  integer, parameter :: TEMP_STEADY = 2
 
   integer, parameter :: FLWA_PATTERSON_BUDD = 0
   integer, parameter :: FLWA_PATTERSON_BUDD_CONST_TEMP = 1
@@ -172,7 +173,7 @@ module glide_types
     !*FD \item[0] Set column to surface air temperature
     !*FD \item[1] Do full temperature solution (also find vertical velocity
     !*FD and apparent vertical velocity)
-    !*FD \item[2] Do NOTHING - hold temperatures constant at initial value  
+    !*FD \item[2] Do NOTHING - hold temperatures steady at initial value  
     !*FD \end{description}
 
     integer :: whichflwa = 0
