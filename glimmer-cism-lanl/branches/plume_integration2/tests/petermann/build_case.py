@@ -123,7 +123,7 @@ class GCConfig(object):
         
         self.vals = { 'parameters' : { 'geothermal' :   0.0,      # geothermal heat flux 
                                                                   # model%paramets%geot
-                                       'default_flwa' : 4.6e-18,  # Glen's law A to use in isothermal case 
+                                       'default_flwa' : None,     # Glen's law A to use in isothermal case 
                                                                   # model%paramets%default_flwa
                                        'flow_factor' : 1,         # enhancement factor for glen's A 
                                                                   # model%paramets%flow_factor
