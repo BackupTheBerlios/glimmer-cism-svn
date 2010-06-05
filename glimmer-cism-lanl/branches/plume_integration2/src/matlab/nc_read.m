@@ -5,12 +5,14 @@ function [x0,y0,x1,y1,thk,uvel,vvel] = nc_read(nc_filename,timeslice)
     thk_id = netcdf.inqVarID(nc, 'thk');
     uvel_id = netcdf.inqVarID(nc, 'uvelhom');
     vvel_id = netcdf.inqVarID(nc, 'vvelhom');
+    time_id = netcdf.inqVarID(nc, 'time');
     
     x0_id = netcdf.inqVarID(nc, 'x0');
     y0_id = netcdf.inqVarID(nc, 'y0');
     x1_id = netcdf.inqVarID(nc, 'x1');
     y1_id = netcdf.inqVarID(nc, 'y1');
     
+    time = netcdf.getVar(nc,time_id);
     x0 = netcdf.getVar(nc, x0_id);
     x1 = netcdf.getVar(nc, x1_id);
     y0 = netcdf.getVar(nc, y0_id);
@@ -19,6 +21,9 @@ function [x0,y0,x1,y1,thk,uvel,vvel] = nc_read(nc_filename,timeslice)
     uvel = netcdf.getVar(nc, uvel_id);
     vvel= netcdf.getVar(nc, vvel_id);
     
+    if (timeslice < 0)
+        timeslice = size(time,1);
+    end
     thk = thk(:,:,timeslice);
     uvel = uvel(:,:,:,timeslice);
     vvel = vvel(:,:,:,timeslice);
