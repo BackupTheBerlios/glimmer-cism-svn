@@ -17,7 +17,7 @@ else
 
     x = x0:(x1-x0)/n:x1;
     u = ufun(x);
-    h = wfun(x)./u;
+    h = u0*h0./ufun(x);
     w = wfun(x);
 end 
 
