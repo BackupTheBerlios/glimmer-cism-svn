@@ -31,6 +31,7 @@ implicit none
   integer, save :: locplusup
   logical, save :: lateralboundry = .false.
   logical, save :: no_shear_stress_sidewalls = .false.
+  logical, save :: use_shelf_bc_1 = .false.
 
   integer, dimension(6), save :: loc_latbc
 
@@ -1308,7 +1309,7 @@ subroutine bodyset(ew,  ns,  up,           &
     ! when the solution has converged a bit, we switch to the more realistic implementation (option 2).
     ! That is achieved in the following if construct ...
 
-  if( cc < 10 )then
+  if( cc < 10 .or. use_shelf_bc_1)then
 
     ! --------------------------------------------------------------------------------------
     ! (1) source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
@@ -1338,6 +1339,7 @@ subroutine bodyset(ew,  ns,  up,           &
     ! --------------------------------------------------------------------------------------
     ! (2) source term (strain rate at shelf/ocean boundary) from MacAyeal depth-ave solution. 
     ! --------------------------------------------------------------------------------------
+    print *, "Using MacAyeal shelf bc"
     source = (rhoi*grav*stagthck(ew,ns)*thk0) / tau0_glam / 2.0_dp * ( 1.0_dp - rhoi / rhoo )
 
     ! terms after "/" below count number of non-zero efvs cells ... needed for averaging of the efvs at boundary 

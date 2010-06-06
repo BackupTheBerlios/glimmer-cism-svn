@@ -15,6 +15,7 @@ program shelf_driver
  
   use glimmer_paramets, only: thk0
   use glide_temp, only: timeevoltemp
+  use glam_strs2, only: use_shelf_bc_1
 
   implicit none
 
@@ -49,6 +50,8 @@ program shelf_driver
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
   logical :: plume_const_bmlt
   real(kind=dp) :: plume_const_bmlt_rate
+
+  use_shelf_bc_1 = .true.
 
   call glimmer_GetCommandline()
   
