@@ -231,7 +231,7 @@ class GCConfig(object):
                                                               # = 0 means use max value
                                                               # NB: only used in glam_velo_fordsiapstr
                                                               # model%options%which_ho_resid
-                                       'which_bmelt' : None,   # basal melting
+                                       'which_bmelt' : 0,   # basal melting
                                                               # model%options%which_bmelt
                                        'which_ho_babc' : 0,       # basal boundary condition: 
                                                                   # = 5 means simple ice-shelf 

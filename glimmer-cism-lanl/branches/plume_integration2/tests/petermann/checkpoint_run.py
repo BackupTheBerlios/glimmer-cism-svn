@@ -70,6 +70,8 @@ def checkpoint_run(config_file):
         base_config['gc_vals']['plume']['plume_nl_file'] = insert_cp_index(plume_nl_fname_base,i)
         base_config['gc_vals']['CF input']['name'] = insert_cp_index(gc_input_fname_base,i)
         base_config['gc_vals']['CF output']['name']= insert_cp_index(gc_output_fname_base,i)
+        base_config['gc_vals']['CF output']['start'] = ts
+        base_config['gc_vals']['CF output']['stop'] = ts + cp_dur
         
         build_case.build_case(base_config)
 
