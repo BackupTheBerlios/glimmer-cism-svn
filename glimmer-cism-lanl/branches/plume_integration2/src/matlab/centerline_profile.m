@@ -3,7 +3,7 @@ function [ y_vel, y_thk,vvel_center,thk_center ] = centerline_profile(y0,y1,vvel
 [m,n] = size(thck);
 
 ice_front = 5;
-end_buf = 2;
+end_buf = 1;
 level = 1;
 
 y_vel = y0((ice_front-1):(n-1-end_buf));

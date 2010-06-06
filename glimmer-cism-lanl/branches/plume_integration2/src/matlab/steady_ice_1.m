@@ -4,7 +4,10 @@ function [ x,u,h,w ] = steady_ice_1(A,rhoi,rhoo,g,x0,x1,n, u0, h0, a_net_per_yea
 
 if (a_net_per_year ~= 0.0) 
     wfun = @(x) a_net_per_year*(x-x0)+u0*h0;
-    ufun = @(x) u0*(1 + (A/a_net_per_year)*((1-rhoi/rhoo)*rhoi*g/4)^3*((wfun(x)/u0).^4 - (h0)^4)).^(1/4);
+    ufun = @(x) u0*(1 + ...
+                    (A/a_net_per_year)*((1-rhoi/rhoo)*rhoi*g/4)^3 * ...
+                    ((wfun(x)/u0).^4 - (h0)^4) ...
+                    ).^(1/4);
 
     x = x0:(x1-x0)/n:x1;
     u = ufun(x);
