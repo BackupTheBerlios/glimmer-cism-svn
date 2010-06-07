@@ -366,7 +366,7 @@ contains
                      & in config file',  &
                        GM_FATAL)
     end if
-    call GetValue(section, 'plume_nl_file', plume_nl)
+    call GetValue(section, 'plume_nl_filename', plume_nl)
     call GetValue(section, 'plume_output_dir', plume_ascii_output_dir)
     call GetValue(section, 'plume_output_file', plume_output_nc_file)
     call GetValue(section, 'suppress_ascii_output', plume_suppress_ascii_output)
@@ -384,6 +384,7 @@ contains
     call GetValue(section, 'plume_const_bmlt_rate', plume_const_bmlt_rate)
 
     call write_log('Plume config')
+    write(*,*) plume_nl
     write(message,*) 'plume namelist file:', trim(plume_nl)
     call write_log(message)
     write(message,*) 'suppressing plume output:',plume_suppress_ascii_output

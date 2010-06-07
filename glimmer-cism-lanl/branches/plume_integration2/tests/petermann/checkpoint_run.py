@@ -12,38 +12,39 @@ import math
 def checkpoint_run(config_file):
 
     base_config = build_case.get_config(config_file)
+    
     print(base_config)
 
-    if(not 'checkpoint_duration' in base_config):
-        raise Exception('Can not find checkpoint_duration in %s' % config_file)
+    for s in ['checkpoint_duration',
+              'checkpoint_tstart',
+              'checkpoint_tend',
+              'checkpoint_initial_input_style']:
+        if not s in base_config:
+            raise Exception('Can not find %s in %s' %
+                            (s, config_file))
+    
     cp_dur = base_config['checkpoint_duration']
-    
-    if(not 'checkpoint_tstart' in base_config):
-        raise Exception('Can not find checkpoint_tstart in %s' % config_file)
     ts = base_config['checkpoint_tstart']
-    
-    if(not 'checkpoint_tend' in base_config):
-        raise Exception('Can not find checkpoint_tend in %s' % config_file)
     te = base_config['checkpoint_tend']
 
-    if(not 'checkpoint_initial_input_style' in base_config):
-        raise Exception('Can not find checkpoint_initial_input_style in %s' % config_file)
     init_input_style = base_config['checkpoint_initial_input_style']
-
-    plume_output_base      = base_config['gc_vals']['plume']['plume_output_file']
-    plume_nl_fname_base = base_config['gc_vals']['plume']['plume_nl_file']
+    
+    plume_output_base = base_config['gc_vals']['plume']['plume_output_file']
+    plume_nl_fname_base = base_config['gc_vals']['plume']['plume_nl_filename']
     gc_config_fname_base= base_config['gc_config_filename']
     gc_output_fname_base = base_config['gc_vals']['CF output']['name']
     gc_input_fname_base = base_config['gc_vals']['CF input']['name']
     
     n_checkpoints = int(math.ceil(float(te - ts)/cp_dur))
-    num_slices_per_cp = int(math.floor(cp_dur/ float(base_config['gc_vals']['time']['dt']))) - 1
+    num_slices_per_cp = int(math.floor(cp_dur/ float(
+                        base_config['gc_vals']['time']['dt']))) - 1
     
     # do initial run
     base_config['input_style'] = init_input_style
     base_config['gc_vals']['time']['tstart'] = ts
     base_config['gc_vals']['time']['tend'] = ts + cp_dur
-    base_config['gc_vals']['CF output']['name'] = insert_cp_index(gc_output_fname_base,1)
+    base_config['gc_vals']['CF output']['name'] = \
+                               insert_cp_index(gc_output_fname_base,1)
     
     build_case.build_case(base_config)
     
@@ -57,19 +58,28 @@ def checkpoint_run(config_file):
         ts = ts + cp_dur
 
         base_config['input_style'] = 'regrid'
-        base_config['nc_regrid_args'][0] = insert_cp_index(gc_output_fname_base,i-1) #input file
-        base_config['nc_regrid_args'][1] = insert_cp_index(gc_input_fname_base,i)    #outpt file
-        base_config['nc_regrid_args'][2] = -1 # this means read last time slice,
-                                              # replacing num_slices_per_cp
+        base_config['nc_regrid_args'][0] = \
+                insert_cp_index(gc_output_fname_base,i-1) #input file
+        base_config['nc_regrid_args'][1] = \
+                insert_cp_index(gc_input_fname_base,i)    #outpt file
+        base_config['nc_regrid_args'][2] = \
+                -1 # this means read last time slice,
+                   # replacing num_slices_per_cp
         
         base_config['gc_vals']['time']['tstart'] = ts
         base_config['gc_vals']['time']['tend'] =  min(te, ts + cp_dur)
-        base_config['gc_vals']['plume']['plume_output_file'] = insert_cp_index(plume_output_base, i)
-
-        base_config['gc_config_filename'] =                insert_cp_index(gc_config_fname_base, i)
-        base_config['gc_vals']['plume']['plume_nl_file'] = insert_cp_index(plume_nl_fname_base,i)
-        base_config['gc_vals']['CF input']['name'] = insert_cp_index(gc_input_fname_base,i)
-        base_config['gc_vals']['CF output']['name']= insert_cp_index(gc_output_fname_base,i)
+        base_config['gc_vals']['plume']['plume_output_file'] = \
+                   insert_cp_index(plume_output_base, i)
+        base_config['gc_config_filename'] = \
+                   insert_cp_index(gc_config_fname_base, i)
+        base_config['plume_nl_filename'] = \
+                   insert_cp_index(plume_nl_fname_base, i)
+        base_config['gc_vals']['plume']['plume_nl_filename'] = \
+                   insert_cp_index(plume_nl_fname_base,i)
+        base_config['gc_vals']['CF input']['name'] = \
+                   insert_cp_index(gc_input_fname_base,i)
+        base_config['gc_vals']['CF output']['name']= \
+                  insert_cp_index(gc_output_fname_base,i)
         base_config['gc_vals']['CF output']['start'] = ts
         base_config['gc_vals']['CF output']['stop'] = ts + cp_dur
         
@@ -79,8 +89,6 @@ def checkpoint_run(config_file):
         retval = subprocess.call(cmd)
         if (retcode != 0):
             raise Exception('Error running:\n %s' % ' '.join(cmd))
-         
-        
     
 def insert_cp_index(str,ind):
     l = str.split('.')
