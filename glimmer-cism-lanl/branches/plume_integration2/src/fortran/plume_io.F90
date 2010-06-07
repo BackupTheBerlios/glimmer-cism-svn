@@ -722,6 +722,8 @@ contains
 
     call check( nf90_put_var(nc_id,x_varid,(/ (i*hx, i=1,m_grid) /)) )
     call check( nf90_put_var(nc_id,y_varid,(/ (j*hy, j=1,n_grid) /)) )
+   
+    call check( nf90_sync(nc_id) )
 
   end subroutine plume_netcdf_init
 
@@ -754,6 +756,8 @@ contains
 
     !call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
     !call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))
+    
+    call check(nf90_sync(nc_id))
 
     time_counter = time_counter + 1
 
