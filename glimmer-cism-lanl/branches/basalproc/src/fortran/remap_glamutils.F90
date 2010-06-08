@@ -239,11 +239,11 @@ module remap_glamutils
 
     call periodic_boundaries(wk%thck_ir(:,:,1), periodic_ew, periodic_ns, 2)
 
-    !Map from IR thickness field back to Glide thickness field
-    thck = wk%thck_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn,1) / thk0
-    
-    !Apply accumulation
-    thck = thck + acab
+!    !Map from IR thickness field back to Glide thickness field
+!    thck = wk%thck_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn,1) / thk0
+!    
+!    !Apply accumulation
+!    thck = thck + acab*dt
     
     !Remove thickness from previously masked out locations
     thck = thck * wk%mask_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn)
