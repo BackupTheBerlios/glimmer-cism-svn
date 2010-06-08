@@ -179,7 +179,7 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
 ! *sfp** determine constants used in various FD calculations associated with 'findcoefst'   
 ! NOTE: there is some question about the definitions here vs. in write-up (see notes in subroutine)
 !whl - moved from findcoefstr
-     call calccoeffsinit(upn, dew, dns)
+    call calccoeffsinit(upn, dew, dns)
 
 !whl - moved from vertintg
     allocate(dups(upn)) 
@@ -209,7 +209,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  uvel,     vvel,         &
                                  uflx,     vflx,         &
                                  efvs )
-
+  use parallel
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
@@ -300,8 +300,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! *sfp** if a point from the 2d array 'mask' is associated with non-zero ice thickness,
   !      either a boundary or interior point, give it a unique number. If not, give it a zero			 
+  !TREY
   uindx = indxvelostr(ewn, nsn, upn,  &
                       umask,pcgsize(1))
+  print *,this_rank,pcgsize(1)
+  call parallel_stop(__FILE__,__LINE__)
 
   !!!!!!!!! *sfp* start debugging !!!!!!!!!!!!!!!!!!!!!!!!
 !  do ew = 1, 15; do ns = 16, 30     !*sfp* hack of mask for Ross exp.
@@ -575,7 +578,7 @@ function indxvelostr(ewn,  nsn,  upn,  &
 
 ! *sfp** if a point from the 2d array 'mask' is associated with non-zero ice thickness, 
 !      either a boundary or interior point, give it a unique number. If not, give it a zero.
-
+  use parallel
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
@@ -587,8 +590,8 @@ function indxvelostr(ewn,  nsn,  upn,  &
 
   pointno = 1
 
-  do ew = 1,ewn-1
-      do ns = 1,nsn-1
+  do ew = 1+staggered_lhalo,size(mask,1)-staggered_uhalo
+     do ns = 1+staggered_lhalo,size(mask,2)-staggered_uhalo
         if ( GLIDE_HAS_ICE( mask(ew,ns) ) ) then 
           indxvelostr(ew,ns) = pointno
           pointno = pointno + 1

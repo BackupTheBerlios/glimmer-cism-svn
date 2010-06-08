@@ -213,7 +213,6 @@ contains
     ! *sfp** added; initialization of Payne/Price HO dynamics subroutine ... name can change once agreed on
     if (model%options%which_ho_diagnostic == HO_DIAG_PP ) then
 
-       call not_parallel(__FILE__,__LINE__)
         call glam_velo_fordsiapstr_init(model%general%ewn,    model%general%nsn,  &
                                         model%general%upn,                        &
                                         model%numerics%dew,   model%numerics%dns, &

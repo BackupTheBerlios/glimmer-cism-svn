@@ -6,6 +6,9 @@ module parallel
   integer,parameter :: main_rank = 0
   integer,parameter :: uhalo = 2
 
+  integer,parameter :: staggered_lhalo = lhalo
+  integer,parameter :: staggered_uhalo = uhalo-1
+
   logical,save :: main_task
   integer,save :: comm,tasks,this_rank
 

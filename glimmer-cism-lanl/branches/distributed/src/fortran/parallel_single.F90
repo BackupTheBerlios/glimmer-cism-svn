@@ -27,6 +27,9 @@ module parallel
   integer,parameter :: this_rank = 0
   integer,parameter :: uhalo = 0
 
+  integer,parameter :: staggered_lhalo = lhalo
+  integer,parameter :: staggered_uhalo = 1
+
   integer,save :: global_ewn,global_nsn
 
   interface broadcast

@@ -116,8 +116,9 @@ contains
         !Compute the normal vectors to the marine margin for the staggered grid
         call glide_marine_margin_normal(model%geomderv%stagthck, geom_mask_stag, latbc_norms_stag)
 
-        ! "hump.config" uses HO_DIAG_PATTYN_STAGGERED
+        !TREY modified "hump.config" to use HO_DIAG_PP at suggestion of Steve Price
         if (model%options%which_ho_diagnostic == HO_DIAG_PATTYN_STAGGERED) then
+           call not_parallel(__FILE__,__LINE__)
            
 #ifdef VERY_VERBOSE
             write(*,*)"Running Pattyn staggered"
@@ -130,7 +131,6 @@ contains
             call glide_maskthck(model%geomderv%stagthck, stagmassb, .true., model%numerics%thklim,&
                                 model%geometry%dom, model%velocity_hom%velmask, totpts, empty)
 
-            !TREY
             call velo_hom_pattyn(model%general%ewn, model%general%nsn, model%general%upn, &
                                  model%numerics%dew, model%numerics%dns, model%numerics%sigma, &
                                  model%geomderv%stagthck, model%geomderv%stagusrf, model%geomderv%staglsrf, &
@@ -182,7 +182,7 @@ contains
                                       model%velocity_hom%uflx,    model%velocity_hom%vflx) 
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
-           call not_parallel(__FILE__,__LINE__)
+           !TREY
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
                                         model%numerics%dew,      model%numerics%dns,                &
@@ -324,7 +324,6 @@ contains
         !Because of the transposition, ewn=maxy and nsn=maxx.  However, veloc2
         !passes maxy in *first*, so these really get passed in the same order
         !that they normally would.
-           !TREY
         call veloc2(efvs, uvel, vvel, flwa_stag, dusrfdew, dusrfdns, thck, ax, ay, &
                     sigma, bx, by, cxy, btrc, dlsrfdew, dlsrfdns, FLWN, ZIP, VEL2ERR, &
                     TOLER, options, .true., dew, dns, &

@@ -494,7 +494,6 @@ contains
                 call plastic_bed(tau, beta, uvel(nzeta,:,:), vvel(nzeta,:,:))
             end if
 
-            !TREY WARNING: may be incorrect for upwind derivatives
             !Compute velocity derivatives
             call velderivs(uvel, vvel, dzdx, dzdy, geometry_mask, &
                            delta_x, delta_y, zeta, .false., &
@@ -524,7 +523,6 @@ contains
             !Sparse matrix routine for determining velocities.  The new
             !velocities will get spit into ustar and vstar, while uvel and vvel
             !will still hold the old velocities.
-            !TREY
             iter=sparuv(efvs,dzdx,dzdy,ax,ay,bx,by,cxy,h,&
                 uvel,vvel,dudx,dudy,dudz,dvdx,dvdy,dvdz,&
                 ustar,vstar,tau,dhbdx,dhbdy,ijktot,MAXY,&
@@ -804,6 +802,7 @@ contains
                     IJKTOT,MAXY,MAXX,NZETA,TOLER,options,GRIDX,GRIDY,zeta, point_mask, geometry_mask,&
                     matrix, matrix_workspace, matrix_options, kinematic_bc_u, kinematic_bc_v,latbc_normal, &
                     direction_x, direction_y, STAGGERED)
+      use parallel
         INTEGER IJKTOT,MAXY,MAXX,NZETA
         real(dp), dimension(:,:,:), intent(in) :: efvs
         real(dp), dimension(:,:), intent(in) :: dzdx
@@ -884,7 +883,6 @@ contains
                     if (point_mask(i,j) /= 0) then
                         do k=1,NZETA
                             coef = 0
-                            !TREY
                             stencil_center_idx = csp_masked(I_J_K,i,j,k,point_mask,NZETA) 
                             if (.not. GLIDE_HAS_ICE( geometry_mask(i,j) ) .or. &
                                       GLIDE_IS_LAND_MARGIN( geometry_mask(i,j) ) .or. &
@@ -992,7 +990,6 @@ contains
                                     if (si > 0 .and. si <= maxy .and. &
                                         sj > 0 .and. sj <= maxx .and. &
                                         sk > 0 .and. sk <= nzeta) then
-                                       TREY
                                             if (point_mask(sj,si) == 0) then
                                                 write(*,*) "ERROR: point is off mask."
                                                 write(*,*) "component:",componentstr
@@ -1204,6 +1201,7 @@ contains
         dvdx_field, dvdy_field, dvdz_field, &
         dhbdx,dhbdy,beta,mask,latbc_normal,MAXX,MAXY,Ndz,&
         coef, rhs, direction_x, direction_y, STAGGERED, WHICH_SOURCE)
+         use parallel
 !
         integer, intent(in) :: i,j,k, MAXY, MAXX, Ndz
 
@@ -1525,6 +1523,7 @@ contains
                                     vel_perp, efvs, dx, dy, ax, ay, zeta,coef, rhs, &
                                     dudx,dudy,dudz,dvdx,dvdy,dvdz,direction_x,direction_y, geometry_mask, STAGGERED, &
                                     WHICH_SOURCE)
+      use parallel
         character(*), intent(in) :: component !*FD Either "u" or "v"
         integer, intent(in) :: i,j,k !*FD Point that the boundary condition is computed for
         real(dp), dimension(:,:), intent(in) :: h !*FD Ice thickness field
