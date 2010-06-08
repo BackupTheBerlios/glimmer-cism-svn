@@ -23,8 +23,8 @@ x = [0:5e3:5e3*c-1];
 y = [0:5e3:5e3*r-1]';
 
 thck = H0 * ones( r, c );
-airt = T0 * ones( r, c );
-qgeo = q0 * ones( r, c );
+artm = T0 * ones( r, c );
+bheatflx = q0 * ones( r, c );
 acab = b0 * ones( r, c );
 
 % topg = repmat( linspace( 1e3, 1e3-(slope*(c-1)*dew), c), r, 1 );
@@ -63,10 +63,10 @@ beta = 5e1*ones(size(minTauf));
 figure(4), imagesc( x/1e3, y/1e3, minTauf/1e3 ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'Tau0 (kPa)' )
 
-figure(5), imagesc( x/1e3, y/1e3, airt ), axis xy, axis equal, axis tight, colorbar
-xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'airt temp (C)' )
+figure(5), imagesc( x/1e3, y/1e3, artm ), axis xy, axis equal, axis tight, colorbar
+xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'artm temp (C)' )
 
-figure(6), imagesc( x/1e3, y/1e3, qgeo ), axis xy, axis equal, axis tight, colorbar
+figure(6), imagesc( x/1e3, y/1e3, bheatflx ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'geo flux (W m^2)' )
 
 %% add a kinbcmask field to specify where 0 flux bcs are
@@ -86,9 +86,9 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'kinbcmask' )
 figure(8), imagesc( x/1e3, y/1e3, acab ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'acab (m/a)' )
 
-tauf=minTauf;
+tauf = minTauf;
 
 % cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
-cd /Users/sprice/work/modeling/cism_new/branches/tests/basalproc            % Steve's path
+cd /Users/sprice/work/modeling/cism/branches/tests/basalproc            % Steve's path
 
-save bproc.mat airt acab qgeo usrf topg thck beta tauf kinbcmask uvelhom vvelhom 
+save bproc.mat artm acab bheatflx usrf topg thck beta tauf kinbcmask uvelhom vvelhom 
