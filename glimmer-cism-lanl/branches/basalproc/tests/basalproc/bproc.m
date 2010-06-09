@@ -49,8 +49,8 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 
 
 %% load in old till map
-% load ~/Home/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl           % Marion's path
-load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
+ load ~/Home/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl           % Marion's path
+%load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
 
 minTauf = Tillggl;
 ind = find( minTauf < 5e3 ); minTauf(ind) = 5e3;
@@ -88,7 +88,7 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'acab (m/a)' )
 
 tauf = minTauf;
 
-% cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
-cd /Users/sprice/work/modeling/cism/branches/tests/basalproc            % Steve's path
+ cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
+%cd /Users/sprice/work/modeling/cism/branches/tests/basalproc            % Steve's path
 
 save bproc.mat artm acab bheatflx usrf topg thck beta tauf kinbcmask uvelhom vvelhom 

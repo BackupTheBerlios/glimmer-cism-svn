@@ -88,6 +88,10 @@ contains
     case(BWATER_BASAL_PROC)
     !Normalized basal water 
     bwat=model%basalproc%Hwater/thk0
+    
+    case(BWATER_CONST)
+    !Use a constant thickness of water, to force Tpmp. Normalized too.
+    bwat=10.0/thk0
    
     case default
       bwat = 0.0d0

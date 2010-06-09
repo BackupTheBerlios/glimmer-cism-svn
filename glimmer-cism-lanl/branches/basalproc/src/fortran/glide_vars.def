@@ -345,7 +345,7 @@ long_name:     basal melt rate
 data:          data%temper%bmlt
 factor:        scale2d_f1
 standard_name: land_ice_basal_melt_rate
-hot:           1
+hot:           0
 coordinates:   lon lat
 average:       1
 
@@ -376,6 +376,7 @@ standard_name: surface_temperature
 cell_methods:  time: mean
 coordinates:   lon lat
 load:          1
+hot :   	   0
 
 [btemp]
 dimensions:    time, y1, x1
@@ -426,6 +427,7 @@ data:          data%velocity_hom%uvel(up,:,:)
 factor:        scale3d_f1
 standard_name: land_ice__x_velocity
 load:          1
+hot: 		   1
 
 [vvelhom]
 dimensions:    time, level, y0, x0
@@ -435,6 +437,7 @@ data:          data%velocity_hom%vvel(up,:,:)
 factor:        scale3d_f1
 standard_name: land_ice_y_velocity
 load:          1
+hot:		   1
 
 [kinbcmask]
 dimensions:   time, y0, x0
@@ -516,7 +519,7 @@ dimensions:    time, lithoz, y1, x1
 units:         degree_Celsius
 long_name:     lithosphere temperature
 data:          data%lithot%temp
-hot:           1
+hot:           0
 coordinates:   lon lat
 
 [age]

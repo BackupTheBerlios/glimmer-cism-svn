@@ -463,11 +463,12 @@ contains
          'Patterson and Budd               ', &
          'Patterson and Budd (temp=-10degC)', &
          'const 1e-16a^-1Pa^-n             '/)
-    character(len=*), dimension(0:3), parameter :: basal_water = (/ &
+    character(len=*), dimension(0:4), parameter :: basal_water = (/ &
          'local water balance', &
          'local + const flux ', &
          'flux calculation   ', &
-         'From basal proc model  ' /)
+         'From basal proc model  ', &
+         'Constant value (=10m)'/)
     character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
          'ignore            ', &
          'no ice shelf      ', &

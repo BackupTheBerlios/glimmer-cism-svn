@@ -119,6 +119,7 @@ module glide_types
   integer, parameter :: BWATER_FLUX  = 1
   integer, parameter :: BWATER_NONE  = 2
   integer, parameter :: BWATER_BASAL_PROC = 3  !*mb* basal water available from basal proc. module
+  integer, parameter :: BWATER_CONST = 4 !*mb* Constant thickness of water, e.g., to force Tpmp.
 
   integer, parameter :: HO_DIAG_NONE = 0
   integer, parameter :: HO_DIAG_PATTYN_UNSTAGGERED = 1
@@ -199,6 +200,7 @@ module glide_types
     !*FD \item[1] Compute the basal water flux, then find depth via calculation
     !*FD \item[2] Set to zero everywhere 
     !*FD \item[3] Calculated from till water content, in the basal processes module
+    !*FD \item[4] Set to constant everywhere (10m).
     !*FD \end{description}
 
     integer :: whichmarn = 1
@@ -1179,9 +1181,7 @@ contains
     call coordsystem_allocate(model%general%ice_grid, model%basalproc%Hwater)
     call coordsystem_allocate(model%general%velo_grid, model%basalproc%minTauf)
 	allocate(model%basalproc%u (ewn-1,nsn-1,model%basalproc%tnodes)); model%basalproc%u=41.0d3
-!	model%basalproc%u=0.0
 	allocate(model%basalproc%etill (ewn-1,nsn-1,model%basalproc%tnodes));model%basalproc%etill=0.5d0
-!	model%basalproc%etill=0.0
 	
   end subroutine glide_allocarr
 
