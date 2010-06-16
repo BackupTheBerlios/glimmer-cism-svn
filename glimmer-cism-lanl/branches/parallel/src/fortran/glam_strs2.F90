@@ -2454,7 +2454,7 @@ function vertimainbc(thck, bcflag, dup, efvs, betasquared, nz)
            vertimainbc(2) = vertimainbc(3) + vertimainbc(1) ! should = 0
 
 
-    ! for higher-order BASAL B.C. w/ specified basal traction, add on the necessary source term ...
+   ! for higher-order BASAL B.C. w/ specified basal traction, add on the necessary source term ...
     if( bcflag(2) == 1 )then
 
             ! last set of terms is mean visc. of ice nearest to the bed
@@ -2615,7 +2615,7 @@ function croshorizmainbc(dew,       dns,       &
 
        ! this forces the multiplication by 'local_otherval' in the main program 
        ! to result in a value of 1, thus leaving the boundary vel. unchanged
-       g = g / local_othervel
+       !g = g / local_othervel
 
     end if
 
