@@ -101,6 +101,11 @@ contains
        model%options%gthf = 1
        call handle_gthf(section, model)
     end if
+    ! read till parameters
+    call GetSection(config,section,'till_options')
+    if (associated(section)) then
+       call handle_till_options(section, model)
+    end if
   end subroutine glide_readconfig
 
   subroutine glide_printconfig(model)
@@ -116,6 +121,7 @@ contains
     call print_options(model)
     call print_parameters(model)
     call print_gthf(model)
+    call print_till_options(model)
   end subroutine glide_printconfig
     
   subroutine glide_scale_params(model)
@@ -454,11 +460,12 @@ contains
          'Patterson and Budd               ', &
          'Patterson and Budd (temp=-10degC)', &
          'const 1e-16a^-1Pa^-n             '/)
-    character(len=*), dimension(0:3), parameter :: basal_water = (/ &
+    character(len=*), dimension(0:4), parameter :: basal_water = (/ &
          'local water balance', &
          'local + const flux ', &
          'flux calculation   ', &
-         'none               ' /)
+         'From basal proc model  ', &
+         'Constant value (=10m)'/)
     character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
          'ignore            ', &
          'no ice shelf      ', &
@@ -535,6 +542,13 @@ contains
          'GMRES with LU precondition ', &
          'Unsymmetric Multifrontal   ', &
          'Trilinos interface         '/)
+  !*mb* added options for basal processes model       
+     character(len=*), dimension(0:2), parameter :: whichbmod = (/ &
+         'Basal Proc Mod disabled '  , &
+         'Basal Proc, High. Res. '   , &
+         'Basal Proc, Fast Calc.' /)
+
+
     call write_log('GLIDE options')
     call write_log('-------------')
     write(message,*) 'I/O parameter file      : ',trim(model%funits%ncfile)
@@ -548,6 +562,11 @@ contains
        call write_log('Error, flow_law out of range',GM_FATAL)
     end if
     write(message,*) 'flow law                : ',model%options%whichflwa,flow_law(model%options%whichflwa)
+    call write_log(message)
+    if (model%options%which_bmod.lt.0 .or. model%options%which_bmod.ge.size(whichbmod)) then
+       call write_log('Error, whichbmod out of range',GM_FATAL)
+    end if
+    write(message,*) 'whichbmod               : ',model%options%which_bmod,whichbmod(model%options%which_bmod)
     call write_log(message)
     if (model%options%whichbwat.lt.0 .or. model%options%whichbwat.ge.size(basal_water)) then
        call write_log('Error, basal_water out of range',GM_FATAL)
@@ -750,6 +769,73 @@ contains
     end if
     call write_log('')
   end subroutine print_parameters
+
+!Till options
+  subroutine handle_till_options(section,model)
+    use glimmer_config
+    use glide_types
+    implicit none
+    type(ConfigSection), pointer :: section
+    type(glide_global_type) :: model
+
+    if (model%options%which_bmod.eq.1) then
+        call GetValue(section, 'fric',  model%basalproc%fric)
+        call GetValue(section, 'etillo',  model%basalproc%etillo)
+        call GetValue(section, 'No',  model%basalproc%No)
+        call GetValue(section, 'Comp',  model%basalproc%Comp)
+        call GetValue(section, 'Cv',  model%basalproc%Cv)
+        call GetValue(section, 'Kh',  model%basalproc%Kh)
+    else if (model%options%which_bmod.eq.2) then
+        call GetValue(section, 'aconst',  model%basalproc%aconst)
+        call GetValue(section, 'bconst',  model%basalproc%bconst)
+    end if
+    if (model%options%which_bmod.gt.0) then
+        call GetValue(section, 'Zs',  model%basalproc%Zs)
+        call GetValue(section, 'tnodes',  model%basalproc%tnodes)
+        call GetValue(section, 'till_hot', model%basalproc%till_hot)
+    end if  
+
+  end subroutine handle_till_options    
+
+    subroutine print_till_options(model)
+    use glide_types
+    use glimmer_log
+    implicit none
+    type(glide_global_type)  :: model
+    character(len=100) :: message
+
+if (model%options%which_bmod.gt.0) then 
+    call write_log('Till options')
+    call write_log('----------')
+    if (model%options%which_bmod.eq.1) then
+        write(message,*) 'Internal friction           : ',model%basalproc%fric
+        call write_log(message)
+        write(message,*) 'Reference void ratio        : ',model%basalproc%etillo
+        call write_log(message)
+        write(message,*) 'Reference effective Stress  : ',model%basalproc%No
+        call write_log(message)
+        write(message,*) 'Compressibility             : ',model%basalproc%Comp
+        call write_log(message)
+        write(message,*) 'Diffusivity                 : ',model%basalproc%Cv
+        call write_log(message)
+        write(message,*) 'Hyd. conductivity           : ',model%basalproc%Kh
+        call write_log(message)
+    end if
+    if (model%options%which_bmod.eq.2) then
+       write(message,*) 'aconst  : ',model%basalproc%aconst
+       call write_log(message)
+       write(message,*) 'bconst  : ',model%basalproc%aconst
+       call write_log(message)
+    end if
+       write(message,*) 'Solid till thickness : ',model%basalproc%Zs
+       call write_log(message)
+       write(message,*) 'Till nodes number : ',model%basalproc%tnodes
+       call write_log(message)
+       write(message,*) 'till_hot  :',model%basalproc%till_hot
+    call write_log(message)
+
+   end if
+  end subroutine print_till_options
 
   ! Sigma levels
   subroutine handle_sigma(section, model)

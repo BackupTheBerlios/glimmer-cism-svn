@@ -66,6 +66,7 @@ module glimmer_physcon
 
   real(dp),parameter :: rhoo = 1028.0d0          !*FD The density of the ocean (kg m$^{-3}$)
   real(dp),parameter :: rhow = 1000.0d0          !*FD The density of fresh water (kg m$^{-3}$)
+  real(dp),parameter :: rhos = 2600.0d0          !*FD The density of solid till (kg m$^{-3}$)
   real(dp),parameter :: f = - rhoo / rhoi
 
   real(dp),parameter :: grav = 9.81              !*FD The acceleration due to gravity (m s$^{-2}$)

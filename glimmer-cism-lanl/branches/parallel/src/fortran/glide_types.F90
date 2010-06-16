@@ -119,6 +119,8 @@ module glide_types
   integer, parameter :: BWATER_LOCAL = 0
   integer, parameter :: BWATER_FLUX  = 1
   integer, parameter :: BWATER_NONE  = 2
+  integer, parameter :: BWATER_BASAL_PROC = 3  !*mb* basal water available from basal proc. module
+  integer, parameter :: BWATER_CONST = 4       !*mb* Constant thickness of water, e.g., to force Tpmp.
 
   integer, parameter :: HO_DIAG_NONE = 0
   integer, parameter :: HO_DIAG_PATTYN_UNSTAGGERED = 1
@@ -194,6 +196,8 @@ module glide_types
     !*FD \item[0] Calculated from local basal water balance 
     !*FD \item[1] Compute the basal water flux, then find depth via calculation
     !*FD \item[2] Set to zero everywhere 
+    !*FD \item[3] Calculated from till water content, in the basal processes module
+    !*FD \item[4] Set to constant everywhere (10m).
     !*FD \end{description}
 
     integer :: whichmarn = 1
@@ -393,6 +397,15 @@ module glide_types
     !*FD \item[0] standard Glimmer setup
     !*FD \item[1] evenly spaced levels
     !*FD \item[2] Pattyn's sigma levels
+    !*FD \end{description}
+
+    ! *mb* added
+    integer :: which_bmod = 0
+    !Options for the basal processes code
+    !*FD \begin{description}
+    !*FD \item[0] Disabled
+    !*FD \item[1] Full calculation, with at least 3 nodes to represent the till layer
+    !*FD \item[2] Fast calculation, using Tulaczyk empirical parametrization
     !*FD \end{description}
 
     integer :: diagnostic_run = 0
@@ -831,6 +844,33 @@ module glide_types
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+  type glide_basalproc
+    !Tuneables, set in the config file 
+    real (kind = dp):: fric=0.45d0                   ! Till coeff of internal friction: ND
+    real (kind = dp):: etillo=0.7d0                  ! Till void ratio at No
+    real (kind = dp):: No=1000.d0                    ! Reference value of till effective stress
+    real (kind = dp):: Comp=0.12d0                   ! Till coeff of compressibility: ND
+    real (kind = dp):: Cv = 1.0d-8                   ! Till hydraulic diffusivity: m2/s
+    real (kind = dp):: Kh = 1.0d-10                  !Till hydraulic conductivity: m/s
+    real (kind = dp):: Zs = 3.0d0                    ! Solid till thickness: m
+    real (kind = dp):: aconst=994000000d0            ! Constant in till strength eq. (Pa)
+    real (kind = dp):: bconst=21.7                   ! Constant in till strength eq. (ND)
+    integer:: till_hot = 0
+    integer:: tnodes = 5
+
+    real(dp), dimension (:) , pointer :: till_dz => null()  !holds inital till layer spacing - 
+    
+    !Model variables that will be passed to other subroutines
+    real(dp),dimension(:,:)  ,pointer :: minTauf => null() !Bed strength calculated with basal proc. mod.
+    real(dp),dimension(:,:)  ,pointer :: Hwater  => null() !Water available from till layer (m)
+    !Model variabled necessary for hotstart
+    real(dp),dimension(:,:,:)  ,pointer :: u => null()     !Till excess pore pressure (Pa)
+    real(dp),dimension(:,:,:)  ,pointer :: etill  => null()  !Till void ratio (ND)  
+    
+  end type glide_basalproc
+
+  !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
   type glide_prof_type
      integer :: geomderv
      integer :: hvelos
@@ -861,6 +901,7 @@ module glide_types
     type(glide_tempwk)   :: tempwk
     type(glide_gridwk)   :: gridwk
     type(glide_paramets) :: paramets
+    type(glide_basalproc):: basalproc
     type(glimmap_proj) :: projection
     type(profile_type)   :: profile
     type(glide_prof_type) :: glide_prof
@@ -1129,6 +1170,12 @@ contains
     call coordsystem_allocate(model%general%ice_grid, model%gridwk%xyav) 
     call coordsystem_allocate(model%general%ice_grid, model%gridwk%yyav)
 
+    !allocate basal processes variables
+    call coordsystem_allocate(model%general%ice_grid, model%basalproc%Hwater)
+    call coordsystem_allocate(model%general%velo_grid, model%basalproc%minTauf)
+    allocate(model%basalproc%u (ewn-1,nsn-1,model%basalproc%tnodes)); model%basalproc%u=41.0d3
+    allocate(model%basalproc%etill (ewn-1,nsn-1,model%basalproc%tnodes));model%basalproc%etill=0.5d0
+
   end subroutine glide_allocarr
 
   subroutine glide_deallocarr(model)
@@ -1278,6 +1325,12 @@ contains
     deallocate(model%gridwk%xxav) 
     deallocate(model%gridwk%xyav) 
     deallocate(model%gridwk%yyav) 
+
+    ! deallocate till variables
+    deallocate(model%basalproc%Hwater)
+    deallocate(model%basalproc%minTauf)
+    deallocate(model%basalproc%u)
+    deallocate(model%basalproc%etill)
 
   end subroutine glide_deallocarr
 
