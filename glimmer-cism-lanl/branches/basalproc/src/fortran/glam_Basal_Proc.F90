@@ -179,7 +179,7 @@ contains
     normvar(2:ewn-1,2:nsn-1)=(stagvar(1:ewn-2,2:nsn-1)+stagvar(2:ewn-1,2:nsn-1)+ & 
     						stagvar(1:ewn-2,1:nsn-2)+stagvar(2:ewn-1,1:nsn-2)) / 4.0d0
 
-    !Apply zero-gradient to the velocity field on normal grid - using swapbnmelt
+    !Apply zero-gradient to field on normal grid - using swapbnmelt
     call swapbnmelt(0,size(normvar(1,:)),normvar(1,:),normvar(2,:),normvar(ewn,:),normvar(ewn-1,:))
     call swapbnmelt(0,size(normvar(:,1)),normvar(:,1),normvar(:,2),normvar(:,nsn),normvar(:,nsn-1))
 
@@ -220,8 +220,8 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
   real (kind = dp), dimension(:,:),intent(in) :: Ub   ! velocity m/yr
   real (kind = dp), dimension(:,:,:),intent(inout) :: u  !Excess pore pressure (Pa)
   real (kind = dp), dimension(:,:,:),intent(inout) :: etill !Till void ratio (ND)
- real (kind = dp), dimension(:,:),intent(out) :: minTauf   ! 
- real (kind = dp), dimension(:,:),intent(out) :: Hwater   ! 
+  real (kind = dp), dimension(:,:),intent(out) :: minTauf   ! 
+  real (kind = dp), dimension(:,:),intent(out) :: Hwater   ! 
 
   !Local variables
   real, parameter :: f=1e-3
@@ -262,7 +262,7 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
 
 !From there, new void ratio distribution
 !if vw > 0, then water flowing downward, and added to till layer (increases etill)
-  etill(:,:,1:tnodes-1)=etill(:,:,1:tnodes-1)+(vw*scyr)*dt/dy
+  etill(:,:,1:tnodes-1)=etill(:,:,1:tnodes-1)+(vw(:,:,1:tnodes-1)*scyr)*dt/dy(:,:,1:tnodes-1)
 
   where (etill.lt.0.15)
      etill=0.15

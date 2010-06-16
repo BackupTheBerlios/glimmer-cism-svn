@@ -178,16 +178,14 @@ dimensions:    time, tillnodes,y0, x0
 units:         Pa         
 long_name:     Till excess pore pressure 
 data:          data%basalproc%u
-load:		   1
-hot: 		   1
+load:		   1 		   
 
 [etill]
 dimensions:    time, tillnodes,y0, x0
 units:         ND         
 long_name:     Till void ratio 
 data:          data%basalproc%etill
-load:          1
-hot:		   1
+load:          1		   
 
 
 [ubas]

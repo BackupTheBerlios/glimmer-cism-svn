@@ -53,7 +53,10 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 %load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
 
 minTauf = Tillggl;
-ind = find( minTauf < 5e3 ); minTauf(ind) = 5e3;
+%ind = find( minTauf < 5e3 ); minTauf(ind) = 5e3;
+minTauf(7:15,1:end-8)=5e3;
+minTauf(1:6,end-8)=5e4;
+minTauf(16:end,end-8)=5e4;
 
 % minTauf = 10e3 * ones( size( minTauf ) );       % for debugging
 beta = 5e1*ones(size(minTauf));

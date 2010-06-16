@@ -386,6 +386,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
         tvel(:,1,1:nsn-1) = tvel(:,ewn-2,1:nsn-1)
     end if
 
+! !!*mb* COPIED FROM GLAM - USE FOR ICE STREAM EXP ONLY (PERIODIC FOR JUST THE SHELF PART)
+!	tvel(:,ewn-7:ewn-1,nsn-3) = tvel(:,ewn-7:ewn-1,4)
+!	tvel(:,ewn-7:ewn-1,3) = tvel(:,ewn-7:ewn-1,nsn-4)
+
+
 !    if( periodic_ns .eq. 1 )then
 !        tvel(:,1:ewn-1,nsn-2) = tvel(:,1:ewn-1,3)    ! if using rempping for dH/dt (domain def. is different) 
 !        tvel(:,1:ewn-1,2) = tvel(:,1:ewn-1,nsn-3)
@@ -443,6 +448,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
         uvel(:,ewn-1,1:nsn-1) = uvel(:,2,1:nsn-1)
         uvel(:,1,1:nsn-1) = uvel(:,ewn-2,1:nsn-1)
     end if
+
+!! *mb* COPIED FROM GLAM - USE FOR ICE STREAM EXP ONLY (PERIODIC FOR JUST THE SHELF PART)
+!	uvel(:,ewn-7:ewn-1,nsn-3) = uvel(:,ewn-7:ewn-1,4)
+!	uvel(:,ewn-7:ewn-1,3) = uvel(:,ewn-7:ewn-1,nsn-4)
+
 
 !    if( periodic_ns .eq. 1 )then
 !        uvel(:,1:ewn-1,nsn-2) = uvel(:,1:ewn-1,3)    ! if using rempping for dH/dt (domain def. is different) 
@@ -2806,6 +2816,7 @@ subroutine calcbetasquared (whichbabc,               &
   real (kind = dp), dimension(ewn) :: grounded
   real (kind = dp) :: alpha, dx, thck_gl, betalow, betahigh, roughness
   integer :: ew, ns
+!  real (kind = dp),dimension(ewn-1,nsn-1)::locvar
 
   select case(whichbabc)
 
@@ -2851,19 +2862,30 @@ subroutine calcbetasquared (whichbabc,               &
 
     case(4)     ! same as case(3) but taking yield stress from basal processes model
 
-!      print *, 'minTauf = '
-!      print *, minTauf*tau0_glam
-!      pause
+ !     print *, 'minTauf = '
+ !     print *, minTauf*tau0_glam
+ !     pause
     
+!    locvar=minTauf
+!    where (minTauf*tau0_glam.eq.5000.0) 
+!    		locvar=0.5/tau0_glam
+!    		end where	
+      
       ! for ice stream portion of domain, use the iteration to implement plastic till basal bc
-      betasquared(2:ewn-9,:) = (minTauf(2:ewn-9,:)*tau0_glam) / dsqrt( (thisvel(2:ewn-9,:)*vel0*scyr)**2 &
-                                + (othervel(2:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
+      betasquared(2:ewn-8,:) = (minTauf(2:ewn-8,:)*tau0_glam) / dsqrt( (thisvel(2:ewn-8,:)*vel0*scyr)**2 &
+                                + (othervel(2:ewn-8,:)*vel0*scyr)**2 + (smallnum)**2 )
     
+
       ! for ice plain portion of domain, use a standard betasquared basal bc
-      betasquared(ewn-8:ewn-1,:) = 10.0d0
+      betasquared(ewn-7:ewn-1,:) = 10.0d0
 
 !      betasquared = (minTauf*tau0_glam) / dsqrt( (thisvel*vel0*scyr)**2 &
 !                                + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+
+ !     print *, 'beta = '
+ !     print *, betasquared
+ !     pause
+
 
     case(5)     ! simple 2d ice shelf
 

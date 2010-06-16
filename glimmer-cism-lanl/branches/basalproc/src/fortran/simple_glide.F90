@@ -92,20 +92,20 @@ program simple_glide
   time = model%numerics%tstart
 
 !!COMMENT OUT NEXT 3 LINES
-  call simple_massbalance(climate,model,time)
-  call simple_surftemp(climate,model,time)
-  call spinup_lithot(model)
+!  call simple_massbalance(climate,model,time)
+!  call simple_surftemp(climate,model,time)
+!  call spinup_lithot(model)
 
   do while(time.le.model%numerics%tend)
      call glide_tstep_p1(model,time)
      call glide_tstep_p2(model)
-     !!COMMENT OUT NEXT LINE
-     call glide_tstep_p3(model)
+!!COMMENT OUT NEXT LINE
+!     call glide_tstep_p3(model)
      ! override masking stuff for now
      time = time + model%numerics%tinc
 !!COMMENT OUT NEXT 2 LINES
-     call simple_massbalance(climate,model,time)
-     call simple_surftemp(climate,model,time)     
+!     call simple_massbalance(climate,model,time)
+!     call simple_surftemp(climate,model,time)     
   end do
 
   ! finalise GLIDE

@@ -244,9 +244,9 @@ module remap_glamutils
 !    
 !    !Apply accumulation
 !    thck = thck + acab*dt
-    
-    !Remove thickness from previously masked out locations
-    thck = thck * wk%mask_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn)
+!    
+!    !Remove thickness from previously masked out locations
+!    thck = thck * wk%mask_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn)
     
     end subroutine horizontal_remap_out
 
