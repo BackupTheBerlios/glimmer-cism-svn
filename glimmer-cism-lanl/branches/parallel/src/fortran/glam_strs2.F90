@@ -240,8 +240,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   type(sparse_matrix_type) :: matrix
   real (kind = dp), dimension(:), allocatable :: answer, u_k_1, v_k_1, F_vec
   real (kind = dp) :: err, L2norm, L2square
-  integer :: iter
+  integer :: iter, pic
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
+  integer, save :: tstep    ! JFL to be removed
 
 #ifdef TRILINOS
 ! AGS: migrating the interface to accept partition info
@@ -333,18 +334,20 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics solver'
   print *, ' '
-  print *, 'iter #     uvel resid          vvel resid         target resid'
+  print *, 'iter #     uvel resid         vvel resid       target resid'
   print *, ' '
 
   ! ****************************************************************************************
   ! START of Picard iteration
   ! ****************************************************************************************
 
+  tstep = tstep + 1 ! JFL to be removed
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          u_k_1, v_k_1, uvel, vvel, g_flag) ! jfl_20100430
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
+  ! do pic =1, 80
   do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
@@ -645,6 +648,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp) :: crap
   integer :: tot_its, iter, maxiteGMRES, iout, icode
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
+  integer, save :: tstep ! JFL to be removed
 
 #ifdef TRILINOS
 ! AGS: migrating the interface to accept partition info
@@ -767,6 +771,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          u_k_1, v_k_1, uvel, vvel, g_flag) ! jfl_20100430
 
+  tstep = tstep + 1 ! JFL to be removed
+
   do k = 1, cmax
 
 !      print *, 'beginning of iteration ', k
@@ -871,7 +877,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       maxiteGMRES = 300
       
-      precond  = 3 ! 1: solver of Picard, 2: identity, 3: Jacobi
+      precond  = 2 ! 1: solver of Picard, 2: identity, 3: Jacobi ! JFL to be removed
 
       iout   = 0    ! set  higher than 0 to have res(ite)
 
