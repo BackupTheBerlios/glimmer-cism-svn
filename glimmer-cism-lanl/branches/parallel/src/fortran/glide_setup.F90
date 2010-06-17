@@ -416,6 +416,7 @@ contains
     call GetValue(section,'periodic_ew',model%options%periodic_ew)
     call GetValue(section,'periodic_ns',model%options%periodic_ns)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
+    call GetValue(section,'basal_proc',model%options%which_bmod)
   end subroutine handle_options
   
   !Higher order options

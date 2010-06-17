@@ -389,7 +389,6 @@ data:          data%geomderv%dthckdtm
 factor:        scale2d_f1
 coordinates:   lon lat
 
-
 [uvel]
 dimensions:    time, level, y0, x0
 units:         meter/year
@@ -412,7 +411,7 @@ units:         meter/year
 long_name:     ice velocity in x direction according to higher order model
 data:          data%velocity_hom%uvel(up,:,:)
 factor:        scale3d_f1
-standard_name: land_ice__x_velocity
+standard_name: land_ice_x_velocity
 load:          1
 hot:	       1
 

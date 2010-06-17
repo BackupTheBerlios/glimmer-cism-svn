@@ -163,6 +163,11 @@ module glide_types
   integer, parameter :: HO_SOURCE_EXPLICIT = 1
   integer, parameter :: HO_SOURCE_DISABLED = 2
 
+  !*mb* added option to use the basal proc. model
+  integer, parameter :: BAS_PROC_DISABLED = 0
+  integer, parameter :: BAS_PROC_FULLCALC = 1
+  integer, parameter :: BAS_PROC_FASTCALC = 2
+
   type glide_options
 
     !*FD Holds user options controlling the methods used in the ice-model

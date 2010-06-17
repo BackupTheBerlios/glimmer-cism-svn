@@ -83,12 +83,6 @@ contains
         !probably
         integer, dimension(model%general%ewn-1, model%general%nsn-1)  :: geom_mask_stag
         real(dp), dimension(model%general%ewn-1, model%general%nsn-1) :: latbc_norms_stag
-        real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
-        ! *sfp** specify subroutine arguments here that are not already in the 
-        ! model derived type. These are just dummy values for now
-        ! to get things compiling ... 
-
-        minTauf = 0.0d0
 
         tstep = tstep + 1 ! JFL to be removed
         solver = 1 ! input by user, 1: Picard, 2: JFNK
@@ -199,11 +193,11 @@ contains
                                         model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
                                         model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
-                                        minTauf, geom_mask_stag,                                    &
+                                        model%basalproc%minTauf, geom_mask_stag,                    &
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &
-                                        model%options%which_ho_sparse,                               &
+                                        model%options%which_ho_sparse,                              &
                                         model%options%periodic_ew,                                  &
                                         model%options%periodic_ns,                                  &
                                         model%velocity_hom%beta,                                    & 
@@ -224,7 +218,7 @@ contains
                                         model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
                                         model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
-                                        minTauf, geom_mask_stag,                                    &
+                                        model%basalproc%minTauf, geom_mask_stag,                                    &
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &

@@ -262,7 +262,7 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
 
 !From there, new void ratio distribution
 !if vw > 0, then water flowing downward, and added to till layer (increases etill)
-  etill(:,:,1:tnodes-1)=etill(:,:,1:tnodes-1)+(vw*scyr)*dt/dy
+  etill(:,:,1:tnodes-1)=etill(:,:,1:tnodes-1)+(vw(:,:,1:tnodes-1)*scyr)*dt/dy(:,:,1:tnodes-1)
 
   where (etill.lt.0.15)
      etill=0.15
