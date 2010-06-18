@@ -139,22 +139,22 @@ contains
            do ew = 2, size(backstress,1)-1
                 if(.not. backstressmap(ew,ns)) then
                    !should be > -1.0 if using log10
-                   if (tempanmly > -1.0) then
+                   if (tempanmly > 0.0) then
                       backstress(ew,ns) = stressout
                    else
-                      backstress(ew,ns) = stressout + (1-stressout)*log10(-tempanmly)
+                      !backstress(ew,ns) = stressout + (1-stressout)*log10(-tempanmly)
                       !( 1-exp(tempanmly))
-                      !backstress(ew,ns) = sigmabout + (1-sigmabout)*abs(tempanmly/9.2)
+                      backstress(ew,ns) = stressout + (1-stressout)*abs(tempanmly/9.2)
                       ! backstress(ew,ns) =sigmabout + (1-sigmabout)*atan(-tempanmly)/(pi/2)
                      
                    end if
                 else
                    !should be > -1.0 if using log10
-                   if (tempanmly > -1.0) then
+                   if (tempanmly > 0.0) then
                       backstress(ew,ns) = stressin
                    else
-                     !backstress(ew,ns) = sigmabin + (1-sigmabin)*abs(tempanmly/9.2)
-                      backstress(ew,ns) =stressin + (1-stressin)*log10(-tempanmly)
+                     backstress(ew,ns) = stressin + (1-stressin)*abs(tempanmly/9.2)
+                      !backstress(ew,ns) =stressin + (1-stressin)*log10(-tempanmly)
 
                      
                      !backstress(ew,ns) =sigmabin + (1-sigmabin)*atan(-tempanmly)/(pi/2)
@@ -226,19 +226,38 @@ contains
         ablation_field=thck
         thck = 0.0d0
        end where
+    
+    !Huybrechts grounding line scheme for Greenland initialization
+    case(7)
+       if(eus > -80.0) then
+       where(relx <= 2.0*eus)
       
+          ablation_field=thck
+          thck = 0.0d0
+       end where
+       elseif(eus <= -80.0) then
+       where ( relx <= (2.0*eus - 0.25*(eus + 80.0)**2.0))
+          ablation_field = thck
+          thck = 0.0d0
+       end where
+       end if
+
+
     end select
   end subroutine glide_marinlim
 
   !simple subroutine to calculate the flux at the grounding line
-  subroutine calc_gline_flux(thk, surfvel, mask, gline_flux)
+  subroutine calc_gline_flux(stagthk, surfvel, mask, gline_flux, ubas, vbas, &
+  dew)
     use glide_mask
     implicit none
     integer, dimension(:,:),pointer       :: mask    !*FD grid type mask
-    real(dp),dimension(:,:),intent(in) :: thk    !*FD Ice thickness (scaled)
+    real(dp),dimension(:,:),intent(in) :: stagthk    !*FD Ice thickness (scaled)
     real(dp),dimension(:,:,:), intent(in) :: surfvel !*FD Surface velocity
-    real(sp),dimension(:,:), intent(out) :: gline_flux !*FD Grounding Line flux
-   
+    real(dp),dimension(:,:), intent(inout) :: gline_flux !*FD Grounding Line flux
+    real(dp),dimension(:,:), intent(in) :: ubas !*FD basal velocity in u-dir
+    real(dp),dimension(:,:), intent(in) :: vbas !*FD basal velocity in v-dir
+    real(dp),intent(in)                 :: dew !*FD gridspacing  
     integer :: ewn, nsn
 
     !TODO: get the grounding line flux on the velo grid - right now it seems
@@ -246,9 +265,11 @@ contains
     ewn = size(gline_flux, 1)
     nsn = size(gline_flux, 2)
 
-    gline_flux = 0.0
-    where (GLIDE_IS_GROUNDING_LINE(mask(1:ewn-1, 1:nsn-1)))
-        gline_flux(1:ewn-1, 1:nsn-1) = thk(1:ewn-1, 1:nsn-1) * surfvel(1,:,:)
+    
+       
+    where (GLIDE_IS_GROUNDING_LINE(mask))
+         gline_flux = stagthk * ((4.0/5.0)* surfvel(1,:,:) + &
+         (ubas**2.0 + vbas**2.0)**(1.0/2.0))  * dew  
     end where
   end subroutine calc_gline_flux
 

@@ -186,6 +186,33 @@ contains
     
   end subroutine get_area_vol
 
+  subroutine calc_iareaf_iareag(dew, dns, iarea, mask, iareaf, iareag)
+
+    implicit none
+    real(dp), intent(in) :: dew, dns
+    real(dp), intent(in) :: iarea
+    real(dp), intent(out) :: iareaf, iareag
+    integer, dimension(:,:), intent(in) :: mask
+    integer :: i,j
+
+    iareaf = 0.0
+    iareag = 0.0
+
+    do i = 1, size(mask,1)
+        do j = 2, size(mask,2)
+            if (GLIDE_IS_FLOAT(mask(i,j))) then
+            iareaf = iareaf + 1
+            else if(GLIDE_IS_GROUND_OR_GNDLINE(mask(i,j))) then
+            iareag = iareag + 1
+            end if
+        end do
+    end do
+
+    iareaf = iareaf  * dew * dns
+    iareag = iareag  * dew * dns
+
+  end subroutine calc_iareaf_iareag
+
     subroutine glide_marine_margin_normal(thck, mask, marine_bc_normal)
         use glimmer_physcon, only:pi
         implicit none

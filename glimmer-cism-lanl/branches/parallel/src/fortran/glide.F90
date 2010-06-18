@@ -112,7 +112,6 @@ contains
     use glide_thck
     use glide_temp
     use glimmer_log
-    use glide_mask
     use glimmer_scales
     use glide_mask
     use isostasy
@@ -254,6 +253,10 @@ contains
     call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
+
+    call calc_iareaf_iareag(model%numerics%dew,model%numerics%dns, &
+                            model%geometry%iarea, model%geometry%thkmask, &
+                            model%geometry%iareaf, model%geometry%iareag)
 
     !calculate the normal at the marine margin
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
@@ -454,6 +457,10 @@ contains
     !calculate the normal at the marine margin
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
 
+    !calculate the grounding line flux after the mask is correct
+    call calc_gline_flux(model%geomderv%stagthck,model%velocity%surfvel, &
+    model%geometry%thkmask,model%ground%gline_flux, model%velocity%ubas, &
+    model%velocity%vbas, model%numerics%dew)
 
    ! ------------------------------------------------------------------------ 
     ! Remove ice which is either floating, or is present below prescribed
@@ -487,9 +494,11 @@ contains
     call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
-    !calculate the grounding line flux after the mask is correct
-    call calc_gline_flux(model%geometry%thck,model%velocity%surfvel, &
-    model%geometry%thkmask,model%ground%gline_flux)
+
+    call calc_iareaf_iareag(model%numerics%dew,model%numerics%dns, &
+                            model%geometry%iarea, model%geometry%thkmask, &
+                            model%geometry%iareaf, model%geometry%iareag)
+
     ! ------------------------------------------------------------------------
     ! update ice/water load if necessary
     ! ------------------------------------------------------------------------

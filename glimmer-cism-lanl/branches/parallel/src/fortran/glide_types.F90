@@ -464,7 +464,7 @@ module glide_types
     logical               :: empty = .true.
     !*FD True if there is no ice anywhere in the domain, false otherwise.
 
-    real(dp) :: ivol, iarea !*FD ice volume and ice area
+    real(dp) :: ivol, iarea,iareag, iareaf !*FD ice volume and ice area
 
   end type glide_geometry
 
