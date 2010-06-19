@@ -114,7 +114,6 @@ contains
     use glimmer_log
     use glide_mask
     use glimmer_scales
-    use glide_mask
     use isostasy
     use glimmer_map_init
     use glide_ground
@@ -460,11 +459,11 @@ contains
     !calculate the normal at the marine margin
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
 
-
     !calculate the grounding line flux after the mask is correct
     call calc_gline_flux(model%geomderv%stagthck,model%velocity%surfvel, &
     model%geometry%thkmask,model%ground%gline_flux, model%velocity%ubas, &
     model%velocity%vbas, model%numerics%dew)
+
    ! ------------------------------------------------------------------------ 
     ! Remove ice which is either floating, or is present below prescribed
     ! depth, depending on value of whichmarn

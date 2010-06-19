@@ -187,7 +187,6 @@ long_name:     Till void ratio
 data:          data%basalproc%etill
 load:          1		   
 
-
 [ubas]
 dimensions:    time, y0, x0
 units:         meter/year
@@ -423,7 +422,7 @@ units:         meter/year
 long_name:     ice velocity in x direction according to higher order model
 data:          data%velocity_hom%uvel(up,:,:)
 factor:        scale3d_f1
-standard_name: land_ice__x_velocity
+standard_name: land_ice_x_velocity
 load:          1
 hot: 		   1
 
@@ -444,6 +443,15 @@ long_name:    Mask of locations where uvelhom, vvelhom value should be held
 data:         data%velocity_hom%kinbcmask(:,:)
 type:         int
 load:         1
+
+[dynbcmask]
+dimensions:   time, y0, x0
+units:        1
+long_name:    2d array of higher-order model boundary condition mask values
+data:         data%velocity_hom%dynbcmask
+type:         int
+load:         0
+hot:          0
 
 [velnormhom]
 dimensions:    time, level, y1, x1
