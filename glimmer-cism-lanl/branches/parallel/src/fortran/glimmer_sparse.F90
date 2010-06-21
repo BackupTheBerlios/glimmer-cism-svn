@@ -44,7 +44,7 @@ contains
         type(sparse_solver_options) :: opt
 
         opt%base%method = method
-        opt%base%tolerance  = 5e-5
+        opt%base%tolerance  = 1e-12
         opt%base%maxiters = 2000
 
         !Solver specific options

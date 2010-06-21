@@ -360,7 +360,8 @@ contains
     if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
         model%options%which_bmod == BAS_PROC_FASTCALC) then
         call Basal_Proc_driver (model%general%ewn,model%general%nsn,model%general%upn,       &
-                                model%numerics%ntem,model%velocity%ubas,model%velocity%vbas, &
+                                model%numerics%ntem,model%velocity_hom%uvel(model%general%upn,:,:), &
+                                model%velocity_hom%vvel(model%general%upn,:,:), &
                                 model%options%which_bmod,model%temper%bmlt,model%basalproc)
     end if
 
