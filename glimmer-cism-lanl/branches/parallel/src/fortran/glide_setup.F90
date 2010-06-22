@@ -511,13 +511,15 @@ contains
     character(len=*), dimension(0:1), parameter :: ho_bstress = (/ &
          'Linear bed (betasquared)', &
          'Plastic bed (tau0)      ' /)
-    character(len=*), dimension(0:5), parameter :: ho_whichbabc = (/ &
-         'constant betasquared    ', &
-         'simple pattern          ', &
-         'till yield stress       ', &
-         'circular ice shelf      ', &
-         'frozen bed              ', &
-         'B^2 passed from CISM    ' /)
+    character(len=*), dimension(0:7), parameter :: ho_whichbabc = (/ &
+         'constant B^2                           ', &
+         'simple pattern of B^2                  ', &
+         'till yield stress (Picard)             ', &
+         'circular ice shelf                     ', &
+         'no slip (using large B^2)              ', &
+         'B^2 passed from CISM                   ', &
+         'no slip (Dirichlet implementation)     ', &
+         'till yield stress (Newton) ' /)
     character(len=*), dimension(0:1), parameter :: ho_whichefvs = (/ &
          'from eff strain rate    ', &
          'constant value          ' /)

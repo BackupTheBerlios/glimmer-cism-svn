@@ -302,14 +302,16 @@ module glide_types
 
     ! options for using the Payne/Price higher-order dynamical core
     integer :: which_ho_babc = 0
-    !*FD Flag that describes basal boundary condition (betasquared) for PP dyn core: 
+    !*FD Flag that describes basal boundary condition for PP dyn core: 
     !*FD \begin{description}
     !*FD \item[0] constant value (hardcoded in, useful for debugging)
-    !*FD \item[1] simple pattern ("     ")
-    !*FD \item[2] use till yield stress from basal proc model
+    !*FD \item[1] simple pattern (hardcoded in, .... )
+    !*FD \item[2] use till yield stress from basal proc model (Picard-type iteration)
     !*FD \item[3] circular ice shelf
-    !*FD \item[4] no slip everywhere
+    !*FD \item[4] no slip everywhere (using stress basal bc and large value for B^2)
     !*FD \item[5] beta^2 field passed in from CISM
+    !*FD \item[6] no slip everywhere (using Dirichlet, no slip basal bc)
+    !*FD \item[7] use till yield stress from basal proc model (Picard-type iteration)
     !*FD \end{description}
 
     integer :: which_ho_efvs = 0

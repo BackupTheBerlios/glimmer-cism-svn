@@ -79,6 +79,13 @@ implicit none
   real (kind = dp), dimension(:,:), allocatable :: &
               d2thckdew2, d2usrfdew2, d2thckdns2, d2usrfdns2, d2thckdewdns, d2usrfdewdns
 
+  ! variables for plastic-till basal BC iteration using Newton method
+  real (kind = dp), dimension(:,:,:), allocatable :: velbcvect, plastic_coeff_lhs, plastic_coeff_rhs, &
+                                                     plastic_rhs, efvs_old, plastic_resid, uvel0, vvel0
+  real (kind = dp), dimension(:,:,:,:), allocatable :: ghostbvel
+  real (kind = dp), dimension(:,:,:), allocatable :: btraction  ! for now, treat as local (eventually will
+                                                                ! be passed out to stress tensor calc)
+
   ! variables for use in sparse matrix calculation
   real (kind = dp), dimension(:), allocatable :: pcgval, rhsd
   integer, dimension(:), allocatable :: pcgcol, pcgrow
@@ -154,6 +161,14 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     allocate(flwafact(1:upn-1,ewn,nsn))  ! NOTE: the vert dim here must agree w/ that of 'efvs'
 
     allocate(dups(upn))
+
+  ! allocate/initialize variables for plastic-till basal BC iteration using Newton method
+    allocate(velbcvect(2,ewn-1,nsn-1),plastic_coeff_rhs(2,ewn-1,nsn-1),plastic_coeff_lhs(2,ewn-1,nsn-1), &
+            plastic_rhs(2,ewn-1,nsn-1), plastic_resid(1,ewn-1,nsn-1), efvs_old(upn-1,ewn,nsn), &
+            uvel0(upn,ewn-1,nsn-1), vvel0(upn,ewn-1,nsn-1) )
+    allocate(ghostbvel(2,3,ewn-1,nsn-1))        !! for saving the fictious basal vels at the bed !!
+    allocate(btraction(2,ewn-1,nsn-1))
+    ghostbvel(:,:,:,:) = 0.0d0
 
     flwafact = 0.0_dp
 
@@ -231,8 +246,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
+  real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 50                 ! max no. of iterations
+  integer, parameter :: cmax = 50                   ! max no. of iterations
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -380,7 +396,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
-                     beta, counter )
+                     beta, btraction,             &
+                     counter, 0 )
 
     ! put vels and coeffs from 3d arrays into sparse vector format
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
@@ -461,7 +478,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
-                     beta, counter )
+                     beta, btraction,             &
+                     counter, 0 )
 
 
     ! put vels and coeffs from 3d arrays into sparse vector format
@@ -810,7 +828,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
-                     beta, counter )
+                     beta, btraction,             &
+                     counter, 0 )
 
     call solver_preprocess( ewn, nsn, upn, uindx, matrixA, answer, vvel )
 ! could be modified above as we only need the matrix to be formed...not answer
@@ -839,7 +858,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
-                     beta, counter )
+                     beta, btraction,             &
+                     counter, 0 )
 
 
     call solver_preprocess( ewn, nsn, upn, uindx, matrixC, answer, uvel )
@@ -993,7 +1013,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
-                     beta, counter )
+                     beta, btraction,             &
+                     counter, 0 )
 
     call solver_preprocess( ewn, nsn, upn, uindx, matrixtp, answer, vvel )
 ! could be modified above as we only need the matrix to be formed...not answer
@@ -1022,7 +1043,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
-                     beta, counter )
+                     beta, btraction,             &
+                     counter, 0 )
 
     call solver_preprocess( ewn, nsn, upn, uindx, matrixtp, answer, uvel )
 ! could be modified above as we only need the matrix to be formed...not answer
@@ -1659,7 +1681,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                        uindx,       mask,           &
                        lsrf,        topg,           &
                        minTauf,     flwa,           &
-                       beta, count )
+                       beta, btraction,             &
+                       count, assembly )
 
   ! Main subroutine for determining coefficients that go into the LHS matrix A 
   ! in the expression Au = b. Calls numerous other subroutines, including boundary
@@ -1667,7 +1690,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn, count
+  integer, intent(in) :: ewn, nsn, upn, count, assembly
   real (kind = dp), intent(in) :: dew, dns
   real (kind = dp), dimension(:), intent(in) :: sigma
 
@@ -1683,10 +1706,9 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                                                   thck, lsrf, topg
 
   real (kind = dp), dimension(:,:), intent(in) :: minTauf
-
   real (kind = dp), dimension(:,:), intent(in) :: beta
-
   real (kind = dp), dimension(:,:,:), intent(in) :: flwa
+  real (kind = dp), dimension(:,:,:), intent(inout) :: btraction
 
   integer, dimension(:,:), intent(in) :: mask, uindx
   integer, intent(in) :: pt, whichbabc
@@ -1700,9 +1722,15 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer, dimension(ewn-1,nsn-1) :: loc_array
   integer, dimension(6) :: loc
   integer, dimension(3) :: shift
-  integer :: ew, ns, up
+  integer :: ew, ns, up, up_start
 
   ct = 1        ! index to count the number of non-zero entries in the sparse matrix
+
+  if( assembly == 1 )then   ! for normal assembly (assembly=0), start vert index at sfc and go to bed
+      up_start = upn        ! for boundary traction calc (assembly=1), do matrix assembly on for equations at bed
+  else
+      up_start = 1
+  end if
 
   ! calculate/specify the map of 'betasquared', for use in the basal boundary condition. 
   ! Input to the subroutine 'bodyset' (below) ... 
@@ -1768,7 +1796,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         loc(5) = loc_array(ew,ns-1)
 
         ! this loop fills coeff. for all vertical layers at index ew,ns (including sfc. and bed bcs)
-        do up = 1,upn
+        do up = up_start, upn
 
             ! Function to adjust indices at sfc and bed so that most correct values of 'efvs' and 'othervel'
             ! are passed to function. Because of the fact that efvs goes from 1:upn-1 rather than 1:upn
@@ -1789,7 +1817,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          othervel(up-1+shift(1):up+1+shift(1),  &
                          ew-1+shift(2):ew+1+shift(2),  &
                          ns-1+shift(3):ns+1+shift(3)), &
-                         betasquared(ew,ns) )
+                         betasquared(ew,ns),           &
+                         whichbabc, assembly )
 
         end do  ! upn
 
@@ -1810,7 +1839,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          d2thckdew2(ew,ns), d2thckdns2(ew,ns),  &
                          d2thckdewdns(ew,ns))
 
-        do up = 1, upn
+        do up = up_start, upn
            lateralboundry = .true.
            shift = indshift(  1, ew, ns, up,                   &
                                ewn, nsn, upn,                  &
@@ -1829,7 +1858,9 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          othervel(up-1+shift(1):up+1+shift(1),  &
                          ew-1+shift(2):ew+1+shift(2),  &
                          ns-1+shift(3):ns+1+shift(3)), &
-                         betasquared(ew,ns), abar=flwabar, cc=count )
+                         betasquared(ew,ns),           &
+                         whichbabc, assembly,          &              
+                         abar=flwabar, cc=count )
         end do
         lateralboundry = .false.
 
@@ -1847,7 +1878,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         call valueset(0.0_dp)
         locplusup = loc(1) + upn + 1
         call valueset(0.0_dp)
-        do up = 1,upn
+        do up = up_start, upn
            locplusup = loc(1) + up
            call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
 !           call valueset( 0.0_dp )                ! vel at margin set to 0 
@@ -1875,6 +1906,7 @@ subroutine bodyset(ew,  ns,  up,           &
                    local_efvs,             &
                    local_othervel,         &
                    betasquared,            &
+                   whichbabc, assembly,    &
                    local_thisvel,          &
                    abar, cc)
 
@@ -1887,7 +1919,7 @@ subroutine bodyset(ew,  ns,  up,           &
   integer, intent(in) :: ewn, nsn, upn
   integer, intent(in) :: ew, ns, up
   real (kind = dp), intent(in) :: dew, dns
-  integer, intent(in) :: pt
+  integer, intent(in) :: pt, whichbabc, assembly
   integer, dimension(ewn-1,nsn-1), intent(in) :: loc_array
   integer, dimension(6), intent(in) :: loc
 
@@ -1895,20 +1927,19 @@ subroutine bodyset(ew,  ns,  up,           &
   real (kind = dp), dimension(:,:), intent(in) :: dusrfdew, dusrfdns
   real (kind = dp), dimension(:,:), intent(in) :: dlsrfdew, dlsrfdns
   real (kind = dp), dimension(:,:), intent(in) :: thisdusrfdx
-
   real (kind = dp), dimension(2,2,2), intent(in) :: local_efvs
-
   ! "local_othervel" is the other vel component (i.e. u when v is being calc and vice versa),
   ! which is taken as a known value (terms involving it are moved to the RHS and treated as sources)
   real (kind = dp), dimension(3,3,3), intent(in) :: local_othervel
-
   real (kind = dp), intent(in) :: betasquared
   real (kind = dp), intent(in), optional :: local_thisvel
   real (kind = dp), intent(in), optional :: abar
   integer, intent(in), optional :: cc
 
-  ! storage space for coefficients that go w/ the discretization at the local point up, ew, ns
-  real (kind = dp), dimension(3,3,3) :: g
+  ! storage space for coefficients that go w/ the discretization at the local point up, ew, ns.
+  ! Note that terms other than 'g' are used for storing particular parts needed for calculation
+  ! of the basal traction vector.
+  real (kind = dp), dimension(3,3,3) :: g, g_cros, g_vert, g_norm, g_vel_lhs, g_vel_rhs
 
   ! source term for the rhs when using ice shelf lateral boundary condition,
   ! e.g. source = rho*g*H/(2*Neff) * ( 1 - rho_i / rho_w ) for ice shelf
@@ -1946,12 +1977,25 @@ subroutine bodyset(ew,  ns,  up,           &
 
      if( up == 1 .or. up == upn )then
 
-        if( up == 1 )then
-           locplusup = loc(1) + up - 1  ! reverse the sparse matrix / rhs vector row index by 1 ...
+        if( up == 1 )then                ! specify necessary variables and flags for free sfc
+           bcflag = (/1,0/)
+           locplusup = loc(1) + up - 1   ! reverse the sparse matrix / rhs vector row index by 1 ...
            slopex = -dusrfdew(ew,ns); slopey = -dusrfdns(ew,ns); nz = 1.0_dp
-        else
-           locplusup = loc(1) + up + 1  ! advance the sparse matrix / rhs row vector index by 1 ...
+        else                             ! specify necessary variables and flags for basal bc
+   
+           if( whichbabc == 6 )then
+                bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well so commented out here...
+                                             ! better to specify very large value for betasquared below
+           elseif( whichbabc >=0 .and. whichbabc <= 5 )then
+                bcflag = (/1,1/)              ! flag for specififed stress at bed: Tau_zx = betasquared * u_bed,
+                                              ! where betasquared is MacAyeal-type traction parameter
+           elseif( whichbabc == 7 )then
+                bcflag = (/1,2/)              ! plastic bed iteration using Newton implementation
+           end if   
+
+           locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
            slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns); nz = -1.0_dp
+
         end if
 
         g = normhorizmainbc_lat(dew,           dns,             &
@@ -1963,9 +2007,11 @@ subroutine bodyset(ew,  ns,  up,           &
                                 onesideddiff,                   &
                                 normal,        fwdorbwd)
 
+        g_norm = g              ! save for basal traction calculation
+
         ! add on coeff. associated w/ du/digma  
         g(:,3,3) = g(:,3,3) &
-                 + vertimainbc( stagthck(ew,ns), bcflag,dup(up),     &
+                 + vertimainbc( stagthck(ew,ns), bcflag, dup(up),     &
                                 local_efvs,      betasquared,    nz )
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
@@ -2099,22 +2145,42 @@ subroutine bodyset(ew,  ns,  up,           &
 
   if(  ( up == upn  .or. up == 1 ) .and. .not. lateralboundry) then
 
+        if( up == 1 )then                ! specify necessary variables and flags for free sfc
+           bcflag = (/1,0/)
+           locplusup = loc(1) + up - 1   ! reverse the sparse matrix / rhs vector row index by 1 ...
+           slopex = -dusrfdew(ew,ns); slopey = -dusrfdns(ew,ns); nz = 1.0_dp
+        else                             ! specify necessary variables and flags for basal bc
 
-     if( up == 1 )then                ! specify necessary variables and flags for free sfc
-        bcflag = (/1,0/)
-        locplusup = loc(1) + up - 1   ! reverse the sparse matrix / rhs vector row index by 1 ...
-        slopex = -dusrfdew(ew,ns); slopey = -dusrfdns(ew,ns); nz = 1.0_dp
-     else                             ! specify necessary variables and flags for basal bc
+           if( whichbabc == 6 )then
+                bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well so commented out here...
+                                             ! better to specify very large value for betasquared below
+           elseif( whichbabc >=0 .and. whichbabc <= 5 )then
+                bcflag = (/1,1/)              ! flag for specififed stress at bed: Tau_zx = betasquared * u_bed,
+                                              ! where betasquared is MacAyeal-type traction parameter
+           elseif( whichbabc == 7 )then
 
-        !bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well so commented out here...
+           end if
+           
+           locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
+           slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns); nz = -1.0_dp
+        
+        end if
 
-                                      ! better to specify very large value for betasquared below
-        bcflag = (/1,1/)              ! flag for specififed stress at bed: Tau_zx = betasquared * u_bed,
-                                      ! where betasquared is MacAyeal-type traction parameter
-
-        locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
-        slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns); nz = -1.0_dp
-     end if
+!     if( up == 1 )then                ! specify necessary variables and flags for free sfc
+!        bcflag = (/1,0/)
+!        locplusup = loc(1) + up - 1   ! reverse the sparse matrix / rhs vector row index by 1 ...
+!        slopex = -dusrfdew(ew,ns); slopey = -dusrfdns(ew,ns); nz = 1.0_dp
+!     else                             ! specify necessary variables and flags for basal bc
+!
+!        !bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well so commented out here...
+!
+!                                      ! better to specify very large value for betasquared below
+!        bcflag = (/1,1/)              ! flag for specififed stress at bed: Tau_zx = betasquared * u_bed,
+!                                      ! where betasquared is MacAyeal-type traction parameter
+!
+!        locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
+!        slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns); nz = -1.0_dp
+!     end if
 
      g = normhorizmainbc(dew,           dns,     &
                          slopex,        slopey,  &
