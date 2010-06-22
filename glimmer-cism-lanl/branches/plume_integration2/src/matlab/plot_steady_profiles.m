@@ -1,8 +1,12 @@
 %% Plot steady profiles
 
-f1 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_0bmlt/1d_isoT_fixedA.out.3.nc';
-f2 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_10bmlt/1d_isoT_fixedA.out.5.nc';
-f4 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_25bmlt/1d_isoT_fixedA.out.5.nc';
+%f1 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_0bmlt/1d_isoT_fixedA.out.3.nc';
+%f2 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_10bmlt/1d_isoT_fixedA.out.5.nc';
+%f4 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_25bmlt/1d_isoT_fixedA.out.5.nc';
+
+f1 = '0bmlt.nc';
+f2 = '10bmlt.nc';
+f4 = '25bmlt.nc';
 
 hx = 1000;
 hy = 1000;
@@ -43,7 +47,7 @@ xlabel('km','FontSize',fs);
 [~,y0,~,y1,thck,~,vvel] = nc_read(f2, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 bmelt = -10.0;
-[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n, u0, h0, bmelt);
+[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n, u0, h0, bmelt);
 subplot(2,1,1);
 plot(ycvel/1000, vvelc, 'r*');
 plot(y/1000, v, 'r');
@@ -54,7 +58,7 @@ plot(y/1000, h, 'r');
 [~,y0,~,y1,thck,~,vvel] = nc_read(f4, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 bmelt = -25.0;
-[y,v,h,w] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n, u0, h0, bmelt);
+[y,v,h,w] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n, u0, h0, bmelt);
 subplot(2,1,1);
 plot(ycvel/1000, vvelc, 'g*');
 plot(y/1000, v, 'g');
