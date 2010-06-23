@@ -81,7 +81,7 @@ implicit none
 
   ! variables for plastic-till basal BC iteration using Newton method
   real (kind = dp), dimension(:,:,:), allocatable :: velbcvect, plastic_coeff_lhs, plastic_coeff_rhs, &
-                                                     plastic_rhs, efvs_old, plastic_resid, uvel0, vvel0
+                                                     plastic_rhs, plastic_resid
   real (kind = dp), dimension(:,:,:,:), allocatable :: ghostbvel
 
   ! variables for use in sparse matrix calculation
@@ -162,10 +162,15 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
 
   ! allocate/initialize variables for plastic-till basal BC iteration using Newton method
     allocate(velbcvect(2,ewn-1,nsn-1),plastic_coeff_rhs(2,ewn-1,nsn-1),plastic_coeff_lhs(2,ewn-1,nsn-1), &
-            plastic_rhs(2,ewn-1,nsn-1), plastic_resid(1,ewn-1,nsn-1), efvs_old(upn-1,ewn,nsn), &
-            uvel0(upn,ewn-1,nsn-1), vvel0(upn,ewn-1,nsn-1) )
+            plastic_rhs(2,ewn-1,nsn-1), plastic_resid(1,ewn-1,nsn-1)
     allocate(ghostbvel(2,3,ewn-1,nsn-1))        !! for saving the fictious basal vels at the bed !!
+
     ghostbvel(:,:,:,:) = 0.0d0
+    plastic_coeff_lhs(:,:,:) = 0.0d0
+    plastic_coeff_rhs(:,:,:) = 0.0d0
+    plastic_rhs(:,:,:) = 0.0d0
+    plastic_resid(:,:,:) = 0.0d0
+    velbcvect(:,:,:) = 0.0d0
 
     flwafact = 0.0_dp
 
@@ -532,13 +537,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, 1, uindx, answer, uvel, ghostbvel )
 
-    ! store current, non-manifold corrected vels and pass them into limited version
-    ! of assembly routines to calculate consistent basal tractions
-    uvel0 = uvel; vvel0 = tvel;
+    ! call fraction of assembly routines, passing current vel estimates (w/o manifold
+    ! correction!) to calculate consistent basal tractions
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &
                      2,           efvs,           &
-                     vvel,        uvel,           &
+                     tvel,        uvel,           &
                      thck,        dusrfdns,       &
                      dusrfdew,    dthckdew,       &
                      d2usrfdew2,  d2thckdew2,     &
@@ -555,7 +559,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
    call findcoefstr(ewn,  nsn,   upn,             &
                      dew,  dns,   sigma,          &
                      1,           efvs,           &
-                     uvel,        vvel,           &
+                     uvel,        tvel,           &
                      thck,        dusrfdew,       &
                      dusrfdew,    dthckdew,       &
                      d2usrfdew2,  d2thckdew2,     &
@@ -570,7 +574,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 1 )
 
-    call plasticbediteration( ewn, nsn, uvel(upn,:,:), vvel(upn,:,:), btraction, velbcvect, &
+    call plasticbediteration( ewn, nsn, uvel(upn,:,:), tvel(upn,:,:), btraction, velbcvect, &
                    minTauf, plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
 
     ! apply unstable manifold correction to converged velocities
@@ -2205,7 +2209,7 @@ subroutine bodyset(ew,  ns,  up,           &
                 bcflag = (/1,1/)              ! flag for specififed stress at bed: Tau_zx = betasquared * u_bed,
                                               ! where betasquared is MacAyeal-type traction parameter
            elseif( whichbabc == 7 )then
-
+                bcflag = (/1,2/)              ! plastic bed iteration (new)
            end if
            
            locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
@@ -2615,12 +2619,12 @@ function vertimainbc(thck, bcflag, dup, efvs, betasquared, g_vert, nz, plastic_c
     end if
 
     ! for higher-order BASAL B.C. w/ plastic yield stress iteration ...
-    if( bcflag(2) == 2 )then
-
-             ! last set of terms is mean visc. of ice nearest to the bed
-            vertimainbc(2) = vertimainbc(2)   &
-                           + ( plastic_coeff / ( sum( efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
-    end if
+!    if( bcflag(2) == 2 )then
+!
+!             ! last set of terms is mean visc. of ice nearest to the bed
+!            vertimainbc(2) = vertimainbc(2)   &
+!                           + ( plastic_coeff / ( sum( efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
+!    end if
 
     ! for higher-order BASAL B.C. U=V=0, in x ('which'=1) or y ('which'=2) direction ...
     ! NOTE that this is not often implemented, as it is generally sufficient to implement 
@@ -3614,6 +3618,8 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
 
     countstuck = 0; countslip = 0; sigma_x0 = 0; sigma_y0 = 0
 
+!    print *, 'inside plastic bed iteration subroutine (near top)'
+
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! initialize some values
 
@@ -3679,6 +3685,7 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
             ! if at or below yield stress, set boundary vels to 0 
             if( beta(ew,ns) <= ( tau(ew,ns)*(1.0d0 + c*gamma(ew,ns)) ) )then
 
+!                print *, 'inside of plastic bed iteration loop (stuck nodes)'
                 countstuck = countstuck + 1
 
                 plastic_coeff_lhs(1,ew,ns) = big_C
@@ -3691,6 +3698,7 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
             ! if above yield stress, solve for boundary vels
             elseif( beta(ew,ns) > ( tau(ew,ns)*(1.0d0 + c*gamma(ew,ns)) ) )then
 
+!                print *, 'inside of plastic bed iteration loop (slipping nodes)'
                 countslip = countslip + 1
 
                 ! prefactor to matrix "M"
