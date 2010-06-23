@@ -581,6 +581,8 @@ module glide_types
     real(dp),dimension(:,:)  ,pointer   :: diffu_y => null()
     real(dp),dimension(:,:)  ,pointer   :: total_diffu => null() !*FD total diffusivity
     real(dp),dimension(:,:)  ,pointer   :: beta  => null() !*FD basal shear coefficient
+    real(dp),dimension(:,:,:),pointer :: btraction => null() !*FD x-dir (1,:,:) and y-dir (2,:,:) "consistent" basal 
+                                                             !*FD traction fields (calculated from matrix coeffs) 
     type(glide_tensor)                  :: tau
     real(dp),dimension(:,:,:)  ,pointer :: gdsx => null() !*FD basal shear stress, x-dir
     real(dp),dimension(:,:,:)  ,pointer :: gdsy => null() !*FD basal shear stress, y-dir
@@ -750,6 +752,8 @@ module glide_types
     real(dp) :: btrac_const = 0.0d0
     real(dp) :: btrac_slope = 0.0d0
     real(dp) :: btrac_max = 0.d0
+    integer :: btract_levels = 2 !*sfp* no. of vert dims in consistent btraction 
+                                 ! array (one each for x,y components)
   end type glide_velowk
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1019,7 +1023,7 @@ contains
     ewn=model%general%ewn
     nsn=model%general%nsn
     upn=model%general%upn
-
+    
     ! Allocate appropriately
 
     allocate(model%general%x0(ewn-1))!; model%general%x0 = 0.0
@@ -1067,6 +1071,7 @@ contains
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%diffu_y)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%total_diffu)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%beta)
+    call coordsystem_allocate(model%general%velo_grid, 2, model%velocity_hom%btraction)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%scalar)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xz)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yz)
@@ -1242,6 +1247,7 @@ contains
     deallocate(model%velocity_hom%diffu_y)
     deallocate(model%velocity_hom%total_diffu)
     deallocate(model%velocity_hom%beta)
+    deallocate(model%velocity_hom%btraction)
     deallocate(model%velocity_hom%tau%scalar)
     deallocate(model%velocity_hom%tau%xz)
     deallocate(model%velocity_hom%tau%yz)

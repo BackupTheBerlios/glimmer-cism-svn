@@ -193,7 +193,9 @@ contains
                                         model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
                                         model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
-                                        model%basalproc%minTauf, geom_mask_stag,                    &
+                                        model%basalproc%minTauf,                                    & 
+                                        model%velocity_hom%btraction,                               & 
+                                        geom_mask_stag,                                             &
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &
@@ -218,7 +220,9 @@ contains
                                         model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
                                         model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
-                                        model%basalproc%minTauf, geom_mask_stag,                                    &
+                                        model%basalproc%minTauf,                                    & 
+                                        model%velocity_hom%btraction,                               & 
+                                        geom_mask_stag,                                             &
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &

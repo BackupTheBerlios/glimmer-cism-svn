@@ -83,8 +83,6 @@ implicit none
   real (kind = dp), dimension(:,:,:), allocatable :: velbcvect, plastic_coeff_lhs, plastic_coeff_rhs, &
                                                      plastic_rhs, efvs_old, plastic_resid, uvel0, vvel0
   real (kind = dp), dimension(:,:,:,:), allocatable :: ghostbvel
-  real (kind = dp), dimension(:,:,:), allocatable :: btraction  ! for now, treat as local (eventually will
-                                                                ! be passed out to stress tensor calc)
 
   ! variables for use in sparse matrix calculation
   real (kind = dp), dimension(:), allocatable :: pcgval, rhsd
@@ -167,7 +165,6 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
             plastic_rhs(2,ewn-1,nsn-1), plastic_resid(1,ewn-1,nsn-1), efvs_old(upn-1,ewn,nsn), &
             uvel0(upn,ewn-1,nsn-1), vvel0(upn,ewn-1,nsn-1) )
     allocate(ghostbvel(2,3,ewn-1,nsn-1))        !! for saving the fictious basal vels at the bed !!
-    allocate(btraction(2,ewn-1,nsn-1))
     ghostbvel(:,:,:,:) = 0.0d0
 
     flwafact = 0.0_dp
@@ -197,6 +194,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  dlsrfdew, dlsrfdns,     &
                                  stagthck, flwa,         &
                                  mintauf,                &
+                                 btraction,              &
                                  umask,                  &
                                  whichbabc,              &
                                  whichefvs,              &
@@ -224,6 +222,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:,:),   intent(in)  :: dlsrfdew, dlsrfdns     ! basal surf grads
   real (kind = dp), dimension(:,:),   intent(in)  :: stagthck               ! staggered thickness
   real (kind = dp), dimension(:,:),   intent(in)  :: minTauf                ! till yield stress
+  real (kind = dp), dimension(:,:,:), intent(inout) :: btraction            ! consistent basal traction array
   real (kind = dp), dimension(:,:,:), intent(in)  :: flwa                   ! flow law rate factor
 
   ! This is the betasquared field from CISM (externally specified), and should eventually
@@ -248,7 +247,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 50                   ! max no. of iterations
+  integer, parameter :: cmax = 300                   ! max no. of iterations
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -422,8 +421,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 #ifdef TRILINOS
   if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
-     err = 0 		! RN_20100129: For now, these are not essential.
-     iter = 0		! Will find ways to retrieve these from Trilinos later.
+     err = 0    ! RN_20100129: For now, these are not essential.
+     iter = 0   ! Will find ways to retrieve these from Trilinos later.
      call differentsolve(rhsd, answer, linearSolveTime)
      totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
      write(*,*) 'Total linear solve time so far', totalLinearSolveTime
@@ -442,7 +441,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     v_k_1 = answer ! jfl for residual calculation
 
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
-    call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
+    call solver_postprocess( ewn, nsn, upn, 2, uindx, answer, tvel, ghostbvel )
 
     ! NOTE: y-component of velocity that comes out is called "tvel", to differentiate it
     ! from the y-vel solution from the previous iteration, which is maintained as "vvel". 
@@ -508,8 +507,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 #ifdef TRILINOS
   if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
-     err = 0 		! RN_20100129: For now, these are not essential.
-     iter = 0		! Will find ways to retrieve these from Trilinos later.
+     err = 0    ! RN_20100129: For now, these are not essential.
+     iter = 0   ! Will find ways to retrieve these from Trilinos later.
      call differentsolve(rhsd, answer, linearSolveTime)
      totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
      write(*,*) 'Total linear solve time so far', totalLinearSolveTime
@@ -531,7 +530,48 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     u_k_1 = answer ! jfl for residual calculation
 
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
-    call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
+    call solver_postprocess( ewn, nsn, upn, 1, uindx, answer, uvel, ghostbvel )
+
+    ! store current, non-manifold corrected vels and pass them into limited version
+    ! of assembly routines to calculate consistent basal tractions
+    uvel0 = uvel; vvel0 = tvel;
+    call findcoefstr(ewn,  nsn,   upn,            &
+                     dew,  dns,   sigma,          &
+                     2,           efvs,           &
+                     vvel,        uvel,           &
+                     thck,        dusrfdns,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, btraction,             &
+                     counter, 1 )
+   call findcoefstr(ewn,  nsn,   upn,             &
+                     dew,  dns,   sigma,          &
+                     1,           efvs,           &
+                     uvel,        vvel,           &
+                     thck,        dusrfdew,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, btraction,             &
+                     counter, 1 )
+
+    call plasticbediteration( ewn, nsn, uvel(upn,:,:), vvel(upn,:,:), btraction, velbcvect, &
+                   minTauf, plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
 
     ! apply unstable manifold correction to converged velocities
     uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
@@ -601,6 +641,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                                  dlsrfdew, dlsrfdns,     &
                                  stagthck, flwa,         & 
                                  mintauf,                & 
+                                 btraction,              & 
                                  umask,                  & 
                                  whichbabc,              &
                                  whichefvs,              &
@@ -628,6 +669,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:,:),   intent(in)  :: dlsrfdew, dlsrfdns
   real (kind = dp), dimension(:,:),   intent(in)  :: stagthck
   real (kind = dp), dimension(:,:),   intent(in)  :: minTauf
+  real (kind = dp), dimension(:,:,:), intent(inout) :: btraction            ! consistent basal traction array
   real (kind = dp), dimension(:,:,:), intent(in)  :: flwa
   
   !*sfp* This is the betasquared field from CISM (externally specified), and should eventually
@@ -975,12 +1017,12 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
          vectp(:) = wk1(1:pcgsize(1)) ! for v
          v_k_1_plus = v_k_1 + epsilon*vectp
 
-         call solver_postprocess( ewn, nsn, upn, uindx, v_k_1_plus, vvel )
+         call solver_postprocess( ewn, nsn, upn, 2, uindx, v_k_1_plus, vvel, ghostbvel )
 
          vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! for u
          u_k_1_plus = u_k_1 + epsilon*vectp
 
-         call solver_postprocess( ewn, nsn, upn, uindx, u_k_1_plus, uvel )
+         call solver_postprocess( ewn, nsn, upn, 1, uindx, u_k_1_plus, uvel, ghostbvel )
 
 
    ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
@@ -1092,8 +1134,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
 !      enddo
 
-      call solver_postprocess( ewn, nsn, upn, uindx, v_k_1, vvel )
-      call solver_postprocess( ewn, nsn, upn, uindx, u_k_1, uvel )
+      call solver_postprocess( ewn, nsn, upn, 2, uindx, v_k_1, vvel, ghostbvel )
+      call solver_postprocess( ewn, nsn, upn, 1, uindx, u_k_1, uvel, ghostbvel )
 
 
 ! WATCHOUT FOR PERIODIC BC      
@@ -1447,16 +1489,17 @@ end subroutine solver_preprocess
 
 !***********************************************************************
 
-subroutine solver_postprocess( ewn, nsn, upn, uindx, answrapped, ansunwrapped )
+subroutine solver_postprocess( ewn, nsn, upn, pt, uindx, answrapped, ansunwrapped, ghostbvel )
 
   ! Unwrap the vels from the solution vector and place into a 3d array.
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn
+  integer, intent(in) :: ewn, nsn, upn, pt
   integer, dimension(:,:), intent(in) :: uindx
   real (kind = dp), dimension(:), intent(in) :: answrapped
   real (kind = dp), dimension(upn,ewn-1,nsn-1), intent(out) :: ansunwrapped
+  real (kind = dp), dimension(:,:,:,:), intent(inout) :: ghostbvel   
 
   integer, dimension(2) :: loc
   integer :: ew, ns
@@ -1466,6 +1509,8 @@ subroutine solver_postprocess( ewn, nsn, upn, uindx, answrapped, ansunwrapped )
           if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
             ansunwrapped(:,ew,ns) = answrapped(loc(1):loc(2))
+            !! save the fictitious basal velocities for basal traction calculation !!
+            ghostbvel(pt,:,ew,ns) = answrapped( loc(2)-1:loc(2)+1 )  
           else
             ansunwrapped(:,ew,ns) = 0.0d0
           end if
@@ -1818,6 +1863,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          ew-1+shift(2):ew+1+shift(2),  &
                          ns-1+shift(3):ns+1+shift(3)), &
                          betasquared(ew,ns),           &
+                         btraction,                    &
                          whichbabc, assembly )
 
         end do  ! upn
@@ -1859,6 +1905,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          ew-1+shift(2):ew+1+shift(2),  &
                          ns-1+shift(3):ns+1+shift(3)), &
                          betasquared(ew,ns),           &
+                         btraction,                    &
                          whichbabc, assembly,          &              
                          abar=flwabar, cc=count )
         end do
@@ -1906,6 +1953,7 @@ subroutine bodyset(ew,  ns,  up,           &
                    local_efvs,             &
                    local_othervel,         &
                    betasquared,            &
+                   btraction,              &
                    whichbabc, assembly,    &
                    local_thisvel,          &
                    abar, cc)
@@ -1932,6 +1980,7 @@ subroutine bodyset(ew,  ns,  up,           &
   ! which is taken as a known value (terms involving it are moved to the RHS and treated as sources)
   real (kind = dp), dimension(3,3,3), intent(in) :: local_othervel
   real (kind = dp), intent(in) :: betasquared
+  real (kind = dp), dimension(:,:,:), intent(inout) :: btraction
   real (kind = dp), intent(in), optional :: local_thisvel
   real (kind = dp), intent(in), optional :: abar
   integer, intent(in), optional :: cc
@@ -2007,12 +2056,10 @@ subroutine bodyset(ew,  ns,  up,           &
                                 onesideddiff,                   &
                                 normal,        fwdorbwd)
 
-        g_norm = g              ! save for basal traction calculation
-
         ! add on coeff. associated w/ du/digma  
         g(:,3,3) = g(:,3,3) &
                  + vertimainbc( stagthck(ew,ns), bcflag, dup(up),     &
-                                local_efvs,      betasquared,    nz )
+                                local_efvs,      betasquared,   g_vert,    nz )
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
         ! (w.r.t. cols), on a new row ...
@@ -2166,22 +2213,6 @@ subroutine bodyset(ew,  ns,  up,           &
         
         end if
 
-!     if( up == 1 )then                ! specify necessary variables and flags for free sfc
-!        bcflag = (/1,0/)
-!        locplusup = loc(1) + up - 1   ! reverse the sparse matrix / rhs vector row index by 1 ...
-!        slopex = -dusrfdew(ew,ns); slopey = -dusrfdns(ew,ns); nz = 1.0_dp
-!     else                             ! specify necessary variables and flags for basal bc
-!
-!        !bcflag = (/0,0/)             ! flag for u=v=0 at bed; doesn't work well so commented out here...
-!
-!                                      ! better to specify very large value for betasquared below
-!        bcflag = (/1,1/)              ! flag for specififed stress at bed: Tau_zx = betasquared * u_bed,
-!                                      ! where betasquared is MacAyeal-type traction parameter
-!
-!        locplusup = loc(1) + up + 1   ! advance the sparse matrix / rhs row vector index by 1 ...
-!        slopex = dlsrfdew(ew,ns); slopey = dlsrfdns(ew,ns); nz = -1.0_dp
-!     end if
-
      g = normhorizmainbc(dew,           dns,     &
                          slopex,        slopey,  &
                          dsigmadew(up), dsigmadns(up),  &
@@ -2189,9 +2220,12 @@ subroutine bodyset(ew,  ns,  up,           &
                          dup(up),                &
                          oneorfour,     fourorone)
 
+     g_norm = g              ! save for basal traction calculation
+
      ! add on coeff. associated w/ du/digma
      g(:,2,2) = g(:,2,2)   &
-              + vertimainbc(stagthck(ew,ns), bcflag,dup(up), local_efvs, betasquared, nz)
+              + vertimainbc( stagthck(ew,ns),bcflag,dup(up),local_efvs,betasquared, &
+                            g_vert, nz, plastic_coeff=plastic_coeff_lhs(pt,ew,ns) )
 
      ! put the coeff. for the b.c. equation in the same place as the prev. equation
      ! (w.r.t. cols), on a new row ...
@@ -2200,13 +2234,53 @@ subroutine bodyset(ew,  ns,  up,           &
      ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
      ! which results from moving them from the LHS over to the RHS, has been moved
      ! inside of "croshorizmainbc".
-     rhsd(locplusup) =  sum( croshorizmainbc(dew,           dns,            &
-                                            slopex,        slopey,         &
-                                            dsigmadew(up), dsigmadns(up),  &
-                                            pt,            bcflag,         &
-                                            dup(up),       local_othervel, &
-                                            oneortwo,      twoorone)       &
-                                            * local_othervel )
+
+     if( bcflag(2) /= 2 )then
+
+          rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
+                                             slopex,        slopey,         &
+                                             dsigmadew(up), dsigmadns(up),  &
+                                             pt,            bcflag,         &
+                                             dup(up),       local_othervel, &
+                                             local_efvs,                    &
+                                             oneortwo, twoorone, g_cros )  &
+                                              * local_othervel )
+     else
+          rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
+                                             slopex,        slopey,         &
+                                             dsigmadew(up), dsigmadns(up),  &
+                                             pt,            bcflag,         &
+                                             dup(up),       local_othervel, &
+                                             local_efvs,                    &
+                                             oneortwo,      twoorone,       &
+                                             g_cros,                       &
+                                             velbc=velbcvect(pt,ew,ns),     &
+                                             plastic_coeff=plastic_coeff_rhs(pt,ew,ns) ) &
+                                              * local_othervel )            &
+                                             + plastic_rhs(pt,ew,ns) / (sum(local_efvs(2,:,:))/4.0d0)*(len0/thk0)
+      end if
+
+      ! The following calculates the basal traction AFTER an updated solution is obtain by passing the new
+      ! values of uvel, vvel back to the matrix assembly routines, and thus obtaining updated values of the 
+      ! relevant coefficients. The if construct allows the assembly routines to be called for only the vert
+      ! layers that are needed to cacluate the basal traction (as opposed to all vert levels 1:upn).
+      if( assembly == 1 )then
+
+      select case( pt )
+         case(1)
+           g_vel_lhs(:,:,:) = ghostbvel(1,:,ew-1:ew+1,ns-1:ns+1)
+           g_vel_rhs(:,:,:) = ghostbvel(2,:,ew-1:ew+1,ns-1:ns+1)
+         case(2)
+           g_vel_lhs(:,:,:) = ghostbvel(2,:,ew-1:ew+1,ns-1:ns+1)
+           g_vel_rhs(:,:,:) = ghostbvel(1,:,ew-1:ew+1,ns-1:ns+1)
+       end select
+
+       btraction(pt,ew,ns) = sum( (g_norm+g_vert)*g_vel_lhs*thk0/len0*sum(local_efvs(2,:,:))/4.0d0 ) &
+                           - sum( g_cros*g_vel_rhs*thk0/len0*sum(local_efvs(2,:,:))/4.0d0 )
+
+     end if
+
+
 
   end if   ! (up = 1 or up = upn) and lateralboundry = F
 
@@ -2498,7 +2572,7 @@ end function croshorizmain
 ! start of functions to deal with higher-order boundary conditions at sfc and bed
 ! ***************************************************************************
 
-function vertimainbc(thck, bcflag, dup, efvs, betasquared, nz)
+function vertimainbc(thck, bcflag, dup, efvs, betasquared, g_vert, nz, plastic_coeff)
 
 ! altered form of 'vertimain' that calculates coefficients for higher-order
 ! b.c. that go with the 'normhorizmain' term: -(X/H)^2 * dsigma/dzhat * du/dsigma 
@@ -2508,12 +2582,15 @@ function vertimainbc(thck, bcflag, dup, efvs, betasquared, nz)
     real (kind = dp), intent(in) :: dup, thck, betasquared
     real (kind = dp), intent(in) :: nz                      ! sfc normal vect comp in z-dir
     real (kind = dp), intent(in), dimension(2,2,2) :: efvs
+    real (kind = dp), intent(out), dimension(3,3,3) :: g_vert
+    real (kind = dp), optional, intent(in) :: plastic_coeff
     integer, intent(in), dimension(2) :: bcflag
 
     real (kind = dp) :: c
     real (kind = dp), dimension(3) :: vertimainbc
 
     c = 0.0_dp
+    g_vert = 0.0_dp
 
     ! for higher-order FREE SURFACE B.C. for x ('which'=1) or y ('which'=2) direction ...
     if( bcflag(1) == 1 )then
@@ -2525,6 +2602,9 @@ function vertimainbc(thck, bcflag, dup, efvs, betasquared, nz)
            vertimainbc(1) = c
            vertimainbc(2) = vertimainbc(3) + vertimainbc(1) ! should = 0
 
+           ! this is the part of the vertimain coeff. block that we want to keep for calc
+           ! of boundary tractions (note that it DOES NOT include terms from boundary forcing)
+           g_vert(:,2,2) = vertimainbc
 
    ! for higher-order BASAL B.C. w/ specified basal traction, add on the necessary source term ...
     if( bcflag(2) == 1 )then
@@ -2532,9 +2612,15 @@ function vertimainbc(thck, bcflag, dup, efvs, betasquared, nz)
             ! last set of terms is mean visc. of ice nearest to the bed
             vertimainbc(2) = vertimainbc(2)   &
                            + ( betasquared / ( sum( efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
-
     end if
 
+    ! for higher-order BASAL B.C. w/ plastic yield stress iteration ...
+    if( bcflag(2) == 2 )then
+
+             ! last set of terms is mean visc. of ice nearest to the bed
+            vertimainbc(2) = vertimainbc(2)   &
+                           + ( plastic_coeff / ( sum( efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
+    end if
 
     ! for higher-order BASAL B.C. U=V=0, in x ('which'=1) or y ('which'=2) direction ...
     ! NOTE that this is not often implemented, as it is generally sufficient to implement 
@@ -2637,7 +2723,9 @@ function croshorizmainbc(dew,       dns,       &
                          dsigmadew, dsigmadns, &
                          which,     bcflag,    &
                          dup,       local_othervel,  &
-                         oneortwo,  twoorone)
+                         efvs,                       &
+                         oneortwo,  twoorone,        &
+                         g_cros, velbc, plastic_coeff )
 
     ! As described for "normhorizmainbc" above. The vectors "twoorone" and 
     ! "oneortwo" are given by: twoorone = [ 2 1 ]; oneortwo = [ 1 2 ];
@@ -2645,17 +2733,25 @@ function croshorizmainbc(dew,       dns,       &
     implicit none
 
     integer, intent(in) :: which
-    integer, intent(in), dimension(2) :: bcflag
+    integer, intent(in), dimension(:) :: bcflag
 
     real (kind = dp), intent(in) :: dew, dns
-    real (kind = dp), intent(in), dimension(2) :: oneortwo, twoorone
+    real (kind = dp), intent(in), dimension(:) :: oneortwo, twoorone
     real (kind = dp), intent(in) :: dusrfdew, dusrfdns, dsigmadew, dsigmadns, dup
-    real (kind = dp), intent(in), dimension(3,3,3) :: local_othervel
+    real (kind = dp), intent(in), dimension(:,:,:) :: local_othervel
+    real (kind = dp), intent(in), dimension(:,:,:) :: efvs 
+    real (kind = dp), intent(in), optional :: velbc, plastic_coeff
+    real (kind = dp), intent(out),dimension(:,:,:) :: g_cros
+
+
     real (kind = dp), dimension(3,3,3) :: g, croshorizmainbc
     real (kind = dp) :: c
+    integer :: nz
 
     c = 0.0_dp
     g(:,:,:) = 0.0_dp
+    g_cros = g
+    nz = 0
 
     ! for higher-order FREE SURFACE B.C. for x ('which'=1) or y ('which'=2) direction ...
     ! NOTE that this handles the case for specified stress at the bed as well, as we 
@@ -2680,16 +2776,38 @@ function croshorizmainbc(dew,       dns,       &
            g(2,2,1) = -c
 
     ! for higher-order BASAL B.C. U=V=0, in x ('which'=1) or y ('which'=2) direction ...
+    ! This forces the multiplication by 'local_otherval' in the main program 
+    ! to result in a value of 1, thus leaving the boundary vel. unchanged
+    ! ... conditional makes sure there is no div by zero if the bc value IS also zero
     else if( bcflag(1) == 0 )then
 
-       g(:,:,:) = 0.0_dp
-       g(2,2,2) = 0.0_dp   ! specify the value of the boundary velocity in the rhs HERE
+        g(:,:,:) = 0.0_dp
 
-       ! this forces the multiplication by 'local_otherval' in the main program 
-       ! to result in a value of 1, thus leaving the boundary vel. unchanged
-       !g = g / local_othervel
+        where( local_othervel /= 0.0d0 )
+            g = 1
+        elsewhere
+            g = 0.0d0
+        endwhere
 
-    end if
+        nz = sum( g )
+        g(:,:,:) = 0.0_dp
+
+        where( local_othervel /= 0.0d0 )
+            g = ( velbc / nz ) / local_othervel
+        elsewhere
+            g = 0.0d0
+        endwhere
+
+     end if
+
+     if( bcflag(2) == 2 )then        ! add on coeff. associated w/ plastic bed iteration
+
+         ! NOTE: here we define 'g_cros' FIRST, because we want the value w/o the plastic
+         ! bed coeff. included (needed for estimate of basal traction in plastic bed iteration)
+         g_cros = g
+         g(2,2,2) = g(2,2,2) + plastic_coeff / ( sum( efvs(2,:,:) ) / 4.0_dp ) * (len0 / thk0)
+
+     end if
 
     croshorizmainbc = g
 
@@ -3430,7 +3548,7 @@ subroutine calcbetasquared (whichbabc,               &
     case(2)     ! take input value for till yield stress and force betasquared to be implemented such
                 ! that plastic-till sliding behavior is enforced (see additional notes in documentation).
 
-      betasquared = minTauf / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
 
     case(3)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
 
@@ -3464,6 +3582,187 @@ subroutine calcbetasquared (whichbabc,               &
 end subroutine calcbetasquared
 
 !***********************************************************************
+
+subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, tau, &
+                            plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
+
+    implicit none
+
+    integer, intent(in) :: ewn, nsn
+
+    real (kind = dp), intent(in), dimension(:,:) :: uvel0, vvel0
+
+    real (kind = dp), intent(in), dimension(:,:,:) :: btraction
+
+    real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: velbcvect
+    real (kind = dp), intent(in), dimension(ewn-1,nsn-1) :: tau
+
+    real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: plastic_coeff_lhs
+    real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: plastic_coeff_rhs
+    real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: plastic_rhs
+    real (kind = dp), intent(inout), dimension(1,ewn-1,nsn-1) :: plastic_resid
+
+
+    real (kind = dp), dimension(ewn-1,nsn-1) :: gamma, beta
+
+    real (kind = dp) :: c, big_C, relax
+    real (kind = dp) :: F11, F12, F21, F22, M11, M12, M21, M22, h1, h2, IM11, IM12, IM21, IM22, &
+                        L11, L12, L21, L22, K11, K12, K21, K22, det, rhs1, rhs2, alpha, &
+                        theta, maxx, plastic_residx, plastic_residy, sigma_x0, sigma_y0
+
+    integer :: ew, ns, countstuck, countslip
+
+    countstuck = 0; countslip = 0; sigma_x0 = 0; sigma_y0 = 0
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! initialize some values
+
+    relax = 1.0d0       ! r.elaxation factor
+
+!    c = 5.0d3 / (1.0d3/scyr)                ! "c" has unitis Pa * a/m (like B^2); choose value so that c*u is 
+                                            ! approx equal to expected yield stress.
+                                            ! here: 5000 Pa / (1000 m/a) = 5 Pa * a / m = 1.57e8 Pa * s / m
+!    c = c * vel0 / tau0_glam                     ! non-dimensionalize c                                        
+
+!    c = 1.0d-10
+!    c = 1.0d-5
+!    c = 1.0d-3 
+!    c = 1.0d-2      ! c < 1 needed for n=1 cases
+
+    c = 1.0d0      ! c >= 1 needed for n=3 cases
+
+!    c = 1.0d1
+!    c = 1.0d3
+!    c = 1.0d5
+!    c = 1.0d8 
+
+    big_C = 1.0d8 / tau0_glam           ! regularization constant to allow small motion on boundary; dim value in Pa / tau0 
+
+    gamma = 1.0d0 / big_C
+
+     !! simple test case
+
+!    tau = 100.0d3 / tau0      !! yield stress in Pa (NOTE that this eventually needs to be passed in) !!
+!    tau(3:ewn-3,3:nsn-3) = 7.5d3 / tau0
+!    tau(5:ewn-5,5:nsn-5) = 5.0d3 / tau0
+!    tau(8:ewn-8,8:nsn-8) = 2.0d3 / tau0
+
+!      tau = 1.0d10 / tau0    !! ice stream analytical soln test case
+!      tau(3:ewn-3,3:nsn-3) = 6.5d3 / tau0
+
+!!      do ew=1, ewn-1; do ns=4, nsn-4
+!      do ew=1, ewn-1; do ns=8-1, nsn-8+1
+!!      do ew=1, ewn-1; do ns=16-3, nsn-16+3
+!!        tau(ew,ns) = 5.0d3 / tau0
+!        tau(ew,ns) = 6.50d3 / tau0
+!      end do; end do
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! loop through and calc. vel. bc based on conditional
+    do ns=1, nsn-1
+        do ew=1, ewn-1
+
+            ! calculate sigma^t vector 
+            sigma_x0 = -btraction(1,ew,ns)
+            sigma_y0 = -btraction(2,ew,ns)
+
+            beta(ew,ns) = sqrt( (sigma_x0 + c*uvel0(ew,ns))**2 + (sigma_y0 + c*vvel0(ew,ns))**2 )
+
+            plastic_residx = max( tau(ew,ns), beta(ew,ns) ) * sigma_x0 - tau(ew,ns) * (sigma_x0 + &
+                             c*uvel0(ew,ns))
+
+            plastic_residy = max( tau(ew,ns), beta(ew,ns) ) * sigma_y0 - tau(ew,ns) * (sigma_y0 + &
+                             c*vvel0(ew,ns))
+
+            plastic_resid(1,ew,ns) = sqrt( plastic_residx**2 + plastic_residy**2 )
+
+            ! if at or below yield stress, set boundary vels to 0 
+            if( beta(ew,ns) <= ( tau(ew,ns)*(1.0d0 + c*gamma(ew,ns)) ) )then
+
+                countstuck = countstuck + 1
+
+                plastic_coeff_lhs(1,ew,ns) = big_C
+                plastic_coeff_lhs(2,ew,ns) = big_C
+                plastic_coeff_rhs(1,ew,ns) = 0.0d0
+                plastic_coeff_rhs(2,ew,ns) = 0.0d0
+                plastic_rhs(1,ew,ns) = 0.0d0
+                plastic_rhs(2,ew,ns) = 0.0d0
+
+            ! if above yield stress, solve for boundary vels
+            elseif( beta(ew,ns) > ( tau(ew,ns)*(1.0d0 + c*gamma(ew,ns)) ) )then
+
+                countslip = countslip + 1
+
+                ! prefactor to matrix "M"
+                theta = tau(ew,ns) / beta(ew,ns)
+
+                ! max vel test in denom of several terms 
+                maxx = maxval( (/ tau(ew,ns), sqrt( sigma_x0**2 + sigma_y0**2 ) /) )
+
+                ! prefactor to matrix "F"
+                alpha = 1.0d0 / ( beta(ew,ns) * maxx )
+
+                ! entries to 2x2 matrix "F"
+                F11 = alpha * sigma_x0 * ( sigma_x0 + c*uvel0(ew,ns) )
+                F12 = alpha * sigma_x0 * ( sigma_y0 + c*vvel0(ew,ns) )
+                F21 = alpha * sigma_y0 * ( sigma_x0 + c*uvel0(ew,ns) )
+                F22 = alpha * sigma_y0 * ( sigma_y0 + c*vvel0(ew,ns) )
+
+                ! entries to 2x2 matrix "M"
+                M11 = theta * ( 1.0d0 - F11 )
+                M12 = - theta * F12
+                M21 = - theta * F21
+                M22 = theta * ( 1.0d0 - F22 )
+
+
+                ! entries to 2x2 matrix "I - M"
+                IM11 = 1.0d0 - M11
+                IM12 = -M12
+                IM21 = -M21
+                IM22 = 1.0d0 - M22
+
+                ! entries to vector "h"
+                h1 = tau(ew,ns) / maxx * sigma_x0
+                h2 = tau(ew,ns) / maxx * sigma_y0
+
+                ! entries to inverse matrix, K = (I-M)^(-1)
+                det = IM11*IM22 - IM12*IM21
+                K11 = IM22 / det
+                K12 = -IM12 / det
+                K21 = -IM21 / det
+                K22 = IM11 / det
+
+                ! entries to inverse matrix, L = ((I-M)^(-1)-I)
+                L11 = c * (K11 - 1.0d0)
+                L12 = c * K12
+                L21 = c * K21
+                L22 = c * (K22 - 1.0d0)
+
+                ! calculate rhs vector components (NEW values, to be added on to existing RHS for u, v solns
+                ! and later divided by N_eff 
+                rhs1 = ( K11*h1 + K12*h2 )
+                rhs2 = ( K21*h1 + K22*h2 )
+
+                ! compile coeff. to send out of subroutine for new solution, which are the coeff. that go with u(2,2,2) 
+                ! (in coeff. matrix on the LHS) (-L11), and v(2,2,2) (in summation RHS) (-L22) when solving for u 
+                ! (and vice versa when solving for v). In each case, these get divided by the effective viscosity (???)
+
+                plastic_coeff_lhs(1,ew,ns) = L11
+                plastic_coeff_lhs(2,ew,ns) = L22
+                plastic_coeff_rhs(1,ew,ns) = -L12
+                plastic_coeff_rhs(2,ew,ns) = -L21
+                plastic_rhs(1,ew,ns) = -rhs1
+                plastic_rhs(2,ew,ns) = -rhs2
+
+            end if
+
+        end do
+    end do
+
+!    print *, '# stuck nodes = ', countstuck
+!    print *, '# slip nodes = ', countslip 
+
+end subroutine plasticbediteration
 
 !***********************************************************************
 
