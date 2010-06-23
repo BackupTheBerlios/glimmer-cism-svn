@@ -329,6 +329,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! Now send this partition to Trilinos initialization routines
      call inittrilinos(20, mySize, myIndices)
 
+     !No Triad matrix needed in this case -- save on memory alloc
+     pcgsize(2) = 1
+
      deallocate(myIndices)
   endif
 #endif
@@ -791,6 +794,9 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
 ! Now send this partition to Trilinos initialization routines
      call inittrilinos(20, mySize, myIndices)
+
+     ! Triad sparse matrix not used in this case, so save on memory
+     pcgsize(2) = 1
 
      deallocate(myIndices)
   endif
