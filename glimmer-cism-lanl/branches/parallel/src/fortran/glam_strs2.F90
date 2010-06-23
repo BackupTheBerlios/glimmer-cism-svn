@@ -162,7 +162,7 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
 
   ! allocate/initialize variables for plastic-till basal BC iteration using Newton method
     allocate(velbcvect(2,ewn-1,nsn-1),plastic_coeff_rhs(2,ewn-1,nsn-1),plastic_coeff_lhs(2,ewn-1,nsn-1), &
-            plastic_rhs(2,ewn-1,nsn-1), plastic_resid(1,ewn-1,nsn-1)
+            plastic_rhs(2,ewn-1,nsn-1), plastic_resid(1,ewn-1,nsn-1) )
     allocate(ghostbvel(2,3,ewn-1,nsn-1))        !! for saving the fictious basal vels at the bed !!
 
     ghostbvel(:,:,:,:) = 0.0d0
@@ -2063,7 +2063,8 @@ subroutine bodyset(ew,  ns,  up,           &
         ! add on coeff. associated w/ du/digma  
         g(:,3,3) = g(:,3,3) &
                  + vertimainbc( stagthck(ew,ns), bcflag, dup(up),     &
-                                local_efvs,      betasquared,   g_vert,    nz )
+                                local_efvs,      betasquared,   g_vert,    nz, &
+                                plastic_coeff=plastic_coeff_lhs(pt,ew,ns)  )
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
         ! (w.r.t. cols), on a new row ...
@@ -2619,12 +2620,12 @@ function vertimainbc(thck, bcflag, dup, efvs, betasquared, g_vert, nz, plastic_c
     end if
 
     ! for higher-order BASAL B.C. w/ plastic yield stress iteration ...
-!    if( bcflag(2) == 2 )then
-!
-!             ! last set of terms is mean visc. of ice nearest to the bed
-!            vertimainbc(2) = vertimainbc(2)   &
-!                           + ( plastic_coeff / ( sum( efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
-!    end if
+    if( bcflag(2) == 2 )then
+
+             ! last set of terms is mean visc. of ice nearest to the bed
+            vertimainbc(2) = vertimainbc(2)   &
+                           + ( plastic_coeff / ( sum( efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
+    end if
 
     ! for higher-order BASAL B.C. U=V=0, in x ('which'=1) or y ('which'=2) direction ...
     ! NOTE that this is not often implemented, as it is generally sufficient to implement 
