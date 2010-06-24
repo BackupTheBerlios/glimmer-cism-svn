@@ -258,7 +258,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! variables used for incorporating generic wrapper to sparse solver
   type(sparse_matrix_type) :: matrix
-  real (kind = dp), dimension(:), allocatable :: answer, u_k_1, v_k_1, F_vec
+  real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1, Fvec
   real (kind = dp) :: err, L2norm, L2square
   integer :: iter, pic
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
@@ -346,8 +346,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   allocate(matrix%row(pcgsize(2)), matrix%col(pcgsize(2)), &
             matrix%val(pcgsize(2)), answer(pcgsize(1)))
 
-  allocate( u_k_1(pcgsize(1)), v_k_1(pcgsize(1)), &
-            F_vec(2*pcgsize(1)), g_flag(pcgsize(1)) ) ! jfl for res calc.
+  allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)), &
+            Fvec(2*pcgsize(1)), g_flag(pcgsize(1)) ) ! jfl for res calc.
 
   ! set residual and iteration counter to initial values
   resid = 1.0_dp
@@ -366,7 +366,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   tstep = tstep + 1 ! JFL to be removed
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
-                         u_k_1, v_k_1, uvel, vvel, g_flag) ! jfl_20100430
+                         uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
@@ -410,17 +410,17 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
 
 !==============================================================================
-! jfl 20100412: residual for v comp: Fv= A(u_k-1,v_k-1)v_k-1 - b(u_k-1,v_k-1)  
+! jfl 20100412: residual for v comp: Fv= A(u^k-1,v^k-1)v^k-1 - b(u^k-1,v^k-1)  
 !==============================================================================
 
-    call res_vect( matrix, v_k_1, rhsd, size(rhsd), counter, g_flag, L2square )
+    call res_vect( matrix, vk_1, rhsd, size(rhsd), counter, g_flag, L2square )
 
       L2norm  = L2square
-      F_vec(1:pcgsize(1)) = v_k_1(:)
+      Fvec(1:pcgsize(1)) = vk_1(:)
       
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
-!                          size(v_k_1), v_k_1, 2 )
+!                          size(vk_1), vk_1, 2 )
 !      endif
 
 !==============================================================================
@@ -446,7 +446,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! RN_20100129: End of the block
 !==============================================================================
 
-    v_k_1 = answer ! jfl for residual calculation
+    vk_1 = answer ! jfl for residual calculation
 
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, 2, uindx, answer, tvel, ghostbvel )
@@ -493,20 +493,20 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel )
 
 !==============================================================================
-! jfl 20100412: residual for u comp: Fu= C(u_k-1,v_k-1)u_k-1 - d(u_k-1,v_k-1)  
+! jfl 20100412: residual for u comp: Fu= C(u^k-1,v^k-1)u^k-1 - d(u^k-1,v^k-1)  
 !==============================================================================
 
-    call res_vect( matrix, u_k_1, rhsd, size(rhsd), counter, g_flag, L2square )
+    call res_vect( matrix, uk_1, rhsd, size(rhsd), counter, g_flag, L2square )
 
     L2norm = sqrt(L2norm + L2square)
-    F_vec(pcgsize(1)+1:2*pcgsize(1)) = u_k_1(:) ! F_vec = [ Fv, Fu ]
+    Fvec(pcgsize(1)+1:2*pcgsize(1)) = uk_1(:) ! Fvec = [ Fv, Fu ]
 
 !    print *, 'L2 with/without ghost (k)= ', counter, &
-!              sqrt(DOT_PRODUCT(F_vec,F_vec)), L2norm
+!              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
 
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
-!                          size(v_k_1), v_k_1, 1 )
+!                          size(vk_1), vk_1, 1 )
 !      endif
 
 !==============================================================================
@@ -535,7 +535,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
-    u_k_1 = answer ! jfl for residual calculation
+    uk_1 = answer ! jfl for residual calculation
 
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, 1, uindx, answer, uvel, ghostbvel )
@@ -610,7 +610,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! END of Picard iteration
   ! ****************************************************************************************
 
-  call ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
+  call ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
                           ughost, vghost )
 
   do ns = 1,nsn-1
@@ -630,7 +630,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   deallocate(pcgval,pcgrow,pcgcol,rhsd)
   deallocate(matrix%row, matrix%col, matrix%val)
   deallocate(answer)
-  deallocate(u_k_1, v_k_1, F_vec, g_flag) ! jfl 
+  deallocate(uk_1, vk_1, Fvec, g_flag) ! jfl 
 
   return
 
@@ -706,9 +706,9 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
 !*sfp* needed to incorporate generic wrapper to solver
   type(sparse_matrix_type) :: matrixA, matrixC, matrixtp
-  real (kind = dp), dimension(:), allocatable :: answer, u_k_1, v_k_1
-  real (kind = dp), dimension(:), allocatable :: vectp, u_k_1_plus, v_k_1_plus
-  real (kind = dp), dimension(:), allocatable :: du, duc, dvc, F_vec, F_vec_plus
+  real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1
+  real (kind = dp), dimension(:), allocatable :: vectp, uk_1_plus, vk_1_plus
+  real (kind = dp), dimension(:), allocatable :: du, duc, dvc, Fvec, Fvec_plus
   real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
   real (kind = dp), dimension(:,:), allocatable :: vv, wk
   real (kind = dp) :: err, L2norm, L2norm_wig, L2square, eps, epsilon,NL_target
@@ -818,13 +818,13 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   allocate(matrixtp%row(pcgsize(2)), matrixtp%col(pcgsize(2)), &
             matrixtp%val(pcgsize(2)))
 
-  allocate( u_k_1(pcgsize(1)), v_k_1(pcgsize(1)),g_flag(pcgsize(1)) )
+  allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)),g_flag(pcgsize(1)) )
 
   allocate( duc(pcgsize(1)), dvc(pcgsize(1)), vectp(pcgsize(1)))
 
-  allocate( u_k_1_plus(pcgsize(1)), v_k_1_plus(pcgsize(1)))
+  allocate( uk_1_plus(pcgsize(1)), vk_1_plus(pcgsize(1)))
 
-  allocate( F_vec(2*pcgsize(1)), F_vec_plus(2*pcgsize(1)), du(2*pcgsize(1)))
+  allocate( Fvec(2*pcgsize(1)), Fvec_plus(2*pcgsize(1)), du(2*pcgsize(1)))
 
   allocate( wk1(2*pcgsize(1)), wk2(2*pcgsize(1)), rhs(2*pcgsize(1)))
 
@@ -839,7 +839,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
 ! JFNK_solver
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
-                         u_k_1, v_k_1, uvel, vvel, g_flag) ! jfl_20100430
+                         uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
   tstep = tstep + 1 ! JFL to be removed
 
@@ -861,7 +861,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      umask)
 
 !==============================================================================
-! jfl 20100412: residual for v comp: Fv= A(u_k-1,v_k-1)v_k-1 - b(u_k-1,v_k-1)  
+! jfl 20100412: residual for v comp: Fv= A(u^k-1,v^k-1)v^k-1 - b(u^k-1,v^k-1)  
 !==============================================================================
 
     ! *sfp** calculation of coeff. for stress balance calc. 
@@ -886,13 +886,13 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
     call solver_preprocess( ewn, nsn, upn, uindx, matrixA, answer, vvel )
 ! could be modified above as we only need the matrix to be formed...not answer
     
-    vectp = v_k_1
+    vectp = vk_1
     call res_vect( matrixA, vectp, rhsd, size(rhsd), counter, g_flag, L2square ) !rhsd = b
     L2norm = L2square
-    F_vec(1:pcgsize(1)) = vectp(:)
+    Fvec(1:pcgsize(1)) = vectp(:)
       
 !==============================================================================
-! jfl 20100412: residual for u comp: Fu= C(u_k-1,v_k-1)u_k-1 - d(u_k-1,v_k-1)  
+! jfl 20100412: residual for u comp: Fu= C(u^k-1,v^k-1)u^k-1 - d(u^k-1,v^k-1)  
 !==============================================================================
 
     call findcoefstr(ewn,  nsn,   upn,            &
@@ -917,13 +917,13 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
     call solver_preprocess( ewn, nsn, upn, uindx, matrixC, answer, uvel )
 ! could be modified above as we only need the matrix to be formed...not answer
     
-    vectp = u_k_1
+    vectp = uk_1
     call res_vect( matrixC, vectp, rhsd, size(rhsd), counter, g_flag, L2square )!rhsd = d
     L2norm = sqrt(L2norm + L2square)
 
-    F_vec(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)! F_vec(u_k-1,v_k-1)= [ Fv, Fu ]
+    Fvec(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)! Fvec(u^k-1,v^k-1)= [ Fv, Fu ]
 
-    L2norm_wig = sqrt(DOT_PRODUCT(F_vec,F_vec)) ! with ghost
+    L2norm_wig = sqrt(DOT_PRODUCT(Fvec,Fvec)) ! with ghost
 
 !    if (k .eq. 1) NL_target = NL_tol * L2norm_wig
     if (k .eq. 1) NL_target = NL_tol * L2norm
@@ -936,16 +936,16 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 !      print *, 'target with L2norm with or without ghost?'
 
 !==============================================================================
-! solve J(u_k-1,v_k-1)du = -F(u_k-1,v_k-1) with fgmres, du = [dv, du]  
+! solve J(u^k-1,v^k-1)du = -F(u^k-1,v^k-1) with fgmres, du = [dv, du]  
 !==============================================================================
 
-      rhs = -1d0*F_vec
+      rhs = -1d0*Fvec
 
       du  = 0d0 ! initial guess
 
-      eps = 0.3d0 * L2norm_wig ! setting the tolerance for fgmres
+      eps = 0.00001d0 * L2norm_wig ! setting the tolerance for fgmres
 
-      epsilon = 1d-06 ! for Jx approximation
+      epsilon = 1d-07 ! for Jx approximation
 
       maxiteGMRES = 300
       
@@ -1020,19 +1020,17 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       ELSEIF ( icode >= 2 ) THEN  ! matvec step
 
-!         print *, 'matvec step'
-
-! form F( u_k-1 + epsilon*wk1u, v_k-1 + epsilon*wk1u )
+! form F( u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1u )
          
          vectp(:) = wk1(1:pcgsize(1)) ! for v
-         v_k_1_plus = v_k_1 + epsilon*vectp
+         vk_1_plus = vk_1 + epsilon*vectp
 
-         call solver_postprocess( ewn, nsn, upn, 2, uindx, v_k_1_plus, vvel, ghostbvel )
+         call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1_plus, vvel, ghostbvel )
 
          vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! for u
-         u_k_1_plus = u_k_1 + epsilon*vectp
+         uk_1_plus = uk_1 + epsilon*vectp
 
-         call solver_postprocess( ewn, nsn, upn, 1, uindx, u_k_1_plus, uvel, ghostbvel )
+         call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1_plus, uvel, ghostbvel )
 
 
    ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
@@ -1071,10 +1069,10 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
     call solver_preprocess( ewn, nsn, upn, uindx, matrixtp, answer, vvel )
 ! could be modified above as we only need the matrix to be formed...not answer
     
-    vectp = v_k_1_plus
+    vectp = vk_1_plus
     call res_vect( matrixtp, vectp, rhsd, size(rhsd), counter, g_flag, crap )
 
-    F_vec_plus(1:pcgsize(1)) = vectp(:)
+    Fvec_plus(1:pcgsize(1)) = vectp(:)
       
 !==============================================================================
 ! jfl 20100412: residual for u plus comp: Fu_plus   
@@ -1101,18 +1099,14 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
     call solver_preprocess( ewn, nsn, upn, uindx, matrixtp, answer, uvel )
 ! could be modified above as we only need the matrix to be formed...not answer
     
-    vectp = u_k_1_plus
+    vectp = uk_1_plus
     call res_vect( matrixtp, vectp, rhsd, size(rhsd), counter, g_flag, crap )
 
-    F_vec_plus(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)
+    Fvec_plus(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)
 
 ! put result of Jacfreevec in wk2
 
-    wk2 =  ( F_vec_plus - F_vec ) / epsilon
-
-!      do nele = 1, 2*pcgsize(1)
-!         print *, 'matvec', nele, wk2(nele),F_vec_plus(nele), F_vec(nele)
-!      enddo
+    wk2 =  ( Fvec_plus - Fvec ) / epsilon
 
          GOTO 10
       ENDIF
@@ -1135,17 +1129,11 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       dvc = du(1:pcgsize(1))
       duc = du(pcgsize(1)+1:2*pcgsize(1))
 
-      v_k_1 = v_k_1 + dvc
-      u_k_1 = u_k_1 + duc
+      vk_1 = vk_1 + dvc
+      uk_1 = uk_1 + duc
 
-!      do nele = 1, pcgsize(1)
-
-!         print *, 'ici',nele, du(nele), v_k_1(nele), dvc(nele), u_k_1(nele), duc(nele)
-
-!      enddo
-
-      call solver_postprocess( ewn, nsn, upn, 2, uindx, v_k_1, vvel, ghostbvel )
-      call solver_postprocess( ewn, nsn, upn, 1, uindx, u_k_1, uvel, ghostbvel )
+      call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1, vvel, ghostbvel )
+      call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1, uvel, ghostbvel )
 
 
 ! WATCHOUT FOR PERIODIC BC      
@@ -1154,7 +1142,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
   end do
 
-  call ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
+  call ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
                           ughost, vghost )
 
 !*sfp* removed call to 'calcstrsstr' here (stresses now calculated externally)
@@ -1178,9 +1166,9 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   deallocate(matrixA%row, matrixA%col, matrixA%val)
   deallocate(matrixC%row, matrixC%col, matrixC%val)
   deallocate(matrixtp%row, matrixtp%col, matrixtp%val)
-  deallocate(u_k_1, v_k_1, g_flag)
-  deallocate(answer, du, duc, dvc, vectp, u_k_1_plus, v_k_1_plus )
-  deallocate(F_vec, F_vec_plus)
+  deallocate(uk_1, vk_1, g_flag)
+  deallocate(answer, du, duc, dvc, vectp, uk_1_plus, vk_1_plus )
+  deallocate(Fvec, Fvec_plus)
   deallocate(wk1, wk2)
   deallocate(vv, wk)
 
@@ -1532,10 +1520,10 @@ end subroutine solver_postprocess
 !***********************************************************************
 
 subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, & 
-                             u_k_1, v_k_1, uvel, vvel, g_flag)
+                             uk_1, vk_1, uvel, vvel, g_flag)
 
-! puts vel values in  u_k_1, v_k_1 (including ghost values) and creates the
-! ghost flag vector. u_k_1, v_k_1 and the ghost flag vector are used for 
+! puts vel values in  uk_1, vk_1 (including ghost values) and creates the
+! ghost flag vector. uk_1, vk_1 and the ghost flag vector are used for 
 ! the residual calculation (jfl 20100430)
 
   implicit none
@@ -1545,7 +1533,7 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
   integer, dimension(:), intent(out) :: g_flag 
   real (kind = dp), dimension(2,ewn-1,nsn-1), intent(in) ::ughost,vghost 
   real (kind = dp), dimension(:,:,:), intent(in) :: uvel, vvel
-  real (kind = dp), dimension(:), intent(out) :: u_k_1, v_k_1 
+  real (kind = dp), dimension(:), intent(out) :: uk_1, vk_1 
 
   integer :: ew, ns
   integer, dimension(2) :: loc
@@ -1556,13 +1544,13 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
    do ew = 1,ewn-1
         if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
-            u_k_1(loc(1):loc(2)) = uvel(:,ew,ns)
-            u_k_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at base
-            u_k_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at top
+            uk_1(loc(1):loc(2)) = uvel(:,ew,ns)
+            uk_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at base
+            uk_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at top
 
-            v_k_1(loc(1):loc(2)) = vvel(:,ew,ns)
-            v_k_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at base
-            v_k_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at top
+            vk_1(loc(1):loc(2)) = vvel(:,ew,ns)
+            vk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at base
+            vk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at top
 
             g_flag(loc(1)-1) = 1 
             g_flag(loc(2)+1) = 1 
@@ -1574,17 +1562,17 @@ end subroutine ghost_preprocess
 
 !***********************************************************************
 
-subroutine ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
+subroutine ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
                               ughost, vghost )
 
-! puts ghost values (which are now in  u_k_1 and v_k_1) into ughost and 
+! puts ghost values (which are now in  uk_1 and vk_1) into ughost and 
 ! vghost so that they can be used fro the next time step (jfl 20100430)
 
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
   integer, dimension(:,:), intent(in) :: uindx
-  real (kind = dp), dimension(:), intent(in) :: u_k_1, v_k_1
+  real (kind = dp), dimension(:), intent(in) :: uk_1, vk_1
   real (kind = dp), dimension(2,ewn-1,nsn-1), intent(out) :: ughost,vghost
 
   integer :: ew, ns
@@ -1594,10 +1582,10 @@ subroutine ghost_postprocess( ewn, nsn, upn, uindx, u_k_1, v_k_1, &
       do ew = 1,ewn-1
           if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
-            ughost(1,ew,ns) = u_k_1(loc(1)-1) ! ghost at base
-            ughost(2,ew,ns) = u_k_1(loc(2)+1) ! ghost at top
-            vghost(1,ew,ns) = v_k_1(loc(1)-1) ! ghost at base
-            vghost(2,ew,ns) = v_k_1(loc(2)+1) ! ghost at top
+            ughost(1,ew,ns) = uk_1(loc(1)-1) ! ghost at base
+            ughost(2,ew,ns) = uk_1(loc(2)+1) ! ghost at top
+            vghost(1,ew,ns) = vk_1(loc(1)-1) ! ghost at base
+            vghost(2,ew,ns) = vk_1(loc(2)+1) ! ghost at top
           else 
             ughost(1,ew,ns) = 0d0
             ughost(2,ew,ns) = 0d0
