@@ -1,22 +1,19 @@
 %% Plot steady profiles
 
-%f1 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_0bmlt/1d_isoT_fixedA.out.3.nc';
-%f2 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_10bmlt/1d_isoT_fixedA.out.5.nc';
-%f4 = '/archive/cvg222/gc_output/1d_isoT_fixedA_bc1_25bmlt/1d_isoT_fixedA.out.5.nc';
+f0 = '/scratch/gc_output/0bmlt_500m/0bmlt.nc';
+f1 = '/scratch/gc_output/1bmlt_500m/1bmlt.nc';
+f2 = '/scratch/gc_output/2bmlt_500m/2bmlt.nc';
+f5 = '/scratch/gc_output/5bmlt_500m/5bmlt.nc';
 
-f1 = '0bmlt.nc';
-f2 = '10bmlt.nc';
-f4 = '25bmlt.nc';
-
-hx = 1000;
-hy = 1000;
+hx = 500.0;
+hy = hx;
 m = 5;
-n = 41;
+n = 81;
 kinbcw = 2;
 ythk0 = (n-kinbcw)*hy;
 yend = 4*hy;
-A = 1*10^(-16); 
-n = 1000;
+A = 1.0*10^(-16); 
+n_points = 1000;
 u0 = -1000;
 h0 = 1000;
 rhoi = 910.0;
@@ -25,53 +22,89 @@ g = 9.81;
 
 fs = 18;
 
-[~,y0,~,y1,thck,~,vvel] = nc_read(f1, -1);
+plot0 = true;
+plot1 = true;
+plot2 = true;
+plot5 = true;
+
+[~,y0,~,y1,thck,~,vvel] = nc_read(f0, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 bmelt = 0.0;
-[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n, u0, h0, bmelt);
+[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, bmelt);
+
 subplot(2,1,1);
 hold on
 plot(ycvel/1000, vvelc, 'b*');
-plot(y/1000, v, 'b');
-title('Velocity','FontSize',fs);
+plot((y-0.5*hy)/1000, v, 'b');
+title('Steady Ice Velocity for various uniform melt rates','FontSize',fs);
 ylabel('m/year','FontSize',fs);
 xlabel('km','FontSize',fs);
+
 subplot(2,1,2);
 hold on
 plot(ycthk/1000, thkc, 'b*');
-plot(y/1000, h, 'b');
-title('Thickness','FontSize',fs);
+plot((y)/1000, h, 'b');
+title('Steady Ice Thickness for various uniform melt rates','FontSize',fs);
 ylabel('meters','FontSize',fs);
 xlabel('km','FontSize',fs);
 
+if (plot1) 
+[~,y0,~,y1,thck,~,vvel] = nc_read(f1, -1);
+[ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
+bmelt = -5.0;
+[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, bmelt);
+
+subplot(2,1,1);
+plot(ycvel/1000, vvelc, 'k*');
+plot((y-0.5*hy)/1000, v, 'k');
+
+subplot(2,1,2);
+plot(ycthk/1000, thkc, 'k*');
+plot(y/1000, h, 'k');
+end
+
+if (plot2) 
 [~,y0,~,y1,thck,~,vvel] = nc_read(f2, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 bmelt = -10.0;
-[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n, u0, h0, bmelt);
+[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, bmelt);
+
 subplot(2,1,1);
 plot(ycvel/1000, vvelc, 'r*');
-plot(y/1000, v, 'r');
+plot((y-0.5*hy)/1000, v, 'r');
+
 subplot(2,1,2);
 plot(ycthk/1000, thkc, 'r*');
 plot(y/1000, h, 'r');
+end
 
-[~,y0,~,y1,thck,~,vvel] = nc_read(f4, -1);
+if (plot5)
+[~,y0,~,y1,thck,~,vvel] = nc_read(f5, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 bmelt = -25.0;
-[y,v,h,w] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n, u0, h0, bmelt);
+[y,v,h,w] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, bmelt);
+
 subplot(2,1,1);
 plot(ycvel/1000, vvelc, 'g*');
-plot(y/1000, v, 'g');
+plot((y-0.5*hy)/1000, v, 'g');
+
+end
 legend('0.0 m/year', '0.0 m/year Exact Sol.', ...
+       '5.0 m/year', '5.0 m/year Exact Sol.', ...
        '10.0 m/year','10.0 m/year Exact Sol.', ...
        '25.0 m/year','25.0 m/year Exact Sol.', ...
        'Location','BestOutside') %,'FontSize',fs);
 hold off
+
+if (plot5)
 subplot(2,1,2);
 plot(ycthk/1000, thkc, 'g*');
 plot(y/1000, h, 'g');
+end 
 legend('0.0 m/year', '0.0 m/year Exact Sol.', ...
+       '5.0 m/year', '5.0 m/year Exact Sol.', ...
        '10.0 m/year','10.0 m/year Exact Sol.', ...
        '25.0 m/year','25.0 m/year Exact Sol.', ...
        'Location','BestOutside') %,'FontSize',fs);
+
 hold off
