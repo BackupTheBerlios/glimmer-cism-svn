@@ -16,6 +16,7 @@ program shelf_driver
   use glimmer_paramets, only: thk0
   use glide_temp, only: timeevoltemp
   use glam_strs2, only: use_shelf_bc_1
+  use glimmer_scales, only: scale2d_f1
 
   implicit none
 
@@ -167,7 +168,7 @@ program shelf_driver
  end if
 
   if (plume_const_bmlt) then
-        model%temper%bmlt = plume_const_bmlt_rate
+        model%temper%bmlt = plume_const_bmlt_rate / scale2d_f1
      end if
 
 if (plume_write_all_states) then
@@ -245,7 +246,7 @@ end if
      end if
 
      if (plume_const_bmlt) then
-        model%temper%bmlt = plume_const_bmlt_rate
+        model%temper%bmlt = plume_const_bmlt_rate / scale2d_f1
      end if
     
   end do
@@ -366,7 +367,7 @@ contains
                      & in config file',  &
                        GM_FATAL)
     end if
-    call GetValue(section, 'plume_nl_filename', plume_nl)
+    call GetValue(section, 'plume_nl_file', plume_nl)
     call GetValue(section, 'plume_output_dir', plume_ascii_output_dir)
     call GetValue(section, 'plume_output_file', plume_output_nc_file)
     call GetValue(section, 'suppress_ascii_output', plume_suppress_ascii_output)
@@ -384,7 +385,7 @@ contains
     call GetValue(section, 'plume_const_bmlt_rate', plume_const_bmlt_rate)
 
     call write_log('Plume config')
-    write(*,*) plume_nl
+
     write(message,*) 'plume namelist file:', trim(plume_nl)
     call write_log(message)
     write(message,*) 'suppressing plume output:',plume_suppress_ascii_output

@@ -506,13 +506,14 @@ contains
          'Plastic bed (tau0)      ' /)
 
 !whl - added Price-Payne higher-order (glam) options
-    character(len=*), dimension(0:5), parameter :: ho_whichbabc = (/ &
+    character(len=*), dimension(0:6), parameter :: ho_whichbabc = (/ &
          'constant betasquared    ', &
          'simple pattern          ', &
          'as till yield stress    ', &
          'circular ice shelf      ', &
          'frozen bed              ', &
-         'B^2 passed from CISM    ' /)
+         'B^2 passed from CISM    ', &
+         'ice shelf everywhere    ' /)
     character(len=*), dimension(0:1), parameter :: ho_whichefvs = (/ &
          'from eff strain rate     ', &
          'constant value           ' /)
