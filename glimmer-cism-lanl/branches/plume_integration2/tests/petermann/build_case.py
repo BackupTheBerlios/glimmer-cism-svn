@@ -280,7 +280,7 @@ class GCConfig(object):
                                                               'thkmask','topg',
                                                               'kinbcmask',
                                                               'beta','btrc',
-                                                              'taux','tauy','temp',
+                                                              'temp',
                                                               'tau_hom_xx','tau_hom_yy',
                                                               'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
                                       ### NB: there is a (250) character limit on line length!!!
@@ -425,7 +425,7 @@ def build_case(configVals):
     
     retcode = subprocess.call(cmd)
     if (retcode != 0):
-        raise Exception('Error running:\n %s' ' '.join(cmd))
+        raise Exception('Error running:\n %s' % ' '.join(cmd))
 
 def main():
 
