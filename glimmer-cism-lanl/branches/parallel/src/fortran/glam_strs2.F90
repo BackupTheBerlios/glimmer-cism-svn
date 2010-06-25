@@ -947,7 +947,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       maxiteGMRES = 300
       
-      precond  = 2 ! 1: solver of Picard, 2: identity, 3: Jacobi ! JFL to be removed
+      precond  = 2 ! 1: solver of Picard, 2: identity
 
       iout   = 0    ! set  higher than 0 to have res(ite)
 
@@ -996,22 +996,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
          wk2 = wk1 
 
-      elseif (precond .eq. 3) then ! Jacobi precond
-
-! precondition v component 
-
-         answer = 0d0           ! initial guess
-         vectp(:) = wk1(1:pcgsize(1)) ! rhs for precond v
-         call Jacobi(matrixA, vectp, answer, size(answer), g_flag)
-         wk2(1:pcgsize(1)) = answer(:)
-
-! precondition u component 
-
-         answer = 0d0           ! initial guess
-         vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! rhs for precond u
-         call Jacobi(matrixC, vectp, answer, size(answer), g_flag)
-         wk2(pcgsize(1)+1:2*pcgsize(1)) = answer(:)
-         
       endif
 
       GOTO 10
