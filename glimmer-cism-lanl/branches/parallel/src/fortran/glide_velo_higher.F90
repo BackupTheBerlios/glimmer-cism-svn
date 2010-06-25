@@ -88,7 +88,7 @@ contains
         solver = 1 ! input by user, 1: Picard, 2: JFNK
 
 !        if (tstep .ge. 20) solver = 2
-!        if (tstep .eq. 21) stop 
+        if (tstep .eq. 21) stop 
 
         !Beta field computations that change in time
         if (model%options%which_ho_beta_in == HO_BETA_USE_BTRC) then
