@@ -713,7 +713,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:,:), allocatable :: vv, wk
   real (kind = dp) :: err, L2norm, L2norm_wig, L2square, eps, epsilon,NL_target
   real (kind = dp) :: crap
-  integer :: tot_its, iter, maxiteGMRES, iout, icode
+  integer :: tot_its, iter, itenb, maxiteGMRES, iout, icode
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
   integer, save :: tstep ! JFL to be removed
 
@@ -845,8 +845,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
   do k = 1, cmax
 
-!      print *, 'beginning of iteration ', k
-
   ! RN_20100129
   ocn = counter
 
@@ -957,7 +955,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
  10   CONTINUE
       
-      call fgmres (2*pcgsize(1),img,rhs,du,iter,vv,wk,wk1,wk2, &
+      call fgmres (2*pcgsize(1),img,rhs,du,itenb,vv,wk,wk1,wk2, &
                    eps,maxiteGMRES,iout,icode,tot_its)
 
       IF ( icode == 1 ) THEN      ! precond step
