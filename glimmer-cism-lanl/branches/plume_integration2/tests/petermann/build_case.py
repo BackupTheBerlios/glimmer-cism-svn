@@ -50,7 +50,7 @@ class PlumeNamelist(object):
                      'entrain' : True,
                      'entype' : 1,
                      'basmelt' : True,
-                     'rholinear' : None,
+                     'rholinear' : True,
                      'thermobar' : False,
                      'intrace' : False,
                      'vardrag' : False,
@@ -72,7 +72,7 @@ class PlumeNamelist(object):
                      'ifdep' : None,
                      'wcdep' : None,
                      'plume_min_thickness' : None,
-                     'bsmoothit' : 0,
+                     'bsmoothit' : 0,   #iterations of smoothing
                      'salttop' : None,
                      'saltbot' : None,
                      'temptop' : None,
@@ -80,16 +80,10 @@ class PlumeNamelist(object):
                      'phi' : None,
                      'ah' : None,   
                      'kh' : None,
-                     'cdb' : 2.5e-3,    
-                     'cl' : 1.775e-2,   
-                     'ef' : 5.0e-1,     
-                     'nus' : +1.0,     
-                     'nbar' : 1.0e3,
-                     'nice' : 1,
-                     'seedtype' : 2,
-                     'cseedfix' : 1.0e-7,
-                     'cinffix'  : 0.0,
-                     'context' : 'none',
+                     'cdb' : 2.5e-3,  #bottom drag coeff    
+                     'cl' : 1.775e-2, # entrainment coeff
+                     'ef' : 5.0e-1,   # entrainment factor
+                     'context' : 'none',  #NB: don't remove this
                      }
                      
     def update_vals(self, specificVals):
@@ -129,7 +123,7 @@ class GCConfig(object):
                                                                   # model%paramets%flow_factor
                                        'ice_limit' : None,        # minimum thickness for running ice dynamics
                                                                   # model%numerics%thklim
-                                       'marine_limit' : 0.0,       # When to chop off marine ice
+                                       'marine_limit' : 0.0,      # When to chop off marine ice
                                                                   # NB: not used if marine_margin = 0 is used
                                                                   # model%numerics%mlimit
                                        'calving_fraction' : 0.0,  # fraction of ice to remove from floating ice
