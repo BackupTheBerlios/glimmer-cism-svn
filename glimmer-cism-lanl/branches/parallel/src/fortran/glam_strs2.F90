@@ -18,7 +18,7 @@ module glam_strs2
 
 use glimmer_paramets, only : dp
 use glimmer_physcon,  only : gn, rhoi, rhoo, grav, pi, scyr
-use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, lambda0, evs0, tau0_glam
+use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, evs0, tau0_glam
 use glimmer_log,      only : write_log
 use glide_mask
 use glimmer_sparse_type
@@ -90,8 +90,6 @@ implicit none
   integer, dimension(2) :: pcgsize
   integer :: ct
 
-  integer, parameter :: unin = 90
-
 !RN_20100125: The following are for Trilinos:
   integer :: conversion = 0 ! whether triad-to-Crs is used
   integer :: whatsparse ! needed for putpgcg()
@@ -135,7 +133,7 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     ! NOTE: "dup", the sigma coordinate spacing is defined as a vector to allow it to 
     ! be read in from file for use with non-constant vertical grid spacing. Currently, this
     ! is not working, so the code will not give accurate results if the sigma coordinate is
-    ! not regularly spaced. - not working!!) 
+    ! not regularly spaced. 
     dup = (/ ( (sigma(2)-sigma(1)), up = 1, upn) /)
     dupm = - 0.25_dp / dup
     stagsigma = (sigma(1:upn-1) + sigma(2:upn)) / 2.0_dp
@@ -165,11 +163,11 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
             plastic_rhs(2,ewn-1,nsn-1), plastic_resid(1,ewn-1,nsn-1) )
     allocate(ghostbvel(2,3,ewn-1,nsn-1))        !! for saving the fictious basal vels at the bed !!
 
-    ghostbvel(:,:,:,:) = 0.0d0
-    plastic_coeff_lhs(:,:,:) = 0.0d0
     plastic_coeff_rhs(:,:,:) = 0.0d0
+    plastic_coeff_lhs(:,:,:) = 0.0d0
     plastic_rhs(:,:,:) = 0.0d0
     plastic_resid(:,:,:) = 0.0d0
+    ghostbvel(:,:,:,:) = 0.0d0
     velbcvect(:,:,:) = 0.0d0
 
     flwafact = 0.0_dp
@@ -252,7 +250,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 300                   ! max no. of iterations
+  integer, parameter :: cmax = 50                   ! max no. of iterations
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -343,6 +341,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! allocate space matrix variables
   allocate (pcgrow(pcgsize(2)),pcgcol(pcgsize(2)),rhsd(pcgsize(1)), &
             pcgval(pcgsize(2)))
+
   allocate(matrix%row(pcgsize(2)), matrix%col(pcgsize(2)), &
             matrix%val(pcgsize(2)), answer(pcgsize(1)))
 
@@ -1275,8 +1274,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
             ! "effstr" = eff. strain rate squared
             effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
                          0.25_dp * (vgradew + ugradns)**2 + &
-!                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
-                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
+                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
+!                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
 
     ! -----------------------------------------------------------------------------------
     ! NOTES on capping vs. non-capping version of eff. strain rate calc.
@@ -1293,9 +1292,9 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! available as a config file option or possibly removed altogether.   
 
     ! Old "capping" scheme       ! these lines must be active to use the "capping" scheme for the efvs calc
-!            where (effstr < effstrminsq)
-!                   effstr = effstrminsq
-!            end where
+            where (effstr < effstrminsq)
+                   effstr = effstrminsq
+            end where
 
     ! Note that the vert dims are explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
@@ -1310,7 +1309,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! horiz grid, even though it does not). 
 
             ! Below, p2=(1-n)/2n. The 1/2 is from taking the sqr root of the squared eff. strain rate
-            efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
+!            efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
+            efvs(:,ew,ns) = flwafact(:,ew,ns) * effstr**p2
 
         else
            efvs(:,ew,ns) = effstrminsq ! if the point is associated w/ no ice, set to min value
@@ -1683,7 +1683,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
     ! Additional debugging line, useful when trying to determine if convergence is being consistently 
     ! help up by the residual at one or a few particular locations in the domain.
-!    print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
+    !print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
 
   return
 
@@ -1907,8 +1907,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         call valueset(0.0_dp)
         do up = up_start, upn
            locplusup = loc(1) + up
-           call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
-!           call valueset( 0.0_dp )                ! vel at margin set to 0 
+!           call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
+           call valueset( 0.0_dp )                ! vel at margin set to 0 
         end do
 
     end if
@@ -1983,10 +1983,6 @@ subroutine bodyset(ew,  ns,  up,           &
   real (kind = dp) :: nz   ! z dir normal vector component at sfc or bed (takes diff value for each)
 
   integer, dimension(2) :: bcflag  ! indicates choice of sfc and basal bcs ...
-
-  real (kind = dp) :: efvstot   ! both of these vars are used for averaging of eff. vis. near lat boundaries
-  integer :: efvscount, i, j, k
-  efvstot = 0.0d0; efvscount = 0; i = 0; j = 0; k = 0
 
   locplusup = loc(1) + up
 
@@ -2091,11 +2087,6 @@ subroutine bodyset(ew,  ns,  up,           &
     ! --------------------------------------------------------------------------------------
     ! See eq. 2, Pattyn+, 2006, JGR v.111; eq. 8, Vieli&Payne, 2005, JGR v.110). Note that this 
     ! contains the 1d assumption that ice is not spreading lateraly !(assumes dv/dy = 0 for u along flow)
-    ! Note that factor of 2 in front of 'stagthck' is NOT part of the standard bc. Here, it is used to 
-    ! correct for the fact that the staggered thickness will be 1/2 of the normal thickness at a boundary 
-    ! ... as of summer 2009, this hack has been removed (no more factor of 2) and replaced by a new stagthck
-    ! averaging scheme at the margins, which uses only the non-zero values of thickness on the normal grid to
-    ! calc. the value of the stag. thickness
     source = abar*vis0_glam * ( 1.0_dp/4.0_dp * rhoi * grav * stagthck(ew,ns)*thk0 * ( 1.0_dp - rhoi/rhoo))**3.0_dp
 
     ! multiply by 4 so that case where v=0, du/dy = 0, LHS gives: du/dx = du/dx|_shelf 
@@ -3515,7 +3506,7 @@ subroutine calcbetasquared (whichbabc,               &
 
     case(0)     ! constant value; useful for debugging and test cases
 
-      betasquared = 1.0d0
+      betasquared = 10.0d0
 
     case(1)     ! simple pattern; also useful for debugging and test cases
                 ! (here, a strip of weak bed surrounded by stronger bed to simulate an ice stream)
@@ -3549,10 +3540,6 @@ subroutine calcbetasquared (whichbabc,               &
       where ( betasquared /= betasquared )
         betasquared = 1.0d10
       end where
-
-    case default    ! frozen (u=v=0) ice-bed interface
-
-      betasquared = 1.0d10
 
   end select
 

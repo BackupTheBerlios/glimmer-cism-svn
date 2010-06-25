@@ -44,8 +44,10 @@ contains
         type(sparse_solver_options) :: opt
 
         opt%base%method = method
-        opt%base%tolerance  = 1e-12
-        opt%base%maxiters = 2000
+!        opt%base%tolerance  = 1e-12
+!        opt%base%maxiters = 2000
+        opt%base%tolerance  = 1e-11
+        opt%base%maxiters = 200
 
         !Solver specific options
         if (method == SPARSE_SOLVER_BICG) then

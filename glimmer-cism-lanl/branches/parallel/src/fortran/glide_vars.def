@@ -63,6 +63,13 @@ standard_name: land_ice_sigma_coordinate
 positive:      down
 dimlen:        model%general%upn
 
+[levels]
+dimensions:    levels
+units:         1
+long_name:     stag sigma layers
+positive:      down
+dimlen:        model%general%upn-1
+
 [lithoz]
 dimensions:    lithoz
 units:         meter
@@ -469,14 +476,16 @@ hot:	      1
 
 #Vertical shear stresses, required for ISMIP-HOM intercomparison
 [tau_xz]
-dimensions: time, level, y0, x0
+#dimensions: time, level, y0, x0
+dimensions: time, levels, y1, x1
 units:      Pa
 long_name:  X component vertical shear stress
 data:       data%velocity_hom%tau%xz(up,:,:)
 factor:     scale3d_f9
 
 [tau_yz]
-dimensions: time, level, y0, x0
+#dimensions: time, level, y0, x0
+dimensions: time, levels, y1, x1
 units:      Pa
 long_name:  Y component vertical shear stress
 data:       data%velocity_hom%tau%yz(up,:,:)

@@ -301,7 +301,7 @@ module glide_types
     !*FD $\tau_{b,i} = -\tau_c \frac{v_i}{\lVert v \rVert}
 
     ! options for using the Payne/Price higher-order dynamical core
-    integer :: which_ho_babc = 0
+    integer :: which_ho_babc = 4
     !*FD Flag that describes basal boundary condition for PP dyn core: 
     !*FD \begin{description}
     !*FD \item[0] constant value (hardcoded in, useful for debugging)
@@ -752,8 +752,6 @@ module glide_types
     real(dp) :: btrac_const = 0.0d0
     real(dp) :: btrac_slope = 0.0d0
     real(dp) :: btrac_max = 0.d0
-    integer :: btract_levels = 2 !*sfp* no. of vert dims in consistent btraction 
-                                 ! array (one each for x,y components)
   end type glide_velowk
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1072,15 +1070,28 @@ contains
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%total_diffu)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%beta)
     call coordsystem_allocate(model%general%velo_grid, 2, model%velocity_hom%btraction)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%scalar)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xz)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yz)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xx)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yy)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xy)
+
+! *sfp* changing dims of stress tensor arrays to be consistent with those expected by PP core 
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%scalar)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xz)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yz)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xx)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yy)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xy)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%scalar)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xz)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%yz)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xx)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%yy)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xy)
+
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%gdsx)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%gdsy)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%efvs)
+
+! *sfp* changing dims of efvs array to be consistent with those expected by PP core 
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%efvs)
+    call coordsystem_allocate(model%general%ice_grid, upn, model%velocity_hom%efvs)
+
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%velmask)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%velnorm)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%kinbcmask)

@@ -88,7 +88,7 @@ contains
         solver = 1 ! input by user, 1: Picard, 2: JFNK
 
 !        if (tstep .ge. 20) solver = 2
-        if (tstep .eq. 21) stop 
+!        if (tstep .eq. 21) stop 
 
         !Beta field computations that change in time
         if (model%options%which_ho_beta_in == HO_BETA_USE_BTRC) then
@@ -191,10 +191,12 @@ contains
                                         model%numerics%sigma,    model%numerics%stagsigma,          &
                                         model%geometry%thck,     model%geometry%usrf,               &
                                         model%geometry%lsrf,     model%geometry%topg,               &
-                                        model%geomderv%dthckdew, model%geomderv%dthckdns,           &
-                                        model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
-                                        model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
-                                        model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
+                                        model%geomderv%dthckdew_unstag, model%geomderv%dthckdns_unstag, &
+                                        model%geomderv%dusrfdew_unstag, model%geomderv%dusrfdns_unstag, &
+                                        model%geomderv%dusrfdew-model%geomderv%dthckdew_unstag,         &
+                                        model%geomderv%dusrfdns-model%geomderv%dthckdns_unstag,         & 
+!                                        model%geomderv%dlsrfdew_unstag,            &
+!                                        model%geomderv%dlsrfdns_unstag,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
                                         model%basalproc%minTauf,                                    & 
                                         model%velocity_hom%btraction,                               & 
