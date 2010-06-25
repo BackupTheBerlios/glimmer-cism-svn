@@ -149,7 +149,7 @@ class GCConfig(object):
                       'Petermann shelf' : {  'air_temperature' : None,     # Temp assigned to ice in isothermal case
                                              'accumulation_rate' : None,   # In meters per year
                                              'eustatic_sea_level' : 0.0 }, # Height of sea level relative to initial height
-                      'options' : {'flow_law' : 0,     # flow_law = 2 means constant A
+                      'options' : {'flow_law' : None,     # flow_law = 2 means constant A
                                                        #          = 0 means calculate A from temperature
                                                        # model%options%whichflwa
                                    'evolution' : 3,    # evolution = 0 means pseudo-diffusion
@@ -158,10 +158,11 @@ class GCConfig(object):
                                                        #           = 3 means LANL incrementral remapping method
                                                        #           = 4 upwind advection
                                                        # model%options%whichevol
-                                   'temperature' : 1,            # temperature = 1 means full 3D thermal evolution
+                                   'temperature' : None,            # temperature = 1 means full 3D thermal evolution
                                                                  #             = 0 means set to air temperature
                                                                  # model%options%whichtemp
                                    'vertical_integration' : 1,  #vertical_integration = 1 constrained to obey kinematic BC
+                                                                #NB: only used in full-temperature cases
                                                                 # model%options%whichwvel
                                    'marine_margin' : 0,         # marine_margin 
                                                                 # = 0 means ignore marine margin (no chopping)
@@ -209,6 +210,8 @@ class GCConfig(object):
                                                                         # model%options%which_ho_sparse_fallback
                                        'basal_stress_input' : 2,    # how to compute beta:
                                                                     # = 2 means basal traction is given directly
+                                                                    #NB: this all doesn't matter if using
+                                                                    #    which_ho_babc = 6 (so beta ~= 0.0 everywhere)
                                                                     # model%options%which_ho_beta_in
                                        'basal_stress_type' : 0,      # basal_stress_type = 0 means linear
                                                                     #                     1 means plastic
@@ -229,8 +232,9 @@ class GCConfig(object):
                                        'which_bmelt' : 0,   # basal melting
                                                               # model%options%which_bmelt
                                        'which_ho_babc' : None,       # basal boundary condition: 
-                                                                  # = 5 means simple ice-shelf 
-                                                                  # = 7 means circular ice-shelf
+                                                                  # = 5 means simple ice-shelf
+                                                                  # = 6 means floating ice everywhere, no traction
+                                                                  # = 3 means circular ice-shelf
                                                                   # NB: only used when using Payne-Price diagnostic scheme
                                                                   # model%options%which_ho_babc
                                        'guess_specified' : 1,     # model%velocity_hom%is_velocity_valid
