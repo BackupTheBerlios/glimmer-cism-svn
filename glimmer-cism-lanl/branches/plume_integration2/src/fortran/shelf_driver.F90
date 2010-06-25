@@ -168,6 +168,8 @@ program shelf_driver
  end if
 
   if (plume_const_bmlt) then
+        ! NB: a positive plume_const_bmlt_rate should indicate
+        !     mass being lost from the ice shelf
         model%temper%bmlt = plume_const_bmlt_rate / scale2d_f1
      end if
 

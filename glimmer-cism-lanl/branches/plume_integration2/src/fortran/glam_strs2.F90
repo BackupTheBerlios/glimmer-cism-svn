@@ -2688,7 +2688,7 @@ subroutine calcbetasquared (whichbabc,               &
   
    case(6)    !floating ice everywhere
 
-      betasquared = 1.0d-5
+      betasquared = 1.0d-10
 
     case default    ! frozen (u=v=0) ice-bed interface
 
