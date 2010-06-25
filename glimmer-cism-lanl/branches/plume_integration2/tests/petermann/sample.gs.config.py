@@ -2,30 +2,37 @@
 
 # Note: Uses python syntax, so this file must be a valid python file
 
-_run_name = 'c15'
+_run_name = 'sample'
 
-_m = 41
-_n = 81
+_m = 5
+_n = 41
 _kinbcw = 2
 _ramp_width = 0
 _landw = 0
-_n_level = 5
-_hx = 250.0
-_hy = 250.0
+_n_level = 3
+_hx = 1000.0
+_hy = 1000.0
 _kx = 1.0
 _chan_depth = 20.0
 
 _dt = 0.05
 _tstart = 0.0
-_tend = 1.0
+_tend = 10.0
 
 _ifpos = 5
-_ifdep = 600.0
-_gldep = 600.0
+_ifdep = 0.0
+_gldep = 1000.0
 _wcdep = 200.0
 _up_thk = _gldep
 _up_vel = -1000.0
+_otopg = 2*_gldep
 
+_rhoi = 910.0
+_rhoo = 1028.0
+_glen_A = 1.0e-16
+_rand_thk_amp = 0.001
+
+_bmlt = 0.0
 
 _nc_input_fname = '%s.in.nc' % _run_name
 
@@ -40,12 +47,11 @@ nc_regrid_args = [None,
                   _m,_n,0,0,0,0,0,0,0,0,
                   _kinbcw,0,0,0]
 
-nc_gen_input_args = ['gs',
+nc_gen_input_args = ['ss',
                      _nc_input_fname,
-                     _m,_n,_kinbcw, _n_level,_hx,_hy,
-                     _up_thk, _up_vel, _ifdep,
-                     _kx, _chan_depth,_ramp_width,_landw,_ifpos
-                    ]
+                     _m,_n,_n_level,_hx,_hy,_up_thk,_up_vel,
+                     _ifpos, _otopg,_kinbcw,_bmlt,
+                     _rhoi,_rhoo,_glen_A,_rand_thk_amp]
 
 input_style = 'gen_input'
 
@@ -71,7 +77,8 @@ plume_vals = {'ifdep' : _ifdep,
               'saltbot' : 34.5,
               'salttop' : 34.5,
               'gldep' : _gldep,
-              'wcdep' : _wcdep}
+              'wcdep' : _wcdep,
+              }
 
 gc_vals = {'plume' : { 'plume_imin' : 1,
  			'plume_imax' : _m,
@@ -81,8 +88,8 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
 			'plume_output_prefix' : _run_name,
 			'plume_output_file' : 'plume.%s.out.nc' % _run_name,
 	                'plume_nl_file' : plume_nl_filename,
-                        'plume_const_bmlt' : 0,
-                        'plume_const_bmlt_rate' : 0.0
+                        'plume_const_bmlt' : 1,
+                        'plume_const_bmlt_rate' : 10.0
                        },
            'time' : {'tstart' : _tstart,
                      'tend' : _tend,
@@ -93,7 +100,7 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
 			'dew' : _hx,
 			'dns' : _hy },
            'parameters' : { 'ice_limit' : 20.0,
-                            'default_flwa' : 1.0e-16,
+                            'default_flwa' : _glen_A,
                             },
            'Petermann shelf' : {'accumulation_rate' : 0.0,
                                 'air_temperature' : -5.0},
@@ -106,9 +113,9 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
 	    'CF default' : { 'comment' : '',
 			     'title' : _run_name },
            'options' : { 'flow_law' : 2,
-                         'use_plume' : 0,
+                         'use_plume' : 1,
                          'hotstart' : 0,
-                         'x_invariant' : 0,
+                         'x_invariant' : 1,
 		         'temperature' : 1,
                          },
            'ho_options': {'which_bmelt' : 0,

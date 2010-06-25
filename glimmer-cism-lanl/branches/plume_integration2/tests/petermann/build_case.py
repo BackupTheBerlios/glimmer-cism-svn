@@ -432,10 +432,8 @@ def main():
     
     config_filename = sys.argv[-1] #last argument
     configVals = get_config(config_filename)
-    try:
-        build_case(configVals)
-    except:
-        print('Unable to build case')
+
+    build_case(configVals)
         
 
 if __name__ == '__main__':
