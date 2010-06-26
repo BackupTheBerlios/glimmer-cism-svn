@@ -321,8 +321,6 @@ subroutine read_old_nc_file()
                         start= (/ 1,1,1,t_read /), &
                         count= (/ (nx_old),(ny_old), nlevel, 1 /) ))
 
-  write(*,*) 'vvelhom_old(5,:,1)',vvelhom_old(5,:,1)
-
 end subroutine read_old_nc_file
 
 
