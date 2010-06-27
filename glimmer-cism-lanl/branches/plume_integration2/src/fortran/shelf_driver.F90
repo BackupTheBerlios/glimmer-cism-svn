@@ -160,7 +160,7 @@ program shelf_driver
                         plume_write_all_states)
                                                
 
-       call write_real_ice_array(plume_bmelt_out,model%temper%bmlt, &
+       call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
                                  model%general%ewn, model%general%nsn, fake_landw)
        call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
                                  model%general%ewn, model%general%nsn, fake_landw)
@@ -241,7 +241,7 @@ end if
                     .false., &
                     plume_write_all_states)
 
-          call write_real_ice_array(plume_bmelt_out,model%temper%bmlt, &
+          call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
                                     model%general%ewn, model%general%nsn, fake_landw)
           call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
                                     model%general%ewn, model%general%nsn, fake_landw)
