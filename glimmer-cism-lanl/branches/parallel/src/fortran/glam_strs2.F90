@@ -500,8 +500,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     L2norm = sqrt(L2norm + L2square)
     Fvec(pcgsize(1)+1:2*pcgsize(1)) = uk_1(:) ! Fvec = [ Fv, Fu ]
 
-!    print *, 'L2 with/without ghost (k)= ', counter, &
-!              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
+    print *, 'L2 with/without ghost (k)= ', counter, &
+              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
 
 !      if (counter .eq. 20) then
 !         call output_res( ewn, nsn, upn, uindx, counter, &
@@ -940,13 +940,13 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       du  = 0d0 ! initial guess
 
-      eps = 0.00001d0 * L2norm_wig ! setting the tolerance for fgmres
+      eps = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
 
       epsilon = 1d-07 ! for Jx approximation
 
       maxiteGMRES = 300
       
-      precond  = 2 ! 1: solver of Picard, 2: identity
+      precond  = 1 ! 1: solver of Picard, 2: identity
 
       iout   = 0    ! set  higher than 0 to have res(ite)
 

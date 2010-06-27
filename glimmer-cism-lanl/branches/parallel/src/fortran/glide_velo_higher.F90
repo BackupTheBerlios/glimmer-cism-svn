@@ -87,6 +87,7 @@ contains
         tstep = tstep + 1 ! JFL to be removed
         solver = 1 ! input by user, 1: Picard, 2: JFNK
 
+!        print *, 'time step=', tstep 
 !        if (tstep .ge. 20) solver = 2
 !        if (tstep .eq. 21) stop 
 
@@ -214,16 +215,18 @@ contains
 
           elseif (solver .eq. 2) then ! JFNK (solver in development...)
 
-            call JFNK                 ( model%general%ewn,       model%general%nsn,                 &
+            call JFNK                  ( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
                                         model%numerics%dew,      model%numerics%dns,                &
                                         model%numerics%sigma,    model%numerics%stagsigma,          &
                                         model%geometry%thck,     model%geometry%usrf,               &
                                         model%geometry%lsrf,     model%geometry%topg,               &
-                                        model%geomderv%dthckdew, model%geomderv%dthckdns,           &
-                                        model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
-                                        model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
-                                        model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
+                                        model%geomderv%dthckdew_unstag, model%geomderv%dthckdns_unstag, &
+                                        model%geomderv%dusrfdew_unstag, model%geomderv%dusrfdns_unstag, &
+                                        model%geomderv%dusrfdew-model%geomderv%dthckdew_unstag,         &
+                                        model%geomderv%dusrfdns-model%geomderv%dthckdns_unstag,         & 
+!                                        model%geomderv%dlsrfdew_unstag,            &
+!                                        model%geomderv%dlsrfdns_unstag,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
                                         model%basalproc%minTauf,                                    & 
                                         model%velocity_hom%btraction,                               & 
