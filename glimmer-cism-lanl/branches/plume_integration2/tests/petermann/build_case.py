@@ -83,7 +83,7 @@ class PlumeNamelist(object):
                      'cdb' : 2.5e-3,  #bottom drag coeff    
                      'cl' : 1.775e-2, # entrainment coeff
                      'ef' : 5.0e-1,   # entrainment factor
-                     'context' : 'none',  #NB: don't remove this
+                     'context' : '""',  #NB: don't remove this
                      }
                      
     def update_vals(self, specificVals):
