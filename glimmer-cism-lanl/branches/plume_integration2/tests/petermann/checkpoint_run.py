@@ -63,7 +63,7 @@ def checkpoint_run(config_file):
                    insert_cp_index(gc_config_fname_base, i)
         base_config['plume_nl_filename'] = \
                    insert_cp_index(plume_nl_fname_base, i)
-        base_config['gc_vals']['plume']['plume_nl_filename'] = \
+        base_config['gc_vals']['plume']['plume_nl_file'] = \
                    insert_cp_index(plume_nl_fname_base,i)
         base_config['gc_vals']['CF input']['name'] = \
                    insert_cp_index(gc_input_fname_base,i)
