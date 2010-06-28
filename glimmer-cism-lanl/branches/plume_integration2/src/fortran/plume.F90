@@ -136,7 +136,7 @@ contains
        domain_kmax = kmax
 
        call initialise_fields(suppress_ascii_output,iwetmin,iwetmax,kwetmin,kwetmax,bpos_ext)
-       deallocate(bpos_ext)
+       !deallocate(bpos_ext)
     else
        call initialise_fields(suppress_ascii_output,iwetmin,iwetmax,kwetmin,kwetmax)
     end if
@@ -172,101 +172,6 @@ contains
        call io_append_output(' ')
        call io_output_sys_time('start system time ')
        call io_append_output(' ')
-    end if
-
-!!! TODO: this code will not work with the new netcdf output
-    ! if restarting from an old run
-    ! -----------------------------
-    if (restart) then
-
-       ! read old fields
-       open(31,file = trim(restart_data_filename))
-
-       read(31,*) runtim,itmp,itmp,ltmp,ltmp,ltmp,ltmp,itmp, &
-            &     itmp,itmp,dtmp,dtmp,iwetmin,iwetmax,kwetmin,kwetmax,negdep
-
-       do i = 1,m_grid
-          read(31,*) dtmp
-       end do
-       do k = 1,n_grid
-          read(31,*) dtmp
-       end do
-
-       do i = 1,m_grid
-          do k = 1,n_grid
-             read(31,*) jcw(i,k),su(i,k),sv(i,k),temp(i,k),salt(i,k), &
-                  pdep(i,k),bpos(i,k),ipos(i,k), &
-                  rhoamb(i,k),rhop(i,k),dtmp,dtmp, &
-                  entr(i,k),atemp(i,k),asalt(i,k), &
-                  bmelt(i,k),btemp(i,k),bsalt(i,k), &
-                  tf(i,k)
-          end do
-       end do
-
-       if (vardrag) then
-          do i = 1,m_grid
-             do k = 1,n_grid
-	        read(31,*) drag(i,k)
-             end do
-          end do
-       end if
-
-       if (frazil) then
-          do i = 1,m_grid
-             do k = 1,n_grid
-	        read(31,*) ctot(i,k),dtmp
-		do l = 1,nice
-		   read(31,*) c(i,k,l),fmelt(i,k,l),fppn(i,k,l),fnuc(i,k,l)
-                   ca(i,k,l) = c(i,k,l)
-		end do
-             end do
-          end do
-       end if
-
-       if (intrace) then
-          do i = 1,m_grid
-             do k = 1,n_grid
-		read(31,*) intrin(i,k)
-		do l = ninfmin,ninfmax
-                   read(31,*) intr(i,k,l)
-                   intra(i,k,l) = intr(i,k,l)
-		end do
-             end do
-          end do
-       end if
-
-       if (tangle) then
-          do i = 1,m_grid
-             do k = 1,n_grid
-		read(31,*) u0(i,k),v0(i,k),u0a(i,k),v0a(i,k),tang(i,k)
-             end do
-          end do
-       end if
-
-       close(31)
-
-       ! populate other arrays
-
-       do i = 1,m_grid
-          do k = 1,n_grid
-             ua(i,k) = su(i,k)*5.0d-1*(pdep(i,k) + pdep(i+1,k))
-             va(i,k) = sv(i,k)*5.0d-1*(pdep(i,k) + pdep(i,k+1))
-             tempa(i,k) = temp(i,k)
-             salta(i,k) = salt(i,k)
-             ctota(i,k) = ctot(i,k)
-          end do
-       end do
-
-       ! sort out timestep
-
-       if (runtim.lt.dtswtim) then
-          nsteps = int((dtswtim - runtim)/dt1 + (tottim - dtswtim)/dt2)
-          dt = dt1
-       else
-          nsteps = int((tottim - runtim)/dt2)
-          dt = dt2
-       end if
-
     end if
 
     if (.not. suppress_logging) &
