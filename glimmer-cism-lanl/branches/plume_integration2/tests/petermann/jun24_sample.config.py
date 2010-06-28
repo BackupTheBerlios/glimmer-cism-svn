@@ -2,25 +2,24 @@
 
 # Note: Uses python syntax, so this file must be a valid python file
 
+_run_name = 'steady_test'
+
 _m = 5
 _n = 81
-_kinbcw = 2
-_ramp_width = 0
-_landw = 0
 _n_level = 3
 _hx = 500.0
 _hy = _hx
-_kx = 0.0
-_chan_depth = 0.0
-
-_const_bmlt_rate = 1.0
-
-_plume_landw = 2
 
 _dt = 0.0125
 _tstart = 0.0
 _tend =   2.0
 
+_kinbcw = 2
+_ramp_width = 0
+_landw = 0
+_plume_landw = 2
+_kx = 0.0
+_chan_depth = 0.0
 _ifpos = 5
 _gldep = 1000.0
 _ifdep = _gldep 
@@ -28,7 +27,7 @@ _wcdep = 200.0
 _up_thk = _gldep
 _up_vel = -1000.0
 
-_run_name = 'steady_test'
+_const_bmlt_rate = 1.0
 
 _nc_input_fname = '%s.in.nc' % _run_name
 
