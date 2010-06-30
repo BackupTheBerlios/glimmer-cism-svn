@@ -133,7 +133,7 @@ contains
         !*FD Sparse matrix to solve.  This is inout because the slap solver
         !*FD may have to do some re-arranging of the matrix.
         
-        real(kind=dp), dimension(:), intent(inout) :: rhs 
+        real(kind=dp), dimension(:), intent(inout) :: rhs
         !*FD Right hand side of the solution vector
         
         real(kind=dp), dimension(:), intent(inout) :: solution 
@@ -163,6 +163,16 @@ contains
         
         logical :: allzeros
         integer :: i
+
+        integer, parameter :: err5_policy = 2
+        ! What to do in the case that slap comes back with ierr=5,
+        ! which is what happens when the incoming guess solution is
+        ! precisely a solution already, I think.  -Carl Gladish
+
+
+        real(kind=dp) :: norm, normrhs
+        real(kind=dp), dimension(:),allocatable :: workvect
+        real(kind=dp),parameter :: err5tol = 1.0e-4
 
         iunit = 0
         if (present(verbose)) then
@@ -212,6 +222,38 @@ contains
                             isym, options%itol, options%base%tolerance, options%base%maxiters,&
                             niters, err, ierr, iunit, &
                             workspace%rwork, size(workspace%rwork), workspace%iwork, size(workspace%iwork))
+            end if
+
+            if (ierr == 5) then
+                !might be that Ax=b already
+                !CALL DSMV(N, X, Y, NELT, IA, JA, A, ISYM ) to get y = A*x
+                allocate(workvect(matrix%order))
+                call dsmv(matrix%order, solution, workvect, matrix%nonzeros, &
+                          matrix%row, matrix%col, matrix%val, isym)
+                
+                ! then calculate norm(Ax-b) and norm(b)
+                norm = 0.0
+                normrhs = 0.0
+                do i=1,matrix%order
+                    norm = norm + (rhs(i)-workvect(i))**2.0
+                    normrhs = normrhs + rhs(i)**2.0
+                end do
+                norm = norm ** 0.5
+                normrhs = normrhs ** 0.5
+
+                if (norm .lt. (err5tol * normrhs)) then                    
+                    if (err5_policy == 0) then
+                        ! leave ierr = 5 and let program die
+                    elseif (err5_policy == 1) then
+                        ! stop program gracefully, somehow
+                        call write_log('need to implement this',GM_FATAL)
+                    elseif (err5_policy == 2) then
+                        ! ignore the fact that the guess was a 'perfect' guess
+                        ! and just carry on 
+                        ierr = 0    
+                    end if
+                end if
+
             end if
         end if
         slap_solve = ierr
