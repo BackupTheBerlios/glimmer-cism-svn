@@ -421,10 +421,11 @@ contains
     end if
 
     ! write long step output 
-    if ((int(floor(runtim/outtim)) > last_lnot_step) .and. (.not. (in_glimmer))) then
+    if ((int(floor(runtim/outtim)) > last_lnot_step)) then
        last_lnot_step = int(floor(runtim/outtim))
        call io_write_long_step_output(icalcan,icalcen,kcalcan,kcalcen,&
             varoutrat,negdep)
+       call io_write_calculated_time(runtim, int(runtim/dt))
     end if
 
     ! write state to file
