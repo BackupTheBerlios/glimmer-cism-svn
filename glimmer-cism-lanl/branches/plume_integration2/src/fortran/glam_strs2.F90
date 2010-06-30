@@ -226,7 +226,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
-  integer, parameter :: cmax = 3000                 ! max no. of iterations
+  integer, parameter :: cmax = 3                 ! max no. of iterations
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -419,6 +419,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     !call write_log (message)
 
   end do
+
+  if (counter == cmax) then
+	write(message,*) 'Picard iteration failed to converge after ', counter, ' iterations.'
+     	call write_log(message,GM_ERROR,'glam_strs2.F90')
+	stop 1
+  end if
 
   ! ****************************************************************************************
   ! END of Picard iteration
