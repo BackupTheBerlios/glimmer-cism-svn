@@ -807,7 +807,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: mindcrshstr
 
-  real (kind = dp), parameter :: ssthres = 5.0_dp * pi / 6.0_dp, &
+  real (kind = dp), parameter :: ssthres = -0.01_dp * pi / 6.0_dp, &
                                  critlimit = 10.0_dp / (scyr * vel0), &
                                  small = 1.0e-16_dp
 
@@ -833,12 +833,12 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
       mindcrshstr = usav(:,:,:,pt) + &
                     corr(:,:,:,new(pt),pt) * abs(corr(:,:,:,old(pt),pt)) / &
-                    abs(corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt)) 
+                    (abs(corr(:,:,:,new(pt),pt)) + abs(corr(:,:,:,old(pt),pt))) 
 
     elsewhere
 
       mindcrshstr = vel;
- 
+
     end where
     
   else 
