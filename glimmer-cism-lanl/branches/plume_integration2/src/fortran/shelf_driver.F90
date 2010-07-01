@@ -5,14 +5,14 @@
 #include "glide_mask.inc"
 
 program shelf_driver
-  
+
   use glide
   use glide_mask
   use glimmer_commandline
   use glimmer_writestats_module
   use plume
   use plume_io
- 
+
   use glimmer_paramets, only: thk0
   use glide_temp, only: timeevoltemp
   use glam_strs2, only: use_shelf_bc_1
@@ -37,11 +37,16 @@ program shelf_driver
   real(kind=rk) :: time
   real(kind=dp) :: t1,t2
   integer :: clock,clock_rate
+  logical :: is_steady = .false.
+
+  logical,parameter :: check_for_steady = .false.
+  real(kind=dp),parameter :: thk_steady_tol = 1.0e-5
 
   real(kind=rk),dimension(:),allocatable :: upstream_thck
   logical,      dimension(:,:),allocatable :: plume_land_mask
   real(kind=dp),dimension(:,:),allocatable :: plume_lsrf_ext,plume_ice_dz,plume_t_interior
   real(kind=dp),dimension(:,:),allocatable :: plume_bmelt_out, plume_btemp_out
+  real(kind=dp),dimension(:,:),allocatable :: prev_ice_thk
 
   !PLUME configuration values
   character(len=512) :: plume_nl,plume_output_nc_file,plume_output_prefix,plume_ascii_output_dir
@@ -55,10 +60,10 @@ program shelf_driver
   use_shelf_bc_1 = .true.
 
   call glimmer_GetCommandline()
-  
+
   ! start logging
   call open_log(unit=50, fname=logname(commandline_configname))
-  
+
   ! read configuration
   call ConfigRead(commandline_configname,config)
 
@@ -70,8 +75,8 @@ program shelf_driver
   call glide_config(model,config)
 
   if (model%options%use_plume == USE_PLUME) then
-    ! read [plume] section of glimmer config file
-      call plume_read_print_config(model,config) 
+     ! read [plume] section of glimmer config file
+     call plume_read_print_config(model,config) 
 
   end if
 
@@ -91,7 +96,7 @@ program shelf_driver
   !inside glide_initialise
   model%climate%acab(:,:) = climate_cfg%accumulation_rate
   model%climate%artm(:,:) = climate_cfg%artm
-  
+
   allocate(upstream_thck(model%general%ewn))
   upstream_thck = model%geometry%thck(:,model%general%nsn)
 
@@ -104,85 +109,89 @@ program shelf_driver
      ! we are using the plume
 
      allocate(plume_land_mask(  model%general%ewn+2*fake_landw, &
-                                model%general%nsn+1*fake_landw))
+          model%general%nsn+1*fake_landw))
      allocate(plume_lsrf_ext(   model%general%ewn+2*fake_landw, &
-                                model%general%nsn+1*fake_landw))
+          model%general%nsn+1*fake_landw))
      allocate(plume_ice_dz(     model%general%ewn+2*fake_landw, &
-                                model%general%nsn+1*fake_landw))
+          model%general%nsn+1*fake_landw))
      allocate(plume_t_interior( model%general%ewn+2*fake_landw, &
-                                model%general%nsn+1*fake_landw)) 
+          model%general%nsn+1*fake_landw)) 
      allocate(plume_bmelt_out(  model%general%ewn+2*fake_landw, &
-                                model%general%nsn+1*fake_landw))
+          model%general%nsn+1*fake_landw))
      allocate(plume_btemp_out(  model%general%ewn+2*fake_landw, &
-                                model%general%nsn+1*fake_landw))
+          model%general%nsn+1*fake_landw))
 
      call write_logical_plume_array(GLIDE_IS_LAND(model%geometry%thkmask) .or. &
-                                   GLIDE_IS_GROUND(model%geometry%thkmask), &       
-                                   plume_land_mask, .true., &
- 				   model%general%ewn, model%general%nsn, fake_landw)
+          GLIDE_IS_GROUND(model%geometry%thkmask), &       
+          plume_land_mask, .true., &
+          model%general%ewn, model%general%nsn, fake_landw)
      call write_real_plume_array(model%geometry%lsrf *thk0, plume_lsrf_ext, 0.0, &
-                                 model%general%ewn, model%general%nsn, fake_landw)
+          model%general%ewn, model%general%nsn, fake_landw)
      call write_real_plume_array( model%temper%temp(model%general%upn-1,:,:), &
-                                  plume_t_interior, 0.0, &
-                                  model%general%ewn, model%general%nsn, fake_landw)
+          plume_t_interior, 0.0, &
+          model%general%ewn, model%general%nsn, fake_landw)
      call write_real_plume_array((model%numerics%sigma(model%general%upn) - &
-                                  model%numerics%sigma(model%general%upn -1)) * &
-                                  model%geometry%thck * thk0, &
-                                  plume_ice_dz, 0.0, &
-                                  model%general%ewn, model%general%nsn, fake_landw)   
+          model%numerics%sigma(model%general%upn -1)) * &
+          model%geometry%thck * thk0, &
+          plume_ice_dz, 0.0, &
+          model%general%ewn, model%general%nsn, fake_landw)   
 
      call plume_logging_initialize(trim(plume_ascii_output_dir), &
-                                   trim(plume_output_prefix), &
-                                    plume_suppress_logging)
+          trim(plume_output_prefix), &
+          plume_suppress_logging)
 
      call plume_initialise(trim(plume_nl), &
-                           plume_suppress_ascii_output, &
-                           plume_suppress_logging,&
-                           plume_lsrf_ext,&
-                           plume_land_mask, &
-                           plume_imin,plume_imax,plume_kmin,plume_kmax)
-     
+          plume_suppress_ascii_output, &
+          plume_suppress_logging,&
+          plume_lsrf_ext,&
+          plume_land_mask, &
+          plume_imin,plume_imax,plume_kmin,plume_kmax)
+
      call plume_io_initialize(plume_suppress_ascii_output, &
-                              trim(plume_output_nc_file))
- 
+          trim(plume_output_nc_file))
+
      !run the plume to steady state with given shelf draft
      call plume_iterate(time, &
-                        model%numerics%tinc*1.d0, &
-                        plume_lsrf_ext, &
-                        plume_land_mask, &
-                        plume_t_interior, &
-                        plume_ice_dz, &
-                        plume_bmelt_out, &
-                        plume_btemp_out, &
-                        plume_steadiness_tol, &
-                        plume_min_spinup_time, &
-                        .true.,&
-                        plume_write_all_states)
-                                               
+          model%numerics%tinc*1.d0, &
+          plume_lsrf_ext, &
+          plume_land_mask, &
+          plume_t_interior, &
+          plume_ice_dz, &
+          plume_bmelt_out, &
+          plume_btemp_out, &
+          plume_steadiness_tol, &
+          plume_min_spinup_time, &
+          .true.,&
+          plume_write_all_states)
 
-       call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
-                                 model%general%ewn, model%general%nsn, fake_landw)
-       call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
-                                 model%general%ewn, model%general%nsn, fake_landw)
 
- end if
+     call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
+          model%general%ewn, model%general%nsn, fake_landw)
+     call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
+          model%general%ewn, model%general%nsn, fake_landw)
+
+  end if
 
   if (plume_const_bmlt) then
-        ! NB: a positive plume_const_bmlt_rate should indicate
-        !     mass being lost from the ice shelf
-        model%temper%bmlt = plume_const_bmlt_rate / scale2d_f1
-     end if
+     ! NB: a positive plume_const_bmlt_rate should indicate
+     !     mass being lost from the ice shelf
+     model%temper%bmlt = plume_const_bmlt_rate / scale2d_f1
+  end if
 
-if (plume_write_all_states) then
-    write(*,*) 'Stopping because plume_write_all_states is true'
-    call plume_finalise()
-    call plume_io_finalize()
-    call plume_logging_finalize()
+  if (plume_write_all_states) then
+     write(*,*) 'Stopping because plume_write_all_states is true'
+     call plume_finalise()
+     call plume_io_finalize()
+     call plume_logging_finalize()
 
-    stop
-end if
+     stop
+  end if
 
- do while(time .le. model%numerics%tend)
+  allocate(prev_ice_thk(model%general%ewn,model%general%nsn))
+  prev_ice_thk = 0.0
+
+  do while(time .le. model%numerics%tend  .and. &
+       .not. (check_for_steady .and. is_steady))
 
      model%climate%acab(:,:) = climate_cfg%accumulation_rate
      model%climate%artm(:,:) = climate_cfg%artm
@@ -193,83 +202,88 @@ end if
      ! adjust the heights in the upstream row
      model%geometry%thck(:,model%general%nsn) = upstream_thck
      model%geometry%thck(:,model%general%nsn-1) = upstream_thck
-     
+
      ! impose dh/dx = 0 along the lateral side walls
      model%geometry%thck(model%general%ewn,:) = model%geometry%thck(model%general%ewn-1,:)
      model%geometry%thck(                1,:) = model%geometry%thck(                  2,:)
 
      call glide_tstep_p3(model)      ! isostasy, upper/lower surfaces
 
+     is_steady =  check_for_steady .and. &
+          all(  abs(prev_ice_thk - model%geometry%thck) .le. &
+          abs(model%geometry%thck)*thk_steady_tol  )
+     prev_ice_thk = model%geometry%thck
+
      time = time + model%numerics%tinc
 
      if ((model%options%use_plume == USE_PLUME) .and.  (.not. plume_const_bmlt)) then	
-	 
-          ! We would normally expect the plume to reach a steady state
-          ! with respect to the current ice after only a few days.
-          ! If necessary we run the plume over the entire ice timestep
-          ! but if the basal melt rate becomes constant to the specified
-          ! tolerance than we assume the plume melts the ice at the
-          ! steady rate for the rest of the ice timestep and we stop
-          ! timestepping the plume.
-          call write_logical_plume_array(GLIDE_IS_LAND(model%geometry%thkmask) .or. &
-                                        GLIDE_IS_GROUND(model%geometry%thkmask), &       
-                                        plume_land_mask, .true.,&
-                                        model%general%ewn, model%general%nsn, fake_landw)
-         call write_real_plume_array(model%geometry%lsrf *thk0, &
-                                     plume_lsrf_ext, 0.0, &                              
-                                     model%general%ewn, model%general%nsn, fake_landw)
-         call write_real_plume_array( model%temper%temp(model%general%upn-1,:,:), &
-                                     plume_t_interior, 0.0, &
-                                     model%general%ewn, model%general%nsn, fake_landw)
 
-         call write_real_plume_array((model%numerics%sigma(model%general%upn) - &
-                                      model%numerics%sigma(model%general%upn -1)) * &
-                                      model%geometry%thck * thk0, &
-                                  plume_ice_dz, 0.0, &
-                                  model%general%ewn, model%general%nsn, fake_landw)
-          
-          call plume_iterate(time, &
-                    model%numerics%tinc*1.d0, &
-                    plume_lsrf_ext, &
-                    plume_land_mask, &                      
-                    plume_t_interior, &
-                    plume_ice_dz, &
-                    plume_bmelt_out, &
-                    plume_btemp_out, &            
-	            plume_steadiness_tol, &
-                    plume_min_subcycle_time, &
-                    .false., &
-                    plume_write_all_states)
+        ! We would normally expect the plume to reach a steady state
+        ! with respect to the current ice after only a few days.
+        ! If necessary we run the plume over the entire ice timestep
+        ! but if the basal melt rate becomes constant to the specified
+        ! tolerance than we assume the plume melts the ice at the
+        ! steady rate for the rest of the ice timestep and we stop
+        ! timestepping the plume.
+        call write_logical_plume_array(GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+             GLIDE_IS_GROUND(model%geometry%thkmask), &       
+             plume_land_mask, .true.,&
+             model%general%ewn, model%general%nsn, fake_landw)
+        call write_real_plume_array(model%geometry%lsrf *thk0, &
+             plume_lsrf_ext, 0.0, &                              
+             model%general%ewn, model%general%nsn, fake_landw)
+        call write_real_plume_array( model%temper%temp(model%general%upn-1,:,:), &
+             plume_t_interior, 0.0, &
+             model%general%ewn, model%general%nsn, fake_landw)
 
-          call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
-                                    model%general%ewn, model%general%nsn, fake_landw)
-          call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
-                                    model%general%ewn, model%general%nsn, fake_landw)
+        call write_real_plume_array((model%numerics%sigma(model%general%upn) - &
+             model%numerics%sigma(model%general%upn -1)) * &
+             model%geometry%thck * thk0, &
+             plume_ice_dz, 0.0, &
+             model%general%ewn, model%general%nsn, fake_landw)
+
+        call plume_iterate(time, &
+             model%numerics%tinc*1.d0, &
+             plume_lsrf_ext, &
+             plume_land_mask, &                      
+             plume_t_interior, &
+             plume_ice_dz, &
+             plume_bmelt_out, &
+             plume_btemp_out, &            
+             plume_steadiness_tol, &
+             plume_min_subcycle_time, &
+             .false., &
+             plume_write_all_states)
+
+        call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
+             model%general%ewn, model%general%nsn, fake_landw)
+        call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
+             model%general%ewn, model%general%nsn, fake_landw)
      end if
 
      if (plume_const_bmlt) then
         model%temper%bmlt = plume_const_bmlt_rate / scale2d_f1
      end if
-    
+
   end do
 
-!  call glide_io_writeall(model,model)
-
-
+  if (is_steady) then
+     call write_log('Stopped time-stepping after detecting steady ice profile')
+  end if
 
   if ((model%options%use_plume .eq. USE_PLUME) .and. (.not. plume_const_bmlt)) then 
 
-    call plume_finalise()	
-    call plume_io_finalize()
-    call plume_logging_finalize()
+     call plume_finalise()	
+     call plume_io_finalize()
+     call plume_logging_finalize()
 
-    deallocate(plume_land_mask,plume_lsrf_ext,plume_ice_dz, &
-               plume_t_interior, plume_bmelt_out, plume_btemp_out)
+     deallocate(plume_land_mask,plume_lsrf_ext,plume_ice_dz, &
+          plume_t_interior, plume_bmelt_out, plume_btemp_out)
 
   end if
 
   ! finalise GLIDE
-  deallocate(upstream_thck)
+  deallocate(upstream_thck, prev_ice_thk)
   call glide_finalise(model)
 
   call system_clock(clock,clock_rate)
@@ -289,9 +303,9 @@ contains
     a_out = padding_val
     a_out( (1+padw):(m+padw), 1:n ) = a_in
 
-  end subroutine 
+  end subroutine write_real_plume_array
 
- subroutine write_logical_plume_array(a_in,a_out,padding_val, m,n,padw)
+  subroutine write_logical_plume_array(a_in,a_out,padding_val, m,n,padw)
 
     logical,dimension(:,:),intent(in) :: a_in
     logical,dimension(:,:),intent(out):: a_out
@@ -301,7 +315,7 @@ contains
     a_out = padding_val
     a_out( (1+padw) : (m+padw), 1:n ) = a_in
 
-  end subroutine 
+  end subroutine write_logical_plume_array
 
   subroutine write_real_ice_array(a_in,a_out, m,n,padw)
 
@@ -311,27 +325,29 @@ contains
 
     a_out = a_in( (1+padw):(m+padw), : )
 
-  end subroutine 
+  end subroutine write_real_ice_array
 
   subroutine shelf_config_initialise(climate_cfg,config)
     ! initialise shelf climate model
-    
+
     use glimmer_paramets, only: thk0, acc0, scyr
     use glimmer_config
     use glimmer_log
 
     type(shelf_climate) :: climate_cfg         !*FD structure holding climate info
     type(ConfigSection), pointer :: config  !*FD structure holding sections of configuration file   
-    
+
     ! local variables
     type(ConfigSection), pointer :: section
     character(len=100) :: message
 
     call GetSection(config,section,'Petermann shelf')
     if (associated(section)) then
-        call GetValue(section,'air_temperature',climate_cfg%artm)
-        call GetValue(section,'accumulation_rate',climate_cfg%accumulation_rate)   
-        call GetValue(section,'eustatic_sea_level',climate_cfg%eus)
+       call GetValue(section,'air_temperature',climate_cfg%artm)
+       call GetValue(section,'accumulation_rate',climate_cfg%accumulation_rate)   
+       call GetValue(section,'eustatic_sea_level',climate_cfg%eus)
+       call GetValue(section,'check_for_steady',check_for_steady)
+       call GetValue(section,'thk_steady_tol',thk_steady_tol)
     else
        !log error
        call write_log('No Petermann section',GM_FATAL)
@@ -346,10 +362,10 @@ contains
     call write_log(message)
     write(message,*) 'eustatic sea level:',climate_cfg%eus
     call write_log(message)
-           
- end subroutine shelf_config_initialise
 
- subroutine plume_read_print_config(model,config) 
+  end subroutine shelf_config_initialise
+
+  subroutine plume_read_print_config(model,config) 
 
     !*FD read configuration file for plume-related things
 
@@ -365,9 +381,9 @@ contains
 
     call GetSection(config,section,'plume')
     if (.not. associated(section)) then
-	call write_log('for shelf driver there must be a [plume] section &
-                     & in config file',  &
-                       GM_FATAL)
+       call write_log('for shelf driver there must be a [plume] section &
+            & in config file',  &
+            GM_FATAL)
     end if
     call GetValue(section, 'plume_nl_file', plume_nl)
     call GetValue(section, 'plume_output_dir', plume_ascii_output_dir)
@@ -410,8 +426,8 @@ contains
     call write_log(message)
     write(message,*) 'plume_const_bmlt', plume_const_bmlt, 'plume_const_bmlt_rate', plume_const_bmlt_rate
     call write_log(message)
-	
-end subroutine
+
+  end subroutine plume_read_print_config
 
 
 end program shelf_driver
