@@ -39,8 +39,8 @@ program shelf_driver
   integer :: clock,clock_rate
   logical :: is_steady = .false.
 
-  logical,parameter :: check_for_steady = .false.
-  real(kind=dp),parameter :: thk_steady_tol = 1.0e-5
+  logical :: check_for_steady = .false.
+  real(kind=dp) :: thk_steady_tol = 1.0e-5
 
   real(kind=rk),dimension(:),allocatable :: upstream_thck
   logical,      dimension(:,:),allocatable :: plume_land_mask
