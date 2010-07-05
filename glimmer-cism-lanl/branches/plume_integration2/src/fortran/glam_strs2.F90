@@ -39,6 +39,7 @@ implicit none
   real (kind = dp), allocatable, dimension(:),         save :: dups
   real (kind = dp), allocatable, dimension(:,:,:,:,:), save :: corr
   real (kind = dp), allocatable, dimension(:,:,:,:),   save :: usav
+  real (kind = dp), dimension(2),                      save :: usav_avg
   real (kind = dp), allocatable, dimension(:,:,:),     save :: tvel
   real (kind = dp), allocatable, dimension(:),         save :: dup, dupm
 
@@ -798,57 +799,81 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   ! "Time-step limits for stable solutions of the ice-sheet equation", Annals of 
   ! Glaciology, 23, p.74-85)
 
+  ! **cvg*** Dropped the Payne and Hindmarsch UMC, now using a strategy from DeSmedt, Pattyn,
+  !  and De Goen, J. Glaciology 2010
+
   implicit none
 
   real (kind = dp), intent(in), dimension(:,:,:) :: vel
   integer, intent(in) :: counter, pt, whichresid 
-
   real (kind = dp), intent(out) :: resid
 
   real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: mindcrshstr
 
-  real (kind = dp), parameter :: ssthres = 6.01_dp * pi / 6.0_dp, &
-                                 critlimit = 10.0_dp / (scyr * vel0), &
-                                 small = 1.0e-16_dp
+  integer, parameter :: start_umc = 3
+  real (kind=dp), parameter :: cvg_accel = 2.0_dp
+  real (kind = dp), parameter :: small = 1.0e-16_dp
 
+  real (kind=dp) in_prod, len_new, len_old, mean_rel_diff, sig_rel_diff
+  real (kind=dp) :: theta
   real (kind = dp), intrinsic :: abs, acos
   
   integer, dimension(2), save :: new = 1, old = 2
   integer :: locat(3)
-
+  
   integer :: nr
-  integer, dimension(size(vel,1),size(vel,2),size(vel,3)) :: vel_ne_0
+  integer,      dimension(size(vel,1),size(vel,2),size(vel,3)) :: vel_ne_0
+  real(kind=dp),dimension(size(vel,1),size(vel,2),size(vel,3)) :: rel_diff
 
   if (counter == 1) then
     usav(:,:,:,pt) = 0.0d0
+    corr(:,:,:,:,:) = 0.0d0
   end if
 
   corr(:,:,:,new(pt),pt) = vel - usav(:,:,:,pt)           
 
-  if (counter > 1) then
-
-    where (acos((corr(:,:,:,new(pt),pt) * corr(:,:,:,old(pt),pt)) / &
-          (abs(corr(:,:,:,new(pt),pt)) * abs(corr(:,:,:,old(pt),pt)) + small)) > &
-           ssthres .and. corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt) /= 0.0_dp )
-
-      mindcrshstr = usav(:,:,:,pt) + &
-                    corr(:,:,:,new(pt),pt) * abs(corr(:,:,:,old(pt),pt)) / &
-                    abs(corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt))
-
-    elsewhere
-
-      mindcrshstr = vel;
-      mindcrshstr = usav(:,:,:,pt) + 0.5*corr(:,:,:,new(pt),pt)
-
-    end where
+  if (counter >= start_umc) then
+  
+  in_prod = sum( corr(:,:,:,new(pt),pt) * corr(:,:,:,old(pt),pt) )
+  len_new = sqrt(sum( corr(:,:,:,new(pt),pt) * corr(:,:,:,new(pt),pt) ))
+  len_old = sqrt(sum( corr(:,:,:,old(pt),pt) * corr(:,:,:,old(pt),pt) ))
+ 
+  theta = acos( in_prod / (len_new * len_old + small) )
     
+   if (theta  < (1.0/8.0)*pi) then
+	mindcrshstr = usav(:,:,:,pt) + cvg_accel * corr(:,:,:,new(pt),pt)
+!        print *, theta/pi, 'increased correction'
+   else if(theta < (19.0/20.0)*pi) then
+	mindcrshstr = vel
+!        print *, theta/pi, 'standard correction'
+   else 
+	mindcrshstr = usav(:,:,:,pt) + (1.0/cvg_accel) * corr(:,:,:,new(pt),pt)
+!        print *, theta/pi, 'decreasing correction'
+   end if
+
   else 
 
     mindcrshstr = vel;
+ !   print *, 'Not attempting adjustment to correction'	 
    
   end if
 
-  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
+
+  ! now swap slots for storing the previous correction
+  if (new(pt) == 1) then
+      old(pt) = 1; new(pt) = 2
+  else
+      old(pt) = 2; new(pt) = 1
+  end if
+
+  if (counter == 1) then
+   	usav_avg = 1.0_dp
+  else
+	usav_avg(1) = sum( abs(usav(:,:,:,1)) ) / size(vel)  ! a x-dir transport velocity scale
+	usav_avg(2) = sum( abs(usav(:,:,:,2)) ) / size(vel)  ! a y-dir transport velocity scale
+  end if
+
+!  print *, 'usav_avg(1)',usav_avg(1),'usav_avg(2)',usav_avg(2)
 
   select case (whichresid)
 
@@ -859,20 +884,26 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   ! case(2): use mean of abs( vel_old - vel ) / vel )
 
    case(0)
-    resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)  
-    locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+    rel_diff = 0.0_dp
+    vel_ne_0 = 0
+    where ( mindcrshstr .ne. 0.0_dp )
+	vel_ne_0 = 1
+ 	rel_diff = abs((usav(:,:,:,pt) - mindcrshstr) / mindcrshstr) & 
+                           * usav_avg(pt)/sqrt(sum(usav_avg ** 2.0))
+    end where
 
-!write(*,*) 'locat', locat
+    resid = maxval( rel_diff, MASK = mindcrshstr .ne. 0.0_dp )
+    locat = maxloc( rel_diff, MASK = mindcrshstr .ne. 0.0_dp )
 
-!call write_xls('resid6.txt',abs((usav(6,:,:,pt) - vel(6,:,:)) / (vel(6,:,:) + 1e-20)))
-!call write_xls('resid5.txt',abs((usav(5,:,:,pt) - vel(5,:,:)) / (vel(5,:,:) + 1e-20)))
-!call write_xls('resid4.txt',abs((usav(4,:,:,pt) - vel(4,:,:)) / (vel(4,:,:) + 1e-20)))
-!call write_xls('resid3.txt',abs((usav(3,:,:,pt) - vel(3,:,:)) / (vel(3,:,:) + 1e-20)))
-!call write_xls('resid2.txt',abs((usav(2,:,:,pt) - vel(2,:,:)) / (vel(2,:,:) + 1e-20)))
-!call write_xls('resid1.txt',abs((usav(1,:,:,pt) - vel(1,:,:)) / (vel(1,:,:) + 1e-20)))
-!call write_xls('resid7.txt',abs((usav(7,:,:,pt) - vel(7,:,:)) / (vel(7,:,:) + 1e-20)))
+!    mean_rel_diff = sum(rel_diff) / sum(vel_ne_0)
+!    sig_rel_diff = sqrt( sum((rel_diff - mean_rel_diff) ** 2.0 )/ sum(vel_ne_0) )
+!    print *, 'mean', mean_rel_diff, 'sig', sig_rel_diff
+
+    !write(*,*) 'locat', locat
+    !call write_xls('resid1.txt',abs((usav(1,:,:,pt) - mindcrshstr(1,:,:)) / (mindcrshstr(1,:,:) + 1e-20)))
 
    case(1)
+    !**cvg*** should replace vel by mindcrshstr in the following lines, I belive
     nr = size( vel, dim=1 ) ! number of grid points in vertical ...
     resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
                         MASK = vel .ne. 0.0_dp)
@@ -880,6 +911,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
             MASK = vel .ne. 0.0_dp)
 
    case(2)
+    !**cvg*** should replace vel by mindcrshstr in the following lines, I belive
     nr = size( vel, dim=1 )
     vel_ne_0 = 0
     where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
@@ -898,7 +930,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   end select
 
-    usav(:,:,:,pt) = vel
+  usav(:,:,:,pt) = mindcrshstr
 
     ! Additional debugging line, useful when trying to determine if convergence is being consistently 
     ! held up by the residual at one or a few particular locations in the domain.
