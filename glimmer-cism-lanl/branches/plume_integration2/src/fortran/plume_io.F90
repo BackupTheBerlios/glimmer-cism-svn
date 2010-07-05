@@ -576,8 +576,10 @@ contains
 
     call io_append_output('Creating variable time')
     call check( nf90_def_var(nc_id,'time',NF90_DOUBLE,(/time_dimid/),time_varid) )
-    call check( nf90_put_att(nc_id, time_varid, 'long_name', 'time') )
-    call check( nf90_put_att(nc_id, time_varid, 'units', 'seconds') )
+    call check( nf90_put_att(nc_id, time_varid, 'long_name', 'Model time') )
+    call check( nf90_put_att(nc_id, time_varid, 'standard_name', 'time') )
+    call check( nf90_put_att(nc_id, time_varid, 'calendar', 'none')  )
+    call check( nf90_put_att(nc_id, time_varid, 'units', 'year since 1-1-1 0:0:0') )
 
     call io_append_output('Creating variable x')
     call check( nf90_def_var(nc_id,'x',NF90_DOUBLE,(/x_dimid/),x_varid) )
@@ -642,7 +644,7 @@ contains
     call check( nf90_put_att(nc_id, bmelt_varid, 'positive', 'thickening plume') )
     call check( nf90_put_att(nc_id, bmelt_varid, 'long_name', 'basal melt rate') )
     call check( nf90_put_att(nc_id, bmelt_varid, 'standard_name', 'basal melt rate') )
-    call check( nf90_put_att(nc_id, bmelt_varid, 'units', 'meters/sec') )
+    call check( nf90_put_att(nc_id, bmelt_varid, 'units', 'meters/year') )
 
     call io_append_output('Creating variable btemp')
     call check( nf90_def_var(nc_id,'btemp',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),btemp_varid) )
@@ -732,8 +734,9 @@ contains
     real(kind=kdp),intent(in) :: time !what time (seconds) in the simulation does the state represent
 
     integer :: status
+    real(kind=kdp),parameter :: sec_per_year = 365.25d0 * 24.d0*3600.d0
 
-    call check(nf90_put_var(nc_id, time_varid, time, (/ time_counter /)))
+    call check(nf90_put_var(nc_id, time_varid, time / sec_per_year,(/ time_counter /)))
     call check(nf90_put_var(nc_id, u_varid, u, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, v_varid, v, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, su_varid, su, (/1,1,time_counter/)))     
@@ -742,7 +745,7 @@ contains
     call check(nf90_put_var(nc_id, ipos_varid, ipos, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, bpos_varid, bpos, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, btemp_varid, btemp, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, bmelt_varid, bmelt, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, bmelt_varid, bmelt*sec_per_year, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, bsalt_varid, bsalt, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, rhop_varid, rhop, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, temp_varid, temp, (/1,1,time_counter/)))
