@@ -19,6 +19,8 @@ _dt = 0.05
 _tstart = 0.0
 _tend = 10.0
 
+_hotstart = 0
+
 _ifpos = 5
 _ifdep = 0.0
 _gldep = 1000.0
@@ -114,9 +116,9 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
 			     'title' : _run_name },
            'options' : { 'flow_law' : 2,
                          'use_plume' : 1,
-                         'hotstart' : 0,
+                         'hotstart' : _hotstart,
                          'x_invariant' : 1,
-		         'temperature' : 1,
+		         'temperature' : 0, #isothermal
                          },
            'ho_options': {'which_bmelt' : 0,
                           'which_disp' : 0,

@@ -122,7 +122,7 @@ gc_vals = {'plume' : { 'plume_imin' : 1,
 	    'CF default' : { 'comment' : '',
 			     'title' : _run_name },
            'options' : { 'flow_law' : 2,
-			'temperature' : 0,
+			'temperature' : 0, #isothermal
                          'use_plume' :_use_plume,
                          'x_invariant' : 1,
                          'hotstart' :  _hotstart},
