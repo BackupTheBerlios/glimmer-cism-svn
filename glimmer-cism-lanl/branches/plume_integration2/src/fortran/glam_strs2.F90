@@ -224,7 +224,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   integer :: ew, ns, up     ! counters for horiz and vert do loops
 
-  real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
+  real (kind = dp), parameter :: minres = 1.0d-5    ! assume vel fields converged below this resid 
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
   integer, parameter :: cmax = 3000                 ! max no. of iterations
@@ -811,7 +811,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: mindcrshstr
 
   integer, parameter :: start_umc = 3
-  real (kind=dp), parameter :: cvg_accel = 2.0_dp
+  real (kind=dp), parameter :: cvg_accel = 1.5_dp
   real (kind = dp), parameter :: small = 1.0e-16_dp
 
   real (kind=dp) in_prod, len_new, len_old, mean_rel_diff, sig_rel_diff
