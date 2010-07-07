@@ -157,8 +157,8 @@ module remap_glamutils
     wk%hm_ir(:,:,1) = 1.0_dp
     wk%tarea_ir = 1.0_dp / ( wk%dew_ir * wk%dns_ir )
 
-    call write_xls("uflx.txt", uflx)
-    call write_xls("vflx.txt", vflx)
+!    call write_xls("uflx.txt", uflx)
+!    call write_xls("vflx.txt", vflx)
 
     !Copy fluxes over
     !*tjb** - Some rejiggering is needed here, because, while IR and Glide both place
