@@ -27,7 +27,6 @@ contains
     !Variables
     real (kind = dp), dimension (ewn-1,nsn-1,basalproc%tnodes) :: por,Ztot,N
     real (kind = dp), dimension (ewn-1,nsn-1) :: stagHwater
-    real (kind = sp), dimension (ewn,nsn) :: TillMap
     integer :: x,y,i
     character(len=512) :: message
 
@@ -179,7 +178,7 @@ contains
     normvar(2:ewn-1,2:nsn-1)=(stagvar(1:ewn-2,2:nsn-1)+stagvar(2:ewn-1,2:nsn-1)+ & 
     						stagvar(1:ewn-2,1:nsn-2)+stagvar(2:ewn-1,1:nsn-2)) / 4.0d0
 
-    !Apply zero-gradient to the velocity field on normal grid - using swapbnmelt
+    !Apply zero-gradient to field on normal grid - using swapbnmelt
     call swapbnmelt(0,size(normvar(1,:)),normvar(1,:),normvar(2,:),normvar(ewn,:),normvar(ewn-1,:))
     call swapbnmelt(0,size(normvar(:,1)),normvar(:,1),normvar(:,2),normvar(:,nsn),normvar(:,nsn-1))
 
@@ -220,13 +219,13 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
   real (kind = dp), dimension(:,:),intent(in) :: Ub   ! velocity m/yr
   real (kind = dp), dimension(:,:,:),intent(inout) :: u  !Excess pore pressure (Pa)
   real (kind = dp), dimension(:,:,:),intent(inout) :: etill !Till void ratio (ND)
- real (kind = dp), dimension(:,:),intent(out) :: minTauf   ! 
- real (kind = dp), dimension(:,:),intent(out) :: Hwater   ! 
+  real (kind = dp), dimension(:,:),intent(out) :: minTauf   ! 
+  real (kind = dp), dimension(:,:),intent(out) :: Hwater   ! 
 
   !Local variables
   real, parameter :: f=1e-3
   real (kind = dp), dimension(ewn-1,nsn-1,tnodes) :: uold,Tauf,deltaU,por
-  real (kind = dp), dimension(ewn-1,nsn-1,tnodes-1) :: vw   !vertical water flow, m/s
+  real (kind = dp), dimension(ewn-1,nsn-1,tnodes) :: vw   !vertical water flow, m/s
   real (kind = dp), dimension(ewn-1,nsn-1) :: du  
   integer :: i
 
@@ -235,13 +234,11 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
 
   uold=u 
   du=dy(:,:,1)*(bdot/scyr)*rhow*grav/Kh  ! Removed *dt so that du has indeed unit Pa
-  u(:,:,1)=uold(:,:,1) + (Cv*scyr*dt/dy(:,:,1)**2)*(uold(:,:,2)-uold(:,:,1)+du) + &
-       f*Ub*dt/(dy(:,:,1))*du
+  u(:,:,1)=uold(:,:,1) + (Cv*scyr*dt/dy(:,:,1)**2)*(uold(:,:,2)-uold(:,:,1)+du)
   
   i=2
   do while (i.lt.tnodes)
-     u(:,:,i)=uold(:,:,i) + (Cv*scyr*dt/(dy(:,:,i)**2))*(uold(:,:,i+1)-2*uold(:,:,i)+uold(:,:,i-1)) + &
-          (f*Ub(:,:)*dt/dy(:,:,i))*(uold(:,:,i-1)-uold(:,:,i))
+     u(:,:,i)=uold(:,:,i) + (Cv*scyr*dt/(dy(:,:,i)**2))*(uold(:,:,i+1)-2*uold(:,:,i)+uold(:,:,i-1)) 
      i=i+1
   end do
 
@@ -249,8 +246,7 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
 !! Set up two possible lower boundary conditions:
 
   ! 1. ZERO-FLUX assuming an imaginary nodes at (tnodes+1) 
-  u(:,:,tnodes)=uold(:,:,tnodes)+(Cv*scyr*dt/(dy(:,:,tnodes-1)**2))*(uold(:,:,tnodes-1)-uold(:,:,tnodes)) + &
-          (f*Ub*dt/dy(:,:,tnodes-1))*(uold(:,:,tnodes-1)-uold(:,:,tnodes))
+  u(:,:,tnodes)=uold(:,:,tnodes)+(Cv*scyr*dt/(dy(:,:,tnodes-1)**2))*(uold(:,:,tnodes-1)-uold(:,:,tnodes))
 
   ! 2. CONSTANT FLUX assuming an imaginary nodes at (tnodes+1)
 
@@ -258,12 +254,14 @@ subroutine Till_FullRes(ewn,nsn,dt,bdot,Ub,						&
 
 
 !Calculate vertical velocity from darcy equation:
-  vw(:,:,1:tnodes-1)=Kh/(rhow*grav)*(1/dy(:,:,1:tnodes-1))*(u(:,:,1:tnodes-1)-u(:,:,2:tnodes))
+  vw(:,:,1)=bdot(:,:)/scyr       !Upper BC, vertical vel=bdot, in m/sec
+  vw(:,:,2:tnodes)=Kh/(rhow*grav)*(1/dy(:,:,1:tnodes-1))*(u(:,:,1:tnodes-1)-u(:,:,2:tnodes))
+  
+  
+!From there, new void ratio distribution, flux in - flux out
 
-!From there, new void ratio distribution
-!if vw > 0, then water flowing downward, and added to till layer (increases etill)
-  etill(:,:,1:tnodes-1)=etill(:,:,1:tnodes-1)+(vw(:,:,1:tnodes-1)*scyr)*dt/dy(:,:,1:tnodes-1)
-
+	etill(:,:,1:tnodes-1)=etill(:,:,1:tnodes-1)+((vw(:,:,1:tnodes-1)-vw(:,:,2:tnodes))*scyr)*dt/(Zs/(tnodes-1))
+	etill(:,:,tnodes)=etill(:,:,tnodes-1)
   where (etill.lt.0.15)
      etill=0.15
   end where
