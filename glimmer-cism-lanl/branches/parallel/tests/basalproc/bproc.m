@@ -55,7 +55,8 @@ minTauf = Tillggl;
 % ind = find( minTauf < 5e3 ); minTauf(ind) = 5e3;
 
 % minTauf = 10e3 * ones( size( minTauf ) );       % for debugging
-beta = 5e1*ones(size(minTauf));
+beta = 1e6*ones(size(minTauf));
+ind = find( minTauf <= 5e3 ); beta(ind) = 1e2;
 % beta(8:14,:) = 3e1;
 % beta(10:12,:) = 0.5e1;
 
@@ -70,7 +71,7 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'geo flux (W m^2)' )
 
 %% add a kinbcmask field to specify where 0 flux bcs are
 kinbcmask = zeros(size(minTauf));
-kinbcmask(1:3,:) = 1; kinbcmask(end-2:end,:) = 1; kinbcmask(:,1:3) = 1;
+kinbcmask(1:4,:) = 1; kinbcmask(end-3:end,:) = 1; kinbcmask(:,1:4) = 1;
 
 uvelhom = zeros( l, r-1, c-1 );
 for i=1:l
@@ -88,6 +89,6 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'acab (m/a)' )
 tauf = minTauf;
 
 %  cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
-cd /Users/sprice/work/modeling/cism/branches/tests/basalproc            % Steve's path
+cd /Users/sprice/work/modeling/cism-parallel/tests/basalproc            % Steve's path
 
 save bproc.mat artm acab bheatflx usrf topg thck beta tauf kinbcmask uvelhom vvelhom 
