@@ -315,6 +315,7 @@ class GCConfig(object):
                                                                       # NB it is very storage hungry
 
                                   'plume_min_spinup_time' : 5.0,    # minimum time to spinup the plume, in days
+                                  'plume_max_spinup_time' : 50.0,   # maximum time to spinup, in days
                                   'plume_min_subcycle_time' : 0.5,   # minimum subcycle time, in days
                                   'plume_steadiness_tol' : 1.0e-6,  # plume steadiness tolerance 
                                                                     # (max relative change in bmelt and speed)

@@ -195,7 +195,9 @@ contains
        btemp_out, &
        plume_stopping_tol, &
        min_run_time, &
+       max_run_time, &
        run_plume_to_steady, &
+       plume_reached_steady, &
        write_all_states)
 
     ! NB: This subroutine is intended to be called only from a 
@@ -207,26 +209,56 @@ contains
     ! set to .true. then the plume iterates to steady even if it
     ! takes longer than ice_dt.
 
-    real(kind=kdp),               intent(in) :: time,ice_dt !in years
-    real(kind=kdp),dimension(m_grid,n_grid),intent(in) :: lsrf,ice_dz !in meters
-    logical,       dimension(m_grid,n_grid),intent(in) :: landmask !equal to 1 in land or grounded ice
-    real(kind=kdp),dimension(m_grid,n_grid),intent(in) :: t_interior !in Celcius
-    logical,                      intent(in) :: run_plume_to_steady, write_all_states
-    real(kind=kdp),               intent(in) :: plume_stopping_tol ! rel change in 
-		                                		 ! meltrate need
-                                                         ! to continue plume time-stepping
-    real(kind=kdp),               intent(in) :: min_run_time !in days
+    ! current simulation time in years
+    real(kind=kdp),               intent(in) :: time
 
-    real(kind=kdp),dimension(m_grid,n_grid),intent(out) :: bmelt_out,btemp_out !in meters per year
-    
+    ! length of external ice timestep in years
+    real(kind=kdp),               intent(in) :: ice_dt 
+
+    ! lower surface of external ice in meters
+    real(kind=kdp),dimension(m_grid,n_grid),intent(in) :: lsrf
+
+    ! thickness of lowest layer of ice in meters
+    real(kind=kdp),dimension(m_grid,n_grid),intent(in) :: ice_dz
+
+    ! landmask is equal to 1 in land or grounded ice
+    logical, dimension(m_grid,n_grid), intent(in) :: landmask 
+
+    !temperature in first interior layer of ice in Celcius
+    real(kind=kdp),dimension(m_grid,n_grid),intent(in) :: t_interior 
+
+    ! If true we will iterate until plume is steady, except 
+    ! we won't exceed the max_run_time, for cases where 
+    ! we expect only a statistically-steady state
+    logical,                      intent(in) :: run_plume_to_steady
+
+    ! If true, write out all plume states to file
+    logical,                      intent(in) :: write_all_states
+
+    ! Steadiness tolerance.  Relative change in meltrate needed
+    ! to continue plume time-stepping
+    real(kind=kdp),               intent(in) :: plume_stopping_tol 
+
+    real(kind=kdp),               intent(in) :: min_run_time !in days
+    real(kind=kdp),               intent(in) :: max_run_time ! in days
+
+    ! melt rate predicted by plume, in meters per year
+    real(kind=kdp),dimension(m_grid,n_grid),intent(out) :: bmelt_out
+
+    ! temperature of basal surface determined by the plume in Celcius
+    real(kind=kdp),dimension(m_grid,n_grid),intent(out) :: btemp_out 
+
+    ! flag to indicate that the plume reached a steady state
+    logical,intent(out) :: plume_reached_steady
 
     !local variables
+
     real(kind=kdp) :: subcycling_time,ice_dt_in_sec
     real(kind=kdp),dimension(m_grid,n_grid) :: bmelt_old !in meters per year
     real(kind=kdp),dimension(m_grid,n_grid) :: speed_old,speed
     real(kind=kdp) :: max_rel_bmelt_change,max_rel_speed_change
-    real(kind=kdp) :: prev_rel_change,prev_rel_speed_change,min_run_time_sec
-    logical :: reached_steady
+    real(kind=kdp) :: prev_rel_change,prev_rel_speed_change
+    real(kind=kdp) :: min_run_time_sec,max_run_time_sec
     character(len=512) :: log_message
 
     ! convert lower surface depth into height of basal surface and interface
@@ -249,13 +281,16 @@ contains
     subcycling_time = 0.0
     ice_dt_in_sec = ice_dt * 365.25d0*24.0d0*3600.d0
     min_run_time_sec = min_run_time * 3600.d0 * 24.d0
-    reached_steady = .false.
+    max_run_time_sec = max_run_time * 3600.d0 * 24.d0
+
+    plume_reached_steady = .false.
     prev_rel_change = 1.d0
     prev_rel_speed_change = 1.d0
 
     ! while not steady
 
-    do while ((subcycling_time .le. ice_dt_in_sec) .or. run_plume_to_steady )
+    do while ((subcycling_time .le. ice_dt_in_sec) .or. &
+                (run_plume_to_steady .and. (subcycling_time .le. max_run_time_sec)))
 
        call plume_runstep()
 
@@ -291,7 +326,7 @@ contains
 
        if ((max_rel_bmelt_change < plume_stopping_tol) .and. (max_rel_speed_change < plume_stopping_tol)) then
           if (subcycling_time .ge. (min_run_time_sec)) then
-             reached_steady = .true.
+             plume_reached_steady = .true.
              exit
           end if
        end if
@@ -305,10 +340,10 @@ contains
     btemp_out = btemp
     bmelt_out = bmelt * (365.25d0*24.0d0*3600.0d0)
 
-    if (.not. reached_steady) then
+    if (.not. plume_reached_steady) then
        call io_append_output('plume did not reach steady state')
     end if
-
+ 
     !we do this to make the plume output timestamps indicate the ice state
     ! with respect to which the plume was steady
     runtim = time*3600.0d0*24.0d0*365.25d0 
