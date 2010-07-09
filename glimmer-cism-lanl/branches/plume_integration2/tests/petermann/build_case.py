@@ -231,7 +231,7 @@ class GCConfig(object):
                                                               # model%options%which_ho_resid
                                        'which_bmelt' : 0,   # basal melting
                                                               # model%options%which_bmelt
-                                       'which_ho_babc' : None,       # basal boundary condition: 
+                                       'which_ho_babc' : 6,       # basal boundary condition: 
                                                                   # = 5 means simple ice-shelf
                                                                   # = 6 means floating ice everywhere, no traction
                                                                   # = 3 means circular ice-shelf
