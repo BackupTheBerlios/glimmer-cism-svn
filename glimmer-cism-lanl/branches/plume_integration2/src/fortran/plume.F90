@@ -47,16 +47,21 @@ module plume
   integer :: last_output_step = -1, last_lnot_step = -1
 
 
+  !NB: all times are in seconds during exection, even though
+  !    tottim and fouttim are given in days in the namelist file
+  !   (all others are in seconds)
   real(kind=kdp) ::  tottim, &  ! total time to run model
        outtim, &  ! time interval between writing model state out to file
        fouttim, & ! first time at which to write out model outout
        louttim, & ! last time to write out model output
        snottim, & ! short note time interval
        lnottim, & ! long note time interval
-       runtim,  & ! accumulated simulation time
+       runtim,  & ! accumulated simulation time 
        labtim     ! time interval in days used to name output files
 
   real(kind=kdp) :: negdep ! total of negative depths (error diagnostic)
+
+  integer,parameter :: klast=20,kfirst=2
 
 contains
 
@@ -421,8 +426,8 @@ contains
     end if
 
     ! write long step output 
-    if ((int(floor(runtim/outtim)) > last_lnot_step)) then
-       last_lnot_step = int(floor(runtim/outtim))
+    if ((int(floor(runtim/lnottim)) > last_lnot_step)) then
+       last_lnot_step = int(floor(runtim/lnottim))
        call io_write_long_step_output(icalcan,icalcen,kcalcan,kcalcen,&
             varoutrat,negdep)
        call io_write_calculated_time(runtim, int(runtim/dt))
@@ -491,7 +496,11 @@ contains
          ,  tangle &
          ,  negfrz &
          ,  use_min_plume_thickness &
+         ,  use_periodic_forcing &
+         ,  forcing_period &
+         ,  periodic_forcing_amp &
          ,  tottim &
+         ,  fouttim &
          ,  outtim &
          ,  labtim &
          ,  snottim &
@@ -548,6 +557,8 @@ contains
 
     ! set switches 
     ! ------------
+    use_min_plume_thickness = .false.
+    use_periodic_forcing = .false.
     mixlayer    = .false. ! model a mixed-layer, rather than a plume
     ! (i.e. whole domain is given initial thickness)
     in_glimmer = .false.  ! by default, not running inside glimmer (ice shelf model)
@@ -576,10 +587,10 @@ contains
     ! ------------------------------
 
     tottim  = 0050.0d0  ! total simulation time in days
-    outtim  = 050.0d0   ! file output frequency in days
+    outtim  = 3600.0d0   ! file output frequency in seconds
     labtim  = 001.0d0   ! units in which to name files in days
-    snottim = 005.0d0   ! short note output frequency in days
-    lnottim = 050.0d0   ! long note output frequency in days
+    snottim =  3600.0d0   ! short note output frequency in seconds
+    lnottim = 86400.0d0   ! long note output frequency in seconds
 
     dt1     = 0360.0d0  ! long first timestep in seconds
 
@@ -622,6 +633,9 @@ contains
     along_slope_deepening_exp = 0
     channel_amplitude = 0.d0
     random_amplitude = 0.d0
+
+    periodic_forcing_amp = 0.d0
+    forcing_period = 0.0
 
     kcorn = int(135.d0*1000.d0/hx) ! dist. of corner from inflow (km)
     rad = int(35.d0*1000.d0/hx)    ! radius of rounding on corner (km)
@@ -774,11 +788,8 @@ contains
     ! convert timesteps to seconds
 
     tottim  = tottim*24.d0*3600.d0  ! total simulation time in seconds
-    outtim  = outtim*24.d0*3600.d0  ! file output frequency in seconds
     labtim  = labtim*24.d0*3600.d0  ! units in which to name files
-    snottim = snottim*24.d0*3600.d0 ! short note output frequency in seconds
-    lnottim = lnottim*24.d0*3600.d0 ! long note output frequency in seconds
-    fouttim = outtim                ! first file output in seconds
+    fouttim = fouttim*24.d0*3600.d0 ! first file output in seconds
     louttim = tottim                ! last file output in seconds
 
     dt2     = dt1                   ! short second timestep in seconds
@@ -937,7 +948,7 @@ contains
 
     else	
        if (bathtype.gt.0) then
-          call topog_depth_inflow_set(.not. use_min_plume_thickness)
+          call topog_depth_inflow_set(.not. use_min_plume_thickness .and. .not. mixlayer)
        else
           call topog_read_edit()
           call topog_smooth()
@@ -1357,9 +1368,11 @@ contains
 
     real(kind=kdp),dimension(m_grid,n_grid) :: pdepc,bspeed,speed
     real(kind=kdp) :: rhopac,rhoa,delrho,rhoq,redg,tt,vmid,umid
-    real(kind=kdp) :: rich,sm,arg,delta,iold
+    real(kind=kdp) :: rich,sm,arg,delta,iold, phase, extra_entr
     real(kind=kdp) :: dragrt,prden,scden,gambt,gambs,tfb,tfi,c1,c2,c3
     real(kind=kdp) :: deltam(m_grid,n_grid),fppntot,ucrit,ucl
+    
+
 
     ! 0. preliminaries
     ! ----------------
@@ -1539,6 +1552,20 @@ contains
              !this is for output purposes so we can see what percentage of the thicknes
              !change was due to the imposed minimum thickness
              thk_def(i,k) = thk_def(i,k) / (entr(i,k)*dt)
+
+          end if
+
+          if (use_periodic_forcing .and. &
+               (k .le. klast) .and. (k .ge. kfirst)) then
+
+            phase = 2*pi*runtim/forcing_period
+
+            !produce a rather sharp pulse of extra entrainment each cycle
+            extra_entr = periodic_forcing_amp * exp(-real((1.e0 - cos(phase))**0.25))
+
+            !a pulse that joins continuously with the surrounding values
+            entr(i,k) = entr(i,k) + extra_entr*cos(pi*(k-(kfirst+klast)/2.0)/(klast-kfirst))
+            delta =     delta +  extra_entr * dt
 
           end if
 
@@ -2683,6 +2710,15 @@ contains
 		amb_depth = wcdep + gldep - ipos(i,k)
 		atemp(i,k) = get_tamb_z(amb_depth)
 		asalt(i,k) = get_samb_z(amb_depth)
+
+		if (use_periodic_forcing .and. (k .ge. kfirst) .and. (k .le. klast)) then
+
+                  ! artificially force the ambient seawater to have a much
+                  ! lower salinity in order to make the forcing have a 
+                  ! greater effect
+		  asalt(i,k) = asalt(i,k) - 10.0
+
+                end if
 
                 deltat(i,k) = deltat(i,k)  &
                      + dt*entr(i,k)*(atemp(i,k) - tempa(i,k))/pdepcp(i,k)

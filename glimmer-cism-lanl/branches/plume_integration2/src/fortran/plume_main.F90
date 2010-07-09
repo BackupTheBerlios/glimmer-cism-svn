@@ -10,7 +10,7 @@ program iswplume
   integer::command_argument_count
   character(len=128) :: jobid
   character(len=128) :: output_dir,nl_filename,supp_ascii_output_str,supp_log_str
-  logical :: supp_ascii_output = .false.
+  logical :: supp_ascii_output = .true.
   logical :: supp_logging = .false.
 
   ! *******************************************************************
@@ -30,18 +30,21 @@ program iswplume
      write(*,*) 'please enter (3-character) job id:'
      read(*,*) jobid
   end if
+  write(*,*) 'jobid: ', trim(jobid)
 
   if (iarg_count > 1) then
      call get_command_argument(2,nl_filename)
   else
      nl_filename = 'plume.nl'
   end if
+  write(*,*) 'using namelist file: ', trim(nl_filename)
 
   if (iarg_count > 2) then
      call get_command_argument(3,output_dir)
   else
      output_dir = './'
   end if
+  write(*,*) 'output_dir:', trim(output_dir)
 
   if (iarg_count > 3) then
      call get_command_argument(4,supp_log_str)

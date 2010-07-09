@@ -81,7 +81,7 @@ module plume_global
   !option switches
   logical :: mixlayer,in_glimmer,restart,nonlin,horturb,entrain,basmelt,frazil
   logical :: rholinear,thermobar,intrace,vardrag,topedit,tangle,negfrz
-  logical :: use_min_plume_thickness
+  logical :: use_min_plume_thickness, use_periodic_forcing
   integer :: entype
 
   ! restart data filename
@@ -95,6 +95,7 @@ module plume_global
   real(kind=kdp) :: cdb,cdbvar,ef,cl
   real(kind=kdp) :: phi ! latitude
   real(kind=kdp) :: radian,f	
+  real(kind=kdp) :: periodic_forcing_amp, forcing_period
 
   real(kind=kdp) :: dt1,dt2,dtswtim ! first timestep size
                                     ! second timestep size

@@ -89,13 +89,15 @@ libclimate_a_SOURCES = eismint3_forcing.F90 eismint3_types.F90 \
 
 if BUILD_PLUME
 lib_LIBRARIES += libplume.a
-bin_PROGRAMS += shelf_driver
+bin_PROGRAMS += shelf_driver plume
 libplume_a_SOURCES = plume_global.F90 plume_functions.F90 plume_context.F90 \
                      plume.F90 plume_io.F90
 shelf_driver_SOURCES = shelf_driver.F90 
+plume_SOURCES = plume_main.F90
 shelf_driver_LDADD = libclimate.a libglide.a libglimmer.a \
 	             SLAP_library/libslap.a libplume.a \
                      $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) 
+plume_LDADD = libplume.a $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 endif BUILD_PLUME
 
 if PARDISO
