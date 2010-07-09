@@ -170,9 +170,9 @@ contains
         ! precisely a solution already, I think.  -Carl Gladish
 
 
-        real(kind=dp) :: norm, normrhs
+        real(kind=dp) :: norm, normrhs, norm_workvect
         real(kind=dp), dimension(:),allocatable :: workvect
-        real(kind=dp),parameter :: err5tol = 1.0e-4
+        real(kind=dp),parameter :: err5tol = 1.0e-4, small=1.e-9
 
         iunit = 0
         if (present(verbose)) then
@@ -225,8 +225,10 @@ contains
             end if
 
             if (ierr == 5) then
+
                 !might be that Ax=b already
                 !CALL DSMV(N, X, Y, NELT, IA, JA, A, ISYM ) to get y = A*x
+
                 allocate(workvect(matrix%order))
                 call dsmv(matrix%order, solution, workvect, matrix%nonzeros, &
                           matrix%row, matrix%col, matrix%val, isym)
@@ -237,11 +239,14 @@ contains
                 do i=1,matrix%order
                     norm = norm + (rhs(i)-workvect(i))**2.0
                     normrhs = normrhs + rhs(i)**2.0
+                    norm_workvect = norm_workvect + workvect(i)**2.0
                 end do
                 norm = norm ** 0.5
                 normrhs = normrhs ** 0.5
+                norm_workvect = norm_workvect ** 0.5
 
-                if (norm .lt. (err5tol * normrhs)) then                    
+                if (norm .lt. (err5tol * (normrhs+norm_workvect)) .or. &
+                    (normrhs .lt. small)) then                    
                     if (err5_policy == 0) then
                         ! leave ierr = 5 and let program die
                     elseif (err5_policy == 1) then
@@ -252,6 +257,8 @@ contains
                         ! and just carry on 
                         ierr = 0    
                     end if
+                else
+		    call write_log("Ax-b is too big to be considered zero",GM_FATAL)
                 end if
 
             end if
