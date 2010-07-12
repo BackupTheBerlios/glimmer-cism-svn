@@ -59,10 +59,9 @@ class PlumeNamelist(object):
                      'negfrz' : False,
                      'use_min_plume_thickness' : True,
                      'tottim'  : 0.0,
-                     'outtim'  : 1.0,  #every day
-                     'labtim'  : 0.0,
-                     'snottim' : 0.0,
-                     'lnottim' : 0.0,
+                     'labtim'  : 1.0,
+                     'snottim' : 3600.0,  #once per hour
+                     'lnottim' : 86400.0, #once per day
                      'dt1'     : None,
                      'm_grid' : None,
                      'n_grid' : None,          
