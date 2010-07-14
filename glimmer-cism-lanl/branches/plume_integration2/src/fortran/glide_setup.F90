@@ -412,6 +412,7 @@ contains
     call GetValue(section,'x_invariant',model%options%x_invariant)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
     call GetValue(section, 'use_plume',model%options%use_plume)
+    call GetValue(section, 'use_lateral_stress_bc', model%options%use_lateral_stress_bc)
   end subroutine handle_options
   
   !Higher order options
@@ -595,6 +596,10 @@ contains
     if (model%options%hotstart.eq.1) then
        call write_log('Hotstarting model')
     end if
+
+    if (model%options%use_lateral_stress_bc) then
+        call write_log('Imposing stress conditions on the east and west boundaries')
+    end if
     
 
     !HO options
@@ -716,6 +721,8 @@ contains
     call GetValue(section,'stressin',model%climate%stressin)
     call GetValue(section,'stressout',model%climate%stressout)
     call GetValue(section,'sliding_constant',model%climate%slidconst)
+    call GetValue(section,'tau_xy_0',model%paramets%tau_xy_0)
+    
   end subroutine handle_parameters
 
   subroutine print_parameters(model)
@@ -763,7 +770,12 @@ contains
        write(message,*) '                        ',model%paramets%bpar(5)
        call write_log(message)
     end if
+    if (model%options%use_lateral_stress_bc) then
+       write(message, *) 'Imposed lateral stress: ', model%paramets%tau_xy_0
+       call write_log(message)
+    end if
     call write_log('')
+
   end subroutine print_parameters
 
   ! Sigma levels

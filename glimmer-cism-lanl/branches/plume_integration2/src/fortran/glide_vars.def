@@ -1,5 +1,5 @@
 #[]
-#dimensions:    time, level, y1, x1
+#dimensions:    time, level, y1, x1, y0, x0
 #units:         
 #long_name:     
 #data:          
@@ -420,53 +420,60 @@ coordinates:   lon lat
 
 #Vertical shear stresses, required for ISMIP-HOM intercomparison
 [tau_xz]
-dimensions: time, level, y0, x0
-units:      kPa
+dimensions: time, level, y1, x1
+units:      Pa
 long_name:  X component vertical shear stress
 data:       data%velocity_hom%tau%xz(up,:,:)
 factor:     scale3d_f9
 
 [tau_yz]
-dimensions: time, level, y0, x0
-units:      kPa
+dimensions: time, level, y1, x1
+units:      Pa
 long_name:  Y component vertical shear stress
 data:       data%velocity_hom%tau%yz(up,:,:)
 factor:     scale3d_f9
 
 [tau_hom_xx]
-dimensions: time, level, y0, x0
-units:     kPa
+dimensions: time, level, y1, x1
+units:     Pa
 long_name: X component normal stress (hom)
 data:     data%velocity_hom%tau%xx(up,:,:)
 factor:    scale3d_f9
 
 [tau_hom_yy]
-dimensions: time, level, y0, x0
-units:     kPa
+dimensions: time, level, y1, x1
+units:     Pa
 long_name: Y component normal stress (hom)
 data:     data%velocity_hom%tau%yy(up,:,:)
 factor:    scale3d_f9
 
 [tau_hom_xy]
-dimensions: time, level, y0, x0
-units:     kPa
+dimensions: time, level, y1, x1
+units:     Pa
 long_name: horizontal shear stress (hom)
 data:     data%velocity_hom%tau%xy(up,:,:)
 factor:    scale3d_f9
 
 [tau_hom_yz]
-dimensions: time, level, y0, x0
-units:     kPa
+dimensions: time, level, y1, x1
+units:     Pa
 long_name: Y component of vertical shear stress (hom)
 data:     data%velocity_hom%tau%yz(up,:,:)
 factor:    scale3d_f9
 
 [tau_hom_xz]
-dimensions: time, level, y0, x0
-units:     kPa
+dimensions: time, level, y1, x1
+units:     Pa
 long_name: X component of vertical shear stress (hom)
 data:     data%velocity_hom%tau%xz(up,:,:)
 factor:    scale3d_f9
+
+[efvs]
+dimensions: time, level, y1, x1
+units: Pa*s
+long_name: effective viscosity
+data: data%velocity_hom%efvs(up,:,:)
+factor:   1
 
 [wvel]
 dimensions:    time, level, y1, x1

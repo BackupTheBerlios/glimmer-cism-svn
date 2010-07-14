@@ -73,14 +73,22 @@ module stress_hom
         real (kind = dp), parameter :: f1 = len0 / thk0
         integer, dimension(2) :: mew, mns
         real (kind = dp) :: dew2, dew4, dns2, dns4
-        real (kind = dp), dimension(upn) :: dup, dupm        
+        !real (kind = dp), dimension(upn-1) :: dup, dupm        
+        real (kind = dp) :: dup, dupm        
 
         !*sfp* note that these are already defined and used in glam_strs2. If needed by PB&J 
         ! stress calc routine as well, consider moving the up-scope 
-        dup = (/ ( (sigma(2)-sigma(1)), up = 1, upn) /)
+        !dup = (/ ( (sigma(up+1)-sigma(up)), up = 1, upn-1) /)
+        dup = sigma(2)-sigma(1)
         dupm = - 0.25_dp / dup
         dew2 = 2.0_dp * dew; dns2 = 2.0_dp * dns        ! *sp* 2x the standard grid spacing
         dew4 = 4.0_dp * dew; dns4 = 4.0_dp * dns        ! *sp* 4x the standard grid spacing
+
+        tauxz = 0.0_dp
+        tauyz = 0.0_dp
+        tauxx = 0.0_dp
+        tauyy = 0.0_dp
+        tauxy = 0.0_dp
 
         do ns = 2,nsn-1
             do ew = 2,ewn-1;
@@ -89,45 +97,39 @@ module stress_hom
                 tauxz(1:upn-1,ew,ns) = vertideriv(upn, hsum(uvel(:,ew-1:ew,ns-1:ns)), thck(ew,ns), dupm)
                 tauyz(1:upn-1,ew,ns) = vertideriv(upn, hsum(vvel(:,ew-1:ew,ns-1:ns)), thck(ew,ns), dupm)
                 tauxx(1:upn-1,ew,ns) = horizderiv(upn,  stagsigma,                &
-                              sum(uvel(:,ew-1:ew,ns-1:ns),3), &
-                              dew4, tauxz(:,ew,ns),           &
-                              sum(dusrfdew(ew-1:ew,ns-1:ns)), &
-                              sum(dthckdew(ew-1:ew,ns-1:ns)))
+                              0.5_dp * sum(uvel(:,ew-1:ew,ns-1:ns),3), &         !average over n-s neighbours
+                              dew, tauxz(:,ew,ns),           &
+                              0.25_dp*sum(dusrfdew(ew-1:ew,ns-1:ns)), &           !average over 4 neighbours
+                              0.25_dp*sum(dthckdew(ew-1:ew,ns-1:ns)))             !average over 4 neighbours
 
                 tauyy(1:upn-1,ew,ns) = horizderiv(upn,  stagsigma,                &
-                              sum(vvel(:,ew-1:ew,ns-1:ns),2), &
-                              dns4, tauyz(:,ew,ns),           &
-                              sum(dusrfdns(ew-1:ew,ns-1:ns)), &
-                              sum(dthckdns(ew-1:ew,ns-1:ns)))
+                              0.5_dp * sum(vvel(:,ew-1:ew,ns-1:ns),2), &        !average over e-w neighbours
+                              dns, tauyz(:,ew,ns),           &
+                              0.25_dp * sum(dusrfdns(ew-1:ew,ns-1:ns)), &       !average over 4 neighbours
+                              0.25_dp * sum(dthckdns(ew-1:ew,ns-1:ns)))         !average over 4 neighbours
 
-                tauxy(1:upn-1,ew,ns) = horizderiv(upn,  stagsigma,                &
-                              sum(uvel(:,ew-1:ew,ns-1:ns),2), &
-                              dns4, tauxz(:,ew,ns),           &
-                              sum(dusrfdns(ew-1:ew,ns-1:ns)), &
-                              sum(dthckdns(ew-1:ew,ns-1:ns))) + &
-                              horizderiv(upn,  stagsigma,                &
-                              sum(vvel(:,ew-1:ew,ns-1:ns),3), &
-                              dew4, tauyz(:,ew,ns),           &
-                              sum(dusrfdew(ew-1:ew,ns-1:ns)), &
-                              sum(dthckdew(ew-1:ew,ns-1:ns)))
-            else
-
-                tauxz(:,ew,ns) = 0.0_dp
-                tauyz(:,ew,ns) = 0.0_dp
-                tauxx(:,ew,ns) = 0.0_dp
-                tauyy(:,ew,ns) = 0.0_dp
-                tauxy(:,ew,ns) = 0.0_dp
+                tauxy(1:upn-1,ew,ns) = horizderiv(upn,  stagsigma,      &     ! du/dy
+                              0.5_dp * sum(uvel(:,ew-1:ew,ns-1:ns),2), &       !average over e-w neighbours
+                              dns, tauxz(:,ew,ns),           &
+                              0.25_dp * sum(dusrfdns(ew-1:ew,ns-1:ns)), &      !average over 4 neighbours
+                              0.25_dp * sum(dthckdns(ew-1:ew,ns-1:ns)))  &     !average over 4 neighbours
+                            +                                          &
+                              horizderiv(upn,  stagsigma,                &     ! dv/dx
+                              0.5_dp * sum(vvel(:,ew-1:ew,ns-1:ns),3), &       !average over n-s neighbours
+                              dew, tauyz(:,ew,ns),           &
+                              0.25_dp * sum(dusrfdew(ew-1:ew,ns-1:ns)), &      !average over 4 neighbours
+                              0.25_dp * sum(dthckdew(ew-1:ew,ns-1:ns)))        !average over 4 neighbours
 
             end if
 
             end do
         end do
 
-        tauxz = f1 * efvs * tauxz !* tau0_glam
-        tauyz = f1 * efvs * tauyz !* tau0_glam
+        tauxz = f1 * efvs * tauxz     !* tau0_glam
+        tauyz = f1 * efvs * tauyz     !* tau0_glam
         tauxx = 2.0_dp * efvs * tauxx !* tau0_glam
         tauyy = 2.0_dp * efvs * tauyy !* tau0_glam
-        tauxy = efvs * tauxy !* tau0_glam
+        tauxy = efvs * tauxy          !* tau0_glam
 
         !*sfp* expanding this in terms of viscosity and velocity gradients, I've confirmed that 
         ! one gets the same thing as if one took Tau_eff = N_eff * Eps_eff, where Eps_eff is the 
@@ -147,7 +149,7 @@ module stress_hom
         integer, intent(in) :: upn
         real (kind = dp), intent(in), dimension(:) :: varb
         real (kind = dp), intent(in) :: thck
-        real (kind = dp), intent(in), dimension(:) :: dupm            
+        real (kind = dp), intent(in) :: dupm            
 
         real (kind = dp), dimension(size(varb)-1) :: vertideriv
 
@@ -165,7 +167,7 @@ module stress_hom
 
 
     function horizderiv( upn,     stagsigma,   &
-                         varb,    grid,        &
+                         varb,    dhoriz,        &
                          dvarbdz, dusrfdx, dthckdx)
 
         implicit none
@@ -174,20 +176,33 @@ module stress_hom
         real (kind = dp), dimension(:), intent(in) :: stagsigma
         real (kind = dp), dimension(:,:), intent(in) :: varb
         real (kind = dp), dimension(:), intent(in) :: dvarbdz
-        real (kind = dp), intent(in) :: dusrfdx, dthckdx, grid
+        real (kind = dp), intent(in) :: dusrfdx, dthckdx,dhoriz
 
         real (kind = dp) :: horizderiv(size(varb,1)-1)
 
         ! *sfp* where does this factor of 1/4 come from ... averaging? 
-        horizderiv = (varb(1:upn-1,2) + varb(2:upn,2) - varb(1:upn-1,1) - varb(2:upn,1)) / grid - &
-                   dvarbdz * (dusrfdx - stagsigma * dthckdx) / 4.0_dp
+
+        ! *cvg* factor of 1/4 has been moved up into callers of this function, since it was 
+        ! indeed used to average the four values of dusrfdx and dthckdx
+
+        ! *cvg* This function uses the formulae: 
+        !
+        !       dv/dx = (del v/ del x) - (del v/del z)*((del h/del x) - sigma*(del H/del x))
+        !       dv/dy = similar
+        !
+        !       where: v = v(x,sigma) is any 3-dimensional variable
+        !              h = h(x,y) is the upper surface
+        !              H = H(x,y) is the ice thickness
+
+        horizderiv = (varb(1:upn-1,2) + varb(2:upn,2) - varb(1:upn-1,1) - varb(2:upn,1)) / (2.0_dp*dhoriz) - &
+                   dvarbdz * (dusrfdx - stagsigma * dthckdx) 
 
         return
 
    end function horizderiv
 
 
-    function hsum(inp)
+   function hsum(inp)
 
       implicit none
 
@@ -198,6 +213,7 @@ module stress_hom
 
       return
 
-    end function hsum
+   end function hsum
 
 end module stress_hom
+    

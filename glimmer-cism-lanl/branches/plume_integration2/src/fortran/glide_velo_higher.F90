@@ -189,6 +189,7 @@ contains
                                         model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
                                         minTauf, geom_mask_stag,                                    &
+                                        model%geometry%thkmask,                                     &
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &
@@ -197,6 +198,8 @@ contains
                                         model%options%periodic_ns,                                  &
                                         model%options%x_invariant,                                  &
                                         model%velocity_hom%beta,                                    & 
+                                        model%paramets%tau_xy_0,                                    &
+                                        model%options%use_lateral_stress_bc,                        &
                                         model%velocity_hom%uvel, model%velocity_hom%vvel,           &
                                         model%velocity_hom%uflx, model%velocity_hom%vflx,           &
                                         model%velocity_hom%efvs )

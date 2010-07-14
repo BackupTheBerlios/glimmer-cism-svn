@@ -29,11 +29,7 @@ use xls
 implicit none
 
   integer, save :: locplusup
-  logical, save :: lateralboundry = .false.
-  logical, save :: no_shear_stress_sidewalls = .false.
-  logical, save :: use_shelf_bc_1 = .false.
-
-  integer, dimension(6), save :: loc_latbc
+  !integer, dimension(6), save :: loc_latbc
 
   real (kind = dp), allocatable, dimension(:,:,:),     save :: flwafact
   real (kind = dp), allocatable, dimension(:),         save :: dups
@@ -41,7 +37,8 @@ implicit none
   real (kind = dp), allocatable, dimension(:,:,:,:),   save :: usav
   real (kind = dp), dimension(2),                      save :: usav_avg
   real (kind = dp), allocatable, dimension(:,:,:),     save :: tvel
-  real (kind = dp), allocatable, dimension(:),         save :: dup, dupm
+  !real (kind = dp), allocatable, dimension(:),         save :: dup, dupm
+  real (kind = dp),                                    save :: dup, dupm
 
   integer, dimension(:,:), allocatable :: uindx
   integer, dimension(:,:), allocatable :: umask 
@@ -77,6 +74,8 @@ implicit none
   real (kind = dp), dimension(3), parameter ::   &
            onesideddiff = (/ -3.0_dp, 4.0_dp, -1.0_dp /)
 
+  logical, parameter :: use_shelf_bc_1 = .false.
+  
   ! geometric 2nd and cross-derivs
   real (kind = dp), dimension(:,:), allocatable :: &
               d2thckdew2, d2usrfdew2, d2thckdns2, d2usrfdns2, d2thckdewdns, d2usrfdewdns
@@ -112,8 +111,8 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
 
     integer :: up
 
-    allocate( dup(upn) )
-    allocate( dupm(upn) )
+    !allocate( dup(upn) )
+    !allocate( dupm(upn) )
     allocate( cvert(upn) )
     allocate( cdsdx(upn,2) )
     allocate( cdsds(upn) )
@@ -124,7 +123,8 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     ! be read in from file for use with non-constant vertical grid spacing. Currently, this
     ! is not working, so the code will not give accurate results if the sigma coordinate is
     ! not regularly spaced. - not working!!) 
-    dup = (/ ( (sigma(2)-sigma(1)), up = 1, upn) /) 
+    !dup = (/ ( (sigma(2)-sigma(1)), up = 1, upn) /) 
+    dup = sigma(2) - sigma(1)
     dupm = - 0.25_dp / dup
     stagsigma = (sigma(1:upn-1) + sigma(2:upn)) / 2.0_dp
 
@@ -176,13 +176,16 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  stagthck, flwa,         & 
                                  mintauf,                & 
                                  umask,                  & 
+                                 mask_unstag,            &
                                  whichbabc,              &
                                  whichefvs,              &
                                  whichresid,             &
                                  whichsparse,            &
                                  periodic_ew,periodic_ns,&
-                                 x_invariant,            &
+                                 x_invariant,            &                                 
                                  beta,                   & 
+                                 tau_xy_0,               &
+                                 use_lateral_stress_bc,  &
                                  uvel,     vvel,         &
                                  uflx,     vflx,         &
                                  efvs )
@@ -190,7 +193,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
-  integer, dimension(:,:),   intent(inout)  :: umask  
+  integer, dimension(:,:),   intent(inout)  :: umask, mask_unstag 
   ! NOTE: 'inout' status to 'umask' should be changed to 'in' at some point, 
   ! but for now this allows for some minor internal hacks to CISM-defined mask  
 
@@ -211,12 +214,15 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! the betasquared field as opposed to one of the values calculated internally.
   real (kind = dp), dimension(:,:),   intent(in)  :: beta 
 
+  real (kind = dp), intent(in)      :: tau_xy_0
+
   integer, intent(in) :: whichbabc    ! options for betasquared field to use
   integer, intent(in) :: whichefvs    ! options for efvs calculation (calculate it or make it uniform)
   integer, intent(in) :: whichresid   ! options for method to use when calculating vel residul
   integer, intent(in) :: whichsparse  ! options for which method for doing elliptic solve
   logical, intent(in) :: periodic_ew, periodic_ns  ! options for applying periodic bcs or not
   logical, intent(in) :: x_invariant   ! flag to specify that d*/dx = 0 
+  logical, intent(in) :: use_lateral_stress_bc   ! options to use the provided lateral stress as b/c
 
   real (kind = dp), dimension(:,:,:), intent(inout) :: uvel, vvel  ! horiz vel components: u(z), v(z)
   real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx  ! horiz fluxs: u_bar*H, v_bar*H
@@ -303,7 +309,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   do while ( ((resid(1) > minres .and. .not. x_invariant) .or. &
              (resid(2) > minres)) .and. &
              counter < cmax)
-  !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
     ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
@@ -315,7 +320,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dusrfdns,   dthckdns, &
                      umask)
 
-    no_shear_stress_sidewalls = .true.
 
     ! calculate coeff. for stress balance in y-direction 
     call findcoefstr(ewn,  nsn,   upn,            &
@@ -333,9 +337,17 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
+                     tau_xy_0 / tau0_glam, use_lateral_stress_bc, &
                      beta, counter )
 
-    no_shear_stress_sidewalls = .false.
+    !no_shear_stress_sidewalls = .false.
+    do ew = 1,ewn
+        do ns = 1, nsn
+            if (GLIDE_IS_DIRICHLET_BOUNDARY(mask_unstag(ew,ns))) then
+                efvs(:,ew,ns) = 0.0_dp
+            end if
+        end do
+    end do
 
     ! put vels and coeffs from 3d arrays into sparse vector format
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
@@ -381,6 +393,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
+                     0.0_dp, .false.,             &
                      beta, counter )
 
 
@@ -956,7 +969,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                        stagthck,    whichbabc,      &
                        uindx,       mask,           &
                        lsrf,        topg,           &
-                       minTauf,     flwa,           &    
+                       minTauf,     flwa,           &   
+                       tau_xy_0, use_lateral_stress_bc, &
                        beta, count )
 
   ! Main subroutine for determining coefficients that go into the LHS matrix A 
@@ -986,11 +1000,17 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
   real (kind = dp), dimension(:,:,:), intent(in) :: flwa
 
+  real (kind = dp), intent(in) :: tau_xy_0             !should be non-dimensional here      
+
+  logical, intent(in) :: use_lateral_stress_bc
+
   integer, dimension(:,:), intent(in) :: mask, uindx
   integer, intent(in) :: pt, whichbabc
 
   real (kind = dp), dimension(ewn-1,nsn-1) :: betasquared
-  real (kind = dp), dimension(2,2,2) :: localefvs   
+  real (kind = dp), dimension(2,2,2) :: local_efvs   
+  real (kind = dp)                    :: efvs_usable
+
   real (kind = dp), dimension(3,3,3) :: localothervel
   real (kind = dp), dimension(upn) :: boundaryvel
   real (kind = dp) :: flwabar
@@ -1088,7 +1108,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          othervel(up-1+shift(1):up+1+shift(1),  &
                          ew-1+shift(2):ew+1+shift(2),  &
                          ns-1+shift(3):ns+1+shift(3)), &
-                         betasquared(ew,ns) ) 
+                         betasquared(ew,ns),           &
+                         lateral_boundary = .false.) 
 
         end do  ! upn
 
@@ -1110,7 +1131,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          d2thckdewdns(ew,ns))
 
         do up = 1, upn
-           lateralboundry = .true.
+           
            shift = indshift(  1, ew, ns, up,                   &
                                ewn, nsn, upn,                  &
                                loc_array,                      & 
@@ -1128,9 +1149,10 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          othervel(up-1+shift(1):up+1+shift(1),  &
                          ew-1+shift(2):ew+1+shift(2),  &
                          ns-1+shift(3):ns+1+shift(3)), &
-                         betasquared(ew,ns), abar=flwabar, cc=count )        
-        end do
-        lateralboundry = .false.
+                         betasquared(ew,ns),           &
+                         lateral_boundary = .true.,    &
+                         abar=flwabar, cc=count )        
+        end do       
 
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elseif ( GLIDE_HAS_ICE(mask(ew,ns)) .and. ( GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)))) then
@@ -1141,17 +1163,18 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         call valueset(0.0_dp)
         do up = 1,upn
            locplusup = loc(1) + up
-           call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
+           call valueset( thisvel(up,ew,ns)  )     ! vel at margin set to initial value 
 !           call valueset( 0.0_dp )                ! vel at margin set to 0 
         end do
     
-    elseif (GLIDE_HAS_ICE(mask(ew,ns)) .and. ( GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns)) ) & 
-                                          .or. GLIDE_IS_LAND_MARGIN(mask(ew,ns)))  then
-!       print *, 'At a NON-SHELF boundary ... ew, ns = ', ew, ns
+    elseif (GLIDE_HAS_ICE(mask(ew,ns)) .and. ( GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns))  & 
+                                          .or. GLIDE_IS_LAND_MARGIN(mask(ew,ns)))) then
+                 
+ !      print *, 'At a NON-SHELF boundary ... ew, ns = ', ew, ns
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
     
-      if (no_shear_stress_sidewalls) then
+      if (use_lateral_stress_bc) then
 !	   write(*,*)'imposing no shear stress at ',ew,ns
            !impose no shear stress condition and no normal flow, which means 
            !   dv/dx = 0
@@ -1162,14 +1185,34 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
            call valueset(0.0_dp)
 
            do up = 1,upn !0,(upn+1)
-              !locplusup = loc_array(ew,ns) + up
-              call putpcgc(1.0_dp,loc_array(ew,ns)+up,loc_array(ew,ns)+up)
-              if (ew < ewn/2) then
-                 call putpcgc(-1.0_dp,loc_array(ew+1,ns)+up,loc_array(ew,ns)+up)
-	      else	
-                 call putpcgc(-1.0_dp,loc_array(ew-1,ns)+up,loc_array(ew,ns)+up)
+              
+              if (up == 1) then
+                    local_efvs(1,:,:) = 0.0_dp
+                    local_efvs(2,:,:) = efvs(1,ew:ew+1,ns:ns+1)                   
+              elseif (up == upn) then
+                    local_efvs(1,:,:) = efvs(upn-1,ew:ew+1,ns:ns+1)
+                    local_efvs(2,:,:) = 0.0_dp
+              else
+                    local_efvs = efvs(up-1:up,ew:ew+1,ns:ns+1)
               end if
-              rhsd(loc_array(ew,ns)+up) = 0.0_dp
+
+              efvs_usable = sum(local_efvs) / (sum(local_efvs/local_efvs, mask=local_efvs > 1.0d-12))
+
+              if (ew .le. (ewn-1)/2.0) then
+
+                 call putpcgc( 1.0_dp,loc_array(ew+1,ns)+up,loc_array(ew,ns)+up)
+                 call putpcgc(-1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
+                 rhsd(loc_array(ew,ns)+up) = - tau_xy_0  * dew /  efvs_usable
+
+              else
+
+                 call putpcgc( 1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
+                 call putpcgc(-1.0_dp,loc_array(ew-1,ns)+up,loc_array(ew,ns)+up)  
+                 rhsd(loc_array(ew,ns)+up) =   tau_xy_0  * dew /  efvs_usable
+
+              end if
+              
+
           end do
         
       else
@@ -1183,7 +1226,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         call valueset(0.0_dp)
         do up = 1,upn
            locplusup = loc(1) + up
-           call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
+           call valueset( thisvel(up,ew,ns)  )     ! vel at margin set to initial value 
 !           call valueset( 0.0_dp )                ! vel at margin set to 0 
         end do
 
@@ -1215,6 +1258,7 @@ subroutine bodyset(ew,  ns,  up,           &
                    local_efvs,             &
                    local_othervel,         &
                    betasquared,            &
+                   lateral_boundary,       &
                    local_thisvel,          &
                    abar, cc)
 
@@ -1243,6 +1287,8 @@ subroutine bodyset(ew,  ns,  up,           &
   real (kind = dp), dimension(3,3,3), intent(in) :: local_othervel
 
   real (kind = dp), intent(in) :: betasquared
+  logical, intent(in) :: lateral_boundary
+
   real (kind = dp), intent(in), optional :: local_thisvel
   real (kind = dp), intent(in), optional :: abar
   integer, intent(in), optional :: cc
@@ -1263,14 +1309,15 @@ subroutine bodyset(ew,  ns,  up,           &
   real (kind = dp) :: nz   ! z dir normal vector component at sfc or bed (takes diff value for each)
 
   integer, dimension(2) :: bcflag  ! indicates choice of sfc and basal bcs ...
+  integer, dimension(6) :: loc_latbc
 
-  real (kind = dp) :: efvstot   ! both of these vars are used for averaging of eff. vis. near lat boundaries
-  integer :: efvscount, i, j, k
-  efvstot = 0.0d0; efvscount = 0; i = 0; j = 0; k = 0
+  !real (kind = dp) :: efvstot   ! both of these vars are used for averaging of eff. vis. near lat boundaries
+  !integer :: efvscount, i, j, k
+  !efvstot = 0.0d0; efvscount = 0; i = 0; j = 0; k = 0
 
   locplusup = loc(1) + up
 
-  if( lateralboundry )then
+  if( lateral_boundary )then
 
   ! *********************************************************************************************
   ! lateral boundary conditions 
@@ -1298,14 +1345,14 @@ subroutine bodyset(ew,  ns,  up,           &
                                 slopex,        slopey,          &
                                 dsigmadew(up), dsigmadns(up),   &
                                 pt,            2,               &
-                                dup(up),                        &
+                                dup,                        &
                                 oneorfour,     fourorone,       &
                                 onesideddiff,                   &
                                 normal,        fwdorbwd)
 
         ! add on coeff. associated w/ du/digma  
         g(:,3,3) = g(:,3,3) & 
-                 + vertimainbc( stagthck(ew,ns), bcflag,dup(up),     &
+                 + vertimainbc( stagthck(ew,ns), bcflag,dup,     &
                                 local_efvs,      betasquared,    nz )
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
@@ -1319,7 +1366,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                                    slopex,        slopey,        &
                                                    dsigmadew(up), dsigmadns(up), &
                                                    pt,            2,             &
-                                                   dup(up),       local_othervel,&
+                                                   dup,       local_othervel,&
                                                    oneortwo,      twoorone,      &
                                                    onesideddiff,                 &
                                                    normal,fwdorbwd)              &         
@@ -1396,7 +1443,7 @@ subroutine bodyset(ew,  ns,  up,           &
                             slopex,        slopey,     &
                             dsigmadew(up), dsigmadns(up),  &
                             pt,            1,          &
-                            dup(up),                   &
+                            dup,                   &
                             oneorfour,     fourorone,  &
                             onesideddiff,              &
                             normal,        fwdorbwd)
@@ -1412,7 +1459,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                                slopex,        slopey,         &
                                                dsigmadew(up), dsigmadns(up),  &
                                                pt,            1,              &
-                                               dup(up),       local_othervel, &
+                                               dup,       local_othervel, &
                                                oneortwo,      twoorone,       &
                                                onesideddiff,                  &
                                                normal,        fwdorbwd)       &
@@ -1437,7 +1484,7 @@ subroutine bodyset(ew,  ns,  up,           &
 ! *********************************************************************************************
 ! higher-order sfc and bed boundary conditions in main body of ice sheet (NOT at lat. boundry)
 
-  if(  ( up == upn  .or. up == 1 ) .and. .not. lateralboundry) then
+  if(  ( up == upn  .or. up == 1 ) .and. .not. lateral_boundary) then
 
 
      if( up == 1 )then                ! specify necessary variables and flags for free sfc
@@ -1460,12 +1507,12 @@ subroutine bodyset(ew,  ns,  up,           &
                          slopex,        slopey,  &
                          dsigmadew(up), dsigmadns(up),  &
                          pt,            bcflag,  &
-                         dup(up),                &
+                         dup,                &
                          oneorfour,     fourorone)
 
      ! add on coeff. associated w/ du/digma
      g(:,2,2) = g(:,2,2)   &
-              + vertimainbc(stagthck(ew,ns), bcflag,dup(up), local_efvs, betasquared, nz)
+              + vertimainbc(stagthck(ew,ns), bcflag,dup, local_efvs, betasquared, nz)
 
      ! put the coeff. for the b.c. equation in the same place as the prev. equation
      ! (w.r.t. cols), on a new row ...
@@ -1478,11 +1525,11 @@ subroutine bodyset(ew,  ns,  up,           &
                                             slopex,        slopey,         &
                                             dsigmadew(up), dsigmadns(up),  &
                                             pt,            bcflag,         &
-                                            dup(up),       local_othervel, &
+                                            dup,       local_othervel, &
                                             oneortwo,      twoorone)       &
                                             * local_othervel )
 
-  end if   ! (up = 1 or up = upn) and lateralboundry = F
+  end if   ! (up = 1 or up = upn) and lateral_boundry = F
 
 ! *********************************************************************************************
 
@@ -1499,7 +1546,7 @@ subroutine valueset(local_value)
   implicit none
 
   real (kind = dp), intent(in) :: local_value
-
+  
   call putpcgc(1.0_dp,locplusup,locplusup)
   rhsd(locplusup) = local_value 
 

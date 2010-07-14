@@ -15,7 +15,6 @@ program shelf_driver
 
   use glimmer_paramets, only: thk0
   use glide_temp, only: timeevoltemp
-  use glam_strs2, only: use_shelf_bc_1
   use glimmer_scales, only: scale2d_f1
 
   implicit none
@@ -61,8 +60,6 @@ program shelf_driver
   logical :: plume_const_bmlt
   real(kind=dp) :: plume_const_bmlt_rate
 
-  use_shelf_bc_1 = .true.
-
   call glimmer_GetCommandline()
 
   ! start logging
@@ -80,8 +77,8 @@ program shelf_driver
 
   if (model%options%use_plume == USE_PLUME) then
      ! read [plume] section of glimmer config file
-     call plume_read_print_config(model,config) 
-
+     call plume_read_print_config(model,config)
+ 
   end if
 
   ! config the [Peterman shelf] section of the config file
