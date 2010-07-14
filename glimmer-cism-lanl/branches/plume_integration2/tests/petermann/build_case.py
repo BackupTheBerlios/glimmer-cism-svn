@@ -278,6 +278,7 @@ class GCConfig(object):
                                                               'kinbcmask',
                                                               'beta','btrc',
                                                               'temp',
+							      'efvs',
                                                               'tau_hom_xx','tau_hom_yy',
                                                               'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
                                       ### NB: there is a (250) character limit on line length!!!
@@ -288,7 +289,7 @@ class GCConfig(object):
                                       # diffu dusrfdtm eus flwa gl_ew gl_ns gline_flux iarea ivol
                                       # kinbcmask lat litho_temp lon lsurf relx slc soft surfvel tau_xz tau_yz
                                       # taux tauy temp thk thkmask topg ubas ubas_tavg uflx usurf 
-                                      # uvel uvelhom vbas vbas_tavg velnormhom vflx vvel vvelhom wgrd wvel
+                                      # uvel uvelhom vbas vbas_tavg velnormhom vflx vvel vvelhom wgrd wvel efvs
 
                                       'frequency' : None,  # time in between writing state to output file (in years)
                                       'name' : None,       # name of output file
