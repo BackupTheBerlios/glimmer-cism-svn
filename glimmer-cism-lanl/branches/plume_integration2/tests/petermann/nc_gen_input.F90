@@ -209,7 +209,7 @@ contains
     !define kinbcmask
     kinbcmask = 0
     kinbcmask(:,(ny-kinbcw):(ny-1)) = 1  !north edge has imposed velocity
-
+    
     !define thickness
 
     do j=ifpos,ny
@@ -567,11 +567,11 @@ contains
     ! define kinbcmask
     kinbcmask = 0
     kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
-
+    
     uvelhom = 0.0
     vvelhom = 0.0
 
-    vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
+    vvelhom(:,:,:) = upstream_vel
 
     call write_nc_file(.true.)
 
@@ -771,8 +771,7 @@ contains
     call check( nf90_put_att(nc_id, topog_varid, 'long_name', 'topography') )
     call check( nf90_put_att(nc_id, topog_varid, 'units', 'meter') )
 
-!    call check( nf90_def_var(nc_id,'kinbcmask',NF90_DOUBLE,(/xstag_dimid,ystag_dimid,time_dimid/),kinbcmask_varid) )
-    call check( nf90_def_var(nc_id,'kinbcmask',NF90_DOUBLE,(/x_dimid,ystag_dimid,time_dimid/),kinbcmask_varid) )
+    call check( nf90_def_var(nc_id,'kinbcmask',NF90_DOUBLE,(/xstag_dimid,ystag_dimid,time_dimid/),kinbcmask_varid) )
     call check( nf90_put_att(nc_id, kinbcmask_varid, 'long_name', 'kinematic boundary condition mask') )
 
     if (write_vel) then
@@ -806,7 +805,7 @@ contains
     call check( nf90_put_var(nc_id, thck_varid, thck) )
     call check( nf90_put_var(nc_id, topog_varid, topog) )
     call check( nf90_put_var(nc_id, kinbcmask_varid, kinbcmask) )
-
+    
     if (write_vel) then
        call check( nf90_put_var(nc_id,level_varid, level) )
        call check( nf90_put_var(nc_id, uvel_varid, uvelhom) )
