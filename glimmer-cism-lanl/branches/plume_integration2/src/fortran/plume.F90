@@ -485,7 +485,7 @@ contains
 
   end subroutine plume_finalise
 
-  real function get_nsteps()
+  integer function get_nsteps()
     get_nsteps = nsteps
   end function get_nsteps
 

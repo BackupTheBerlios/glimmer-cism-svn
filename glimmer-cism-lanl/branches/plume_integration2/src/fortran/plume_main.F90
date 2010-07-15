@@ -48,13 +48,13 @@ program iswplume
 
   if (iarg_count > 3) then
      call get_command_argument(4,supp_log_str)
-     read(supp_log_str,'(l)') supp_logging
+     read(supp_log_str,'(l1)') supp_logging
      if (supp_logging) write(*,*) 'Suppressing all screen/file logging for this run'
   end if
 
   if (iarg_count > 4) then
      call get_command_argument(5,supp_ascii_output_str)
-     read(supp_ascii_output_str,'(l)') supp_ascii_output
+     read(supp_ascii_output_str,'(l1)') supp_ascii_output
      if (supp_ascii_output) write(*,*) 'Suppressing old-style ascii output and screen output for this run'
   end if
 
