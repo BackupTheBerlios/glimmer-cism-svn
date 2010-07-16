@@ -209,7 +209,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  uflx,     vflx,         &
                                  efvs )
 
-  use solver_flags ! JFL to be removed                                  
+!  use solver_flags ! JFL to be removed                                  
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
@@ -368,7 +368,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
-  precond_flag = 0 ! JFL to be removed
+!  precond_flag = 0 ! JFL to be removed
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
@@ -662,7 +662,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                                  uflx,     vflx,         &
                                  efvs )
 
-  use solver_flags ! JFL to be removed        
+!  use solver_flags ! JFL to be removed        
+
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
@@ -952,7 +953,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       
       precond  = 1 ! 1: solver of Picard, 2: identity
 
-      precond_flag = 1
+!      precond_flag = 1
 
       iout   = 0    ! set  higher than 0 to have res(ite)
 

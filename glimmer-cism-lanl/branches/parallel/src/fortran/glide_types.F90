@@ -311,7 +311,7 @@ module glide_types
     !*FD \item[4] no slip everywhere (using stress basal bc and large value for B^2)
     !*FD \item[5] beta^2 field passed in from CISM
     !*FD \item[6] no slip everywhere (using Dirichlet, no slip basal bc)
-    !*FD \item[7] use till yield stress from basal proc model (Picard-type iteration)
+    !*FD \item[7] use till yield stress from basal proc model (Newton-type iteration)
     !*FD \end{description}
 
     integer :: which_ho_efvs = 0
@@ -1090,7 +1090,7 @@ contains
 
 ! *sfp* changing dims of efvs array to be consistent with those expected by PP core 
 !    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%efvs)
-    call coordsystem_allocate(model%general%ice_grid, upn, model%velocity_hom%efvs)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%efvs)
 
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%velmask)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%velnorm)

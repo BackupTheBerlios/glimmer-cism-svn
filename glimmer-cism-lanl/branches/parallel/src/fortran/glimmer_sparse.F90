@@ -40,18 +40,18 @@ module glimmer_sparse
 
 contains
     subroutine sparse_solver_default_options(method, opt)
-        use solver_flags
+!        use solver_flags
         integer, intent(in) :: method
         type(sparse_solver_options) :: opt
 
         opt%base%method = method
-        opt%base%maxiters = 200
+!        opt%base%maxiters = 200
 
-        if (precond_flag .eq. 0) opt%base%tolerance  = 1e-11 ! Picard
-        if (precond_flag .eq. 1) opt%base%tolerance  = 1e-03 ! JFNK
+!        if (precond_flag .eq. 0) opt%base%tolerance  = 1e-11 ! Picard
+!        if (precond_flag .eq. 1) opt%base%tolerance  = 1e-03 ! JFNK
 
-!        opt%base%tolerance  = 1e-12
-!        opt%base%maxiters = 2000
+        opt%base%tolerance  = 1e-12
+        opt%base%maxiters = 2000
 
         !Solver specific options
         if (method == SPARSE_SOLVER_BICG) then
