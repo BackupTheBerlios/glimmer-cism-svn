@@ -230,7 +230,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   integer :: ew, ns, up     ! counters for horiz and vert do loops
 
-  real (kind = dp), parameter :: minres = 1.0d-5    ! assume vel fields converged below this resid 
+  real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
+  real (kind = dp), parameter :: overrideres = 1.0d-9 ! if either velocity field is converged below this, continue
+                                                      ! other field is not converged
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
   integer, parameter :: cmax = 3000                 ! max no. of iterations
@@ -306,9 +308,10 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
  
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  do while ( ((resid(1) > minres .and. .not. x_invariant) .or. &
-             (resid(2) > minres)) .and. &
-             counter < cmax)
+  do while (    ((resid(1) > minres .and. .not. x_invariant) .or. (resid(2) > minres)) &
+            .and. resid(2) > overrideres &
+            .and. resid(1) > overrideres &
+            .and. counter < cmax )
 
     ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
