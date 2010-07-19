@@ -2,6 +2,11 @@
 #include "Epetra_LocalMap.h"
 #include "Epetra_Import.h"
 #include "Epetra_CombineMode.h"
+
+// JEFF Added for dynamic allocation of communicators
+#include <Epetra_SerialComm.h>
+#include <Epetra_MpiComm.h>
+
 #include "Simple_Interface.hpp"
 
 #include "Teuchos_ParameterList.hpp"
@@ -23,19 +28,25 @@ extern "C" {
   // to set up the problem.
   //================================================================
   void initialize_(int& bandwidth, int& size) {
-#ifdef HAVE_MPI
-    Epetra_MpiComm comm(MPI_COMM_WORLD);
-#else
-    Epetra_SerialComm comm;
-#endif
+    int parallel_flag = 0;
+    Epetra_Comm *comm;  // Abstract Class for Epetra_* communicators
 
-    cout << " ======================================" << endl;
-    cout << " IN INITIALIZE()" << endl;
+    // Determine if MPI is initialized.  False if running single.
+    MPI_Initialized(&parallel_flag);
+
+    if (parallel_flag) {
+       comm = new Epetra_MpiComm(MPI_COMM_WORLD);
+    } else {
+       comm = new Epetra_SerialComm();
+    }
+
+    // cout << " ======================================" << endl;
+    // cout << " IN INITIALIZE()" << endl;
 
     // Create an interface that holds a CrsMatrix instance.
-    interface = Teuchos::rcp(new Simple_Interface(bandwidth, size, comm) );
+    interface = Teuchos::rcp(new Simple_Interface(bandwidth, size, *comm) );
 
-    cout << " ======================================" << endl;
+    // cout << " ======================================" << endl;
   }
 
   //============================================================

@@ -300,11 +300,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! *sfp** if a point from the 2d array 'mask' is associated with non-zero ice thickness,
   !      either a boundary or interior point, give it a unique number. If not, give it a zero			 
-  !TREY
   uindx = indxvelostr(ewn, nsn, upn,  &
                       umask,pcgsize(1))
-  print *,this_rank,pcgsize(1)
-  call parallel_stop(__FILE__,__LINE__)
 
   !!!!!!!!! *sfp* start debugging !!!!!!!!!!!!!!!!!!!!!!!!
 !  do ew = 1, 15; do ns = 16, 30     !*sfp* hack of mask for Ross exp.
@@ -338,7 +335,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 #ifdef TRILINOS
   if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
      call initialize(20, pcgsize(1))
-     write(*,*) 'size of the matrix', pcgsize(1)
+     !write(*,*) 'size of the matrix', pcgsize(1)
      !write(*,*) 'Working on it!'
   endif
 #endif
@@ -359,11 +356,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   counter = 1
 
   ! *sfp** main iteration on stress, vel, and eff. visc. solutions,
-  print *, ' '
-  print *, 'Running Payne/Price higher-order dynamics solver'
-  print *, ' '
-  print *, 'iter #     uvel resid          vvel resid         target resid'
-  print *, ' '
+  if (main_task) then 
+     print *, ' '
+     print *, 'Running Payne/Price higher-order dynamics solver'
+     print *, ' '
+     print *, 'iter #     uvel resid          vvel resid         target resid'
+     print *, ' '
+  endif
 
   do while ( maxval(resid) > minres .and. counter < cmax)
 !  do while ( resid(1) > minres .and. counter < cmax)  ! *sfp** for 1d solutions (d*/dy=0) 
@@ -381,6 +380,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dusrfdns,   dthckdns, &
                      umask)
 
+    !JEFFHERE
     ! *sfp** calculation of coeff. for stress balance calc. 
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &
@@ -628,7 +628,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 ! *sfp** calculate the eff. visc.	
 ! (NOTE: this version looks to AGREE with the version I came up with in the write-up, 
 !        with the correct number of cross terms.)
-
+  use parallel
   implicit none 
 
   integer, intent(in) :: ewn, nsn, upn 
@@ -650,6 +650,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 ! *sfp** this is the 1/4(X0/H0)^2 factor in front of the term ((dv/dz)^2+(du/dz)^2) 
   real (kind = dp), parameter :: f1 = 0.25_dp * (len0 / thk0)**2
 
+
   select case(whichefvs)
 
   case(0)       ! *sfp** calculate eff. visc. from eff. strain rate, etc
@@ -662,13 +663,24 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     end if; end do; end do
   end if
 
+  if (main_task) then
+    print *, 'nsn=', nsn
+    print *, 'ewn=', ewn
+    print *, 'uvel shape =', shape(uvel)
+    print *, 'vvel shape =', shape(vvel)
+    print *, 'thck shape =', shape(thck)
+    print *, 'efvs shape =', shape(efvs)
+    print *, 'flwafact shape =', shape(flwafact)
+  endif
+
   do ns = 2,nsn-1
   do ew = 2,ewn-1
    if (thck(ew,ns) > 0.0_dp) then
-
+    ! The hsum() is on the unstaggered grid picking up the four points.  
+    ! Then there is a derivative in the vertical direction.  
     ugradup = vertideriv(upn, hsum(uvel(:,ew-1:ew,ns-1:ns)), thck(ew,ns))
     vgradup = vertideriv(upn, hsum(vvel(:,ew-1:ew,ns-1:ns)), thck(ew,ns))
-
+    
     ugradew = horizderiv(upn,  stagsigma,                &
                          sum(uvel(:,ew-1:ew,ns-1:ns),3), &
                          dew4, ugradup,                  &             
@@ -739,8 +751,9 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
   
   end select
 
+  call parallel_halo_verify(efvs)
+  ! efvs is an unstaggered grid in an staggered declaration.  Steve Price said he reused the variable from the other core.
   return
-
 end subroutine findefvsstr
 
 !***********************************************************************

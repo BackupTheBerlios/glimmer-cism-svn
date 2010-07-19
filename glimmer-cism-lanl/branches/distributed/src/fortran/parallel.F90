@@ -2,6 +2,10 @@ module parallel
   use netcdf
   implicit none
 
+  ! Debug and Verification Level
+  integer,parameter :: DEBUG_LEVEL = 1 
+	! If > 0, then debug code executed.  Added for parallel_halo_verify()
+
   integer,parameter :: lhalo = 2
   integer,parameter :: main_rank = 0
   integer,parameter :: uhalo = 2
@@ -67,6 +71,12 @@ module parallel
      module procedure parallel_halo_integer_2d
      module procedure parallel_halo_real8_2d
      module procedure parallel_halo_real8_3d
+  end interface
+
+  interface parallel_halo_verify
+     module procedure parallel_halo_verify_integer_2d
+     module procedure parallel_halo_verify_real8_2d
+     module procedure parallel_halo_verify_real8_3d
   end interface
 
   interface parallel_print
@@ -1272,6 +1282,186 @@ contains
     a(:,:,local_nsn-uhalo+1:) = srecv(:,:,:)
     call mpi_wait(nrequest,mpi_status_ignore,ierror)
     a(:,:,:lhalo) = nrecv(:,:,:)
+  end subroutine
+
+  subroutine parallel_halo_verify_integer_2d(a)
+    use mpi
+    implicit none
+    integer,dimension(:,:) :: a
+    
+    integer :: erequest,ierror,nrequest,srequest,wrequest
+    integer,dimension(lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
+    integer,dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
+    integer,dimension(local_ewn,lhalo) :: nrecv,ssend
+    integer,dimension(local_ewn,uhalo) :: nsend,srecv
+    logical :: notverify_flag  
+
+    ! begin
+
+    if (DEBUG_LEVEL <= 0) return
+
+    ! staggered grid
+    if (size(a,1)==local_ewn-1.and.size(a,2)==local_nsn-1) return
+
+    ! unknown grid
+    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) &
+         call parallel_stop(__FILE__,__LINE__)
+
+    ! unstaggered grid
+    call mpi_irecv(wrecv,size(wrecv),mpi_integer,west,west,&
+         comm,wrequest,ierror)
+    call mpi_irecv(erecv,size(erecv),mpi_integer,east,east,&
+         comm,erequest,ierror)
+    call mpi_irecv(srecv,size(srecv),mpi_integer,south,south,&
+         comm,srequest,ierror)
+    call mpi_irecv(nrecv,size(nrecv),mpi_integer,north,north,&
+         comm,nrequest,ierror)
+
+    esend(:,:) = a(1+lhalo:1+lhalo+uhalo-1,1+lhalo:local_nsn-uhalo)
+    call mpi_send(esend,size(esend),mpi_integer,east,this_rank,comm,ierror)
+    wsend(:,:) = &
+         a(local_ewn-lhalo-uhalo+1:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_send(wsend,size(wsend),mpi_integer,west,this_rank,comm,ierror)
+
+    call mpi_wait(wrequest,mpi_status_ignore,ierror)
+    notverify_flag = ANY(a(local_ewn-uhalo+1:,1+lhalo:local_nsn-uhalo) /= wrecv(:,:))
+    call mpi_wait(erequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:lhalo,1+lhalo:local_nsn-uhalo) /= erecv(:,:))
+
+    nsend(:,:) = a(:,1+lhalo:1+lhalo+uhalo-1)
+    call mpi_send(nsend,size(nsend),mpi_integer,north,this_rank,comm,ierror)
+    ssend(:,:) = a(:,local_nsn-lhalo-uhalo+1:local_nsn-uhalo)
+    call mpi_send(ssend,size(ssend),mpi_integer,south,this_rank,comm,ierror)
+
+    call mpi_wait(srequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:,local_nsn-uhalo+1:) /= srecv(:,:))
+    call mpi_wait(nrequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:,:lhalo) /= nrecv(:,:))
+
+    if (.NOT. notverify_flag) then
+         write(*,*) "Halo Verify FAILED on processor ", this_rank
+         call parallel_stop(__FILE__,__LINE__)
+    endif
+  end subroutine
+
+  subroutine parallel_halo_verify_real8_2d(a)
+    use mpi
+    implicit none
+    real(8),dimension(:,:) :: a
+    
+    integer :: erequest,ierror,nrequest,srequest,wrequest
+    real(8),dimension(lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
+    real(8),dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
+    real(8),dimension(local_ewn,lhalo) :: nrecv,ssend
+    real(8),dimension(local_ewn,uhalo) :: nsend,srecv
+    logical :: notverify_flag  
+
+    ! begin
+
+    if (DEBUG_LEVEL <= 0) return
+
+    ! staggered grid
+    if (size(a,1)==local_ewn-1.and.size(a,2)==local_nsn-1) return
+
+    ! unknown grid
+    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) &
+         call parallel_stop(__FILE__,__LINE__)
+
+    ! unstaggered grid
+    call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
+         comm,wrequest,ierror)
+    call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,&
+         comm,erequest,ierror)
+    call mpi_irecv(srecv,size(srecv),mpi_real8,south,south,&
+         comm,srequest,ierror)
+    call mpi_irecv(nrecv,size(nrecv),mpi_real8,north,north,&
+         comm,nrequest,ierror)
+
+    esend(:,:) = a(1+lhalo:1+lhalo+uhalo-1,1+lhalo:local_nsn-uhalo)
+    call mpi_send(esend,size(esend),mpi_real8,east,this_rank,comm,ierror)
+    wsend(:,:) = &
+         a(local_ewn-lhalo-uhalo+1:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_send(wsend,size(wsend),mpi_real8,west,this_rank,comm,ierror)
+
+    call mpi_wait(wrequest,mpi_status_ignore,ierror)
+    notverify_flag = ANY(a(local_ewn-uhalo+1:,1+lhalo:local_nsn-uhalo) /= wrecv(:,:))
+    call mpi_wait(erequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:lhalo,1+lhalo:local_nsn-uhalo) /= erecv(:,:))
+
+    nsend(:,:) = a(:,1+lhalo:1+lhalo+uhalo-1)
+    call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
+    ssend(:,:) = a(:,local_nsn-lhalo-uhalo+1:local_nsn-uhalo)
+    call mpi_send(ssend,size(ssend),mpi_real8,south,this_rank,comm,ierror)
+
+    call mpi_wait(srequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:,local_nsn-uhalo+1:) /= srecv(:,:))
+    call mpi_wait(nrequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:,:lhalo) /= nrecv(:,:))
+
+    if (.NOT. notverify_flag) then
+         write(*,*) "Halo Verify FAILED on processor ", this_rank
+         call parallel_stop(__FILE__,__LINE__)
+    endif
+  end subroutine
+
+  subroutine parallel_halo_verify_real8_3d(a)
+    use mpi
+    implicit none
+    real(8),dimension(:,:,:) :: a
+    
+    integer :: erequest,ierror,one,nrequest,srequest,wrequest
+    real(8),dimension(size(a,1),lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
+    real(8),dimension(size(a,1),uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
+    real(8),dimension(size(a,1),local_ewn,lhalo) :: nrecv,ssend
+    real(8),dimension(size(a,1),local_ewn,uhalo) :: nsend,srecv
+    logical :: notverify_flag
+
+    ! begin
+
+    if (DEBUG_LEVEL <= 0) return
+
+    ! staggered grid
+    if (size(a,2)==local_ewn-1.and.size(a,3)==local_nsn-1) return
+
+    ! unknown grid
+    if (size(a,2)/=local_ewn.or.size(a,3)/=local_nsn) &
+         call parallel_stop(__FILE__,__LINE__)
+
+    ! unstaggered grid
+    call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
+         comm,wrequest,ierror)
+    call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,&
+         comm,erequest,ierror)
+    call mpi_irecv(srecv,size(srecv),mpi_real8,south,south,&
+         comm,srequest,ierror)
+    call mpi_irecv(nrecv,size(nrecv),mpi_real8,north,north,&
+         comm,nrequest,ierror)
+
+    esend(:,:,:) = a(:,1+lhalo:1+lhalo+uhalo-1,1+lhalo:local_nsn-uhalo)
+    call mpi_send(esend,size(esend),mpi_real8,east,this_rank,comm,ierror)
+    wsend(:,:,:) = &
+         a(:,local_ewn-lhalo-uhalo+1:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_send(wsend,size(wsend),mpi_real8,west,this_rank,comm,ierror)
+
+    call mpi_wait(wrequest,mpi_status_ignore,ierror)
+    notverify_flag = ANY(a(:,local_ewn-uhalo+1:,1+lhalo:local_nsn-uhalo) /= wrecv(:,:,:))
+    call mpi_wait(erequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:,:lhalo,1+lhalo:local_nsn-uhalo) /= erecv(:,:,:))
+
+    nsend(:,:,:) = a(:,:,1+lhalo:1+lhalo+uhalo-1)
+    call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
+    ssend(:,:,:) = a(:,:,local_nsn-lhalo-uhalo+1:local_nsn-uhalo)
+    call mpi_send(ssend,size(ssend),mpi_real8,south,this_rank,comm,ierror)
+
+    call mpi_wait(srequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:,:,local_nsn-uhalo+1:) /= srecv(:,:,:))
+    call mpi_wait(nrequest,mpi_status_ignore,ierror)
+    notverify_flag = notverify_flag .OR. ANY(a(:,:,:lhalo) /= nrecv(:,:,:))
+
+    if (.NOT. notverify_flag) then
+         write(*,*) "Halo Verify FAILED on processor ", this_rank
+         call parallel_stop(__FILE__,__LINE__)
+    endif
   end subroutine
 
   subroutine parallel_initialise

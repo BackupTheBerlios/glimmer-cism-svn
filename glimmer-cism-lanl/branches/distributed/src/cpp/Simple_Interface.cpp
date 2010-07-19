@@ -1,10 +1,13 @@
 #include <iostream>
 #include "Simple_Interface.hpp"
+#include "mpi.h"
 
 // Constructor
 Simple_Interface::Simple_Interface(int bandwidth, int matrixSize, const Epetra_Comm& comm) : bandwidth_(bandwidth), matrixOrder_(matrixSize), comm_(comm) {
-  globalMap_ =  Teuchos::rcp(new Epetra_Map(matrixSize, 0, comm) );
-  
+  int parallel_flag = 0;
+
+  globalMap_ =  Teuchos::rcp(new Epetra_Map(-1, matrixSize, 0, comm) ); 
+
   operator_ = Teuchos::rcp(new Epetra_CrsMatrix(Copy, *globalMap_, bandwidth) );
   isFillCompleted_ = 0;
 }
