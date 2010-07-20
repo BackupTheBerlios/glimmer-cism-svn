@@ -194,10 +194,10 @@ contains
                                         model%geometry%lsrf,     model%geometry%topg,               &
                                         model%geomderv%dthckdew_unstag, model%geomderv%dthckdns_unstag, &
                                         model%geomderv%dusrfdew_unstag, model%geomderv%dusrfdns_unstag, &
-                                        model%geomderv%dusrfdew-model%geomderv%dthckdew_unstag,         &
-                                        model%geomderv%dusrfdns-model%geomderv%dthckdns_unstag,         & 
-!                                        model%geomderv%dlsrfdew_unstag,            &
-!                                        model%geomderv%dlsrfdns_unstag,            & 
+!                                        model%geomderv%dusrfdew-model%geomderv%dthckdew_unstag,         &
+!                                        model%geomderv%dusrfdns-model%geomderv%dthckdns_unstag,         & 
+                                        model%geomderv%dlsrfdew_unstag,            &
+                                        model%geomderv%dlsrfdns_unstag,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
                                         model%basalproc%minTauf,                                    & 
                                         model%velocity_hom%btraction,                               & 

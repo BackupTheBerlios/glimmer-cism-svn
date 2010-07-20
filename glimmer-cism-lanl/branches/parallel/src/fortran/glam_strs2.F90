@@ -251,8 +251,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 50                   ! max no. of iterations
-  integer :: counter                                ! iteation counter 
+  integer, parameter :: cmax = 100                  ! max no. of iterations
+  integer :: counter, linit                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
   ! variables used for incorporating generic wrapper to sparse solver
@@ -287,6 +287,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   uindx = indxvelostr(ewn, nsn, upn, umask,pcgsize(1))
 
 
+
+!!!!!!!!!! Boundary conditions HACKS section !!!!!!!!!!!!!
+
 !! A hack of the boundary condition mask needed for the Ross Ice Shelf exp.
 !! The quick check of whether or not this is the Ross experiment is to look
 !! at the domain size.
@@ -297,6 +300,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
         endif
     end do; end do
  end if
+
+!! hack of the boundary conditions for basal processes model test case (comment
+!! out for standard model runs) 
+!    umask(ewn-4,:) = 41                  ! make this boundary a calving front
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 
   ! allocate space for storing temporary across-flow comp of velocity
@@ -352,6 +362,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! set residual and iteration counter to initial values
   resid = 1.0_dp
   counter = 1
+  linit = 0;
 
   ! print some info to the screen to update on iteration progress
   print *, ' '
@@ -364,9 +375,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! START of Picard iteration
   ! ****************************************************************************************
 
-  tstep = tstep + 1 ! JFL to be removed
-  call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
-                         uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
+!  tstep = tstep + 1 ! JFL to be removed
+!  call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
+!                         uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
 !  precond_flag = 0 ! JFL to be removed
 
@@ -408,6 +419,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 0 )
 
+
     ! put vels and coeffs from 3d arrays into sparse vector format
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
 
@@ -424,6 +436,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !         call output_res( ewn, nsn, upn, uindx, counter, &
 !                          size(vk_1), vk_1, 2 )
 !      endif
+
 
 !==============================================================================
 ! RN_20100129: Including non-matrix-conversion scheme
@@ -535,15 +548,16 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! RN_20100129: End of the block
 !==============================================================================
 
-    !call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
     uk_1 = answer ! jfl for residual calculation
+
 
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, 1, uindx, answer, uvel, ghostbvel )
 
     ! call fraction of assembly routines, passing current vel estimates (w/o manifold
     ! correction!) to calculate consistent basal tractions
+
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &
                      2,           efvs,           &
@@ -561,6 +575,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      minTauf,     flwa,           &
                      beta, btraction,             &
                      counter, 1 )
+
    call findcoefstr(ewn,  nsn,   upn,             &
                      dew,  dns,   sigma,          &
                      1,           efvs,           &
@@ -612,8 +627,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! END of Picard iteration
   ! ****************************************************************************************
 
-  call ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
-                          ughost, vghost )
+!  call ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
+!                          ughost, vghost )
 
   do ns = 1,nsn-1
       do ew = 1,ewn-1
@@ -1432,6 +1447,106 @@ end function getlocationarray
 
 !***********************************************************************
 
+function slapsolvstr(ewn, nsn, upn, &
+                     vel, uindx, its, answer )
+
+! *sp* routine to solve Ax=b sparse matrix problem 
+
+  implicit none
+
+  integer, intent(in) :: ewn, nsn, upn
+  real (kind = dp), dimension(:,:,:), intent(in) :: vel
+  integer, dimension(:,:), intent(in) :: uindx
+
+  real (kind = dp), dimension(:), intent(out) :: answer
+
+  real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: slapsolvstr
+  integer, intent(inout) :: its
+
+  integer :: ew, ns
+
+  real (kind = dp), dimension(:), allocatable :: rwork
+  integer, dimension(:), allocatable :: iwork
+
+  real (kind = dp), parameter :: tol = 1.0e-12_dp
+  real (kind = dp) :: err
+
+  integer, parameter :: isym = 0, itol = 2, itmax = 100
+  integer, dimension(2) :: loc
+  integer :: iter, ierr, mxnelt
+
+! ** move to values subr   
+
+  pcgsize(2) = ct - 1
+
+  call ds2y(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym)
+
+!** plot the matrix to check that it has the correct form
+!call dcpplt(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym,ulog)      
+
+  mxnelt = 60 * pcgsize(1); allocate(rwork(mxnelt),iwork(mxnelt))
+
+!**     solve the problem using the SLAP package routines     
+!**     -------------------------------------------------
+!**     n ... order of matrix a (in)
+!**     b ... right hand side vector (in)                        
+!**     x ... initial quess/final solution vector (in/out)                        
+!**     nelt ... number of non-zeroes in A (in)
+!**     ia, ja ... sparse matrix format of A (in)
+!**     a ... matrix held in SLAT column format (in)
+!**     isym ... storage method (0 is complete) (in)
+!**     itol ... convergence criteria (2 recommended) (in)                     
+!**     tol ... criteria for convergence (in)
+!**     itmax ... maximum number of iterations (in)
+!**     iter ... returned number of iterations (out)
+!**     err ... error estimate of solution (out)
+!**     ierr ... returned error message (0 is ok) (out)
+!**     iunit ... unit for error writes during iteration (0 no write) (in)
+!**     rwork ... workspace for SLAP routines (in)
+!**     mxnelt ... maximum array and vector sizes (in)
+!**     iwork ... workspace for SLAP routines (in)
+
+! *sp* initial estimate for vel. field?
+  do ns = 1,nsn-1
+  do ew = 1,ewn-1
+   if (uindx(ew,ns) /= 0) then
+    loc = getlocrange(upn, uindx(ew,ns))
+    answer(loc(1):loc(2)) = vel(:,ew,ns)
+    answer(loc(1)-1) = vel(1,ew,ns)
+    answer(loc(2)+1) = vel(upn,ew,ns)
+   end if
+  end do
+  end do
+
+  call dslucs(pcgsize(1),rhsd,answer,pcgsize(2),pcgrow,pcgcol,pcgval, &
+              isym,itol,tol,itmax,iter,err,ierr,0,rwork,mxnelt,iwork,mxnelt)
+
+  if (ierr .ne. 0) then
+    print *, 'pcg error ', ierr, itmax, iter, tol, err
+    ! stop
+  end if
+
+  deallocate(rwork,iwork)
+
+  do ns = 1,nsn-1
+  do ew = 1,ewn-1
+     if (uindx(ew,ns) /= 0) then
+       loc = getlocrange(upn, uindx(ew,ns))
+       slapsolvstr(:,ew,ns) = answer(loc(1):loc(2))
+     else
+       slapsolvstr(:,ew,ns) = 0.0d0
+     end if
+  end do
+  end do
+
+  its = its + iter
+
+  return
+
+end function slapsolvstr
+
+! *******************************************************************************
+
 subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
 
   ! Puts sparse matrix variables in SLAP triad format into "matrix" derived type, 
@@ -1646,7 +1761,8 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   end if
 
-  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
+  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
+  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
 
   select case (whichresid)
 
@@ -3504,7 +3620,7 @@ subroutine calcbetasquared (whichbabc,               &
   real (kind = dp), intent(out), dimension(ewn-1,nsn-1) :: betasquared
 
   character (len=30), intent(in), optional :: betafile
-  real (kind = dp) :: smallnum = 1.0d-4
+  real (kind = dp) :: smallnum = 1.0d-2
   real (kind = dp), dimension(ewn) :: grounded
   real (kind = dp) :: alpha, dx, thck_gl, betalow, betahigh, roughness
   integer :: ew, ns
@@ -3518,11 +3634,13 @@ subroutine calcbetasquared (whichbabc,               &
     case(1)     ! simple pattern; also useful for debugging and test cases
                 ! (here, a strip of weak bed surrounded by stronger bed to simulate an ice stream)
 
-      betasquared = 1.0d10
+      betasquared = 1.0d4
 
-      do ew=1, ewn-1; do ns=10, nsn-10
-        betasquared(ew,ns) = 1.0d0
+      do ew=1, ewn-1; do ns=5, nsn-5
+        betasquared(ew,ns) = 10.0d1 
       end do; end do
+
+!      betasquared = betasquared / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
 
     case(2)     ! take input value for till yield stress and force betasquared to be implemented such
                 ! that plastic-till sliding behavior is enforced (see additional notes in documentation).
