@@ -12,7 +12,7 @@ rho_w = 1028;    % ocean water density kg/m^3
 H0 = 1e3;
 T0 = -10;
 q0 = -7e-2;
-slope = 1e-4;
+slope = 1e-3;
 b0 = 0.5;
 
 r = 22; c = 45;
@@ -43,9 +43,9 @@ topg = repmat( linspace( 1e3, 1e3-(slope*(c-1)*dew), c), r, 1 );      %% for deb
 
 usrf = topg + thck;
 
-%% put buffer of zero thickness cells around perimeter (for remapping)
-thck(1:3,:) = 0; thck(:,1:3) = 0; thck(end-2:end,:) = 0; thck(:,end-2:end) = 0;
-usrf(1:3,:) = 0; usrf(:,1:3) = 0; usrf(end-2:end,:) = 0; usrf(:,end-2:end) = 0;
+% %% put buffer of zero thickness cells around perimeter (for remapping)
+% thck(1:3,:) = 0; thck(:,1:3) = 0; thck(end-2:end,:) = 0; thck(:,end-2:end) = 0;
+% usrf(1:3,:) = 0; usrf(:,1:3) = 0; usrf(end-2:end,:) = 0; usrf(:,end-2:end) = 0;
 
 figure(1), imagesc( x/1e3, y/1e3, thck ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'thickness (m)' )
@@ -58,17 +58,18 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 
 %% load in old till map
 %  load ~/Home/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl           % Marion's path
-load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
+% load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
 
-minTauf = Tillggl;
-ind = find( minTauf < 2.5e3 ); minTauf(ind) = 1e3;
+% minTauf = Tillggl;
+% ind = find( minTauf < 5e3 ); minTauf(ind) = 5e3;
 
 % minTauf = 10e3 * ones( r-1, c-1 );       % for debugging
-% minTauf = 1e7 * ones( r-1, c-1 );       
-% minTauf(5:end-4,:) = 5e3;
-% if( double_res == 1 )
-%     minTauf(10:end-9,:) = 5e3;
-% end 
+minTauf = 1e7 * ones( r-1, c-1 );       
+% minTauf(5:end-4,5:end-4) = 5e3;
+minTauf(5:end-4,:) = 5e3;
+if( double_res == 1 )
+    minTauf(10:end-9,:) = 5e3;
+end 
 
 if( double_res == 1 )
     minTauf = interp2( xs, ys, minTauf, x2s, y2s, 'nearest' );
@@ -91,7 +92,7 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'geo flux (W m^2)' )
 
 % %% add a kinbcmask field to specify where 0 flux bcs are
 kinbcmask = zeros(size(minTauf));
-kinbcmask(1:4,:) = 1; kinbcmask(end-3:end,:) = 1; kinbcmask(:,1:4) = 1;
+% kinbcmask(1:4,:) = 1; kinbcmask(end-3:end,:) = 1; kinbcmask(:,1:4) = 1;
 
 uvelhom = zeros( l, r-1, c-1 );
 for i=1:l
