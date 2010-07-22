@@ -12,8 +12,8 @@ rho_w = 1028;    % ocean water density kg/m^3
 H0 = 1e3;
 T0 = -10;
 q0 = -7e-2;
-slope = 1e-4;
-b0 = 0.5;
+slope = 1e-6;
+b0 = 0.25;
 
 r = 22; c = 45;
 dew = 5e3; dns = 5e3;
@@ -61,7 +61,11 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
 
 minTauf = Tillggl;
-ind = find( minTauf < 2.5e3 ); minTauf(ind) = 1e3;
+
+% %% hacks of minTauf field to make it easier for the model to converge
+% ind = find( minTauf > 5e3 & minTauf <= 27500 ); minTauf(ind) = 7.5e3;
+% ind = find( minTauf > 27500 ); minTauf(ind) = 1e4;
+% ind = find( minTauf < 2.5e3 ); minTauf(ind) = 1e3;
 
 % minTauf = 10e3 * ones( r-1, c-1 );       % for debugging
 % minTauf = 1e7 * ones( r-1, c-1 );       
@@ -78,7 +82,7 @@ end
 beta = 1e6*ones(size(minTauf));
 ind = find( minTauf <= 5e3 ); beta(ind) = 1e2;
 % beta(8:14,:) = 3e1;
-% beta(10:12,:) = 0.5e1;
+% beta(10:12,:) = 0.5e1;0
 
 figure(4), imagesc( x/1e3, y/1e3, minTauf/1e3 ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'Tau0 (kPa)' )
@@ -100,6 +104,8 @@ end
 
 vvelhom = uvelhom; 
 
+% bwat = 100*ones( size( topg ) );
+
 figure(7), imagesc( x/1e3, y/1e3, kinbcmask ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'kinbcmask' )
 
@@ -111,4 +117,4 @@ tauf = minTauf;
 %  cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
 cd /Users/sprice/work/modeling/cism-parallel/tests/basalproc            % Steve's path
 
-save bproc.mat artm acab bheatflx usrf topg thck beta tauf kinbcmask uvelhom vvelhom 
+save bproc.mat artm acab bheatflx usrf topg thck beta tauf kinbcmask uvelhom vvelhom
