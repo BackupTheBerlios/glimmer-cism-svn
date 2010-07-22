@@ -980,17 +980,17 @@ contains
                         ! heating term. This may not be entirely correct ... 
                              slterm = slterm - &
                                 
-                                !!! NEW version: uses consistent basal tractions                
-                                !( -model%velocity_hom%btraction(1,ewp,nsp) * &
-                                !  model%velocity_hom%uvel(model%general%upn,ewp,nsp) + &
-                                !  -model%velocity_hom%btraction(2,ewp,nsp) * &
-                                !  model%velocity_hom%vvel(model%general%upn,ewp,nsp) )
-                                
-                                !!! OLD version: uses HO basal shear stress calc. from FD                
-                                ( model%velocity_hom%tau%xz(model%general%upn-1,ewp,nsp) * &
+                                !! NEW version: uses consistent basal tractions                
+                                ( -model%velocity_hom%btraction(1,ewp,nsp) * &
                                   model%velocity_hom%uvel(model%general%upn,ewp,nsp) + &
-                                  model%velocity_hom%tau%yz(model%general%upn-1,ewp,nsp) * &
+                                  -model%velocity_hom%btraction(2,ewp,nsp) * &
                                   model%velocity_hom%vvel(model%general%upn,ewp,nsp) )
+                                
+                                !!!! OLD version: uses HO basal shear stress calc. from FD                
+                                !( model%velocity_hom%tau%xz(model%general%upn-1,ewp,nsp) * &
+                                !  model%velocity_hom%uvel(model%general%upn,ewp,nsp) + &
+                                !  model%velocity_hom%tau%yz(model%general%upn-1,ewp,nsp) * &
+                                !  model%velocity_hom%vvel(model%general%upn,ewp,nsp) )
 
                         end do
                     end do
