@@ -1,3 +1,11 @@
+2010-07-23 William Lipscomb
+ * src/fortran/glide_thck.F90: fixed a major bug
+    During the Picard iteration for the nonlinear solve, the RHS of the matrix 
+    was being recomputed for each iteration instead of being held fixed after
+    the first pass.  Fixed this by replacing '.true.' with 'first_p' in the
+    call to thck_evolve.
+ * Looks as though the ChangeLog hasn't been updated for a while
+
 2009-05-05 Magnus Hagdorn
  * src/fortran/eis_glide.F90: get elapsed wall clock time
  * src/fortran/eismint3_glide.F90: ditto
