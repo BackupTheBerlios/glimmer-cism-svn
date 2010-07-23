@@ -1,0 +1,28 @@
+TRILINOS_PREFIX=/opt/local/CentOS-64/trilinos/trilinos-10.0.4-Source/SERIAL
+include $(TRILINOS_PREFIX)/include/Makefile.export.NOX
+INC_PATH=-I$(TRILINOS_PREFIX)/include
+LIB_PATH=-L$(TRILINOS_PREFIX)/lib -L/opt/intel/fce/10.1.015/lib -L/usr/lib64
+FORTRAN_COMPILER=ifort
+FORTRAN_LIBRARIES=-lifcore -lintlc -ldl
+
+FORTRAN_COMPILER_FLAGS=-cxxlib
+
+test = TrilinosSolversUnitTest
+
+.cpp.o:
+	$(NOX_CXX_COMPILER) $(NOX_CXX_FLAGS) $(INC_PATH) -c $<
+
+sparse_type.o:
+	$(FORTRAN_COMPILER) -c sparse_type.F90
+
+sparse_trilinos.o: sparse_type.o
+	$(FORTRAN_COMPILER) -c sparse_trilinos.F90
+
+$(test).o: sparse_type.o sparse_trilinos.o
+	$(FORTRAN_COMPILER) -c $(test).F90
+
+$(test).exe: $(test).o call_trilinos.o sparse_trilinos.o sparse_type.o
+	$(FORTRAN_COMPILER) $(FORTRAN_COMPILER_FLAGS) $(NOX_CXX_FLAGS) -o $(test).exe $^ $(FORTRAN_LIBRARIES) $(LIB_PATH) $(NOX_LIBRARIES) $(NOX_TPL_LIBRARIES)
+
+clean :
+	rm -f *.o *.mod *.exe *~
