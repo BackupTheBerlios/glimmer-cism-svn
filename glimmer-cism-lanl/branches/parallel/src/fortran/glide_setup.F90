@@ -406,6 +406,7 @@ contains
     call GetValue(section,'ioparams',model%funits%ncfile)
     call GetValue(section,'temperature',model%options%whichtemp)
     call GetValue(section,'flow_law',model%options%whichflwa)
+    call GetValue(section,'basal_proc',model%options%which_bmod)
     call GetValue(section,'basal_water',model%options%whichbwat)
     call GetValue(section,'marine_margin',model%options%whichmarn)
     call GetValue(section,'slip_coeff',model%options%whichbtrc)
@@ -416,7 +417,6 @@ contains
     call GetValue(section,'periodic_ew',model%options%periodic_ew)
     call GetValue(section,'periodic_ns',model%options%periodic_ns)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
-    call GetValue(section,'basal_proc',model%options%which_bmod)
   end subroutine handle_options
   
   !Higher order options
@@ -458,13 +458,18 @@ contains
          'full',       &
          'steady'      /)
     character(len=*), dimension(0:2), parameter :: flow_law = (/ &
-         'Patterson and Budd               ', &
-         'Patterson and Budd (temp=-10degC)', &
+         'Paterson and Budd               ', &
+         'Paterson and Budd (temp=-10degC)', &
          'const 1e-16a^-1Pa^-n             '/)
+  !*mb* added options for basal processes model       
+    character(len=*), dimension(0:2), parameter :: which_bmod = (/ &
+         'Basal proc mod disabled '  , &
+         'Basal proc, high res. '   , &
+         'Basal proc, fast calc.' /)
     character(len=*), dimension(0:4), parameter :: basal_water = (/ &
          'local water balance', &
          'local + const flux ', &
-         'flux calculation   ', &
+         'none               ', &
          'From basal proc model  ', &
          'Constant value (=10m)'/)
     character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
@@ -545,12 +550,6 @@ contains
          'GMRES with LU precondition ', &
          'Unsymmetric Multifrontal   ', &
          'Trilinos interface         '/)
-  !*mb* added options for basal processes model       
-     character(len=*), dimension(0:2), parameter :: whichbmod = (/ &
-         'Basal Proc Mod disabled '  , &
-         'Basal Proc, High. Res. '   , &
-         'Basal Proc, Fast Calc.' /)
-
 
     call write_log('GLIDE options')
     call write_log('-------------')
@@ -566,10 +565,10 @@ contains
     end if
     write(message,*) 'flow law                : ',model%options%whichflwa,flow_law(model%options%whichflwa)
     call write_log(message)
-    if (model%options%which_bmod.lt.0 .or. model%options%which_bmod.ge.size(whichbmod)) then
-       call write_log('Error, whichbmod out of range',GM_FATAL)
+    if (model%options%which_bmod.lt.0 .or. model%options%which_bmod.ge.size(which_bmod)) then
+       call write_log('Error, basal_proc out of range',GM_FATAL)
     end if
-    write(message,*) 'whichbmod               : ',model%options%which_bmod,whichbmod(model%options%which_bmod)
+    write(message,*) 'basal_proc              : ',model%options%which_bmod,which_bmod(model%options%which_bmod)
     call write_log(message)
     if (model%options%whichbwat.lt.0 .or. model%options%whichbwat.ge.size(basal_water)) then
        call write_log('Error, basal_water out of range',GM_FATAL)
@@ -648,38 +647,38 @@ contains
     call write_log(message)
 
 !whl - added Payne-Price higher-order (glam) options
-    write(message,*) 'ho_whichbabc          :',model%options%which_ho_babc,  &
+    write(message,*) 'ho_whichbabc            :',model%options%which_ho_babc,  &
                       ho_whichbabc(model%options%which_ho_babc)
     call write_log(message)
     if (model%options%which_ho_babc < 0 .or. model%options%which_ho_babc >= size(ho_whichbabc)) then
         call write_log('Error, HO basal BC input out of range', GM_FATAL)
     end if
-    write(message,*) 'ho_whichefvs          :',model%options%which_ho_efvs,  &
+    write(message,*) 'ho_whichefvs            :',model%options%which_ho_efvs,  &
                       ho_whichefvs(model%options%which_ho_efvs)
     call write_log(message)
     if (model%options%which_ho_efvs < 0 .or. model%options%which_ho_efvs >= size(ho_whichefvs)) then
         call write_log('Error, HO effective viscosity input out of range', GM_FATAL)
     end if
-    write(message,*) 'ho_whichresid         :',model%options%which_ho_resid,  &
+    write(message,*) 'ho_whichresid           :',model%options%which_ho_resid,  &
                       ho_whichresid(model%options%which_ho_resid)
     call write_log(message)
     if (model%options%which_ho_resid < 0 .or. model%options%which_ho_resid >= size(ho_whichresid)) then
         call write_log('Error, HO residual input out of range', GM_FATAL)
     end if
     !*sfp* added the next two for HO T calc
-    write(message,*) 'dispwhich         :',model%options%which_disp,  &
+    write(message,*) 'dispwhich               :',model%options%which_disp,  &
                       dispwhich(model%options%which_disp)
     call write_log(message)
     if (model%options%which_disp < 0 .or. model%options%which_disp >= size(dispwhich)) then
         call write_log('Error, which dissipation input out of range', GM_FATAL)
     end if
-    write(message,*) 'bmeltwhich         :',model%options%which_bmelt,  &
+    write(message,*) 'bmeltwhich              :',model%options%which_bmelt,  &
                       bmeltwhich(model%options%which_bmelt)
     call write_log(message)
     if (model%options%which_bmelt < 0 .or. model%options%which_bmelt >= size(bmeltwhich)) then
         call write_log('Error, which bmelt input out of range', GM_FATAL)
     end if
-    write(message,*) 'ho_whichsparse        :',model%options%which_ho_sparse,  &
+    write(message,*) 'ho_whichsparse          :',model%options%which_ho_sparse,  &
                       ho_whichsparse(model%options%which_ho_sparse)
     call write_log(message)
     if (model%options%which_ho_sparse < 0 .or. model%options%which_ho_sparse >= size(ho_whichsparse)) then

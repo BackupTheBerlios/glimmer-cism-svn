@@ -115,7 +115,7 @@ contains
        enddo
     enddo
     tot_area = tot_area * model%numerics%dew * model%numerics%dns * len0**2
-    write(message,'(a25,e20.8)') 'Total ice area (km^2)     ',   &
+    write(message,'(a25,e24.16)') 'Total ice area (km^2)     ',   &
                                    tot_area*1.0e-6_dp   ! convert to km^2
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
@@ -131,7 +131,7 @@ contains
     enddo
     tot_volume = tot_volume * model%numerics%dew * model%numerics%dns  &
                * thk0 * len0**2
-    write(message,'(a25,e20.8)') 'Total ice volume (km^3)  ',   &
+    write(message,'(a25,e24.16)') 'Total ice volume (km^3)  ',   &
                                    tot_volume*1.0e-9_dp   ! convert to km^3
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
@@ -151,7 +151,7 @@ contains
     enddo
     tot_energy = tot_energy * model%numerics%dew * model%numerics%dns  &
                * thk0 * len0**2
-    write(message,'(a25,e20.8)') 'Total ice energy (J)     ', tot_energy
+    write(message,'(a25,e24.16)') 'Total ice energy (J)     ', tot_energy
     call write_log(trim(message), type = GM_DIAGNOSTIC)
     
     ! total sum of volume * age
@@ -178,7 +178,7 @@ contains
     else
        mean_thck = 0._dp
     endif
-    write(message,'(a25,f20.12)') 'Mean thickness (m)       ', mean_thck
+    write(message,'(a25,f24.16)') 'Mean thickness (m)       ', mean_thck
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
     ! max thickness
@@ -195,7 +195,7 @@ contains
           endif
        enddo
     enddo
-    write(message,'(a25,f20.12,2i4)') 'Max thickness (m), i, j  ',   &
+    write(message,'(a25,f24.16,2i4)') 'Max thickness (m), i, j  ',   &
                                        max_thck*thk0, imax, jmax
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
@@ -206,7 +206,7 @@ contains
     else
        mean_temp = 0._dp
     endif
-    write(message,'(a25,f20.12)') 'Mean temperature (C)     ', mean_temp
+    write(message,'(a25,f24.16)') 'Mean temperature (C)     ', mean_temp
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
     ! min temperature
@@ -224,7 +224,7 @@ contains
           enddo
        enddo
     enddo
-    write(message,'(a25,f20.12,3i4)') 'Min temperature, i, j, k ',   &
+    write(message,'(a25,f24.16,3i4)') 'Min temperature, i, j, k ',   &
                                        min_temp, imin, jmin, kmin
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
@@ -235,7 +235,7 @@ contains
     else
        mean_age = 0._dp
     endif
-    write(message,'(a25,f20.12)') 'Mean ice age (yr)        ', mean_age
+    write(message,'(a25,f24.16)') 'Mean ice age (yr)        ', mean_age
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
     ! max surface speed
@@ -255,7 +255,7 @@ contains
           endif
        enddo
     enddo
-    write(message,'(a25,f20.12,2i4)') 'Max sfc spd (m/yr), i, j ',   &
+    write(message,'(a25,f24.16,2i4)') 'Max sfc spd (m/yr), i, j ',   &
                                        max_spd_sfc*vel0*scyr, imax, jmax
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
@@ -275,7 +275,7 @@ contains
           endif
        enddo
     enddo
-    write(message,'(a25,f20.12,2i4)') 'Max base spd (m/yr), i, j',   &
+    write(message,'(a25,f24.16,2i4)') 'Max base spd (m/yr), i, j',   &
                                        max_spd_bas*vel0*scyr, imax, jmax
     call write_log(trim(message), type = GM_DIAGNOSTIC)
  
@@ -294,21 +294,21 @@ contains
  
           i = idiag
           j = jdiag
-          write(message,'(a25,f20.12)')   &
+          write(message,'(a25,f24.16)')   &
                'Thickness (m)            ',model%geometry%thck(i,j)*thk0
           call write_log(trim(message), type = GM_DIAGNOSTIC)
  
-          write(message,'(a25,f20.12)')   &
+          write(message,'(a25,f24.16)')   &
                'Sfc air temperature (C)  ',model%climate%artm(i,j)
           call write_log(trim(message), type = GM_DIAGNOSTIC)
  
-          write(message,'(a25,f20.12)')   &
+          write(message,'(a25,f24.16)')   &
                'Basal temperature (C)    ',model%temper%temp(upn,i,j)
           call write_log(trim(message), type = GM_DIAGNOSTIC)
  
           spd = sqrt(model%velocity%ubas(i,j)**2   &
                    + model%velocity%vbas(i,j)**2) * vel0*scyr
-          write(message,'(a25,f20.12)')   &
+          write(message,'(a25,f24.16)')   &
                'Basal speed (m/yr)       ', spd
           call write_log(trim(message), type = GM_DIAGNOSTIC)
  
@@ -320,9 +320,11 @@ contains
           do k = 1, upn-1
              spd = sqrt(model%velocity%uvel(k,i,j)**2   &
                       + model%velocity%vvel(k,i,j)**2) * vel0*scyr
-             age = model%geometry%age(k,i,j)*tim0/scyr
-             write (message,'(i4,f16.6,f16.8,f16.6)')  &
-                k, spd, model%temper%temp(k,i,j), age
+             write (message,'(i4,2f24.16)')  &
+                k, spd, model%temper%temp(k,i,j)
+!             age = model%geometry%age(k,i,j)*tim0/scyr  ! uncomment when age is computed
+!             write (message,'(i4,3f24.16)')  &
+!                k, spd, model%temper%temp(k,i,j), age
              call write_log(trim(message), type = GM_DIAGNOSTIC)
           enddo
  

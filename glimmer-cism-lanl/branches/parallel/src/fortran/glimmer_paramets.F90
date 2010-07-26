@@ -51,6 +51,8 @@ module glimmer_paramets
 
   implicit none; save
 
+  integer, parameter :: idiag = 30, jdiag = 50  ! point for diagnostic output
+
 #ifdef NO_RESCALE
   real(dp), parameter :: thk0 = 1          ! m
   real(dp), parameter :: len0 = 1        ! m

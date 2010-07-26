@@ -1317,7 +1317,7 @@ contains
                  -actenl / gascon/)               ! Value of -Q/R when T* is below -263K
  
     select case(flag)
-    case(FLWA_PATTERSON_BUDD)
+    case(FLWA_PATERSON_BUDD)
 
       ! This is the Paterson and Budd relationship
 
@@ -1339,7 +1339,7 @@ contains
         end do
       end do
 
-    case(FLWA_PATTERSON_BUDD_CONST_TEMP)
+    case(FLWA_PATERSON_BUDD_CONST_TEMP)
 
       ! This is the Paterson and Budd relationship, but with the temperature held constant
       ! at -5 deg C

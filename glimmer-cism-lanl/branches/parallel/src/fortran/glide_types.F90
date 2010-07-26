@@ -99,8 +99,8 @@ module glide_types
   integer, parameter :: TEMP_FULL_SOLUTION = 1
   integer, parameter :: TEMP_STEADY = 2
 
-  integer, parameter :: FLWA_PATTERSON_BUDD = 0
-  integer, parameter :: FLWA_PATTERSON_BUDD_CONST_TEMP = 1
+  integer, parameter :: FLWA_PATERSON_BUDD = 0
+  integer, parameter :: FLWA_PATERSON_BUDD_CONST_TEMP = 1
   integer, parameter :: FLWA_CONST_FLWA = 2
 
 
@@ -187,11 +187,20 @@ module glide_types
 
     !*FD Method for calculating flow factor $A$:
     !*FD \begin{description} 
-    !*FD \item[0] \emph{Patterson and Budd} relationship 
-    !*FD \item[1] \emph{Patterson and Budd} relationship, 
+    !*FD \item[0] \emph{Paterson and Budd} relationship 
+    !*FD \item[1] \emph{Paterson and Budd} relationship, 
     !*FD with temperature set to $-10^{\circ}\mathrm{C}$ 
     !*FD \item[2] Set equal to $1\times 10^{-16}\,\mathrm{yr}^{-1}
     !*FD \,\mathrm{Pa}^{-n}$
+    !*FD \end{description}
+
+    ! *mb* added
+    integer :: which_bmod = 0
+    !Options for the basal processes code
+    !*FD \begin{description}
+    !*FD \item[0] Disabled
+    !*FD \item[1] Full calculation, with at least 3 nodes to represent the till layer
+    !*FD \item[2] Fast calculation, using Tulaczyk empirical parametrization
     !*FD \end{description}
 
     integer :: whichbwat = 2
@@ -404,15 +413,6 @@ module glide_types
     !*FD \item[0] standard Glimmer setup
     !*FD \item[1] evenly spaced levels
     !*FD \item[2] Pattyn's sigma levels
-    !*FD \end{description}
-
-    ! *mb* added
-    integer :: which_bmod = 0
-    !Options for the basal processes code
-    !*FD \begin{description}
-    !*FD \item[0] Disabled
-    !*FD \item[1] Full calculation, with at least 3 nodes to represent the till layer
-    !*FD \item[2] Fast calculation, using Tulaczyk empirical parametrization
     !*FD \end{description}
 
     integer :: diagnostic_run = 0
