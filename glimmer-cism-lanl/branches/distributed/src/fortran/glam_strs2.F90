@@ -381,6 +381,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      umask)
 
     !JEFFHERE
+    call parallel_stop(__FILE__, __LINE__)
+    
     ! *sfp** calculation of coeff. for stress balance calc. 
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &

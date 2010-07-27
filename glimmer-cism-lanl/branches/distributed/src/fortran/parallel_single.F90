@@ -46,6 +46,12 @@ module parallel
      module procedure parallel_halo_real8_3d
   end interface
 
+  interface parallel_halo_verify
+     module procedure parallel_halo_verify_integer_2d
+     module procedure parallel_halo_verify_real8_2d
+     module procedure parallel_halo_verify_real8_3d
+  end interface
+
   interface parallel_print
      module procedure parallel_print_integer_2d
      module procedure parallel_print_real8_2d
@@ -135,6 +141,21 @@ contains
   end subroutine
 
   subroutine parallel_halo_real8_3d(a)
+    implicit none
+    real(8),dimension(:,:,:) :: a
+  end subroutine
+
+  subroutine parallel_halo_verify_integer_2d(a)
+    implicit none
+    integer,dimension(:,:) :: a
+  end subroutine
+
+  subroutine parallel_halo_verify_real8_2d(a)
+    implicit none
+    real(8),dimension(:,:) :: a
+  end subroutine
+
+  subroutine parallel_halo_verify_real8_3d(a)
     implicit none
     real(8),dimension(:,:,:) :: a
   end subroutine
