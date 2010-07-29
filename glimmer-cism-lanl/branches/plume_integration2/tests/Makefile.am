@@ -1,3 +1,5 @@
+SUBDIRS = petermann
+
 EXTRA_DIST = e2.lin.config  e2.nonlin.config e2.adi.config
 
 if RUN_TESTS
