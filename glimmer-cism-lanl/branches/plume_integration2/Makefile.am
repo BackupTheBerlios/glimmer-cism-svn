@@ -1,4 +1,4 @@
-SUBDIRS = m4macros src 
+SUBDIRS = m4macros src tests
 EXTRA_DIST = bootstrap tests2
 bin_SCRIPTS=glimmer-config
 
