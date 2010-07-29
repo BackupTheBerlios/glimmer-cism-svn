@@ -596,9 +596,17 @@ contains
     if (model%options%hotstart.eq.1) then
        call write_log('Hotstarting model')
     end if
+    write(message,*) 'use_plume         :',model%options%use_plume,  &
+                      use_plume(model%options%use_plume)
+    call write_log(message)
+    if (model%options%use_plume < 0 .or. model%options%use_plume >= size(bmeltwhich)) then
+        call write_log('Error, use_plume input out of range', GM_FATAL)
+    end if
 
     if (model%options%use_lateral_stress_bc) then
         call write_log('Imposing stress conditions on the east and west boundaries')
+    else
+	call write_log('Imposing no-slip boundary conditions on the east/west boundaries')
     end if
     
 
@@ -670,12 +678,6 @@ contains
     call write_log(message)
     if (model%options%which_bmelt < 0 .or. model%options%which_bmelt >= size(bmeltwhich)) then
         call write_log('Error, which bmelt input out of range', GM_FATAL)
-    end if
-    write(message,*) 'use_plume         :',model%options%use_plume,  &
-                      use_plume(model%options%use_plume)
-    call write_log(message)
-    if (model%options%use_plume < 0 .or. model%options%use_plume >= size(bmeltwhich)) then
-        call write_log('Error, use_plume input out of range', GM_FATAL)
     end if
     write(message,*) 'ho_whichsparse        :',model%options%which_ho_sparse,  &
                       ho_whichsparse(model%options%which_ho_sparse)
@@ -771,7 +773,7 @@ contains
        call write_log(message)
     end if
     if (model%options%use_lateral_stress_bc) then
-       write(message, *) 'Imposed lateral stress: ', model%paramets%tau_xy_0
+       write(message, *) 'Imposed lateral stress tau_xy_0: ', model%paramets%tau_xy_0
        call write_log(message)
     end if
     call write_log('')

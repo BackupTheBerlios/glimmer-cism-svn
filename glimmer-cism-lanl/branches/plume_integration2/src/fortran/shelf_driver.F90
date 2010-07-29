@@ -28,6 +28,8 @@ program shelf_driver
 
   integer,parameter :: USE_PLUME = 1
   integer,parameter :: fake_landw = 2
+  integer,parameter :: thk_zero_margin = 1
+  logical,parameter :: use_thk_zero_margin = .true.
 
   !local variables
   type(glide_global_type) :: model        ! model instance
@@ -43,7 +45,7 @@ program shelf_driver
   real(kind=dp) :: thk_steady_tol = 1.0e-5
 
   real(kind=rk),dimension(:),allocatable :: upstream_thck
-  logical,      dimension(:,:),allocatable :: plume_land_mask
+  logical,      dimension(:,:),allocatable :: plume_land_mask,no_plume
   real(kind=dp),dimension(:,:),allocatable :: plume_lsrf_ext,plume_ice_dz,plume_t_interior
   real(kind=dp),dimension(:,:),allocatable :: plume_bmelt_out, plume_btemp_out
   real(kind=dp),dimension(:,:),allocatable :: prev_ice_thk
@@ -53,7 +55,8 @@ program shelf_driver
   logical :: plume_suppress_ascii_output,plume_suppress_logging
   logical :: plume_write_all_states= .false.
 
-  real(kind=dp) :: plume_min_subcycle_time,plume_min_spinup_time,plume_max_spinup_time
+  real(kind=dp) :: plume_min_subcycle_time
+  real(kind=dp) :: plume_min_spinup_time,plume_max_spinup_time
   real(kind=dp) :: plume_steadiness_tol
 
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
@@ -98,8 +101,8 @@ program shelf_driver
   model%climate%acab(:,:) = climate_cfg%accumulation_rate
   model%climate%artm(:,:) = climate_cfg%artm
 
-  allocate(upstream_thck(model%general%ewn))
-  upstream_thck = model%geometry%thck(:,model%general%nsn)
+  allocate(upstream_thck(model%general%ewn-2*thk_zero_margin))
+  upstream_thck = model%geometry%thck(thk_zero_margin+1:model%general%nsn-thk_zero_margin,model%general%nsn)
 
   ! fill dimension variables
   call glide_nc_fillall(model)
@@ -111,6 +114,8 @@ program shelf_driver
 
      allocate(plume_land_mask(  model%general%ewn+2*fake_landw, &
           model%general%nsn+1*fake_landw))
+     allocate(no_plume(model%general%ewn, &
+                       model%general%nsn)); no_plume = .true.
      allocate(plume_lsrf_ext(   model%general%ewn+2*fake_landw, &
           model%general%nsn+1*fake_landw))
      allocate(plume_ice_dz(     model%general%ewn+2*fake_landw, &
@@ -121,9 +126,20 @@ program shelf_driver
           model%general%nsn+1*fake_landw))
      allocate(plume_btemp_out(  model%general%ewn+2*fake_landw, &
           model%general%nsn+1*fake_landw))
+  
+     no_plume = GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+                GLIDE_IS_GROUND(model%geometry%thkmask)
 
-     call write_logical_plume_array(GLIDE_IS_LAND(model%geometry%thkmask) .or. &
-          GLIDE_IS_GROUND(model%geometry%thkmask), &       
+     if (use_thk_zero_margin) then
+     	no_plume(1:thk_zero_margin,:) = .true.
+	no_plume(model%general%ewn-(thk_zero_margin-1):model%general%ewn,:) = .true.
+     end if
+
+     call write_logical_plume_array( no_plume,  &
+             plume_land_mask, .true.,&
+             model%general%ewn, model%general%nsn, fake_landw)
+
+     call write_logical_plume_array(no_plume, &
           plume_land_mask, .true., &
           model%general%ewn, model%general%nsn, fake_landw)
      call write_real_plume_array(model%geometry%lsrf *thk0, plume_lsrf_ext, 0.0, &
@@ -196,6 +212,9 @@ program shelf_driver
   allocate(prev_ice_thk(model%general%ewn,model%general%nsn))
   prev_ice_thk = 0.0
 
+  model%geometry%thck(1:thk_zero_margin                                      , :) = 0.0_dp
+  model%geometry%thck(model%general%ewn-(thk_zero_margin-1):model%general%ewn, :) = 0.0_dp
+
   do while(time .le. model%numerics%tend  .and. &
        .not. (check_for_steady .and. is_steady))
 
@@ -205,13 +224,18 @@ program shelf_driver
 
      call glide_tstep_p1(model,time) ! temp evolution
      call glide_tstep_p2(model)      ! velocities, thickness advection
+
      ! adjust the heights in the upstream row
-     model%geometry%thck(:,model%general%nsn) = upstream_thck
-     model%geometry%thck(:,model%general%nsn-1) = upstream_thck
+     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin,model%general%nsn  ) = upstream_thck
+     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin,model%general%nsn-1) = upstream_thck
 
      ! impose dh/dx = 0 along the lateral side walls
-     model%geometry%thck(model%general%ewn,:) = model%geometry%thck(model%general%ewn-1,:)
-     model%geometry%thck(                1,:) = model%geometry%thck(                  2,:)
+
+     ! This has been commented out.  I believe it is physically incorrect since it can act 
+     ! as a thickness source along the sides, which is not the boundary conditions we
+     ! want when simulating a steep-walled fjord like Petermann.
+!     model%geometry%thck(model%general%ewn,:) = model%geometry%thck(model%general%ewn-1,:)
+!     model%geometry%thck(                1,:) = model%geometry%thck(                  2,:)
 
      call glide_tstep_p3(model)      ! isostasy, upper/lower surfaces
 
@@ -231,10 +255,24 @@ program shelf_driver
         ! tolerance than we assume the plume melts the ice at the
         ! steady rate for the rest of the ice timestep and we stop
         ! timestepping the plume.
-        call write_logical_plume_array(GLIDE_IS_LAND(model%geometry%thkmask) .or. &
-             GLIDE_IS_GROUND(model%geometry%thkmask), &       
+
+	no_plume = GLIDE_IS_LAND(model%geometry%thkmask) .or. &
+		  GLIDE_IS_GROUND(model%geometry%thkmask)
+
+        if (use_thk_zero_margin) then
+	        ! The purpose of this is to force the plume to disregard
+		! the laterally outermost column of ocean cells, where the
+		! ice thickness has been set to zero in order to make the 
+		! ice boundary conditions correct.  Thus the plume only inhabits
+		! ocean cells that are beneath ice with positive thickness.
+        	no_plume(1:thk_zero_margin,:) = .true.
+        	no_plume(model%general%ewn-(thk_zero_margin-1):model%general%ewn,:) = .true.
+        end if
+
+        call write_logical_plume_array(   no_plume,  &
              plume_land_mask, .true.,&
              model%general%ewn, model%general%nsn, fake_landw)
+
         call write_real_plume_array(model%geometry%lsrf *thk0, &
              plume_lsrf_ext, 0.0, &                              
              model%general%ewn, model%general%nsn, fake_landw)
@@ -258,7 +296,7 @@ program shelf_driver
              plume_btemp_out, &            
              plume_steadiness_tol, &
              plume_min_subcycle_time, &
-	     0.d0, &                      !no maximum time
+	     0.0_dp, &
              .false., &                   !not necessarily running to steady
 	     plume_reached_steady, &
              plume_write_all_states)
@@ -285,7 +323,7 @@ program shelf_driver
      call plume_io_finalize()
      call plume_logging_finalize()
 
-     deallocate(plume_land_mask,plume_lsrf_ext,plume_ice_dz, &
+     deallocate(plume_land_mask,no_plume,plume_lsrf_ext,plume_ice_dz, &
           plume_t_interior, plume_bmelt_out, plume_btemp_out)
 
   end if

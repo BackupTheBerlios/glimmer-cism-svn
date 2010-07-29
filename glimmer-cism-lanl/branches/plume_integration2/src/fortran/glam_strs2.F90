@@ -215,7 +215,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:,:),   intent(in)  :: beta 
 
   real (kind = dp), intent(in)      :: tau_xy_0
-
+  
   integer, intent(in) :: whichbabc    ! options for betasquared field to use
   integer, intent(in) :: whichefvs    ! options for efvs calculation (calculate it or make it uniform)
   integer, intent(in) :: whichresid   ! options for method to use when calculating vel residul
@@ -231,11 +231,15 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer :: ew, ns, up     ! counters for horiz and vert do loops
 
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
-  real (kind = dp), parameter :: overrideres = 1.0d-9 ! if either velocity field is converged below this, continue
+  real (kind = dp), parameter :: switchres = 1.0d-2
+  real (kind = dp), parameter :: overrideres = 1.0d-8 ! if either velocity field is converged below this, continue
                                                       ! other field is not converged
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
-  integer, parameter :: cmax = 3000                 ! max no. of iterations
+  integer, parameter :: cmin = 5                    ! min no. of iterations
+  integer, parameter :: cmax = 1000                 ! max no. of iterations
+  integer, parameter :: cswitch = 100               ! when to switch to larger tolerance
+  
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -305,13 +309,15 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! ****************************************************************************************
   ! START of Picard iteration
   ! ****************************************************************************************
- 
+  
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  do while (    ((resid(1) > minres .and. .not. x_invariant) .or. (resid(2) > minres)) &
-            .and. resid(2) > overrideres &
-            .and. resid(1) > overrideres &
-            .and. counter < cmax )
+  do while (((resid(1) > minres .and. .not. x_invariant) .or. (resid(2) > minres)) &
+            .and. (resid(2) > overrideres .or. (counter < cmin))&
+            .and. (resid(1) > overrideres .or. (counter < cmin) .or. x_invariant) &
+	    .and. ((resid(1) > switchres .and. .not. x_invariant) &
+	    	     .or. (resid(2) > switchres) .or. (counter < cswitch)) &
+            .and. (counter < cmax) )
 
     ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
@@ -322,7 +328,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dusrfdew,   dthckdew, &
                      dusrfdns,   dthckdns, &
                      umask)
-
 
     ! calculate coeff. for stress balance in y-direction 
     call findcoefstr(ewn,  nsn,   upn,            &
@@ -340,7 +345,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
-                     tau_xy_0 / tau0_glam, use_lateral_stress_bc, &
+                     tau_xy_0 / (tau0_glam), use_lateral_stress_bc, &
                      beta, counter )
 
     !no_shear_stress_sidewalls = .false.
@@ -850,30 +855,25 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   if (counter >= start_umc) then
   
-  in_prod = sum( corr(:,:,:,new(pt),pt) * corr(:,:,:,old(pt),pt) )
-  len_new = sqrt(sum( corr(:,:,:,new(pt),pt) * corr(:,:,:,new(pt),pt) ))
-  len_old = sqrt(sum( corr(:,:,:,old(pt),pt) * corr(:,:,:,old(pt),pt) ))
+    in_prod = sum( corr(:,:,:,new(pt),pt) * corr(:,:,:,old(pt),pt) )
+    len_new = sqrt(sum( corr(:,:,:,new(pt),pt) * corr(:,:,:,new(pt),pt) ))
+    len_old = sqrt(sum( corr(:,:,:,old(pt),pt) * corr(:,:,:,old(pt),pt) ))
  
-  theta = acos( in_prod / (len_new * len_old + small) )
+    theta = acos( in_prod / (len_new * len_old + small) )
     
-   if (theta  < (1.0/8.0)*pi) then
-	mindcrshstr = usav(:,:,:,pt) + cvg_accel * corr(:,:,:,new(pt),pt)
-!        print *, theta/pi, 'increased correction'
+    if (theta  < (1.0/8.0)*pi) then
+    	mindcrshstr = usav(:,:,:,pt) + cvg_accel * corr(:,:,:,new(pt),pt)
    else if(theta < (19.0/20.0)*pi) then
-	mindcrshstr = vel
-!        print *, theta/pi, 'standard correction'
+   	mindcrshstr = vel
    else 
-	mindcrshstr = usav(:,:,:,pt) + (1.0/cvg_accel) * corr(:,:,:,new(pt),pt)
-!        print *, theta/pi, 'decreasing correction'
+   	mindcrshstr = usav(:,:,:,pt) + (1.0/cvg_accel) * corr(:,:,:,new(pt),pt)
    end if
 
   else 
 
     mindcrshstr = vel;
- !   print *, 'Not attempting adjustment to correction'	 
-   
+    
   end if
-
 
   ! now swap slots for storing the previous correction
   if (new(pt) == 1) then
@@ -905,10 +905,12 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
     where ( mindcrshstr .ne. 0.0_dp )
 	vel_ne_0 = 1
  	rel_diff = abs((usav(:,:,:,pt) - mindcrshstr) / mindcrshstr) & 
-                           * usav_avg(pt)/sqrt(sum(usav_avg ** 2.0))
+                           * sqrt(2.0_dp)*usav_avg(pt)/sqrt(sum(usav_avg ** 2.0_dp))
     end where
 
-    resid = maxval( rel_diff, MASK = mindcrshstr .ne. 0.0_dp )
+    resid = max(0.0_dp,  &
+    	        maxval( rel_diff , MASK = mindcrshstr .ne. 0.0_dp))
+    
     locat = maxloc( rel_diff, MASK = mindcrshstr .ne. 0.0_dp )
 
 !    mean_rel_diff = sum(rel_diff) / sum(vel_ne_0)
@@ -1011,7 +1013,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer, intent(in) :: pt, whichbabc
 
   real (kind = dp), dimension(ewn-1,nsn-1) :: betasquared
-  real (kind = dp), dimension(2,2,2) :: local_efvs   
+  real (kind = dp), dimension(2,2,2) :: local_efvs 
+  real (kind = dp), dimension(2,2)   :: local_efvs2  
   real (kind = dp)                    :: efvs_usable
 
   real (kind = dp), dimension(3,3,3) :: localothervel
@@ -1182,37 +1185,74 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
            !impose no shear stress condition and no normal flow, which means 
            !   dv/dx = 0
            !      u  = 0
-           locplusup = loc(1)
-           call valueset(0.0_dp)
-           locplusup = loc(1) + upn + 1
-           call valueset(0.0_dp)
+
+
+	   ! this sets the upper and lower ghost point's velocities equal to zero
+!	   locplusup = loc(1)   !upper ghost point
+!           call valueset(0.0_dp)
+!           locplusup = loc(1) + upn + 1  !lower ghost point
+!           call valueset(0.0_dp)
+
+	   !now (july 24) let's try setting the ghost point velocities equal
+	   !to the values adjacent vertically to them
+	   
+	   call putpcgc( 1.0_dp,loc_array(ew,ns)+upn+1,loc_array(ew,ns)+upn+1)
+	   call putpcgc(-1.0_dp,loc_array(ew,ns)+upn  ,loc_array(ew,ns)+upn+1)
+	   rhsd(loc_array(ew,ns)+upn+1) = 0.0_dp 
+	   call putpcgc( 1.0_dp,loc_array(ew,ns)      ,loc_array(ew,ns)      )
+	   call putpcgc(-1.0_dp,loc_array(ew,ns)+1    ,loc_array(ew,ns)      )
+	   rhsd(loc_array(ew,ns) ) = 0.0_dp 
 
            do up = 1,upn !0,(upn+1)
-              
-              if (up == 1) then
-                    local_efvs(1,:,:) = 0.0_dp
-                    local_efvs(2,:,:) = efvs(1,ew:ew+1,ns:ns+1)                   
-              elseif (up == upn) then
-                    local_efvs(1,:,:) = efvs(upn-1,ew:ew+1,ns:ns+1)
-                    local_efvs(2,:,:) = 0.0_dp
-              else
-                    local_efvs = efvs(up-1:up,ew:ew+1,ns:ns+1)
-              end if
 
-              efvs_usable = sum(local_efvs) / (sum(local_efvs/local_efvs, mask=local_efvs > 1.0d-12))
+	      !Note, effective viscosities are on a vertically-staggard grid,
+	      ! but horizontally is on the thickness grid.  The stress terms are
+	      ! on the thickness grid too, which is why we average vertically only              
+
+!             if (up == 1) then
+!	         local_efvs(1,:,:) = 0.0_dp
+!	         local_efvs(2,:,:) = efvs(1,ew:ew+1,ns:ns+1)      !old line     
+!             elseif (up == upn) then
+!                    local_efvs(1,:,:) = efvs(upn-1,ew:ew+1,ns:ns+1) !old line
+!		    local_efvs(2,:,:) = 0.0_dp
+!              else
+!                    local_efvs = efvs(up-1:up,ew:ew+1,ns:ns+1)   !old line
+!              end if
+!
+!             efvs_usable = sum(local_efvs) / (sum(local_efvs/local_efvs, mask=local_efvs > 1.0d-18))
+	      
+	      if (up == 1) then
+	      	 local_efvs2(1,:) = 0.0_dp
+		 if (ew .le. (ewn-1)/2.0) then
+		   local_efvs2(2,:) = efvs(1    ,ew+1,ns:ns+1)
+		 else
+		   local_efvs2(2,:) = efvs(1    ,ew  ,ns:ns+1)
+  		 end if
+              elseif (up == upn) then
+		 if (ew .le. (ewn-1)/2.0) then
+		    local_efvs2(1,:) = efvs(upn-1,ew+1,ns:ns+1)
+		 else
+	            local_efvs2(1,:) = efvs(upn-1,ew  ,ns:ns+1)
+                 end if
+		 local_efvs2(2,:) = 0.0_dp
+	      else
+		 if (ew .le. (ewn-1)/2.0) then	         		 
+		    local_efvs2(:,:) = efvs(up-1:up,ew+1,ns:ns+1)
+                 else
+		    local_efvs2(:,:) = efvs(up-1:up,ew,  ns:ns+1)	
+		 end if
+              end if 
+
+	      efvs_usable = sum(local_efvs2) / (sum(local_efvs2/local_efvs2, mask=local_efvs2 > 1.0d-18))
 
               if (ew .le. (ewn-1)/2.0) then
-
-                 call putpcgc( 1.0_dp,loc_array(ew+1,ns)+up,loc_array(ew,ns)+up)
+                 call putpcgc( 1.0_dp,loc_array(ew+2,ns)+up,loc_array(ew,ns)+up)
                  call putpcgc(-1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
-                 rhsd(loc_array(ew,ns)+up) = - tau_xy_0  * dew /  efvs_usable
-
+                 rhsd(loc_array(ew,ns)+up) = - tau_xy_0  * (2*dew) /  efvs_usable
               else
-
                  call putpcgc( 1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
-                 call putpcgc(-1.0_dp,loc_array(ew-1,ns)+up,loc_array(ew,ns)+up)  
-                 rhsd(loc_array(ew,ns)+up) =   tau_xy_0  * dew /  efvs_usable
-
+                 call putpcgc(-1.0_dp,loc_array(ew-2,ns)+up,loc_array(ew,ns)+up)  
+                 rhsd(loc_array(ew,ns)+up) =   tau_xy_0  * (2*dew) /  efvs_usable
               end if
               
 

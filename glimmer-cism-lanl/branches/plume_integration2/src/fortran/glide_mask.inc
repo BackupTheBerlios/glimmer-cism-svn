@@ -78,6 +78,7 @@
 !Checks whether we are at the edge of the computational domain *and* there is ice in this square
 #define GLIDE_IS_COMP_DOMAIN_BND(mask)    (iand(mask, 129) == 129)
 
+#define GLIDE_IS_FLOATING_DOMAIN_BND(mask)  (iand(mask, 137) == 137)
 
 #endif
 

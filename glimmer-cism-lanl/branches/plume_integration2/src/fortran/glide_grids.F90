@@ -42,7 +42,8 @@ contains
             do ew = 1,ewn-1
 
                 !If any of our staggering points are shelf front, ignore zeros when staggering
-                if (any(GLIDE_IS_CALVING(mask(ew:ew+1, ns:ns+1)))) then
+                if (any(GLIDE_IS_CALVING(mask(ew:ew+1, ns:ns+1))) .or. &
+		    any(GLIDE_IS_FLOATING_DOMAIN_BND(mask(ew:ew+1,ns:ns+1)))) then
                     n = 0
                     tot = 0
     

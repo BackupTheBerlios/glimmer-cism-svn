@@ -125,7 +125,7 @@ module remap_glamutils
 
     real (kind = dp), dimension(:,:), intent(in) :: thck, uflx, vflx, stagthck
     real (kind = dp), intent(in) :: dew, dns, dt
-    real (kind = dp) :: dt_cfl
+    real (kind = dp) :: dt_cfl, dt_cfl_recip
 
     logical, intent(in) :: periodic_ew, periodic_ns
 
@@ -215,8 +215,12 @@ module remap_glamutils
     !*tjb** Checks for IR's CFL-like condition.  These only print a warning for now.
     !Use the conservative, "highly divergent" criterion for now.
     dt_cfl = .5 * max(maxval(wk%dew_ir/wk%ubar_ir), maxval(wk%dns_ir/wk%vbar_ir))
-    if (dt_cfl < wk%dt_ir) then
+    dt_cfl_recip = 2.0_dp * max(maxval(abs(wk%ubar_ir)/wk%dew_ir), maxval(abs(wk%vbar_ir)/wk%dns_ir))
+    if (dt_cfl_recip > 0.0_dp) then
+       dt_cfl = 1.0_dp / dt_cfl_recip
+       if( dt_cfl < wk%dt_ir) then
         write(*,*) "WARNING: CFL violation in incremental remapping scheme.  Time step should be <= ", dt_cfl
+       end if
     end if
 
     end subroutine horizontal_remap_in

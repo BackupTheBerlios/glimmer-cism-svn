@@ -351,8 +351,8 @@ contains
     write(log_message, '(a,f6.1)') 'subcycling time in days', subcycling_time/(3600.0*24.0)
     call io_append_output(trim(log_message))
 
-    call io_write_long_step_output(icalcan,icalcen,kcalcan,kcalcen,&
-                                  varoutrat,negdep)
+!    call io_write_long_step_output(icalcan,icalcen,kcalcan,kcalcen,&
+!                                  varoutrat,negdep)
 
     call io_write_surface_output(runtim,labtim)    
 
