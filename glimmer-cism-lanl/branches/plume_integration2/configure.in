@@ -343,5 +343,5 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([],
                 AC_MSG_RESULT(yes)], [AC_MSG_RESULT(no)])
 
 
-AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile])
+AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile tests/Makefile tests/petermann/Makefile])
 AC_OUTPUT([glimmer-config src/fortran/glimmer_vers.F90.in])
