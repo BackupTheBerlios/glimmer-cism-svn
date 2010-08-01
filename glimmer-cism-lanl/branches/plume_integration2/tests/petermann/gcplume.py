@@ -517,7 +517,7 @@ class _AtomicJob(_BaseJob,_IO):
         
     def run(self):
         cmd = [self._driver, self.gc_config_file]
-        subprocess.check_call(cmd)
+        _check_call(cmd)
 
     def stage(self,genInput=True):
 
@@ -555,7 +555,7 @@ class _AtomicJob(_BaseJob,_IO):
             #figure out what command is needed to generate the netcdf input file
             cmd = self._genInputCmd()
             # and then do it
-            subprocess.check_call(cmd)
+            _check_call(cmd)
 
 class _GenInputJob(_AtomicJob):
 
@@ -797,7 +797,7 @@ class RegridJob(_BaseJob,_IO):
         self.initJob.stage(genInput=False)
         if (genInput):
             cmd = self._genInput()
-            subprocess.check_call(cmd)
+            _check_call(cmd)
 
     def _genInput(self):
         cmd =['nc_regrid']
@@ -816,3 +816,9 @@ class GivenInputJob(_AtomicJob):
 class CheckpointJob(_BaseJob):
     pass
 
+def _check_call(cmd):
+    retcode = subprocess.call(cmd)
+    if (retcode != 0):
+        raise Exception("Error running %s" % ' '.join(cmd))
+    
+    

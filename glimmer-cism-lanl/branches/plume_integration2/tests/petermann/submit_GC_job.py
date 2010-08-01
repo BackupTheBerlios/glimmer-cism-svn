@@ -68,7 +68,9 @@ def queue_job(mode, j):
         subprocess.call(['sh', runcmd])
     else:
         print('queueing jobscript: %s' % runcmd)
-        subprocess.check_call(['qsub', runcmd])
+        retcode = subprocess.call(['qsub', runcmd])
+	if (retcode != 0):
+	    raise Exception("Error running qsub")
 
 def submit_job(job,email,walltime,mode):
     
