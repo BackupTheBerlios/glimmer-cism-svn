@@ -98,7 +98,8 @@ program shelf_driver
   !initialise climate in model
   !these have to be done after since acab and artm are allocated space
   !inside glide_initialise
-  model%climate%acab(:,:) = climate_cfg%accumulation_rate
+
+  model%climate%acab(:,:) = climate_cfg%accumulation_rate / scale2d_f1
   model%climate%artm(:,:) = climate_cfg%artm
 
   allocate(upstream_thck(model%general%ewn-2*thk_zero_margin))
@@ -218,7 +219,7 @@ program shelf_driver
   do while(time .le. model%numerics%tend  .and. &
        .not. (check_for_steady .and. is_steady))
 
-     model%climate%acab(:,:) = climate_cfg%accumulation_rate
+     model%climate%acab(:,:) = climate_cfg%accumulation_rate / scale2d_f1
      model%climate%artm(:,:) = climate_cfg%artm
      model%climate%eus = climate_cfg%eus
 
