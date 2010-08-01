@@ -230,10 +230,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   integer :: ew, ns, up     ! counters for horiz and vert do loops
 
-  real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
-  real (kind = dp), parameter :: switchres = 1.0d-2
-  real (kind = dp), parameter :: overrideres = 1.0d-8 ! if either velocity field is converged below this, continue
-                                                      ! other field is not converged
+  real (kind = dp), parameter :: minres = 1.0e-4_dp    ! assume vel fields converged below this resid 
+  real (kind = dp), parameter :: switchres = 1.0e-2_dp
+  real (kind = dp), parameter :: x_overrideres = 0.0_dp ! if uvel field is converged below this, continue
+  real (kind = dp), parameter :: y_overrideres = 1.0d-6  ! if vvel field is converged below this, continue
+
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
   integer, parameter :: cmin = 5                    ! min no. of iterations
@@ -313,8 +314,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
   do while (((resid(1) > minres .and. .not. x_invariant) .or. (resid(2) > minres)) &
-            .and. (resid(2) > overrideres .or. (counter < cmin))&
-            .and. (resid(1) > overrideres .or. (counter < cmin) .or. x_invariant) &
+            .and. (resid(2) .ge. y_overrideres .or. (counter < cmin))&
+            .and. (resid(1) .ge. x_overrideres .or. (counter < cmin) .or. x_invariant) &
 	    .and. ((resid(1) > switchres .and. .not. x_invariant) &
 	    	     .or. (resid(2) > switchres) .or. (counter < cswitch)) &
             .and. (counter < cmax) )
@@ -833,7 +834,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   integer, parameter :: start_umc = 3
   real (kind=dp), parameter :: cvg_accel = 1.5_dp
-  real (kind = dp), parameter :: small = 1.0e-16_dp
+  real (kind = dp), parameter :: small = 1.0e-16_dp, small_vel = 1.0e-2_dp ! Speed in m/yr
 
   real (kind=dp) in_prod, len_new, len_old, mean_rel_diff, sig_rel_diff
   real (kind=dp) :: theta
@@ -885,8 +886,8 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   if (counter == 1) then
    	usav_avg = 1.0_dp
   else
-	usav_avg(1) = sum( abs(usav(:,:,:,1)) ) / size(vel)  ! a x-dir transport velocity scale
-	usav_avg(2) = sum( abs(usav(:,:,:,2)) ) / size(vel)  ! a y-dir transport velocity scale
+	usav_avg(1) = sum( abs(usav(:,:,:,1)) ) / size(vel)  ! a transport velocity scale from prev iter
+	usav_avg(2) = sum( abs(usav(:,:,:,2)) ) / size(vel)  ! a transport velocity scale from prev iter
   end if
 
 !  print *, 'usav_avg(1)',usav_avg(1),'usav_avg(2)',usav_avg(2)
@@ -902,16 +903,17 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
    case(0)
     rel_diff = 0.0_dp
     vel_ne_0 = 0
-    where ( mindcrshstr .ne. 0.0_dp )
+
+    where ( abs(mindcrshstr) > small_vel)
 	vel_ne_0 = 1
- 	rel_diff = abs((usav(:,:,:,pt) - mindcrshstr) / mindcrshstr) & 
-                           * sqrt(2.0_dp)*usav_avg(pt)/sqrt(sum(usav_avg ** 2.0_dp))
+	rel_diff = abs((usav(:,:,:,pt) - mindcrshstr) / mindcrshstr)
+	rel_diff = rel_diff * sqrt(2.0_dp)*usav_avg(pt)/sqrt(sum(usav_avg ** 2.0_dp))
     end where
 
     resid = max(0.0_dp,  &
-    	        maxval( rel_diff , MASK = mindcrshstr .ne. 0.0_dp))
+    	        maxval( rel_diff) )
     
-    locat = maxloc( rel_diff, MASK = mindcrshstr .ne. 0.0_dp )
+    locat = maxloc( rel_diff  )
 
 !    mean_rel_diff = sum(rel_diff) / sum(vel_ne_0)
 !    sig_rel_diff = sqrt( sum((rel_diff - mean_rel_diff) ** 2.0 )/ sum(vel_ne_0) )
@@ -932,11 +934,11 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
     !**cvg*** should replace vel by mindcrshstr in the following lines, I belive
     nr = size( vel, dim=1 )
     vel_ne_0 = 0
-    where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
+    where ( mindcrshstr .ne. 0.0_dp ) vel_ne_0 = 1
 
     ! include basal velocities in resid. calculation when using MEAN
-    resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
-            MASK = vel .ne. 0.0_dp) / sum( vel_ne_0 )
+    resid = sum( abs((usav(:,:,:,pt) - mindcrshstr ) / mindcrshstr ), &
+            MASK = mindcrshstr .ne. 0.0_dp) / sum( vel_ne_0 )
 
     ! ignore basal velocities in resid. calculation when using MEAN
     ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
@@ -944,7 +946,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
     ! NOTE that the location of the max residual is somewhat irrelevent here
     !      since we are using the mean resid for convergence testing
-    locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+    locat = maxloc( abs((usav(:,:,:,pt) - mindcrshstr) / mindcrshstr ), MASK = mindcrshstr .ne. 0.0_dp)
 
   end select
 
@@ -952,7 +954,7 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
     ! Additional debugging line, useful when trying to determine if convergence is being consistently 
     ! held up by the residual at one or a few particular locations in the domain.
-!    print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
+    !print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, mindcrshstr(locat(1),locat(2),locat(3))
 
   return
 
@@ -1025,6 +1027,9 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer, dimension(6) :: loc
   integer, dimension(3) :: shift
   integer :: ew, ns, up
+  logical, parameter :: use_sticky_wall = .false.
+  
+  integer, parameter :: sticky_length = 10
 
   ct = 1        ! index to count the number of non-zero entries in the sparse matrix
 
@@ -1067,8 +1072,25 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
     loc(1) = loc_array(ew,ns)
 
+    if (use_sticky_wall .and. ew == ewn-1 .and. ns .ge. (nsn/2 - sticky_length/2) .and. ns .le. (nsn/2 + sticky_length/2)) then
+
+        ! at fake corner point, set both uvel and vvel to 0.0
+!        write(*,*) 'Setting velocity at ew,ns:',ew,ns
+        locplusup = loc(1)
+        call valueset(0.0_dp)
+        locplusup = loc(1) + upn + 1
+        call valueset(0.0_dp)
+        do up = 1,upn
+           locplusup = loc(1) + up
+           call valueset( 0.0_dp )                ! vel at margin set to 0 
+	end do 
+
+!    elseif (use_plastic_yield_bnd) then
+!        if (plastic_yield_mask(ew,ns) == 1) then
+!	   ! apply bc here
+!	end if    
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    if ( GLIDE_HAS_ICE(mask(ew,ns)) .and. .not. &
+    elseif ( GLIDE_HAS_ICE(mask(ew,ns)) .and. .not. &
          GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns)) .and. .not. &
          GLIDE_IS_MARGIN(mask(ew,ns)) .and. .not. &
          GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) .and. .not. &
