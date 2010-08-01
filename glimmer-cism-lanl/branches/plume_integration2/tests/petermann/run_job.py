@@ -11,8 +11,10 @@ if (len(sys.argv) < 2 ):
  exit(1)
 	
 jfile = sys.argv[1]
+
+f = open(jfile,'r')
+
 try:
-	f = open(jfile,'r')
 	j = pickle.load(f)
 finally:
 	f.close()

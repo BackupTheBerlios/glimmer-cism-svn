@@ -29,7 +29,7 @@ def write_jobscript(j,email,jobfile,walltime):
     # make scripts to run the code
     #
 
-    f = open(os.path.join(os.path.expandvars('$GC_JOBS_TODO'),
+    f = open(os.path.join(os.path.expandvars('$GC_JOB_SCRIPTS'),
                           'run_GC_%s.sh' % j.name),
              'w')
 
@@ -43,17 +43,15 @@ def write_jobscript(j,email,jobfile,walltime):
                 p=$PWD
                 cd %s
                 python `which run_job.py` %s
-                #mv %s %s
                 cd $p
                 exit 0;
                 EOF
             ''' % (walltime, j.name, email,
-                   os.path.expandvars('$GC_JOBS_TODO'),
-                   os.path.expandvars('$GC_JOBS_TODO'),
+                   os.path.expandvars('$GC_JOB_SCRIPTS'),
+                   os.path.expandvars('$GC_JOB_SCRIPTS'),
                    os.path.dirname(os.path.abspath(jobfile)),
-                   os.path.abspath(jobfile),
-                   os.path.dirname(os.path.abspath(jobfile)),
-                   os.path.expandvars('$GCFINISHEDJOBS'))
+                   os.path.abspath(jobfile))
+
  
     f.write(script)
     f.close()
@@ -63,7 +61,7 @@ def queue_job(mode, j):
     # if queueing job, qsub the script
     #
 
-    runcmd =  os.path.join(os.path.expandvars('$GC_JOBS_TODO'),
+    runcmd =  os.path.join(os.path.expandvars('$GC_JOB_SCRIPTS'),
                            'run_GC_%s.sh' % j.name)
 
     if (mode != 'q'):
@@ -72,9 +70,16 @@ def queue_job(mode, j):
         print('queueing jobscript: %s' % runcmd)
         subprocess.check_call(['qsub', runcmd])
 
-def submit_job(jobfile,email,walltime,mode):
-    j = readjob(jobfile)
-    write_jobscript(j,email,jobfile,walltime)
+def submit_job(job,email,walltime,mode):
+    
+    if (type(job) is str):
+        j = readjob(job)
+    else:
+        j = job
+
+    j.assertCanStage()
+
+    write_jobscript(j,email,j.serialFile,walltime)
     queue_job(mode,j)
 
     

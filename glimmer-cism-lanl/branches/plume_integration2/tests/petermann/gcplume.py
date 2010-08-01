@@ -352,6 +352,7 @@ class _HasJobDir(object):
         self._jobDir = None
 
     def _setJobDir(self,jd):
+        jd = os.path.expandvars(jd)
         if (not(os.path.exists(jd))):
             raise Exception("Directory %s does not exist" % jd)
         self._jobDir = os.path.abspath(jd)
@@ -446,12 +447,19 @@ class _BaseJob(_HasJobDir):
     def run(self):
         raise Exception("must override")
 
+    def _getserialfile(self):
+        return os.path.join(self.jobDir,
+                            '%s.gcpl' % self.name)
+
+    serialFile = property(fget=_getserialfile)
+
     def serialize(self):
         if (self.name is None):
             raise Exception("No name was assigned to this job")
 
-        self.serialFile = os.path.join(self.jobDir,
-                                       '%s.gcpl' % self.name)
+
+        if (not( os.path.lexists(self.jobDir))):
+            os.mkdir(self.jobDir)
         try:
             f = open(self.serialFile, 'w')
         except:
@@ -575,6 +583,7 @@ class _GenInputJob(_AtomicJob):
         self.default_flwa = None
         self.uniform_acab = None
         self.randthk = None
+        self.use_plume = None
 
     def _resolveJob(self):
         self._pnl.vals['hx'] = self.hx
@@ -635,6 +644,43 @@ class SteadyShelfJob(_GenInputJob):
         cmd = [_fortran_style('nc_gen_input', c) for c in cmd]
         return cmd
 
+
+ssj = SteadyShelfJob()
+ssj.name = 'test'
+jd = os.path.join(os.path.expandvars('$GC_JOBS'),
+                          'test')
+if (not(os.path.lexists(jd))):
+    os.mkdir(jd)
+ssj.jobDir = jd
+
+ssj.m = 20
+ssj.n = 20
+ssj.upvel = -1000.0
+ssj.upthk = 600.0
+ssj.use_plume = 1
+ssj.plume_dt = 60.0
+ssj.ice_dt = 0.1
+ssj.default_flwa = 1.0e-16
+ssj.uniform_acab = 0.0
+ssj.nlevel = 3
+ssj.tend = 100.0
+ssj.tstart = 0.0
+ssj.hx = 1000.0
+ssj.hy = 1000.0
+ssj.otopg = -1200.0
+ssj.randthk = 0.0
+ssj.plume.update({'saltbot' : 34.5,
+                'salttop' : 34.5,
+                'temptop' : 0.0,
+                'tempbot' : 0.0,
+                  'phi'   : 0.0,
+                  })
+ssj.gc.update({'options' : {'flow_law' : 0,
+                            'x_invariant' : True,
+                            },
+               })
+            
+
 class RegridJob(_BaseJob,_IO):
     
     def __init__(self,initJobFile):
@@ -677,8 +723,12 @@ class RegridJob(_BaseJob,_IO):
         self.tend = None
 
     def _setJobDir(self,jd):
-        self.initJob.jobDir = jd
-        self._jobDir = jd
+        realDir = os.path.expandvars(jd)
+        if (not(os.path.fexists(realDir))):
+            raise Exception("jobDir %s does not exist" % realDir)
+        else:
+            self.initJob.jobDir = realDir
+            self._jobDir = realDir
     def _getJobDir(self):
         if (self._jobDir is None):
             raise Exception("jobDir is not defined")
@@ -716,6 +766,12 @@ class RegridJob(_BaseJob,_IO):
             raise Exception("self.name is not defined")
         return self._name
     name = property(fset=_setname,fget=_getname)
+
+    def _setuse_plume(self,u):
+        self.initJob.use_plume = u
+    def _getuse_plume(self):
+        return self.initJob.use_plume
+    use_plume = property(fset=_setuse_plume,fget=_getuse_plume)
 
     def _resolveJob(self):
         #assign this job's name into the contained job
