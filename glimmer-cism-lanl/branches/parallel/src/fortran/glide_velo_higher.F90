@@ -86,9 +86,9 @@ contains
         tstep = tstep + 1 ! JFL to be removed
         NL_solver = 1 ! input by user, 1: Picard, 2: JFNK
 
-        print *, 'time step=', tstep 
-        if (tstep .ge. 20) NL_solver = 2
-        if (tstep .eq. 21) stop 
+!        print *, 'time step=', tstep 
+!        if (tstep .ge. 20) NL_solver = 2
+!        if (tstep .eq. 21) stop 
 
         !Beta field computations that change in time
         if (model%options%which_ho_beta_in == HO_BETA_USE_BTRC) then
