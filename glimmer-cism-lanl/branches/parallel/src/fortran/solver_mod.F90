@@ -1,6 +1,6 @@
 MODULE solver_flags
 
       IMPLICIT NONE
-      INTEGER :: precond_flag
+      INTEGER :: NL_solver
 
 END MODULE solver_flags
