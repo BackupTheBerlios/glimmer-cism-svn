@@ -69,12 +69,13 @@ contains
     subroutine run_ho_diagnostic(model)
         use glide_thckmask
         use glide_mask
+        use solver_flags
         
         type(glide_global_type),intent(inout) :: model
         !For HO masking
         logical :: empty
         integer :: totpts
-        integer :: solver 
+!        integer :: solver 
         integer, save :: tstep ! JFL to be removed
         real(sp), dimension(model%general%ewn-1, model%general%nsn-1) :: stagmassb
 
@@ -84,10 +85,10 @@ contains
         real(dp), dimension(model%general%ewn-1, model%general%nsn-1) :: latbc_norms_stag
 
         tstep = tstep + 1 ! JFL to be removed
-        solver = 1 ! input by user, 1: Picard, 2: JFNK
+        NL_solver = 1 ! input by user, 1: Picard, 2: JFNK
 
 !        print *, 'time step=', tstep 
-!        if (tstep .ge. 20) solver = 2
+!        if (tstep .ge. 20) NL_solver = 2
 !        if (tstep .eq. 21) stop 
 
         !Beta field computations that change in time
@@ -183,7 +184,7 @@ contains
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
 
-           if (solver .eq. 1) then ! Picard (standard solver)
+           if (NL_solver .eq. 1) then ! Picard (standard solver)
 
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
@@ -212,7 +213,7 @@ contains
                                         model%velocity_hom%uflx, model%velocity_hom%vflx,           &
                                         model%velocity_hom%efvs )
 
-          elseif (solver .eq. 2) then ! JFNK (solver in development...)
+          elseif (NL_solver .eq. 2) then ! JFNK (solver in development...)
 
             call JFNK                  ( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
