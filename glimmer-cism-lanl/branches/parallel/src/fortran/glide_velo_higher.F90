@@ -75,7 +75,6 @@ contains
         !For HO masking
         logical :: empty
         integer :: totpts
-!        integer :: solver 
         integer, save :: tstep ! JFL to be removed
         real(sp), dimension(model%general%ewn-1, model%general%nsn-1) :: stagmassb
 
