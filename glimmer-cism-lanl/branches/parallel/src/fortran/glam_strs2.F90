@@ -711,7 +711,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp), parameter :: NL_tol = 1.0d-06
 
   integer, parameter :: cmax = 100, img = 10, img1 = img+1
-  integer :: counter , k, precond
+  integer :: counter , k
   character(len=100) :: message
 
 !*sfp* needed to incorporate generic wrapper to solver
@@ -853,7 +853,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
   tstep = tstep + 1 ! JFL to be removed
 
-  do k = 1, cmax
+  do k = 1, cmax ! Newton loop 
 
   ! RN_20100129
   ocn = counter
@@ -953,12 +953,10 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       eps = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
 
-      epsilon = 1d-07 ! for Jx approximation
+      epsilon = 1d-07 ! for J*vector approximation
 
       maxiteGMRES = 300
       
-      precond  = 1 ! 1: solver of Picard, 2: identity
-
       iout   = 0    ! set  higher than 0 to have res(ite)
 
       icode = 0
@@ -968,9 +966,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       call fgmres (2*pcgsize(1),img,rhs,dx,itenb,vv,wk,wk1,wk2, &
                    eps,maxiteGMRES,iout,icode,tot_its)
 
-      IF ( icode == 1 ) THEN      ! precond step
-
-      if (precond .eq. 1) then ! standard linear solver of Picard 
+      IF ( icode == 1 ) THEN   ! precond: use of Picard linear solver
 
 ! precondition v component 
        
@@ -1002,17 +998,11 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
       wk2(pcgsize(1)+1:2*pcgsize(1)) = answer(:)
 
-      elseif (precond .eq. 2) then ! identity precond
-
-         wk2 = wk1 
-
-      endif
-
       GOTO 10
 
       ELSEIF ( icode >= 2 ) THEN  ! matvec step
 
-! form F( u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1u )
+! form F( u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v )
          
          vectp(:) = wk1(1:pcgsize(1)) ! for v
          vk_1_plus = vk_1 + epsilon*vectp
@@ -1096,7 +1086,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
     Fvec_plus(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)
 
-! put result of Jacfreevec in wk2
+! put result of J*vector in wk2
 
     wk2 =  ( Fvec_plus - Fvec ) / epsilon
 
@@ -1121,8 +1111,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       dv = dx(1:pcgsize(1))
       du = dx(pcgsize(1)+1:2*pcgsize(1))
 
-      vk_1 = vk_1 + dv
-      uk_1 = uk_1 + du
+      vk_1 = vk_1 + dv ! in fact vk but we use vk_1 to save memory
+      uk_1 = uk_1 + du ! in fact uk but we use uk_1 to save memory
 
       call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1, vvel, ghostbvel )
       call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1, uvel, ghostbvel )
