@@ -209,7 +209,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  uflx,     vflx,         &
                                  efvs )
 
-!  use solver_flags ! JFL to be removed                                  
+
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
@@ -516,11 +516,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    print *, 'L2 with/without ghost (k)= ', counter, &
 !              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
 
-!      if (counter .eq. 20) then
-!         call output_res( ewn, nsn, upn, uindx, counter, &
-!                          size(vk_1), vk_1, 1 )
-!      endif
-
 !==============================================================================
 ! RN_20100129: Including non-matrix-conversion scheme
 !==============================================================================
@@ -674,7 +669,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                                  uflx,     vflx,         &
                                  efvs )
 
-!  use solver_flags ! JFL to be removed        
 
   implicit none
 
@@ -724,7 +718,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   type(sparse_matrix_type) :: matrixA, matrixC, matrixtp
   real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1
   real (kind = dp), dimension(:), allocatable :: vectp, uk_1_plus, vk_1_plus
-  real (kind = dp), dimension(:), allocatable :: du, duc, dvc, Fvec, Fvec_plus
+  real (kind = dp), dimension(:), allocatable :: dx, du, dv, Fvec, Fvec_plus
   real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
   real (kind = dp), dimension(:,:), allocatable :: vv, wk
   real (kind = dp) :: err, L2norm, L2norm_wig, L2square, eps, epsilon,NL_target
@@ -836,11 +830,11 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
   allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)),g_flag(pcgsize(1)) )
 
-  allocate( duc(pcgsize(1)), dvc(pcgsize(1)), vectp(pcgsize(1)))
+  allocate( du(pcgsize(1)), dv(pcgsize(1)), vectp(pcgsize(1)))
 
   allocate( uk_1_plus(pcgsize(1)), vk_1_plus(pcgsize(1)))
 
-  allocate( Fvec(2*pcgsize(1)), Fvec_plus(2*pcgsize(1)), du(2*pcgsize(1)))
+  allocate( Fvec(2*pcgsize(1)), Fvec_plus(2*pcgsize(1)), dx(2*pcgsize(1)))
 
   allocate( wk1(2*pcgsize(1)), wk2(2*pcgsize(1)), rhs(2*pcgsize(1)))
 
@@ -950,12 +944,12 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 !      print *, 'target with L2norm with or without ghost?'
 
 !==============================================================================
-! solve J(u^k-1,v^k-1)du = -F(u^k-1,v^k-1) with fgmres, du = [dv, du]  
+! solve J(u^k-1,v^k-1)dx = -F(u^k-1,v^k-1) with fgmres, dx = [dv, du]  
 !==============================================================================
 
       rhs = -1d0*Fvec
 
-      du  = 0d0 ! initial guess
+      dx  = 0d0 ! initial guess
 
       eps = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
 
@@ -965,15 +959,13 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       
       precond  = 1 ! 1: solver of Picard, 2: identity
 
-!      precond_flag = 1
-
       iout   = 0    ! set  higher than 0 to have res(ite)
 
       icode = 0
 
  10   CONTINUE
       
-      call fgmres (2*pcgsize(1),img,rhs,du,itenb,vv,wk,wk1,wk2, &
+      call fgmres (2*pcgsize(1),img,rhs,dx,itenb,vv,wk,wk1,wk2, &
                    eps,maxiteGMRES,iout,icode,tot_its)
 
       IF ( icode == 1 ) THEN      ! precond step
@@ -1126,11 +1118,11 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 !      Update solution vectors and 3D fields
 !------------------------------------------------------------------------
 
-      dvc = du(1:pcgsize(1))
-      duc = du(pcgsize(1)+1:2*pcgsize(1))
+      dv = dx(1:pcgsize(1))
+      du = dx(pcgsize(1)+1:2*pcgsize(1))
 
-      vk_1 = vk_1 + dvc
-      uk_1 = uk_1 + duc
+      vk_1 = vk_1 + dv
+      uk_1 = uk_1 + du
 
       call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1, vvel, ghostbvel )
       call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1, uvel, ghostbvel )
@@ -1157,8 +1149,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       end do
   end do
 
-      print *,  'velocity value JFNK =', uvel(2,4,4),  vvel(2,4,4)
-
   ! *sfp* de-allocation of sparse matrix solution variables 
   deallocate(tvel)
   deallocate(uindx,corr,usav)
@@ -1167,7 +1157,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   deallocate(matrixC%row, matrixC%col, matrixC%val)
   deallocate(matrixtp%row, matrixtp%col, matrixtp%val)
   deallocate(uk_1, vk_1, g_flag)
-  deallocate(answer, du, duc, dvc, vectp, uk_1_plus, vk_1_plus )
+  deallocate(answer, dx, du, dv, vectp, uk_1_plus, vk_1_plus )
   deallocate(Fvec, Fvec_plus)
   deallocate(wk1, wk2)
   deallocate(vv, wk)
