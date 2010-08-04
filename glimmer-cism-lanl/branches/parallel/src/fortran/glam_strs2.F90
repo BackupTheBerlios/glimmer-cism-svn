@@ -721,7 +721,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:), allocatable :: dx, du, dv, Fvec, Fvec_plus
   real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
   real (kind = dp), dimension(:,:), allocatable :: vv, wk
-  real (kind = dp) :: err, L2norm, L2norm_wig, L2square, eps, epsilon,NL_target
+  real (kind = dp) :: err, L2norm, L2norm_wig, L2square, tol, epsilon,NL_target
   real (kind = dp) :: crap
   integer :: tot_its, iter, itenb, maxiteGMRES, iout, icode
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
@@ -891,8 +891,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 0 )
 
-    call solver_preprocess( ewn, nsn, upn, uindx, matrixA, answer, vvel )
-! could be modified above as we only need the matrix to be formed...not answer
+    call form_matrix ( matrixA ) ! to get A(u^k-1,v^k-1)
     
     vectp = vk_1
     call res_vect( matrixA, vectp, rhsd, size(rhsd), counter, g_flag, L2square ) !rhsd = b
@@ -922,8 +921,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      counter, 0 )
 
 
-    call solver_preprocess( ewn, nsn, upn, uindx, matrixC, answer, uvel )
-! could be modified above as we only need the matrix to be formed...not answer
+    call form_matrix ( matrixC ) ! to get C(u^k-1,v^k-1)
     
     vectp = uk_1
     call res_vect( matrixC, vectp, rhsd, size(rhsd), counter, g_flag, L2square )!rhsd = d
@@ -951,7 +949,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       dx  = 0d0 ! initial guess
 
-      eps = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
+      tol = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
 
       epsilon = 1d-07 ! for J*vector approximation
 
@@ -964,9 +962,9 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
  10   CONTINUE
       
       call fgmres (2*pcgsize(1),img,rhs,dx,itenb,vv,wk,wk1,wk2, &
-                   eps,maxiteGMRES,iout,icode,tot_its)
+                   tol,maxiteGMRES,iout,icode,tot_its)
 
-      IF ( icode == 1 ) THEN   ! precond: use of Picard linear solver
+      IF ( icode == 1 ) THEN   ! precond step: use of Picard linear solver
 
 ! precondition v component 
        
@@ -1048,8 +1046,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 0 )
 
-    call solver_preprocess( ewn, nsn, upn, uindx, matrixtp, answer, vvel )
-! could be modified above as we only need the matrix to be formed...not answer
+    call form_matrix ( matrixtp )!A(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
     
     vectp = vk_1_plus
     call res_vect( matrixtp, vectp, rhsd, size(rhsd), counter, g_flag, crap )
@@ -1078,8 +1075,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 0 )
 
-    call solver_preprocess( ewn, nsn, upn, uindx, matrixtp, answer, uvel )
-! could be modified above as we only need the matrix to be formed...not answer
+    call form_matrix ( matrixtp )!C(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
     
     vectp = uk_1_plus
     call res_vect( matrixtp, vectp, rhsd, size(rhsd), counter, g_flag, crap )
@@ -1522,7 +1518,7 @@ function slapsolvstr(ewn, nsn, upn, &
 
 end function slapsolvstr
 
-! *******************************************************************************
+! *****************************************************************************
 
 subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
 
@@ -1597,6 +1593,30 @@ subroutine solver_postprocess( ewn, nsn, upn, pt, uindx, answrapped, ansunwrappe
   end do
 
 end subroutine solver_postprocess
+
+!***********************************************************************
+
+subroutine form_matrix( matrix ) ! for JFNK solver
+
+  ! Puts sparse matrix variables in SLAP triad format into "matrix" 
+  ! derived type. Similar to solver_preprocess but does not form answer vector
+
+  implicit none
+
+!  integer, intent(in) :: ewn, nsn, upn
+  type(sparse_matrix_type), intent(inout) :: matrix
+
+  pcgsize(2) = ct - 1
+
+  matrix%order = pcgsize(1)
+  matrix%nonzeros = pcgsize(2)
+  matrix%symmetric = .false.
+
+  matrix%row = pcgrow
+  matrix%col = pcgcol
+  matrix%val = pcgval
+
+end subroutine form_matrix
 
 !***********************************************************************
 
