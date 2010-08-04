@@ -376,8 +376,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! ****************************************************************************************
 
 !  tstep = tstep + 1 ! JFL to be removed
-!  call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
-!                         uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
+  call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
+                         uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
 !  precond_flag = 0 ! JFL to be removed
 
@@ -432,11 +432,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
       L2norm  = L2square
       Fvec(1:pcgsize(1)) = vk_1(:)
       
-!      if (counter .eq. 20) then
-!         call output_res( ewn, nsn, upn, uindx, counter, &
-!                          size(vk_1), vk_1, 2 )
-!      endif
 
+!   call output_res(ewn,nsn,upn,uindx,counter,size(vk_1),vk_1, 2) ! JFL
 
 !==============================================================================
 ! RN_20100129: Including non-matrix-conversion scheme
@@ -627,8 +624,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! END of Picard iteration
   ! ****************************************************************************************
 
-!  call ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
-!                          ughost, vghost )
+  call ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
+                          ughost, vghost )
 
   do ns = 1,nsn-1
       do ew = 1,ewn-1
