@@ -961,8 +961,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       IF ( icode == 1 ) THEN   ! precond step: use of Picard linear solver
 
-      call apply_precond ( matrixA, matrixC, matrixtp, &
-                           pcgsize(1), 2*pcgsize(1), wk1, wk2, whichsparse ) 
+      call apply_precond ( matrixA, matrixC, pcgsize(1), 2*pcgsize(1), &
+                           wk1, wk2, whichsparse ) 
 
       GOTO 10
 
@@ -1588,8 +1588,7 @@ end subroutine form_matrix
 
 !***********************************************************************
 
-subroutine apply_precond( matrixA, matrixC, matrixtp, &
-                          nu1, nu2, wk1, wk2, whichsparse ) 
+subroutine apply_precond( matrixA, matrixC, nu1, nu2, wk1, wk2, whichsparse ) 
 
   ! Apply preconditioner operator for JFNK solver: wk2 = P^-1 *wk1 
   ! The preconditioner operator is in fact taken from the Picard solver
@@ -1601,42 +1600,23 @@ subroutine apply_precond( matrixA, matrixC, matrixtp, &
   integer, intent(in) :: nu1, nu2, whichsparse
   integer :: iter
   type(sparse_matrix_type), intent(in) :: matrixA, matrixC
-  type(sparse_matrix_type), intent(inout) :: matrixtp
   real (kind = dp), dimension(nu2), intent(in) :: wk1
   real (kind = dp), dimension(nu2), intent(out):: wk2
   real (kind = dp), dimension(nu1) :: answer, vectp
   real (kind = dp) :: err
 
-      pcgsize(2) = ct - 1
-
 ! precondition v component 
        
-      matrixtp%order = pcgsize(1) 
-      matrixtp%nonzeros = pcgsize(2)
-      matrixtp%symmetric = .false.
-
-      matrixtp%row = matrixA%row
-      matrixtp%col = matrixA%col
-      matrixtp%val = matrixA%val
-
       answer = 0d0 ! initial guess
       vectp(:) = wk1(1:nu1) ! rhs for precond v
-      call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
+      call sparse_easy_solve(matrixA, vectp, answer, err, iter, whichsparse)
       wk2(1:nu1) = answer(:)
 
 ! precondition u component 
        
-      matrixtp%order = pcgsize(1) 
-      matrixtp%nonzeros = pcgsize(2)
-      matrixtp%symmetric = .false.
-
-      matrixtp%row = matrixC%row
-      matrixtp%col = matrixC%col
-      matrixtp%val = matrixC%val
-
       answer = 0d0 ! initial guess
       vectp(:) = wk1(nu1+1:nu2) ! rhs for precond u
-      call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
+      call sparse_easy_solve(matrixC, vectp, answer, err, iter, whichsparse)
       wk2(nu1+1:nu2) = answer(:)
 
 end subroutine apply_precond
