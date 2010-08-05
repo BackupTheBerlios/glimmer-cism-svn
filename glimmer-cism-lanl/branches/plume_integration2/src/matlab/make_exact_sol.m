@@ -15,7 +15,7 @@ ny = 40;
                           L, ny);
 
 
-save 'ssj2_50_kPa_0.0_acab_exact.m' exact_y exact_thk exact_vvel ...
+save 'ssj2_50_kPa_0.0_acab_exact.mat' exact_y exact_thk exact_vvel ...
     exact_thk_pat;
 
 

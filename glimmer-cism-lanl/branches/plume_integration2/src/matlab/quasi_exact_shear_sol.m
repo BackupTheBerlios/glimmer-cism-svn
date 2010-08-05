@@ -1,6 +1,5 @@
 function [y_sol,thk_sol,vel_sol, thk_paterson] = quasi_exact_shear_sol(Vin,Hin,yin,yout,acab,tauxy0,L,ny)
 
-
 %define constants
 A = 10.0^(-16);
 rhoi = 910.0;
@@ -60,11 +59,11 @@ solinit.y(2,:) = 0:(Hin*yin*0.5/(ny-1)):(Hin*yin*0.5); % Guess for w
 sol = bvp4c(odefun, bcfun,solinit);
 
 y_sol = sol.x;
-v_sol = sol.y(1,:);  % extract the first component of the sol
+vel_sol = sol.y(1,:);  % extract the first component of the sol
                      % Note: we don't care about w = u(2,:)
-thk_sol = flux(y_sol) ./ v_sol;  % calculate thickness solution
+thk_sol = flux(y_sol) ./ vel_sol;  % calculate thickness solution
 
 paterson_fun = @(y) Hin + 2*tauxy0/(rhoi*g*L*(1-rhoi/rhoo))*(y-yin);
 
-thk_paterson = paterson_fun( y_sol )
+thk_paterson = paterson_fun( y_sol );
 end
