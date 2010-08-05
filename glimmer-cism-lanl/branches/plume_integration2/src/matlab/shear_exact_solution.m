@@ -1,91 +1,41 @@
-modeloutput = '~/computation/gc/testruns/shear_stress_test2/sunstudio_8.out.nc';
-[~,y0,~,y1,thck,~,vvel] = nc_read(modeloutput, -1);
-[yvel,ythk, velc, thkc] = centerline_profile(y0,y1,vvel,thck);
 
-A = 10.0^(-16);
-rhoi = 910.0;
-rhoo = 1028.0;
-g = 9.81;
-Vin = -1000.0;
-Hin = 600.0;
 
-n = length(y0);
-S = double(y0(n-1));
-yout = double(y0(4)) ;
-yin = S;
+% read in netcdf model output
+ncfilename = '/Users/carl/computation/jobs/job_data/ssj2_50_kPa_0.0_acab/ssj2_50_kPa_0.0_acab.out.nc'
+[y_thk, thk, y_vel, vel, thk_paterson] = read_steadyice(ncfilename)
 
-ny = 50;
-dy = (yin - yout) / (ny-1);
-
-a = 0.0;
-
-tauxy0 = 10.0*10^3;
-
-L = 5*1000.0;
-
-k = (1-rhoi/rhoo)*(rhoi*g/4.0);
-q = tauxy0/(2*L);
+% load the exact solution from a .mat file
+exact_sole_filename = 'ssj2_50_kpa_0.0_acab_exact.m'
+load exact_sol_filename exact_y exact_thk exact_vvel exact_thk_paterson
 
 fs = 20;
 
-f = @(y) Vin*Hin - a*(yin - y);
-
-% u = [v; w]
-
-odefun = @(y,u) [ A*(k*f(y)/u(1) - q*u(2)*u(1)/f(y))^3.0;
-                  f(y)/u(1) ];
-
-bcfun = @(u0, u1) [u0(2); u1(1)-Vin];
-
-solinit.x = yout:dy:yin;
-
-solinit.y = zeros(2,ny);
-solinit.y(1,:) = Vin;
-solinit.y(2,:) = 0:(Hin*S*0.5/(ny-1)):Hin*S*0.5;
-
-sol = bvp4c(odefun, bcfun,solinit);
-
-h = f(sol.x) ./ sol.y(1,:);
-
-h_Pat = @(y) Hin + 2*tauxy0/(rhoi*g*L*(1-rhoi/rhoo))*(y-yin);
-
 figure;
+
 
 subplot(2,1,1);
 hold on
-plot(sol.x / 1000.0, sol.y(1,:),'r*');
-%p = polyfit(sol.x, sol.y(1,:),1);
-%plot(sol.x / 1000.0, p(1)*sol.x + p(2) ,'g*');
-plot(yvel / 1000.0, velc, 'k*');
+plot(  exact_y / 1000.0, exact_vvel, 'r*');  % exact solution
+plot(  y_vel / 1000.0, vel, 'k*');   % model output
 
 xlabel('y (km)','FontSize',fs);
 ylabel('velocity','FontSize',fs);
 set(gca,'FontSize',fs);
-title('Centerline velocities (tauxy0 = 10 kPa)','FontSize',fs);
+title('Centerline velocities (tauxy0 = 50 kPa)','FontSize',fs);
 legend('quasi-analytic', ...
-       'calculated','Location','BestOutside') ;
+       'model output','Location','BestOutside') ;
 
 hold off
 
 subplot(2,1,2);
 hold on
-plot(sol.x / 1000.0, h, 'b*');
-%p = polyfit(sol.x, h, 1);
-%plot(sol.x / 1000.0, p(1)*sol.x + p(2),'g*');
-plot(ythk / 1000.0, thkc, 'k*');
-plot(ythk / 1000.0, h_Pat(ythk), 'g*');
+plot( exact_y / 1000.0, exact_thk, 'b*');    %exact solution
+plot( y_thk / 1000.0, thk, 'k*');   % model output
+plot( exact_y / 1000.0, thk_paterson, 'g*'); % Paterson solution
 xlabel('y (km)','FontSize',fs);
 ylabel('height','FontSize',fs);
-title('Centerline thickness (tauxy0 = 10 kPa)','FontSize',fs);
+title('Centerline thickness (tauxy0 = 50 kPa)','FontSize',fs);
 set(gca,'FontSize',fs);
-legend('quasi-analytic','calculated','Paterson','Location','BestOutside') ;
+legend('quasi-analytic','model output','Paterson','Location','BestOutside') ;
 hold off
-
-%subplot(3,1,3);
-%hold on
-%plot(sol.x / 1000.0, sol.y(2,:) ./ h, 'b*');
-%ylabel('w / h', 'FontSize',fs);
-%xlabel('y(km)', 'FontSize',fs);
-%set(gca, 'FontSize',fs);
-%hold off
 
