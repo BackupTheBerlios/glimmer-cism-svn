@@ -381,8 +381,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
-!  precond_flag = 0 ! JFL to be removed
-
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
   ! do pic =1, 80
@@ -431,7 +429,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
       L2norm  = L2square
       Fvec(1:pcgsize(1)) = vk_1(:)
       
-
 !   call output_res(ewn,nsn,upn,uindx,counter,size(vk_1),vk_1, 2) ! JFL
 
 !==============================================================================
@@ -512,8 +509,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     L2norm = sqrt(L2norm + L2square)
     Fvec(pcgsize(1)+1:2*pcgsize(1)) = uk_1(:) ! Fvec = [ Fv, Fu ]
 
-    print *, 'L2 with/without ghost (k)= ', counter, &
-              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
+!    print *, 'L2 with/without ghost (k)= ', counter, &
+!              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
