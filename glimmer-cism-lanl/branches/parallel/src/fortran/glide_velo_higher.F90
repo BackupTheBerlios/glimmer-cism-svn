@@ -88,7 +88,7 @@ contains
 
 !        print *, 'time step=', tstep 
 !        if (tstep .ge. 20) NL_solver = 2
-!        if (tstep .eq. 21) stop 
+!        if (tstep .eq. 22) stop 
 
         !Beta field computations that change in time
         if (model%options%which_ho_beta_in == HO_BETA_USE_BTRC) then

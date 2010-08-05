@@ -706,7 +706,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
   real (kind = dp), parameter :: NL_tol = 1.0d-06
 
-  integer, parameter :: cmax = 100, img = 10, img1 = img+1
+  integer, parameter :: cmax = 100, img = 20, img1 = img+1
   integer :: counter , k
   character(len=100) :: message
 
@@ -717,9 +717,9 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:), allocatable :: dx, du, dv, Fvec, Fvec_plus
   real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
   real (kind = dp), dimension(:,:), allocatable :: vv, wk
-  real (kind = dp) :: err, L2norm, L2norm_wig, L2square, tol, epsilon,NL_target
+  real (kind = dp) :: L2norm, L2norm_wig, L2square, tol, epsilon,NL_target
   real (kind = dp) :: crap
-  integer :: tot_its, iter, itenb, maxiteGMRES, iout, icode
+  integer :: tot_its, itenb, maxiteGMRES, iout, icode
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
   integer, save :: tstep ! JFL to be removed
 
@@ -732,7 +732,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
 ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
-
 
 !whl - Moved initialization stuff to glam_velo_fordsiapstr_init
 
@@ -839,16 +838,20 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   
   counter = 1
 
-  ! *sfp** main iteration on stress, vel, and eff. visc. solutions,
-  print *, ' '
-  print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
-! JFNK_solver
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
   tstep = tstep + 1 ! JFL to be removed
 
-  do k = 1, cmax ! Newton loop 
+  print *, ' '
+  print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
+
+!==============================================================================
+! Beginning of Newton loop. Solves F(x) = 0 for x where x = [v, u] and
+!                                                       F = [Fv(u,v), Fu(u,v)] 
+!==============================================================================
+
+  do k = 1, cmax
 
     ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
@@ -888,7 +891,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
     vectp = vk_1
     call res_vect( matrixA, vectp, rhsd, size(rhsd), counter, g_flag, L2square ) !rhsd = b
     L2norm = L2square
-    Fvec(1:pcgsize(1)) = vectp(:)
+    Fvec(1:pcgsize(1)) = vectp(:) ! Fv
       
 !==============================================================================
 ! jfl 20100412: residual for u comp: Fu= C(u^k-1,v^k-1)u^k-1 - d(u^k-1,v^k-1)  
@@ -919,7 +922,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
     call res_vect( matrixC, vectp, rhsd, size(rhsd), counter, g_flag, L2square )!rhsd = d
     L2norm = sqrt(L2norm + L2square)
 
-    Fvec(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)! Fvec(u^k-1,v^k-1)= [ Fv, Fu ]
+    Fvec(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)! Fvec(u^k-1,v^k-1)= [Fv, Fu]
 
     L2norm_wig = sqrt(DOT_PRODUCT(Fvec,Fvec)) ! with ghost
 
@@ -958,35 +961,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       IF ( icode == 1 ) THEN   ! precond step: use of Picard linear solver
 
-! precondition v component 
-       
-         matrixtp%order = pcgsize(1) 
-         matrixtp%nonzeros = pcgsize(2)
-         matrixtp%symmetric = .false.
-
-         matrixtp%row = matrixA%row
-         matrixtp%col = matrixA%col
-         matrixtp%val = matrixA%val
-
-      answer = 0d0 ! initial guess
-      vectp(:) = wk1(1:pcgsize(1)) ! rhs for precond v
-      call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
-      wk2(1:pcgsize(1)) = answer(:)
-
-! precondition u component 
-       
-         matrixtp%order = pcgsize(1) 
-         matrixtp%nonzeros = pcgsize(2)
-         matrixtp%symmetric = .false.
-
-         matrixtp%row = matrixC%row
-         matrixtp%col = matrixC%col
-         matrixtp%val = matrixC%val
-
-      answer = 0d0 ! initial guess
-      vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! rhs for precond u
-      call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
-      wk2(pcgsize(1)+1:2*pcgsize(1)) = answer(:)
+      call apply_precond ( matrixA, matrixC, matrixtp, &
+                           pcgsize(1), 2*pcgsize(1), wk1, wk2, whichsparse ) 
 
       GOTO 10
 
@@ -1609,6 +1585,61 @@ subroutine form_matrix( matrix ) ! for JFNK solver
   matrix%val = pcgval
 
 end subroutine form_matrix
+
+!***********************************************************************
+
+subroutine apply_precond( matrixA, matrixC, matrixtp, &
+                          nu1, nu2, wk1, wk2, whichsparse ) 
+
+  ! Apply preconditioner operator for JFNK solver: wk2 = P^-1 *wk1 
+  ! The preconditioner operator is in fact taken from the Picard solver
+  ! There is a splitting of the v (A matrix) and u (C matrix) equations
+  ! Each component is solved to a loose tolerance (as opposed to Picard)
+
+  implicit none
+
+  integer, intent(in) :: nu1, nu2, whichsparse
+  integer :: iter
+  type(sparse_matrix_type), intent(in) :: matrixA, matrixC
+  type(sparse_matrix_type), intent(inout) :: matrixtp
+  real (kind = dp), dimension(nu2), intent(in) :: wk1
+  real (kind = dp), dimension(nu2), intent(out):: wk2
+  real (kind = dp), dimension(nu1) :: answer, vectp
+  real (kind = dp) :: err
+
+      pcgsize(2) = ct - 1
+
+! precondition v component 
+       
+      matrixtp%order = pcgsize(1) 
+      matrixtp%nonzeros = pcgsize(2)
+      matrixtp%symmetric = .false.
+
+      matrixtp%row = matrixA%row
+      matrixtp%col = matrixA%col
+      matrixtp%val = matrixA%val
+
+      answer = 0d0 ! initial guess
+      vectp(:) = wk1(1:nu1) ! rhs for precond v
+      call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
+      wk2(1:nu1) = answer(:)
+
+! precondition u component 
+       
+      matrixtp%order = pcgsize(1) 
+      matrixtp%nonzeros = pcgsize(2)
+      matrixtp%symmetric = .false.
+
+      matrixtp%row = matrixC%row
+      matrixtp%col = matrixC%col
+      matrixtp%val = matrixC%val
+
+      answer = 0d0 ! initial guess
+      vectp(:) = wk1(nu1+1:nu2) ! rhs for precond u
+      call sparse_easy_solve(matrixtp, vectp, answer, err, iter, whichsparse)
+      wk2(nu1+1:nu2) = answer(:)
+
+end subroutine apply_precond
 
 !***********************************************************************
 
