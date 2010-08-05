@@ -14,30 +14,28 @@
 #include "Teuchos_ConfigDefs.hpp"
 #include "Teuchos_FancyOStream.hpp"
 
-class Simple_Interface {
+class TrilinosMatrix_Interface {
 public:
   // Constructor
-  Simple_Interface(int bandwidth, int matrixOrder, const Epetra_Comm& comm);
-  Simple_Interface(int bandwidth, int mySize, int* myIndices, const Epetra_Comm& comm);
+  TrilinosMatrix_Interface(int bandwidth, int mySize, int* myIndices, const Epetra_Comm& comm);
 
   // Destructor
-  ~Simple_Interface();
+  ~TrilinosMatrix_Interface();
 
   // Accessors
-  int isFillCompleted() {return isFillCompleted_;};
+  bool isSparsitySet() {return isFillCompleted_;};
   const int bandwidth() const {return bandwidth_;};
   const int matrixOrder() const {return matrixOrder_;};
-  //const Epetra_Map& getMap() const {return *rowMap_;};
   const Epetra_Map& getFullMap() const {return *fullMap_;};
   Teuchos::RCP<Epetra_CrsMatrix>& getOperator() {return operator_;};
 
   // Mutators
-  void updateFill(int fill);
+  void finalizeSparsity(); // Call FillComplet to lock in sparsity pattern
   void updateBandwidth(int bandwidth); // RN_20100121: probably not needed
   void updateOperator(Teuchos::RCP<Epetra_CrsMatrix> newOperator);
 
 private:
-  int isFillCompleted_; // to indicate if operator_ is "FillComplete()"ed
+  bool isFillCompleted_; // to indicate if operator_ is "FillComplete()"ed
   int bandwidth_;
   int matrixOrder_;
   const Epetra_Comm& comm_;

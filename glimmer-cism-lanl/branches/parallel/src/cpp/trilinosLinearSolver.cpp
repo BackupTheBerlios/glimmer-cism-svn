@@ -2,7 +2,7 @@
 #include "Epetra_LocalMap.h"
 #include "Epetra_Import.h"
 #include "Epetra_CombineMode.h"
-#include "Simple_Interface.hpp"
+#include "matrixInterface.hpp"
 
 #include "Teuchos_ParameterList.hpp"
 #include "Teuchos_XMLParameterListHelpers.hpp"
@@ -14,8 +14,8 @@
 #include "Thyra_EpetraLinearOp.hpp"
 
 // Define global variables.
-static Teuchos::RCP<Simple_Interface> interface;
-static Teuchos::RCP<Epetra_Map> partitionMap;
+static Teuchos::RCP<TrilinosMatrix_Interface> interface;
+static Teuchos::RCP<const Epetra_Map> partitionMap;
 
 extern "C" {
 
@@ -32,7 +32,7 @@ extern "C" {
     partitionMap = Teuchos::rcp(new Epetra_Map(matrixSize,1,comm) );
     mySize = partitionMap->NumMyElements();
 
-    cout << "XXX doPartition has mySize = " << mySize << endl;
+    cout << "Trilinos Interface: doPartition has mySize = " << mySize << endl;
   }
 
   void getpartition_(int& mySize, int* myIndicies) {
@@ -52,80 +52,37 @@ extern "C" {
 #else
     Epetra_SerialComm comm;
 #endif
-
-    cout << " ======================================" << endl;
-    cout << " IN INITIALIZE()" << endl;
-
-    // Create an interface that holds a CrsMatrix instance.
-    interface = Teuchos::rcp(new Simple_Interface(bandwidth, mySize, myIndicies, comm) );
-
-    cout << " ======================================" << endl;
-  }
-
-  // initialize can be removed soon -- no longer used
-  void initialize_(int& bandwidth, int& size) {
-#ifdef HAVE_MPI
-    Epetra_MpiComm comm(MPI_COMM_WORLD);
-#else
-    Epetra_SerialComm comm;
-#endif
-
-    cout << " ======================================" << endl;
-    cout << " IN INITIALIZE()" << endl;
-
-    // Create an interface that holds a CrsMatrix instance.
-    interface = Teuchos::rcp(new Simple_Interface(bandwidth, size, comm) );
-
-    cout << " ======================================" << endl;
-  }
-
-  //============================================================
-  // RN_20100201: This is to check if this entry already exists.
-  //============================================================
-  void exist_(int& rowInd, int& colInd, int& flag) {
-    // RN_20100201: This is not needed since the sparsity pattern
-    // does not change within a Picard iteration.
+    // Create an interface that holds a CrsMatrix instance and some useful methods.
+    interface = Teuchos::rcp(new TrilinosMatrix_Interface(bandwidth, mySize,
+                                                          myIndicies, comm) );
   }
 
   //============================================================
   // RN_20091118: This is to update the matrix with new entries.
   //============================================================
-  void update_(int& rowInd, int& colInd, double& val) {
-    //cout << " ======================================" << endl;
-    //cout << " IN UPDATE()" << rowInd << endl;
+  void putintotrilinosmatrix_(int& rowInd, int& colInd, double& val) {
 
-    /*    
-#ifdef HAVE_MPI
-    Epetra_MpiComm comm(MPI_COMM_WORLD);
-#else
-    Epetra_SerialComm comm;
-#endif
-    */
+    const Epetra_Map& map = interface->getOperator()->RowMap(); 
+    // If this row is not owned on this processor, then do nothing
+    if (!map.MyGID(rowInd)) return;
 
-    //int i;
-    int j, ierr = 0;
+    Epetra_CrsMatrix& matrix = *(interface->getOperator());
 
-    int fill = interface->isFillCompleted();
-    Teuchos::RCP<Epetra_CrsMatrix>& matrix = interface->getOperator();
-    const Epetra_Map& map = matrix->RowMap();
-    int numMyElements = map.NumMyElements();
-
-    int pidList, lidList, junk;
-    if (map.MyGID(rowInd) ) {
-      ierr = matrix->ReplaceGlobalValues(rowInd, 1, &val, &colInd);
+    if (!interface->isSparsitySet()) {
+      // The matrix has not been "FillComplete()"ed. First fill of time step.
+      int ierr = matrix.InsertGlobalValues(rowInd, 1, &val, &colInd);
+      assert(ierr==0);
     }
+    else {
+      // Subsequent matrix fills of each time step.
+      int ierr = matrix.ReplaceGlobalValues(rowInd, 1, &val, &colInd);
     
-    
-    if (ierr != 0) { // Sparsity pattern has changed.
-      if (fill == 0) { // The matrix has not been "FillComplete()"ed.
-	if (map.MyGID(rowInd) ) {
-	  ierr = matrix->InsertGlobalValues(rowInd, 1, &val, &colInd);
-	}
-      }
-      else { // The matrix is "FillComplete()"ed. A new matrix is needed.      
-	cout << "This new entry (" << rowInd << ", " << colInd << ", "
-	     << val << ") did not exist before. A new matrix will be formed!"
-	     << endl;
+      if (ierr != 0) { // Sparsity pattern has changed. Create fresh matrix
+	cout << "Warning: Trilinos matrix has detected a new entry (" 
+             << rowInd << ", " << colInd << ", " << val 
+             << ")\n\t that did not exist before. A new matrix will be formed!"
+             << "\n\t This is expensive, and we should figure out why this is"
+             << "\n\t happening and avoid it! -AGS" << endl;
 
 	int matrixSize = interface->matrixOrder();
 	int bandwidth = interface->bandwidth();
@@ -133,19 +90,16 @@ extern "C" {
 	Teuchos::RCP<Epetra_CrsMatrix> newMatrix =
 	  Teuchos::rcp(new Epetra_CrsMatrix(Copy, map, bandwidth) );
 	
-	//const int length = 10;
 	int numEntries;
 	double *values = new double[bandwidth];
 	int *indices = new int[bandwidth];
 	
 	// Copy the old matrix to the new matrix.
-	for (j=0; j<matrixSize; ++j) {
+	for (int j=0; j<matrixSize; ++j) {
 	  if (map.MyGID(j) ) {
 	    int aNumber = bandwidth;
-	    ierr = matrix->ExtractGlobalRowCopy(j, aNumber, numEntries,
+	    ierr = matrix.ExtractGlobalRowCopy(j, aNumber, numEntries,
 						values, indices);
-	    //ierr = matrix->ExtractGlobalRowCopy(j, bandwidth, numEntries,
-	    //				values, indices);
 	    cout << ierr << endl;
 	    assert(ierr >= 0);
 	    ierr = newMatrix->InsertGlobalValues(j, numEntries, &(values[0]),
@@ -161,44 +115,29 @@ extern "C" {
 	}
 
 	interface->updateOperator(newMatrix);
-	interface->updateFill(0);
 	
 	delete[] values;
 	delete[] indices;
       }
-    
     }
-    
   }
 
   //========================================================
   // RN_20091118: This is to make calls to Trilinos solvers.
   //========================================================
-  void differentsolve_(double* rhs, double* answer, double& elapsedTime) {
-#ifdef HAVE_MPI
-    Epetra_MpiComm comm(MPI_COMM_WORLD);
-#else
-    Epetra_SerialComm comm;
-#endif
-
-    cout << " ======================================" << endl;
-    cout << " IN SOLVE()" << endl;
+  void solvewithtrilinos_(double* rhs, double* answer, double& elapsedTime) {
+    //cout << " ======================================" << endl;
+    //cout << " IN SOLVE()" << endl;
 
     // RN_20100211: Start timing
     Teuchos::Time linearTime("LinearTime");
     linearTime.start();
 
     int j, ierr;
-    Teuchos::RCP<Epetra_CrsMatrix>& epetraOper = interface->getOperator();
+    // Lock in sparsity pattern
+    if (!interface->isSparsitySet()) interface->finalizeSparsity();
 
-    int fill = interface->isFillCompleted();
-    if (fill == 0) {
-      ierr = epetraOper->FillComplete();
-      assert(ierr == 0);
-      interface->updateFill(1);
-    }
-
-    const Epetra_Map& map = epetraOper->RowMap();
+    const Epetra_Map& map = interface->getOperator()->RowMap(); 
     int numMyElements = map.NumMyElements();
     int *myGlobalElements = new int[numMyElements];
     map.MyGlobalElements(&myGlobalElements[0]);
@@ -230,7 +169,7 @@ extern "C" {
     Teuchos::RCP<Epetra_Vector> epetraSol = Teuchos::rcp(&x, false);
 
     Teuchos::RCP<const Thyra::LinearOpBase<double> >
-      thyraOper = Thyra::epetraLinearOp(epetraOper);
+      thyraOper = Thyra::epetraLinearOp(interface->getOperator());
     Teuchos::RCP<Thyra::VectorBase<double> >
       thyraRhs = Thyra::create_Vector(epetraRhs, thyraOper->range() );
     Teuchos::RCP<Thyra::VectorBase<double> >
@@ -270,31 +209,9 @@ extern "C" {
     delete[] myGlobalElements;
 
     elapsedTime = linearTime.stop();
-    cout << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
+    *out << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
 
-    cout << " ======================================" << endl;
-  }
-
-  //======================
-  // RN_20091118: Wrap up!
-  //======================
-  void finalize_() {
-    cout << " ======================================" << endl;
-    cout << " IN FINALIZE()" << endl;
-
-    // The following is not essential, but only for completion.
-    int ierr;
-    Teuchos::RCP<Epetra_CrsMatrix>& epetraOper = interface->getOperator();
-    int fill = interface->isFillCompleted();
-    if (fill == 0) {
-      //cout << "I am in here!" << endl;
-      ierr = epetraOper->FillComplete();
-      assert(ierr == 0);
-      interface->updateFill(1);
-      fill = interface->isFillCompleted();
-    }
-
-    cout << " ======================================" << endl;
+    //cout << " ======================================" << endl;
   }
 
 } // extern"C"

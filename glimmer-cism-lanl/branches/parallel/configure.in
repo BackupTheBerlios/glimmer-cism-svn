@@ -330,8 +330,8 @@ If you are not sure what to do here but have LAPACK installed in a standard loca
 
             TRILINOS_PREFIX="$ac_cv_trilinos_prefix"
             #AC_MSG_CHECKING(for Trilinos Test)
-            FCFLAGS="$FCFLAGS -DTRILINOS $ax_cv_f90_modflag$ac_cv_trilinos_prefix/include -I../cpp"
-            CXXFLAGS="$FCFLAGS -DTRILINOS -I$ac_cv_trilinos_prefix/include"
+            FCFLAGS="$FCFLAGS -DTRILINOS"
+            CXXFLAGS="$CXXFLAGS $CPPFLAGS -DTRILINOS -I$ac_cv_trilinos_prefix/include"
             LDFLAGS="$LDFLAGS -L$ac_cv_trilinos_prefix/lib" 
             #  Jaguar LIBS list
 	    #LIBS="$LIBS -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lkomplex -lifpack -lpamgen_extras -lpamgen -lamesos -lgaleri -laztecoo -ldpliris -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lshards -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lparmetis -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lmetis -lmpichcxx -lstd -lC"

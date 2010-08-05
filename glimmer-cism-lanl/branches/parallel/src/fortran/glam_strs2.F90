@@ -91,9 +91,12 @@ implicit none
   integer :: ct
 
 !RN_20100125: The following are for Trilinos:
-  integer :: conversion = 0 ! whether triad-to-Crs is used
+  ! This flag switches between: 
+  !  0: load Triad format and call Trilinos through sparse_easy_solve
+  !  1: load directly into Trilinos format, skipping Triad matrix altogether
+  !     Note: only option 1 will work for distributed fortran fill
+  integer :: load_directly_into_trilinos = 1
   integer :: whatsparse ! needed for putpgcg()
-  integer :: ocn = 1 ! needed for putpgcg() - ordinal counting number
   real (kind = dp) :: linearSolveTime = 0
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
 
@@ -320,12 +323,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   pcgsize(2) = pcgsize(1) * 20
 
 !==============================================================================
-! RN_20100126: Non-matrix-conversion scheme
+! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
 !==============================================================================
 
 #ifdef TRILINOS
-  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
-!     call initialize(20, pcgsize(1))
+  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. load_directly_into_trilinos == 1) then
      write(*,*) 'size of the matrix', pcgsize(1)
 
 ! AGS: Get partition -- later this will be known by distributed glimmer
@@ -387,9 +389,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
-    ! RN_20100129
-    ocn = counter
-
     ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
                      stagsigma,  counter,    &
@@ -436,14 +435,14 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !   call output_res(ewn,nsn,upn,uindx,counter,size(vk_1),vk_1, 2) ! JFL
 
 !==============================================================================
-! RN_20100129: Including non-matrix-conversion scheme
+! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
 !==============================================================================
 
 #ifdef TRILINOS
-  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
+  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. load_directly_into_trilinos == 1) then
      err = 0    ! RN_20100129: For now, these are not essential.
      iter = 0   ! Will find ways to retrieve these from Trilinos later.
-     call differentsolve(rhsd, answer, linearSolveTime)
+     call solvewithtrilinos(rhsd, answer, linearSolveTime)
      totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
      write(*,*) 'Total linear solve time so far', totalLinearSolveTime
      !write(*,*) 'Working on it!'
@@ -513,18 +512,18 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     L2norm = sqrt(L2norm + L2square)
     Fvec(pcgsize(1)+1:2*pcgsize(1)) = uk_1(:) ! Fvec = [ Fv, Fu ]
 
-!    print *, 'L2 with/without ghost (k)= ', counter, &
-!              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
+    print *, 'L2 with/without ghost (k)= ', counter, &
+              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
 
 !==============================================================================
-! RN_20100129: Including non-matrix-conversion scheme
+! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
 !==============================================================================
 
 #ifdef TRILINOS
-  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
+  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. load_directly_into_trilinos == 1) then
      err = 0    ! RN_20100129: For now, these are not essential.
      iter = 0   ! Will find ways to retrieve these from Trilinos later.
-     call differentsolve(rhsd, answer, linearSolveTime)
+     call solvewithtrilinos(rhsd, answer, linearSolveTime)
      totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
      write(*,*) 'Total linear solve time so far', totalLinearSolveTime
      !write(*,*) 'Working on it!'
@@ -787,12 +786,11 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   pcgsize(2) = pcgsize(1) * 20
 
 !==============================================================================
-! RN_20100126: Non-matrix-conversion scheme
+! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
 !==============================================================================
 
 #ifdef TRILINOS
-  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
-!     call initialize(20, pcgsize(1))
+  if (whatsparse == SPARSE_SOLVER_TRILINOS .and. load_directly_into_trilinos == 1) then
      write(*,*) 'size of the matrix', pcgsize(1)
 
 ! AGS: Get partition -- later this will be known by distributed glimmer
@@ -854,9 +852,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   tstep = tstep + 1 ! JFL to be removed
 
   do k = 1, cmax ! Newton loop 
-
-  ! RN_20100129
-  ocn = counter
 
     ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
@@ -4115,46 +4110,24 @@ subroutine putpcgc(value,col,row)
   real (kind = dp), intent(in) :: value 
 
 #ifdef TRILINOS
-! if Trilinos is in the build, call Trilinos (if that option specified)
-
-!    integer :: flag = 0 ! to signal if the entry already exists.
-!    conversion = 1 ! RN_20100125: This should be an input.
-!    write(*,*), 'whatsparse ', whatsparse
-    if (whatsparse == SPARSE_SOLVER_TRILINOS .and. conversion == 0) then
-	!write (*,*) 'Updating the matrix'
-!        if (ocn == 1) then
-            if (value /= 0.0d0) then
-                call update(row, col, value)
-            end if
-!        else
-!            if (value == 0.0d0) then
-!                call exist(row, col, flag)
-!                if (flag == 1) then
-!                    call update(row, col, value)
-!                end if
-!            else
-!                call update(row, col, value)
-!            end if
-!        end if
+    if (whatsparse == SPARSE_SOLVER_TRILINOS .and. load_directly_into_trilinos == 1) then
+        ! Option to load entry directly into Trilinos sparse matrix 
+        if (value /= 0.0d0) then
+           !AGS: If we find that sparsity changes inside a time step,
+           !     consider adding entry even for value==0.
+           call putintotrilinosmatrix(row, col, value)
+        end if
     else
-	!write(*,*) 'I am in here'
+#endif
+        ! Option to load entry into Triad sparse matrix format
         if (value /= 0.0d0) then
           pcgval(ct) = value
           pcgcol(ct) = col
           pcgrow(ct) = row
           ct = ct + 1
         end if	
+#ifdef TRILINOS
     end if
-
-#else ! call something other than Trilinos
-      !write(*,*) 'I am below'
-      if (value /= 0.0d0) then
-        pcgval(ct) = value
-        pcgcol(ct) = col
-        pcgrow(ct) = row
-        ct = ct + 1
-      end if
-
 #endif
 
   return

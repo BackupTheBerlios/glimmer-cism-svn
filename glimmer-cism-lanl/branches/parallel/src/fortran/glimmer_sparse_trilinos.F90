@@ -146,8 +146,8 @@ contains
 
         sys=0
         !write(*,*)"TRILINOS: in trilinos_solve"
-        call solve (matrix%nonzeros, matrix%order, matrix%row, matrix%col, &
-                    matrix%val, rhs, solution)
+        call solvetriadmatrixwithtrilinos (matrix%nonzeros, matrix%order, &
+                    matrix%row, matrix%col, matrix%val, rhs, solution)
        
         call check_trilinos()
         trilinos_solve = 0; !workspace%info(1) 

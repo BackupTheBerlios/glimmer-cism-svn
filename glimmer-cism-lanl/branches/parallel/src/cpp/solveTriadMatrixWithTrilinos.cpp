@@ -32,10 +32,8 @@
 
 extern "C" {
 
-  //  void solve_(int& nnz, int& order, int* row, int* col, double* val,
-  //	      double* rhs, double* solution, double err, int niters) {
-  void solve_(int& nnz, int& order, int* row, int* col, double* val,
-	      double* rhs, double* solution) {
+  void solvetriadmatrixwithtrilinos_(int& nnz, int& order, int* row, 
+              int* col, double* val, double* rhs, double* solution) {
 
     try{
     
@@ -58,91 +56,9 @@ extern "C" {
     MPI_Comm_size(MPI_COMM_WORLD, &nPEs);
 #endif
 
-    /*
-    //-------------------------------------------------------------------------
-    // RN_20100120: Counting non-zero entries per row and determining the max
-    //-------------------------------------------------------------------------
-    int *NumEntriesPerRow = new int[order]; // a cheap solution for now
-    int localmax = 0;
-    int globalmax = 0;
-
-    for (j=0; j<order; ++j) {
-      NumEntriesPerRow[j] = 0;
-    }
-
-    // Count non-zero entries per row.
-    for (j=0; j<nnz; ++j) {
-      if (RowMap.MyGID(row[j]) ) {
-	NumEntriesPerRow[row[j] ] += 1;
-      }
-    }
-    
-    // Determine localmax.
-    for (j=0; j<order; ++j) {
-      if (NumEntriesPerRow[j] > localmax) {
-	localmax = NumEntriesPerRow[j];
-      }
-    }
-
-    // Determine globalmax.
-#ifdef HAVE_MPI
-    if (MyPID == 0) {
-      int *MaxFromProcessors = new int[nPEs];
-      MPI_Status status;
-      MaxFromProcessors[0] = localmax;
-      for (j=1; j<nPEs; ++j) {
-	// Receive localmax.
-	MPI_Recv(&MaxFromProcessors[j], 1, MPI_INT, j, 1, MPI_COMM_WORLD,
-		 &status);
-      }
-
-      // Find globalmax.
-      for (j=0; j<nPEs; ++j) {
-	if (MaxFromProcessors[j] > globalmax) {
-	  globalmax = MaxFromProcessors[j];
-	}
-      }
-      // Broadcast globalmax.
-      MPI_Bcast(&globalmax, 1, MPI_INT, 0, MPI_COMM_WORLD);
-
-      delete[] MaxFromProcessors;
-    }
-    else {
-      // Send localmax.
-      MPI_Send(&localmax, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
-      // Receive globalmax.
-      MPI_Bcast(&globalmax, 1, MPI_INT, 0, MPI_COMM_WORLD);
-    }
-#else
-    globalmax = localmax;
-#endif
-
-    delete[] NumEntriesPerRow;
-    */
-
-    //-------------------------------------------------------------------------
-    // RN_20091221: Taking care of the matrix
-    //-------------------------------------------------------------------------
-    //cout << "global max: " << globalmax << endl;
-
-    //Epetra_CrsMatrix A(Copy, RowMap, ColMap, NumEntriesPerRow);
-    //Epetra_CrsMatrix A(Copy, RowMap, globalmax);
-    
     int anEst = nnz / order + 1;
     Epetra_CrsMatrix A(Copy, RowMap, anEst);
     
-    // Inserting values into the matrix    
-    /*
-    for (i=0; i<NumMyElements; ++i) {
-      for (j=0; j<nnz; ++j) {
-	if (MyGlobalElements[i] == row[j]) {
-	  ierr = A.InsertGlobalValues(MyGlobalElements[i],
-				      1, &(val[j]), &(col[j]));
-	  assert(ierr == 0);
-	}
-      }
-    }
-    */
     for (j=0; j<nnz; ++j) {
       if (RowMap.MyGID(row[j]) ) {
 	ierr = A.InsertGlobalValues(row[j], 1, &(val[j]), &(col[j]) );
@@ -156,7 +72,6 @@ extern "C" {
     //-------------------------------------------------------------------------
     // RN_20091221: Taking care of the rhs
     //-------------------------------------------------------------------------
-    //Epetra_Vector b(Copy, RowMap, rhs);
     Epetra_Vector b(RowMap);
 
     // Inserting values into the rhs
@@ -177,11 +92,6 @@ extern "C" {
     Teuchos::RCP<Teuchos::ParameterList>
       paramList1 = Teuchos::rcp(&paramList, false);
     Teuchos::updateParametersFromXmlFile("./strat1.xml", paramList1.get() );
-
-    // For debugging =)
-    //cout << "A: " << A << endl;
-    //    cout << "b: " << b << endl;
-    //    cout << "x: " << x << endl;
 
     Teuchos::RCP<Teuchos::FancyOStream>
       out = Teuchos::VerboseObjectBase::getDefaultOStream();
