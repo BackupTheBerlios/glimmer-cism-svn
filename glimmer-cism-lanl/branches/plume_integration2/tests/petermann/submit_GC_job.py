@@ -37,8 +37,8 @@ def write_jobscript(j,email,jobfile,walltime):
                 #PBS -N GC_%s
                 #PBS -M %s
                 #PBS -m abe
-                #PBS -e localhost:%s\${PBS_JOBNAME}.e,
-                #PBS -o localhost:%s\${PBS_JOBNAME}.o
+                #PBS -e localhost:%s/\${PBS_JOBNAME}.e
+                #PBS -o localhost:%s/\${PBS_JOBNAME}.o
 
                 p=$PWD
                 cd %s
