@@ -260,7 +260,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! variables used for incorporating generic wrapper to sparse solver
   type(sparse_matrix_type) :: matrix
-  real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1, Fvec
+  real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1, F
   real (kind = dp) :: err, L2norm, L2square
   integer :: iter, pic
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
@@ -359,7 +359,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
             matrix%val(pcgsize(2)), answer(pcgsize(1)))
 
   allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)), &
-            Fvec(2*pcgsize(1)), g_flag(pcgsize(1)) ) ! jfl for res calc.
+            F(2*pcgsize(1)), g_flag(pcgsize(1)) ) ! jfl for res calc.
 
   ! set residual and iteration counter to initial values
   resid = 1.0_dp
@@ -427,7 +427,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     call res_vect( matrix, vk_1, rhsd, size(rhsd), counter, g_flag, L2square )
 
       L2norm  = L2square
-      Fvec(1:pcgsize(1)) = vk_1(:)
+      F(1:pcgsize(1)) = vk_1(:)
       
 !   call output_res(ewn,nsn,upn,uindx,counter,size(vk_1),vk_1, 2) ! JFL
 
@@ -507,10 +507,10 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     call res_vect( matrix, uk_1, rhsd, size(rhsd), counter, g_flag, L2square )
 
     L2norm = sqrt(L2norm + L2square)
-    Fvec(pcgsize(1)+1:2*pcgsize(1)) = uk_1(:) ! Fvec = [ Fv, Fu ]
+    F(pcgsize(1)+1:2*pcgsize(1)) = uk_1(:) ! F = [ Fv, Fu ]
 
 !    print *, 'L2 with/without ghost (k)= ', counter, &
-!              sqrt(DOT_PRODUCT(Fvec,Fvec)), L2norm
+!              sqrt(DOT_PRODUCT(F,F)), L2norm
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
@@ -635,7 +635,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   deallocate(pcgval,pcgrow,pcgcol,rhsd)
   deallocate(matrix%row, matrix%col, matrix%val)
   deallocate(answer)
-  deallocate(uk_1, vk_1, Fvec, g_flag) ! jfl 
+  deallocate(uk_1, vk_1, F, g_flag) ! jfl 
 
   return
 
@@ -702,22 +702,21 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx
   real (kind = dp), dimension(:,:,:), intent(out) :: efvs
 
-  integer :: ew, ns, up, nele
+  integer :: ew, ns, up, nele, k
 
   real (kind = dp), parameter :: NL_tol = 1.0d-06
 
-  integer, parameter :: cmax = 100, img = 20, img1 = img+1
-  integer :: counter , k
+  integer, parameter :: kmax = 100, img = 20, img1 = img+1
   character(len=100) :: message
 
 !*sfp* needed to incorporate generic wrapper to solver
   type(sparse_matrix_type) :: matrixA, matrixC, matrixtp
   real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1
   real (kind = dp), dimension(:), allocatable :: vectp, uk_1_plus, vk_1_plus
-  real (kind = dp), dimension(:), allocatable :: dx, du, dv, Fvec, Fvec_plus
+  real (kind = dp), dimension(:), allocatable :: dx, F, F_plus
   real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
   real (kind = dp), dimension(:,:), allocatable :: vv, wk
-  real (kind = dp) :: L2norm, L2norm_wig, L2square, tol, epsilon,NL_target
+  real (kind = dp) :: L2norm, L2norm_wig, tol, epsilon,NL_target
   real (kind = dp) :: crap
   integer :: tot_its, itenb, maxiteGMRES, iout, icode
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
@@ -817,27 +816,17 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
             matrixA%val(pcgsize(2)), answer(pcgsize(1)))
   allocate(matrixC%row(pcgsize(2)), matrixC%col(pcgsize(2)), &
             matrixC%val(pcgsize(2)))
-
-
   allocate(matrixtp%row(pcgsize(2)), matrixtp%col(pcgsize(2)), &
             matrixtp%val(pcgsize(2)))
 
   allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)),g_flag(pcgsize(1)) )
-
-  allocate( du(pcgsize(1)), dv(pcgsize(1)), vectp(pcgsize(1)))
-
-  allocate( uk_1_plus(pcgsize(1)), vk_1_plus(pcgsize(1)))
-
-  allocate( Fvec(2*pcgsize(1)), Fvec_plus(2*pcgsize(1)), dx(2*pcgsize(1)))
-
+  allocate( vectp(pcgsize(1)), uk_1_plus(pcgsize(1)), vk_1_plus(pcgsize(1)))
+  allocate( F(2*pcgsize(1)), F_plus(2*pcgsize(1)), dx(2*pcgsize(1)))
   allocate( wk1(2*pcgsize(1)), wk2(2*pcgsize(1)), rhs(2*pcgsize(1)))
-
   allocate( vv(2*pcgsize(1),img1), wk(2*pcgsize(1), img))
 
   !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
   
-  counter = 1
-
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
@@ -851,96 +840,42 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 !                                                       F = [Fv(u,v), Fu(u,v)] 
 !==============================================================================
 
-  do k = 1, cmax
-
-    ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
-    call findefvsstr(ewn,  nsn,  upn,      &
-                     stagsigma,  counter,    &
-                     whichefvs,  efvs,     &
-                     uvel,       vvel,     &
-                     flwa,       thck,     &
-                     dusrfdew,   dthckdew, &
-                     dusrfdns,   dthckdns, &
-                     umask)
+  do k = 1, kmax
 
 !==============================================================================
-! jfl 20100412: residual for v comp: Fv= A(u^k-1,v^k-1)v^k-1 - b(u^k-1,v^k-1)  
+! calculate F(u^k-1,v^k-1)
 !==============================================================================
 
-    ! *sfp** calculation of coeff. for stress balance calc. 
-    call findcoefstr(ewn,  nsn,   upn,            &
-                     dew,  dns,   sigma,          &
-                     2,           efvs,           &
-                     vvel,        uvel,           &
-                     thck,        dusrfdns,       &
-                     dusrfdew,    dthckdew,       &
-                     d2usrfdew2,  d2thckdew2,     &
-                     dusrfdns,    dthckdns,       &
-                     d2usrfdns2,  d2thckdns2,     &
-                     d2usrfdewdns,d2thckdewdns,   &
-                     dlsrfdew,    dlsrfdns,       &
-                     stagthck,    whichbabc,      &
-                     uindx,       umask,          &
-                     lsrf,        topg,           &
-                     minTauf,     flwa,           &
-                     beta, btraction,             &
-                     counter, 0 )
+    call calc_F (ewn, nsn, upn, stagsigma, k,                    &
+                 whichefvs, efvs, uvel, vvel,                    &
+                 dew, dns, sigma, thck,                          &
+                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
+                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
+                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
+                 stagthck, whichbabc, uindx, umask,              &
+                 lsrf, topg, minTauf, flwa, beta, btraction,     &
+                 vk_1, uk_1, pcgsize(1), 2*pcgsize(1), g_flag,   &
+                 F, L2norm, matrixA, matrixC)
 
-    call form_matrix ( matrixA ) ! to get A(u^k-1,v^k-1)
-    
-    vectp = vk_1
-    call res_vect( matrixA, vectp, rhsd, size(rhsd), counter, g_flag, L2square ) !rhsd = b
-    L2norm = L2square
-    Fvec(1:pcgsize(1)) = vectp(:) ! Fv
-      
+    L2norm_wig = sqrt(DOT_PRODUCT(F,F)) ! with ghost
+
 !==============================================================================
-! jfl 20100412: residual for u comp: Fu= C(u^k-1,v^k-1)u^k-1 - d(u^k-1,v^k-1)  
+! -define nonlinear target (if k=1)
+! -check at all k if target is reached
 !==============================================================================
 
-    call findcoefstr(ewn,  nsn,   upn,            &
-                     dew,  dns,   sigma,          &
-                     1,           efvs,           &
-                     uvel,        vvel,           &
-                     thck,        dusrfdew,       &
-                     dusrfdew,    dthckdew,       &
-                     d2usrfdew2,  d2thckdew2,     &
-                     dusrfdns,    dthckdns,       &
-                     d2usrfdns2,  d2thckdns2,     &
-                     d2usrfdewdns,d2thckdewdns,   &
-                     dlsrfdew,    dlsrfdns,       &
-                     stagthck,    whichbabc,      &
-                     uindx,       umask,          &
-                     lsrf,        topg,           &
-                     minTauf,     flwa,           &
-                     beta, btraction,             &
-                     counter, 0 )
-
-
-    call form_matrix ( matrixC ) ! to get C(u^k-1,v^k-1)
-    
-    vectp = uk_1
-    call res_vect( matrixC, vectp, rhsd, size(rhsd), counter, g_flag, L2square )!rhsd = d
-    L2norm = sqrt(L2norm + L2square)
-
-    Fvec(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)! Fvec(u^k-1,v^k-1)= [Fv, Fu]
-
-    L2norm_wig = sqrt(DOT_PRODUCT(Fvec,Fvec)) ! with ghost
-
-!    if (k .eq. 1) NL_target = NL_tol * L2norm_wig
+!      print *, 'target with L2norm with or without ghost?'
     if (k .eq. 1) NL_target = NL_tol * L2norm
 
-    print *, 'L2 with, without ghost (k)= ', counter, L2norm_wig, L2norm
+    print *, 'L2 with, without ghost (k)= ', k, L2norm_wig, L2norm
 
     if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
-
-!      print *, 'REMOVE ANSWER vector?, matrxtp?'
-!      print *, 'target with L2norm with or without ghost?'
 
 !==============================================================================
 ! solve J(u^k-1,v^k-1)dx = -F(u^k-1,v^k-1) with fgmres, dx = [dv, du]  
 !==============================================================================
 
-      rhs = -1d0*Fvec
+      rhs = -1d0*F
 
       dx  = 0d0 ! initial guess
 
@@ -960,105 +895,53 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                    tol,maxiteGMRES,iout,icode,tot_its)
 
       IF ( icode == 1 ) THEN   ! precond step: use of Picard linear solver
+                               ! wk2 = P^-1*wk1
 
       call apply_precond ( matrixA, matrixC, pcgsize(1), 2*pcgsize(1), &
                            wk1, wk2, whichsparse ) 
 
       GOTO 10
 
-      ELSEIF ( icode >= 2 ) THEN  ! matvec step
-
-! form F( u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v )
+      ELSEIF ( icode >= 2 ) THEN  ! matvec step: Jacobian free approach
+                                  ! J*wk1 ~ wk2 = (F_plus - F)/epsilon
          
+! form  v^k-1_plus = v^k-1 + epsilon*wk1v. We use solver_postprocess to 
+! transform vk_1_plus from a vector to a 3D field. (same idea for u^k-1_plus)
+
          vectp(:) = wk1(1:pcgsize(1)) ! for v
          vk_1_plus = vk_1 + epsilon*vectp
 
-         call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1_plus, vvel, ghostbvel )
+         call solver_postprocess( ewn, nsn, upn, 2, uindx, &
+                                  vk_1_plus, vvel, ghostbvel )
 
          vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! for u
          uk_1_plus = uk_1 + epsilon*vectp
 
-         call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1_plus, uvel, ghostbvel )
+         call solver_postprocess( ewn, nsn, upn, 1, uindx, &
+                                  uk_1_plus, uvel, ghostbvel )
 
+! form F(x + epsilon*wk1) = F(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
 
-   ! *sfp** effective viscosity calculation, based on previous estimate for vel. field
-    call findefvsstr(ewn,  nsn,  upn,      &
-                     stagsigma,  counter,    &
-                     whichefvs,  efvs,     &
-                     uvel,       vvel,     &
-                     flwa,       thck,     &
-                     dusrfdew,   dthckdew, &
-                     dusrfdns,   dthckdns, &
-                     umask)
+    call calc_F (ewn, nsn, upn, stagsigma, k,                    &
+                 whichefvs, efvs, uvel, vvel,                    &
+                 dew, dns, sigma, thck,                          &
+                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
+                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
+                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
+                 stagthck, whichbabc, uindx, umask,              &
+                 lsrf, topg, minTauf, flwa, beta, btraction,     &
+                 vk_1_plus, uk_1_plus, pcgsize(1), 2*pcgsize(1), g_flag, &
+                 F_plus, crap, matrixtp, matrixtp)
 
-!==============================================================================
-! jfl 20100412: residual for v plus comp: Fv_plus  
-!==============================================================================
+! put approximation of J*wk1 in wk2
 
-    ! *sfp** calculation of coeff. for stress balance calc. 
-    call findcoefstr(ewn,  nsn,   upn,            &
-                     dew,  dns,   sigma,          &
-                     2,           efvs,           &
-                     vvel,        uvel,           &
-                     thck,        dusrfdns,       &
-                     dusrfdew,    dthckdew,       &
-                     d2usrfdew2,  d2thckdew2,     &
-                     dusrfdns,    dthckdns,       &
-                     d2usrfdns2,  d2thckdns2,     &
-                     d2usrfdewdns,d2thckdewdns,   &
-                     dlsrfdew,    dlsrfdns,       &
-                     stagthck,    whichbabc,      &
-                     uindx,       umask,          &
-                     lsrf,        topg,           &
-                     minTauf,     flwa,           &
-                     beta, btraction,             &
-                     counter, 0 )
-
-    call form_matrix ( matrixtp )!A(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
-    
-    vectp = vk_1_plus
-    call res_vect( matrixtp, vectp, rhsd, size(rhsd), counter, g_flag, crap )
-
-    Fvec_plus(1:pcgsize(1)) = vectp(:)
-      
-!==============================================================================
-! jfl 20100412: residual for u plus comp: Fu_plus   
-!==============================================================================
-
-    call findcoefstr(ewn,  nsn,   upn,            &
-                     dew,  dns,   sigma,          &
-                     1,           efvs,           &
-                     uvel,        vvel,           &
-                     thck,        dusrfdew,       &
-                     dusrfdew,    dthckdew,       &
-                     d2usrfdew2,  d2thckdew2,     &
-                     dusrfdns,    dthckdns,       &
-                     d2usrfdns2,  d2thckdns2,     &
-                     d2usrfdewdns,d2thckdewdns,   &
-                     dlsrfdew,    dlsrfdns,       &
-                     stagthck,    whichbabc,      &
-                     uindx,       umask,          &
-                     lsrf,        topg,           &
-                     minTauf,     flwa,           &
-                     beta, btraction,             &
-                     counter, 0 )
-
-    call form_matrix ( matrixtp )!C(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
-    
-    vectp = uk_1_plus
-    call res_vect( matrixtp, vectp, rhsd, size(rhsd), counter, g_flag, crap )
-
-    Fvec_plus(pcgsize(1)+1:2*pcgsize(1)) = vectp(:)
-
-! put result of J*vector in wk2
-
-    wk2 =  ( Fvec_plus - Fvec ) / epsilon
+          wk2 =  ( F_plus - F ) / epsilon
 
          GOTO 10
       ENDIF
 
 !------------------------------------------------------------------------
-!      End of FGMRES method    
+! End of FGMRES method    
 !------------------------------------------------------------------------
 
       if (tot_its .eq. maxiteGMRES) then
@@ -1069,22 +952,18 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 ! icode = 0 means that fgmres has finished and sol contains the app. solution
 
 !------------------------------------------------------------------------
-!      Update solution vectors and 3D fields
+! Update solution vectors (x^k = x^k-1 + dx) and 3D fields 
 !------------------------------------------------------------------------
 
-      dv = dx(1:pcgsize(1))
-      du = dx(pcgsize(1)+1:2*pcgsize(1))
-
-      vk_1 = vk_1 + dv ! in fact vk but we use vk_1 to save memory
-      uk_1 = uk_1 + du ! in fact uk but we use uk_1 to save memory
+      vk_1 = vk_1 + dx(1:pcgsize(1)) 
+      uk_1 = uk_1 + dx(pcgsize(1)+1:2*pcgsize(1))
+      ! in fact vk and uk but we use vk_1 and uk_1 to save memory
 
       call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1, vvel, ghostbvel )
       call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1, uvel, ghostbvel )
 
 
 ! WATCHOUT FOR PERIODIC BC      
-
-    counter = counter + 1
 
   end do
 
@@ -1111,8 +990,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   deallocate(matrixC%row, matrixC%col, matrixC%val)
   deallocate(matrixtp%row, matrixtp%col, matrixtp%val)
   deallocate(uk_1, vk_1, g_flag)
-  deallocate(answer, dx, du, dv, vectp, uk_1_plus, vk_1_plus )
-  deallocate(Fvec, Fvec_plus)
+  deallocate(answer, dx, vectp, uk_1_plus, vk_1_plus )
+  deallocate(F, F_plus)
   deallocate(wk1, wk2)
   deallocate(vv, wk)
 
@@ -1620,6 +1499,130 @@ subroutine apply_precond( matrixA, matrixC, nu1, nu2, wk1, wk2, whichsparse )
       wk2(nu1+1:nu2) = answer(:)
 
 end subroutine apply_precond
+
+!***********************************************************************
+
+subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
+                 whichefvs, efvs, uvel, vvel,                    &
+                 dew, dns, sigma, thck,                          &
+                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
+                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
+                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
+                 stagthck, whichbabc, uindx, umask,              &
+                 lsrf, topg, minTauf, flwa, beta, btraction,     &
+                 vtp, utp, nu1, nu2, g_flag,                     &
+                 F, L2norm, matrixA, matrixC)
+
+
+  ! Calculates either F(x) or F(x+epsilon*vect) for the JFNK method
+  ! Recall that x=[v,u]
+  ! vtp is either v^k-1 or v^k-1+epsilon*vect_v (same idea for utp)
+
+  implicit none
+
+  integer, intent(in) :: ewn, nsn, upn, counter, whichbabc, whichefvs
+  integer, intent(in) :: nu1, nu2
+  integer, dimension(nu1), intent(in) :: g_flag ! g_flag = 1 for ghost cell
+  integer, dimension(:,:), intent(in) :: uindx, umask
+
+  type(sparse_matrix_type), intent(inout) :: matrixA, matrixC
+
+  real (kind = dp) :: L2square
+  real (kind = dp), intent(out):: L2norm
+  real (kind = dp), dimension(nu1) :: vectp
+  real (kind = dp), dimension(nu1), intent(in) :: vtp, utp
+  real (kind = dp), dimension(nu2), intent(out) :: F
+  real (kind = dp), intent(in) :: dew, dns    
+  real (kind = dp), dimension(:), intent(in) :: sigma, stagsigma
+
+  real (kind = dp), dimension(:,:), intent(in) :: thck,               &
+                                                  dusrfdew, dthckdew, & 
+                                                  d2usrfdew2, d2thckdew2, &
+                                                  dusrfdns, dthckdns, &
+                                                  d2usrfdns2, d2thckdns2, &
+                                                  d2usrfdewdns, d2thckdewdns,&
+                                                  dlsrfdew, dlsrfdns, &
+                                                  stagthck, lsrf, topg, &
+                                                  minTauf, beta
+
+  real (kind = dp), dimension(:,:,:), intent(inout) :: efvs, btraction
+  real (kind = dp), dimension(:,:,:), intent(in) :: uvel, vvel, flwa
+           
+                                         
+    call findefvsstr(ewn,  nsn,  upn,       &
+                     stagsigma,  counter,  &
+                     whichefvs,  efvs,     &
+                     uvel,       vvel,     &
+                     flwa,       thck,     &
+                     dusrfdew,   dthckdew, &
+                     dusrfdns,   dthckdns, &
+                     umask)
+
+!==============================================================================
+! jfl 20100412: residual for v comp: Fv= A(utp,vtp)vtp - b(utp,vtp)  
+!==============================================================================
+
+    ! *sfp** calculation of coeff. for stress balance calc. 
+    call findcoefstr(ewn,  nsn,   upn,            &
+                     dew,  dns,   sigma,          &
+                     2,           efvs,           &
+                     vvel,        uvel,           &
+                     thck,        dusrfdns,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, btraction,             &
+                     counter, 0 )
+
+    call form_matrix ( matrixA ) ! to get A(utp,vtp)
+    
+      vectp = vtp
+
+    call res_vect(matrixA, vectp, rhsd, nu1, counter, g_flag, L2square)!rhsd = b
+    L2norm = L2square
+
+    F(1:nu1) = vectp ! Fv
+      
+!==============================================================================
+! jfl 20100412: residual for u comp: Fu= C(utp,vtp)utp - d(utp,vtp)  
+!==============================================================================
+
+    call findcoefstr(ewn,  nsn,   upn,            &
+                     dew,  dns,   sigma,          &
+                     1,           efvs,           &
+                     uvel,        vvel,           &
+                     thck,        dusrfdew,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, btraction,             &
+                     counter, 0 )
+
+
+    call form_matrix ( matrixC ) ! to get C(utp,vtp)
+    
+      vectp = utp
+
+    call res_vect(matrixC, vectp, rhsd, nu1, counter, g_flag, L2square)!rhsd = d
+    L2norm = sqrt(L2norm + L2square)
+
+    F(nu1+1:nu2) = vectp ! Fu
+
+end subroutine calc_F
 
 !***********************************************************************
 
