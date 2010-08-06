@@ -47,8 +47,8 @@ def write_jobscript(j,email,jobfile,walltime):
                 exit 0;
                 EOF
             ''' % (walltime, j.name, email,
-                   os.path.expandvars('$GC_JOB_SCRIPTS'),
-                   os.path.expandvars('$GC_JOB_SCRIPTS'),
+                   os.path.expandvars('$GC_JOB_SCRIPTS/'),
+                   os.path.expandvars('$GC_JOB_SCRIPTS/'),
                    os.path.dirname(os.path.abspath(jobfile)),
                    os.path.abspath(jobfile))
 
