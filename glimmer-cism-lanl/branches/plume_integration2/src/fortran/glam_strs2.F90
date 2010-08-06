@@ -24,6 +24,7 @@ use glide_mask
 use glimmer_sparse_type
 use glimmer_sparse
 
+use glide_types, only : glide_picard_params, glide_bnd_cond_params
 use xls
 
 implicit none
@@ -74,8 +75,6 @@ implicit none
   real (kind = dp), dimension(3), parameter ::   &
            onesideddiff = (/ -3.0_dp, 4.0_dp, -1.0_dp /)
 
-  logical, parameter :: use_shelf_bc_1 = .false.
-  
   ! geometric 2nd and cross-derivs
   real (kind = dp), dimension(:,:), allocatable :: &
               d2thckdew2, d2usrfdew2, d2thckdns2, d2usrfdns2, d2thckdewdns, d2usrfdewdns
@@ -86,7 +85,7 @@ implicit none
   integer, dimension(2) :: pcgsize
   integer :: ct
 
-  integer, parameter :: unin = 90
+  logical, parameter :: use_shelf_bc_1 = .false.
 
 
 !***********************************************************************
@@ -182,10 +181,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  whichresid,             &
                                  whichsparse,            &
                                  periodic_ew,periodic_ns,&
-                                 x_invariant,            &                                 
                                  beta,                   & 
-                                 tau_xy_0,               &
-                                 use_lateral_stress_bc,  &
+				 bnd_cond_params,        &
+				 picard_params,          &
                                  uvel,     vvel,         &
                                  uflx,     vflx,         &
                                  efvs )
@@ -214,33 +212,23 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! the betasquared field as opposed to one of the values calculated internally.
   real (kind = dp), dimension(:,:),   intent(in)  :: beta 
 
-  real (kind = dp), intent(in)      :: tau_xy_0
-  
   integer, intent(in) :: whichbabc    ! options for betasquared field to use
   integer, intent(in) :: whichefvs    ! options for efvs calculation (calculate it or make it uniform)
   integer, intent(in) :: whichresid   ! options for method to use when calculating vel residul
   integer, intent(in) :: whichsparse  ! options for which method for doing elliptic solve
   logical, intent(in) :: periodic_ew, periodic_ns  ! options for applying periodic bcs or not
-  logical, intent(in) :: x_invariant   ! flag to specify that d*/dx = 0 
-  logical, intent(in) :: use_lateral_stress_bc   ! options to use the provided lateral stress as b/c
 
+  type(glide_bnd_cond_params),intent(in) :: bnd_cond_params
+  type(glide_picard_params), intent(in) :: picard_params 
+  
   real (kind = dp), dimension(:,:,:), intent(inout) :: uvel, vvel  ! horiz vel components: u(z), v(z)
   real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx  ! horiz fluxs: u_bar*H, v_bar*H
   real (kind = dp), dimension(:,:,:), intent(out) :: efvs        ! effective viscosity
 
   integer :: ew, ns, up     ! counters for horiz and vert do loops
 
-  real (kind = dp), parameter :: minres = 1.0e-4_dp    ! assume vel fields converged below this resid 
-  real (kind = dp), parameter :: switchres = 1.0e-2_dp
-  real (kind = dp), parameter :: x_overrideres = 0.0_dp ! if uvel field is converged below this, continue
-  real (kind = dp), parameter :: y_overrideres = 1.0d-6  ! if vvel field is converged below this, continue
-
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
 
-  integer, parameter :: cmin = 5                    ! min no. of iterations
-  integer, parameter :: cmax = 1000                 ! max no. of iterations
-  integer, parameter :: cswitch = 100               ! when to switch to larger tolerance
-  
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -313,12 +301,15 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  do while (((resid(1) > minres .and. .not. x_invariant) .or. (resid(2) > minres)) &
-            .and. (resid(2) .ge. y_overrideres .or. (counter < cmin))&
-            .and. (resid(1) .ge. x_overrideres .or. (counter < cmin) .or. x_invariant) &
-	    .and. ((resid(1) > switchres .and. .not. x_invariant) &
-	    	     .or. (resid(2) > switchres) .or. (counter < cswitch)) &
-            .and. (counter < cmax) )
+
+  do while (((resid(1) > picard_params%minres .and. .not. picard_params%x_invariant)           &
+        .or. (resid(2) > picard_params%minres))                                                &
+       .and. (resid(2) .ge. picard_params%y_overrideres .or. (counter < picard_params%cmin))   &
+       .and. (resid(1) .ge. picard_params%x_overrideres .or. (counter < picard_params%cmin)    &
+                                                        .or. picard_params%x_invariant)        &
+       .and. ((resid(1) > picard_params%switchres .and. .not. picard_params%x_invariant)       &
+        .or.  (resid(2) > picard_params%switchres) .or. (counter < picard_params%cswitch))     &
+       .and. (counter < picard_params%cmax) )
 
     ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
@@ -346,10 +337,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
-                     tau_xy_0 / (tau0_glam), use_lateral_stress_bc, &
+                     bnd_cond_params%tau_xy_0 / tau0_glam, &
+		     bnd_cond_params%use_lateral_stress_bc, &
+		     bnd_cond_params%use_sticky_wall, &
+		     bnd_cond_params%sticky_length, &
                      beta, counter )
 
-    !no_shear_stress_sidewalls = .false.
     do ew = 1,ewn
         do ns = 1, nsn
             if (GLIDE_IS_DIRICHLET_BOUNDARY(mask_unstag(ew,ns))) then
@@ -403,6 +396,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
                      0.0_dp, .false.,             &
+		     bnd_cond_params%use_sticky_wall,  &
+		     bnd_cond_params%sticky_length,    &
                      beta, counter )
 
 
@@ -417,8 +412,16 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 
     ! apply unstable manifold correction to converged velocities
-    uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
-    vvel = mindcrshstr(2,whichresid,tvel,counter,resid(2))
+    uvel = mindcrshstr(1,whichresid,uvel,counter, &
+			picard_params%start_umc, &
+			picard_params%cvg_accel, &
+			picard_params%small_vel, &
+			resid(1))
+    vvel = mindcrshstr(2,whichresid,tvel,counter, &
+                      picard_params%start_umc, &
+		      picard_params%cvg_accel, &
+		      picard_params%small_vel, &
+		      resid(2))
 
 
 ! implement periodic boundary conditions in x (if flagged)
@@ -437,13 +440,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     ! output the iteration status: iteration number, max residual, and location of max residual
     ! (send output to the screen or to the log file, per whichever line is commented out) 
-    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
-    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
+    print '(i4,3g20.6)', counter, resid(1), resid(2), picard_params%minres
+    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), picard_params%minres
     !call write_log (message)
 
   end do
 
-  if (counter == cmax) then
+  if (counter == picard_params%cmax) then
 	write(message,*) 'Picard iteration failed to converge after ', counter, ' iterations.'
      	call write_log(message,GM_ERROR,'glam_strs2.F90')
 	stop 1
@@ -815,7 +818,7 @@ end subroutine solver_postprocess
 
 !***********************************************************************
 
-function mindcrshstr(pt,whichresid,vel,counter,resid)
+function mindcrshstr(pt,whichresid,vel,counter,start_umc,cvg_accel,small_vel,resid)
 
   ! Function to perform 'unstable manifold correction' (see Hindmarsch and Payne, 1996,
   ! "Time-step limits for stable solutions of the ice-sheet equation", Annals of 
@@ -828,13 +831,15 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   real (kind = dp), intent(in), dimension(:,:,:) :: vel
   integer, intent(in) :: counter, pt, whichresid 
+  integer, intent(in) :: start_umc
+  real (kind=dp), intent(in) :: cvg_accel 
+  real (kind=dp), intent(in) :: small_vel
   real (kind = dp), intent(out) :: resid
+
 
   real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: mindcrshstr
 
-  integer, parameter :: start_umc = 3
-  real (kind=dp), parameter :: cvg_accel = 1.5_dp
-  real (kind = dp), parameter :: small = 1.0e-16_dp, small_vel = 1.0e-2_dp ! Speed in m/yr
+  real (kind = dp), parameter :: small = 1.0e-16_dp
 
   real (kind=dp) in_prod, len_new, len_old, mean_rel_diff, sig_rel_diff
   real (kind=dp) :: theta
@@ -978,6 +983,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                        lsrf,        topg,           &
                        minTauf,     flwa,           &   
                        tau_xy_0, use_lateral_stress_bc, &
+		       use_sticky_wall, &
+		       sticky_length,   &
                        beta, count )
 
   ! Main subroutine for determining coefficients that go into the LHS matrix A 
@@ -1009,7 +1016,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
   real (kind = dp), intent(in) :: tau_xy_0             !should be non-dimensional here      
 
-  logical, intent(in) :: use_lateral_stress_bc
+  logical, intent(in) :: use_lateral_stress_bc, use_sticky_wall
+  integer, intent(in) :: sticky_length
 
   integer, dimension(:,:), intent(in) :: mask, uindx
   integer, intent(in) :: pt, whichbabc
@@ -1027,9 +1035,9 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer, dimension(6) :: loc
   integer, dimension(3) :: shift
   integer :: ew, ns, up
-  logical, parameter :: use_sticky_wall = .false.
+
   
-  integer, parameter :: sticky_length = 10
+
 
   ct = 1        ! index to count the number of non-zero entries in the sparse matrix
 
@@ -1137,7 +1145,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          ew-1+shift(2):ew+1+shift(2),  &
                          ns-1+shift(3):ns+1+shift(3)), &
                          betasquared(ew,ns),           &
-                         lateral_boundary = .false.) 
+                         lateral_boundary = .false.)
+
 
         end do  ! upn
 

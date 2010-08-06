@@ -130,7 +130,6 @@ class GCConfig(object):
                                                                   # NB: only used in case slip_coeff = 5
                                        # 'sliding_constant' : =   # model%climate%slidconst
                                        'log_level' : 6,
-                                       'tau_xy_0' : 0.0,
                                        },
                       'Petermann shelf' : {  'air_temperature' : -5,     # Temp assigned to ice in isothermal case
                                              'accumulation_rate' : 0.0,   # In meters per year
@@ -168,8 +167,6 @@ class GCConfig(object):
                                                        # model%options%whichbtrc
                                    'periodic_ew' : 0,  # model%options%periodic_ew
                                    'periodic_ns' : 0,  # model%options%periodic_ns
-	                           'x_invariant' : None,  # = 1 means variables don't change in x direction
-                                                          # model%options%x_invariant
                                    'diagnostic_run' : 0,  # = 1 makes glide stop after diagnosing velocities
                                                           # model%options%diagnostic_run
                                    'hotstart' : None,   # are we doing a restart (1 = yes, 0 = no)
@@ -245,10 +242,31 @@ class GCConfig(object):
                                        'include_thin_ice' : 0,   # whether or not to include thin ice in HO calculation
                                                                  # 1 means true
                                                                  # model%options%ho_include_thinice
-                                       'which_ho_efvs' : 0     # ho effective viscosity 
+                                       'which_ho_efvs' : 0,    # ho effective viscosity 
                                                                # = 0 means calculate from strain rate
                                                                # model%options%which_ho_efvs
+
                                        },
+                      'picard parameters' : { 'minres' : 1.0e-5,
+                                              'switchres' : 1.0e-2,
+                                              'x_overrideres' : 0.0,
+                                              'y_overrideres' : 1.0e-8 ,
+                                              'cmax' : 3000,
+                                              'cmin' : 5,
+                                              'cswitch' : 100,
+                                              'cvg_accel' : 1.5,
+                                              'small_vel' : 0.001,
+                                              'start_umc' : 3,
+                                              },
+                      'boundary condition params' : {'use_lateral_stress_bc' : True,
+                                                     'tau_xy_0' : 50.0e3,
+                                                     'use_shelf_bc_1' : False,
+                                                     'use_sticky_wall' : False, # create a 'sticky spot' along wall or not
+                                                     'sticky_length' : 0,
+                                                     'x_invariant' : 0,  # = 1 means variables don't change in x direction
+                                                                         # model%picard_params%x_invariant
+
+                                                     },
                       'CF default' : { 'comment' : '',
                                        'title' : None,
                                        'institution' : 'NYU',
@@ -267,7 +285,6 @@ class GCConfig(object):
                                                               'vvelhom_srf',
                                                               'thkmask','topg',
                                                               'kinbcmask',
-                                                              'beta','btrc',
                                                               'temp',
 							      'efvs',
                                                               'tau_hom_xx','tau_hom_yy',
@@ -281,7 +298,6 @@ class GCConfig(object):
                                       # kinbcmask lat litho_temp lon lsurf relx slc soft surfvel tau_xz tau_yz
                                       # taux tauy temp thk thkmask topg ubas ubas_tavg uflx usurf 
                                       # uvel uvelhom vbas vbas_tavg velnormhom vflx vvel vvelhom wgrd wvel efvs
-
                                       'frequency' : None,  # time in between writing state to output file (in years)
                                       'name' : None,       # name of output file
                                       'start' : None,
@@ -516,8 +532,11 @@ class _AtomicJob(_BaseJob,_IO):
         raise Exception("must override")
         
     def run(self):
+        pwd = os.path.abspath(os.curdir)
+        os.chdir(self.jobDir)
         cmd = [self._driver, self.gc_config_file]
         _check_call(cmd)
+        os.chdir(pwd)
 
     def stage(self,genInput=True):
 
@@ -528,12 +547,21 @@ class _AtomicJob(_BaseJob,_IO):
 
         #update the config dictionaries
 
-        for (k,v) in self.gc.items():
-            if (not (k in self._gcconfig.vals)):
-                raise Exception("Non-standard section name %s" % k)
+        for (section_name,section_data) in self.gc.items():
+            if (not (section_name in self._gcconfig.vals)):
+                raise Exception("Non-standard section name %s" % section_name)
             else:
-                self._gcconfig.vals[k].update(v)
+                template_section_data = self._gcconfig.vals[section_name]
+                for (key,val) in section_data.items():
+                    if (not (key in template_section_data)):
+                        raise Exception("Non-recognized key %s in section %s" %
+                                        (key, section_name))
+                    
+                self._gcconfig.vals[section_name].update(section_data)
 
+        for (key,val) in self.plume.items():
+            if (not (key in self._pnl.vals)):
+                raise Exception("Non-recognized key %s in plume config" % key)
         self._pnl.vals.update(self.plume)
 
         if (self.use_plume):
@@ -676,7 +704,6 @@ ssj.plume.update({'saltbot' : 34.5,
                   'phi'   : 0.0,
                   })
 ssj.gc.update({'options' : {'flow_law' : 0,
-                            'x_invariant' : True,
                             },
                })
             
@@ -774,14 +801,7 @@ class RegridJob(_BaseJob,_IO):
     use_plume = property(fset=_setuse_plume,fget=_getuse_plume)
 
     def _resolveJob(self):
-        #assign this job's name into the contained job
-#        self.initJob.name = self.name
- #       self.initJob.jobDir = self.jobDir
-
-#        self.initJob.tstart = self.tstart
-#        self.initJob.tend = self.tend
-
-        #re-resolve the contained job
+        #resolve the contained job
         self.initJob._resolveJob()
 
     def assertCanStage(self):

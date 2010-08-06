@@ -370,10 +370,6 @@ module glide_types
 
     logical :: periodic_ns = .false.
 
-    logical :: x_invariant = .false.
-
-    logical :: use_lateral_stress_bc = .false.
-
     integer :: gthf = 0
     !*FD \begin{description}
     !*FD \item[0] no geothermal heat flux calculations
@@ -832,7 +828,6 @@ module glide_types
                                   ! 0 if no drainage = 0.0d0 * tim0 / scyr
     real(dp) :: bwat_smooth = 0.01d0 ! basal water field smoothing strength
     real(dp) :: default_flwa = 1.0d-16 !Glen's A to use in isothermal case (would change to e.g. 4.6e-18 in EISMINT-ROSS case)
-    real(dp) :: tau_xy_0 = 0.0d0  ! no lateral drag by default
   end type glide_paramets
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -847,6 +842,38 @@ module glide_types
      integer :: isos_water
      integer :: isos
   end type glide_prof_type
+
+
+  type glide_picard_params
+       logical :: x_invariant = .false. ! flag to specify that d*/dx = 0 
+       real(dp) :: minres = 1.0d-4     ! relative change in velocities between Picard iterations
+                            	       ! required to consider the iteration as converged       
+       real(dp) :: switchres = 1.0d-2  ! a (probably larger) residual we aim for after a certain number of 
+       		                       ! Picard iterations have gone by with detecting convergence
+       real(dp) :: x_overrideres = 0.0    ! is uvel is converged below this level, consider iteration converged
+       real(dp) :: y_overrideres = 1.0d-6 ! is vvel is converged below this level, consider iteration converged
+       
+       integer :: cmax  = 3000       ! if convergence does not occur after cmax iterations, give up
+       integer :: cmin  = 5          ! don't start checking for convergence until cmin iterations have been done
+       integer :: cswitch  = 100     ! after cswitch iterations, use switchres instead of minres		   
+       real(dp) :: cvg_accel  = 1.5  ! factor for relaxation or acceleration in mindcrshstr function
+       real(dp) :: small_vel  = 0.01 ! size of velocity (in m/year) to ignore for purposes of convergence 
+       integer :: start_umc = 3      ! how many iterations to wait until starting unstable manifold correction
+
+  end type glide_picard_params
+
+  type glide_bnd_cond_params
+
+       logical :: use_shelf_bc_1 = .false.         ! whether or not to use the Pattyn/Vieli/Payne b/c at marine
+       	       	  		            	   ! ice boundary for some number of Picard iterations, or else to use
+					    	   ! the MacAyeal form right away
+       logical :: use_lateral_stress_bc = .true.   ! apply a plastic yield stress condition on lateral boundaries or not
+       real(dp) :: tau_xy_0                 	   ! value of yield stress  
+
+       logical :: use_sticky_wall           	   ! whether to pin some ice columns to the wall along one side or not
+       integer :: sticky_length		    	   ! number of cells to pin (hold along-wall velocity at zero)
+
+  end type glide_bnd_cond_params
 
   type glide_global_type
     integer              :: model_id !*FD Used in the global model list for error handling purposes
@@ -867,6 +894,8 @@ module glide_types
     type(glide_tempwk)   :: tempwk
     type(glide_gridwk)   :: gridwk
     type(glide_paramets) :: paramets
+    type(glide_picard_params) :: picard_params
+    type(glide_bnd_cond_params) :: bnd_cond_params
     type(glimmap_proj) :: projection
     type(profile_type)   :: profile
     type(glide_prof_type) :: glide_prof

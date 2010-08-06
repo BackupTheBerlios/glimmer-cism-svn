@@ -95,6 +95,17 @@ contains
     if (associated(section)) then
        call handle_parameters(section, model)
     end if
+
+    call GetSection(config,section,'picard parameters')
+    if (associated(section)) then
+       call handle_picard_params(section, model)
+    end if
+
+    call GetSection(config,section,'boundary condition params')
+    if (associated(section)) then
+       call handle_bnd_cond_params(section, model)
+    end if
+
     ! read GTHF 
     call GetSection(config,section,'GTHF')
     if (associated(section)) then
@@ -409,10 +420,9 @@ contains
     call GetValue(section,'hotstart',model%options%hotstart)
     call GetValue(section,'periodic_ew',model%options%periodic_ew)
     call GetValue(section,'periodic_ns',model%options%periodic_ns)
-    call GetValue(section,'x_invariant',model%options%x_invariant)
     call GetValue(section,'diagnostic_run',model%options%diagnostic_run)
     call GetValue(section, 'use_plume',model%options%use_plume)
-    call GetValue(section, 'use_lateral_stress_bc', model%options%use_lateral_stress_bc)
+
   end subroutine handle_options
   
   !Higher order options
@@ -440,6 +450,43 @@ contains
     call GetValue(section, 'which_ho_sparse',    model%options%which_ho_sparse)
     call GetValue(section, 'which_ho_sparse_fallback', model%options%which_ho_sparse_fallback)
   end subroutine handle_ho_options
+
+  subroutine handle_bnd_cond_params(section, model)
+     use glimmer_config
+     use glide_types
+     implicit none
+     type(ConfigSection), pointer :: section
+     type(glide_global_type),intent(inout) :: model
+
+     call GetValue(section, 'tau_xy_0', model%bnd_cond_params%tau_xy_0)
+     call GetValue(section, 'use_lateral_stress_bc', model%bnd_cond_params%use_lateral_stress_bc)
+     call GetValue(section, 'use_shelf_bc_1', model%bnd_cond_params%use_shelf_bc_1)
+     call GetValue(section, 'use_sticky_wall', model%bnd_cond_params%use_sticky_wall)
+     call GetValue(section, 'sticky_length', model%bnd_cond_params%sticky_length)
+
+  end subroutine handle_bnd_cond_params
+
+  subroutine handle_picard_params(section, model)
+     use glimmer_config
+     use glide_types
+     implicit none
+     type(ConfigSection), pointer :: section
+     type(glide_global_type),intent(inout) :: model
+
+     call GetValue(section, 'x_invariant', model%picard_params%x_invariant)
+     call GetValue(section, 'minres', model%picard_params%minres)
+     call GetValue(section, 'switchres', model%picard_params%switchres)
+     call GetValue(section, 'x_overrideres', model%picard_params%x_overrideres)
+     call GetValue(section, 'y_overrideres', model%picard_params%y_overrideres)
+     call GetValue(section, 'cmax', model%picard_params%cmax)
+     call GetValue(section, 'cmin', model%picard_params%cmin)
+     call GetValue(section, 'cswitch', model%picard_params%cswitch)
+
+     call GetValue(section, 'cvg_accel', model%picard_params%cvg_accel)
+     call GetValue(section, 'small_vel', model%picard_params%small_vel)
+     call GetValue(section, 'start_umc', model%picard_params%start_umc)
+
+  end subroutine
 
   subroutine print_options(model)
     use glide_types
@@ -603,13 +650,7 @@ contains
         call write_log('Error, use_plume input out of range', GM_FATAL)
     end if
 
-    if (model%options%use_lateral_stress_bc) then
-        call write_log('Imposing stress conditions on the east and west boundaries')
-    else
-	call write_log('Imposing no-slip boundary conditions on the east/west boundaries')
-    end if
     
-
     !HO options
     call write_log("***Higher-order options:")
     if (model%options%which_ho_diagnostic < 0 .or. model%options%which_ho_diagnostic >= size(ho_diagnostic)) then
@@ -723,7 +764,6 @@ contains
     call GetValue(section,'stressin',model%climate%stressin)
     call GetValue(section,'stressout',model%climate%stressout)
     call GetValue(section,'sliding_constant',model%climate%slidconst)
-    call GetValue(section,'tau_xy_0',model%paramets%tau_xy_0)
     
   end subroutine handle_parameters
 
@@ -772,10 +812,54 @@ contains
        write(message,*) '                        ',model%paramets%bpar(5)
        call write_log(message)
     end if
-    if (model%options%use_lateral_stress_bc) then
-       write(message, *) 'Imposed lateral stress tau_xy_0: ', model%paramets%tau_xy_0
-       call write_log(message)
+
+    call write_log('')
+    write(message, *) '**** Picard iteration parameters ****'
+    call write_log(message)
+    write(message, *) 'x_invariant: ', model%picard_params%x_invariant
+    call write_log(message)
+    write(message, *) 'minres: ', model%picard_params%minres
+    call write_log(message)
+    write(message, *) 'switchres: ', model%picard_params%switchres
+    call write_log(message)
+    write(message, *) 'x_overrideres: ', model%picard_params%x_overrideres
+    call write_log(message)
+    write(message, *) 'y_overrideres: ', model%picard_params%y_overrideres
+    call write_log(message)
+    write(message, *) 'cmax: ', model%picard_params%cmax
+    call write_log(message)
+    write(message, *) 'cmin: ', model%picard_params%cmin
+    call write_log(message)
+    write(message, *) 'cswitch: ', model%picard_params%cswitch
+    call write_log(message)
+    write(message,*) 'cvg_accel: ', model%picard_params%cvg_accel
+    call write_log(message)
+    write(message,*) 'small_vel: ', model%picard_params%small_vel
+    call write_log(message)
+    write(message,*) 'start_umc: ', model%picard_params%start_umc
+    call write_log(message)
+
+    call write_log('')
+    write(message, *) '**** Boundary condition parameters ****'
+    call write_log(message)
+    write(message, *) 'use_lateral_stress_bc: ', model%bnd_cond_params%use_lateral_stress_bc
+    call write_log(message)
+    if (model%bnd_cond_params%use_lateral_stress_bc) then
+        write(message, *) 'tau_xy_0: ', model%bnd_cond_params%tau_xy_0
+	call write_log(message)
+    else
+    	call write_log('Imposing no-slip boundary conditions on the east/west boundaries')
+    end if   
+
+    write(message, *) 'use_shelf_bc_1: ', model%bnd_cond_params%use_shelf_bc_1
+    call write_log(message)
+    write(message, *) 'use_sticky_wall: ', model%bnd_cond_params%use_sticky_wall
+    call write_log(message)
+    if (model%bnd_cond_params%use_sticky_wall) then
+        write(message, *) 'sticky_length: ', model%bnd_cond_params%sticky_length
+	call write_log(message)
     end if
+
     call write_log('')
 
   end subroutine print_parameters
