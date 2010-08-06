@@ -31,7 +31,7 @@ flux = @(y) Vin*Hin - acab*(yin - y);
 % If we define the unknown by u where
 % u = [v; w]
 % then the ode is written 
-% u' = odefun(y,u) where:
+% du/dy = odefun(y,u) where:
 odefun = @(y,u) [ A*(k*flux(y)/u(1) - q*u(2)*u(1)/flux(y))^3.0;
                   flux(y)/u(1) ];
 
@@ -60,10 +60,10 @@ sol = bvp4c(odefun, bcfun,solinit);
 
 y_sol = sol.x;
 vel_sol = sol.y(1,:);  % extract the first component of the sol
-                     % Note: we don't care about w = u(2,:)
+                      % Note: we do not care about w = u(2,:)
 thk_sol = flux(y_sol) ./ vel_sol;  % calculate thickness solution
 
-paterson_fun = @(y) Hin + 2*tauxy0/(rhoi*g*L*(1-rhoi/rhoo))*(y-yin);
+paterson_fun = @(y) thk_sol(1) + tauxy0/(rhoi*g*L*(1-rhoi/rhoo))*(y-y_sol(1));
 
 thk_paterson = paterson_fun( y_sol );
 end
