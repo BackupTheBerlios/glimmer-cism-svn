@@ -8,7 +8,7 @@ def kickoff( start_index, email, walltime ):
     j = SteadyShelfJob()
     j.default_flwa = 1.0e-16
     j.uniform_acab = -1.2
-    j.n = 70
+    j.n = 50
     j.m = 20
     j.nlevel = 3
     j.tend = 200.0
@@ -23,28 +23,33 @@ def kickoff( start_index, email, walltime ):
     j.randthk = 0.0
     j.gc = {'options' : {'flow_law' : 2,
                          'temperature' : 0,
-                         'x_invariant' : False,
-                         'use_lateral_stress_bc' : True,
                          },
-            'parameters' : { 'tau_xy_0' : 50.0e+3,
-                             },
+            'boundary condition params' : {'tau_xy_0' : 50.0e+3,
+                                           'x_invariant' : False,
+                                           'use_lateral_stress_bc' : True,
+                                           },
+            'picard parameters' : {'small_vel' : 0.0001,
+                                   'minres' : 1.0e-6,
+                                   'y_overrideres' : 1.0e-9,
+                                   'cvg_accel' : 1.25,
+                                   },
             'plume' : {'plume_const_bmlt' : False,
-                       'plume_steadiness_tol' : 1.0e-4,
+                       'plume_steadiness_tol' : 1.0e-5,
                        },
             }
 
 
-    jobindex = start_index
+    start_index
 
-    oceantemps = [-1.0, 0.0, 1.0]
-    upvels = [-500.0, -1000.0, -1500.0]
-    phis = [0.0, 75.0]
+    oceantemps = [-0.5, 0.0, 0.5]
+    upvels = [-900.0, -1000.0, -1100.0]
+    phis = [0.0, 81.0]
 
     for t in oceantemps:
         for upvel in upvels:
             for phi in phis:
 
-                j.name = 'job%s' % jobindex
+                j.name = 'pn_%.1fC_%.1fma_%.0fd' % (t,upvel,phi)
                 
                 jdir = os.path.join(os.path.expandvars('$GC_JOBS'),
                                     j.name)
@@ -57,22 +62,23 @@ def kickoff( start_index, email, walltime ):
                 j.upvel = upvel
                 j.plume = {'temptop' : t,
                            'tempbot' : t,
-                           'salttop' : 34.5,
-                           'saltbot' : 34.5,
-                           'plume_min_thickness' : 20.0,
+                           'salttop' : 34.765,
+                           'saltbot' : 34.765,
+                           'plume_min_thickness' : 25.0,
                            'phi'     : phi}
 
                 j.assertCanStage()
                 j.serialize()
-                submit_job(j,email, walltime,'q')
-
-                jobindex = jobindex+1
-
+                f = open('/Users/carl/kickoff9log.txt','a')
+                try:
+                    submit_job(j,email, walltime,'i')
+                except:
+                    f.write('%s job failed\n' % j.name)
+                f.close()
+                    
 
 if __name__ == '__main__':
 
     start_index = int(sys.argv[1])
-    
-    
     kickoff(start_index, 'gladish@cims.nyu.edu', '12:00:00')
 
