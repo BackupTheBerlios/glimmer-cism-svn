@@ -545,11 +545,12 @@ contains
          '0-order SIA               ', &
          '1-st order model (Blatter-Pattyn) ', &
          '1-st order depth-integrated (SSA)' /)
-    character(len=*), dimension(0:3), parameter :: ho_whichsparse = (/ &
+    character(len=*), dimension(0:4), parameter :: ho_whichsparse = (/ &
          'BiCG with LU precondition  ', &
          'GMRES with LU precondition ', &
          'Unsymmetric Multifrontal   ', &
-         'Trilinos interface         '/)
+         'Compatible Trilinos interface ', &
+         'Standalone Trilinos interface '/)
 
     call write_log('GLIDE options')
     call write_log('-------------')

@@ -1,9 +1,11 @@
 module glimmer_sparse_trilinos
-    !*FD This module builds on the glimmer_trilinos module to provide an easy
+    !*FD This module builds on the glimmer_sparse module to provide an easy
     !*FD interface to Trilinos.  
     
     use glimmer_sparse_type
     use glimmer_global, only: dp
+    use glimmer_log
+
     implicit none
 
     type trilinos_solver_workspace
@@ -39,7 +41,10 @@ module glimmer_sparse_trilinos
 
 contains
     subroutine check_trilinos()
-        !write(*,*)"TRILINOS: in check_trilinos"
+#ifndef TRILINOS
+      call write_log('Trilinos functionality was called, but the code'// &
+                     ' is not compiled with -DTRILINOS ',GM_FATAL);
+#endif
     end subroutine
 
     subroutine trilinos_default_options(opt)
@@ -52,7 +57,7 @@ contains
         opt%tolerance  = 1e-5
         opt%maxiters = 2000
         opt%use_iterative_refinement = .true.
-        !write(*,*)"TRILINOS: in trilinos_default_options"
+        call check_trilinos()
     end subroutine trilinos_default_options
 
     subroutine trilinos_allocate_workspace(matrix, options, workspace, max_nonzeros_arg)
@@ -72,8 +77,6 @@ contains
         workspace%alloc = .false.
     
         call check_trilinos()
-        !write(*,*)"TRILINOS: in trilinos_allocate_workspace"
-    
     end subroutine trilinos_allocate_workspace
 
     subroutine trilinos_solver_preprocess(matrix, options, workspace)
@@ -101,8 +104,6 @@ contains
 
         matrix%row = matrix%row - 1
         matrix%col = matrix%col - 1
-
-        !write(*,*)"TRILINOS: in trilinos_solver_preprocess"
     end subroutine trilinos_solver_preprocess
 
     function trilinos_solve(matrix, rhs, solution, options, workspace,err,niters, verbose)
@@ -145,14 +146,12 @@ contains
         integer :: sys,i
 
         sys=0
-        !write(*,*)"TRILINOS: in trilinos_solve"
         call solvetriadmatrixwithtrilinos (matrix%nonzeros, matrix%order, &
                     matrix%row, matrix%col, matrix%val, rhs, solution)
        
         call check_trilinos()
         trilinos_solve = 0; !workspace%info(1) 
     
-        !trilinos is a direct method, so the iters and err returns mean nothing
         err = 0
         niters = 0
     end function trilinos_solve
@@ -161,7 +160,6 @@ contains
         type(sparse_matrix_type) :: matrix
         type(trilinos_solver_options) :: options
         type(trilinos_solver_workspace) :: workspace
-        !write(*,*)"TRILINOS: in trilinos_solver_postprocess"
         matrix%row = matrix%row + 1
         matrix%col = matrix%col + 1
     end subroutine
@@ -176,7 +174,6 @@ contains
         !Deallocate all of the working memory
         !Free the Umfpack symbolic analysis
         workspace%alloc = .false.
-        !write(*,*)"TRILINOS: in trilinos_destroy_wprkspace"
     end subroutine trilinos_destroy_workspace
 
     subroutine trilinos_interpret_error(error_code, error_string)
@@ -226,4 +223,63 @@ contains
             write(*,*) tmp_error_string
         endif
     end subroutine trilinos_interpret_error
+
+!! AGS: The following are dummy implementations of the
+!! C++ Trilinos interface functions in the src/cpp
+!! directory. These empty functions allow the main
+!! code in glam_strs2.F90 to be fre of "#ifdef TRILINOS"
+!! lines all over the place. 
+#ifndef TRILINOS
+    subroutine dopartition(i,j)  !Dummy implementation of cpp function
+        integer :: i,j
+        call check_trilinos()
+    end subroutine dopartition
+
+    subroutine getpartition(i,j)  !Dummy implementation of cpp function
+        integer :: i
+        integer, dimension(:) :: j
+        call check_trilinos()
+    end subroutine getpartition
+
+    subroutine inittrilinos(i,j,k)  !Dummy implementation of cpp function
+        integer :: i,j
+        integer, dimension(:) :: k
+        call check_trilinos()
+    end subroutine inittrilinos
+
+    subroutine solvewithtrilinos(x,y,z)  !Dummy implementation of cpp function
+        real(kind=dp), dimension(:) :: x,y
+        real(kind=dp) :: z
+        call check_trilinos()
+    end subroutine solvewithtrilinos
+
+    subroutine matvecwithtrilinos(x,y)  !Dummy implementation of cpp function
+        real(kind=dp), dimension(:) :: x,y
+        call check_trilinos()
+    end subroutine matvecwithtrilinos
+
+    subroutine restoretrilinosmatrix(i)  !Dummy implementation of cpp function
+        integer :: i
+        call check_trilinos()
+    end subroutine restoretrilinosmatrix
+
+    subroutine savetrilinosmatrix(i)  !Dummy implementation of cpp function
+        integer :: i
+        call check_trilinos()
+    end subroutine savetrilinosmatrix
+
+    subroutine putintotrilinosmatrix(i,j,x)  !Dummy implementation of cpp function
+        integer :: i,j
+        real(kind=dp) :: x
+        call check_trilinos()
+    end subroutine putintotrilinosmatrix
+
+    subroutine solvetriadmatrixwithtrilinos (i,j,k,l,x,y,z)  !Dummy implementation of cpp function
+        integer :: i,j
+        integer, dimension(:) :: k,l
+        real(kind=dp), dimension(:) :: x,y,z
+        call check_trilinos()
+    end subroutine solvetriadmatrixwithtrilinos
+
+#endif
 end module glimmer_sparse_trilinos

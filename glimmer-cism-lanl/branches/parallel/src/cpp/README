@@ -7,11 +7,10 @@ called   libcalltrilinos.a  is the result, and is linked
 into executables through logic in src/fortran/Makefile.am.
 
 There are 2 distinct implementations here. The switch
-between the two options is controlled by the flag
-  load_directly_into_trilinos
-which is set at line 98 in glam_strs2.F90.
+between the two options is controlled by the 
+which_ho_sparse flag in the input file.
 
-*  load_directly_into_trilinos == 0
+*  which_ho_sparse = 3
 This uses solveTriadMatrixWithTrilinos.cpp, which is the 
 implementation that is called from sparse_easy_solve.  
 This takes the matrix in Triad format, redundantly on 
@@ -20,7 +19,7 @@ every processor. It then converts the matrix to Trilinos
   -- This implementation will be deprecated when we move
      to the distributed fortran implementation in glimmer.
 
-*  load_directly_into_trilinos == 1
+*  which_ho_sparse = 3
 This uses trilinosLinearSolver.cpp (and matrixInterface.cpp)
 and is the implementation where the entries in the matrix
 are loaded directly into the Trilinos (Epetra_CrsMatrix)

@@ -8,35 +8,31 @@ module glimmer_sparse
     use glimmer_sparse_type
     use glimmer_sparse_slap
     use glimmer_sparse_umfpack
-#ifdef TRILINOS
     use glimmer_sparse_trilinos
-#endif
     implicit none
 
     type sparse_solver_options
         type(sparse_solver_options_base) :: base
         type(slap_solver_options) :: slap
         type(umf_solver_options)  :: umf
-#ifdef TRILINOS
         type(trilinos_solver_options)  :: trilinos
-#endif
     end type
 
     type sparse_solver_workspace
         type(slap_solver_workspace), pointer :: slap => null()
         type(umf_solver_workspace),  pointer :: umf  => null()
-#ifdef TRILINOS
         type(trilinos_solver_workspace),  pointer :: trilinos  => null()
-#endif
     end type
 
 
     integer, parameter :: SPARSE_SOLVER_BICG = 0
     integer, parameter :: SPARSE_SOLVER_GMRES = 1
     integer, parameter :: SPARSE_SOLVER_UMF = 2
-#ifdef TRILINOS
+    ! This Trilinos solver uses sparse_easy_solve infrastructure
     integer, parameter :: SPARSE_SOLVER_TRILINOS = 3
-#endif
+    ! This Trilinos solver does not go through sparse_easy_solve
+    ! to save on dealing with two sparse matrix formats
+    integer, parameter :: STANDALONE_TRILINOS_SOLVER = 4
 
 contains
     subroutine sparse_solver_default_options(method, opt)
@@ -64,10 +60,8 @@ contains
         else if (method == SPARSE_SOLVER_UMF) then
             call umf_default_options(opt%umf)
 
-#ifdef TRILINOS
         else if (method == SPARSE_SOLVER_TRILINOS) then
             call trilinos_default_options(opt%trilinos)
-#endif
 
         else 
             !call glide_finalise_all(.true.)
@@ -103,12 +97,10 @@ contains
             allocate(workspace%umf)
             call umf_allocate_workspace(matrix, options%umf, workspace%umf, max_nonzeros)
 
-#ifdef TRILINOS
         else if (options%base%method == SPARSE_SOLVER_TRILINOS) then
             allocate(workspace%trilinos)
             call trilinos_allocate_workspace(matrix, options%trilinos, &
                                       workspace%trilinos, max_nonzeros)
-#endif
 
         end if
     end subroutine sparse_allocate_workspace
@@ -136,10 +128,8 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             call umf_solver_preprocess(matrix, options%umf, workspace%umf)
 
-#ifdef TRILINOS
         else if (options%base%method == SPARSE_SOLVER_TRILINOS) then
             call trilinos_solver_preprocess(matrix, options%trilinos, workspace%trilinos)
-#endif
 
         end if
 
@@ -194,11 +184,9 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             sparse_solve = umf_solve(matrix, rhs, solution, options%umf, workspace%umf, err, niters, verbose_var)
 
-#ifdef TRILINOS
         else if (options%base%method == SPARSE_SOLVER_TRILINOS) then
             sparse_solve = trilinos_solve(matrix, rhs, solution, options%trilinos, &
                                          workspace%trilinos, err, niters, verbose_var)
-#endif
 
         end if
 
@@ -217,10 +205,8 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             call umf_solver_postprocess(matrix, options%umf, workspace%umf)
 
-#ifdef TRILINOS
         else if (options%base%method == SPARSE_SOLVER_TRILINOS) then
             call trilinos_solver_postprocess(matrix, options%trilinos, workspace%trilinos)
-#endif
 
         end if
 
@@ -243,11 +229,9 @@ contains
             call umf_destroy_workspace(matrix, options%umf, workspace%umf)
             deallocate(workspace%umf)
 
-#ifdef TRILINOS
         else if (options%base%method == SPARSE_SOLVER_TRILINOS) then
             call trilinos_destroy_workspace(matrix, options%trilinos, workspace%trilinos)
             deallocate(workspace%trilinos)
-#endif
 
         end if
 
@@ -270,10 +254,8 @@ contains
         else if (options%base%method == SPARSE_SOLVER_UMF) then
             call umf_interpret_error(error_code, tmp_error_string)
 
-#ifdef TRILINOS
         else if (options%base%method == SPARSE_SOLVER_TRILINOS) then
             call trilinos_interpret_error(error_code, tmp_error_string)
-#endif
 
         end if
 

@@ -11,7 +11,8 @@ CLEANFILES = $(BUILT_SOURCES)
 
 libcalltrilinos_a_SOURCES = solveTriadMatrixWithTrilinos.cpp \
                             trilinosLinearSolver.cpp \
-                            matrixInterface.cpp 
+                            matrixInterface.cpp \
+                            trilinosPartition.cpp
 libcalltrilinos_a_DEPENDENCIES = matrixInterface.hpp
 
 ALL_SRC= $(libcalltrilinoa_a_SOURCES)

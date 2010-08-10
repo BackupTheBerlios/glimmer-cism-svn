@@ -15,32 +15,11 @@
 
 // Define global variables.
 static Teuchos::RCP<TrilinosMatrix_Interface> interface;
-static Teuchos::RCP<const Epetra_Map> partitionMap;
+
+static Teuchos::RCP<Epetra_CrsMatrix> savedMatrix_A;
+static Teuchos::RCP<Epetra_CrsMatrix> savedMatrix_C;
 
 extern "C" {
-
-  // doPartition and getPartition use Epetra to partition the global
-  // problem in parallel. These functions are temporary as the partition
-  // will be chosen in glimmer, but allow us to mature the initTrilinos
-  // interface.
-  void dopartition_(int& matrixSize, int& mySize) {
-#ifdef HAVE_MPI
-    Epetra_MpiComm comm(MPI_COMM_WORLD);
-#else
-    Epetra_SerialComm comm;
-#endif
-    partitionMap = Teuchos::rcp(new Epetra_Map(matrixSize,1,comm) );
-    mySize = partitionMap->NumMyElements();
-
-    cout << "Trilinos Interface: doPartition has mySize = " << mySize << endl;
-  }
-
-  void getpartition_(int& mySize, int* myIndicies) {
-
-      // Copy indices into array to send back to glimmer
-      partitionMap->MyGlobalElements(myIndicies);
-
-  }
   //================================================================
   //================================================================
   // RN_20091215: This needs to be called only once in the beginning
@@ -52,9 +31,13 @@ extern "C" {
 #else
     Epetra_SerialComm comm;
 #endif
+
+    Teuchos::RCP<const Epetra_Map> rowMap = 
+      Teuchos::rcp(new Epetra_Map(-1,mySize,myIndicies,1,comm) );
+
     // Create an interface that holds a CrsMatrix instance and some useful methods.
-    interface = Teuchos::rcp(new TrilinosMatrix_Interface(bandwidth, mySize,
-                                                          myIndicies, comm) );
+    interface = Teuchos::rcp(new TrilinosMatrix_Interface(rowMap,
+                                                 bandwidth, comm));
   }
 
   //============================================================
@@ -62,7 +45,7 @@ extern "C" {
   //============================================================
   void putintotrilinosmatrix_(int& rowInd, int& colInd, double& val) {
 
-    const Epetra_Map& map = interface->getOperator()->RowMap(); 
+    const Epetra_Map& map = interface->getRowMap();
     // If this row is not owned on this processor, then do nothing
     if (!map.MyGID(rowInd)) return;
 
@@ -100,11 +83,9 @@ extern "C" {
 	    int aNumber = bandwidth;
 	    ierr = matrix.ExtractGlobalRowCopy(j, aNumber, numEntries,
 						values, indices);
-	    cout << ierr << endl;
 	    assert(ierr >= 0);
 	    ierr = newMatrix->InsertGlobalValues(j, numEntries, &(values[0]),
 						 &(indices[0]) );
-	    cout << ierr << endl;
 	    assert(ierr >= 0);
 	  }
 	}
@@ -133,11 +114,13 @@ extern "C" {
     Teuchos::Time linearTime("LinearTime");
     linearTime.start();
 
-    int j, ierr;
+    int ierr;
     // Lock in sparsity pattern
     if (!interface->isSparsitySet()) interface->finalizeSparsity();
 
-    const Epetra_Map& map = interface->getOperator()->RowMap(); 
+    const Epetra_Map& map = interface->getRowMap(); 
+
+/*
     int numMyElements = map.NumMyElements();
     int *myGlobalElements = new int[numMyElements];
     map.MyGlobalElements(&myGlobalElements[0]);
@@ -146,12 +129,13 @@ extern "C" {
 
     // Inserting values into the rhs: "-1" for Fortran to C Numbering
     double *myGlobalValues = new double[numMyElements];
-    for (j=0; j<numMyElements; ++j) {
+    for (int j=0; j<numMyElements; ++j) {
       myGlobalValues[j] = rhs[myGlobalElements[j] -1 ];
     }
     ierr = b.ReplaceGlobalValues(numMyElements, &myGlobalValues[0],
 				 &myGlobalElements[0]);
 
+*/
     Epetra_Vector x(map);
 
     Teuchos::ParameterList paramList;
@@ -165,8 +149,11 @@ extern "C" {
 
     Stratimikos::DefaultLinearSolverBuilder linearSolverBuilder;
 
-    Teuchos::RCP<Epetra_Vector> epetraRhs = Teuchos::rcp(&b, false);
+ //   Teuchos::RCP<Epetra_Vector> epetraRhs = Teuchos::rcp(&b, false);
     Teuchos::RCP<Epetra_Vector> epetraSol = Teuchos::rcp(&x, false);
+
+
+    Teuchos::RCP<Epetra_Vector> epetraRhs = interface->getPartitionedVec(rhs);
 
     Teuchos::RCP<const Thyra::LinearOpBase<double> >
       thyraOper = Thyra::epetraLinearOp(interface->getOperator());
@@ -191,6 +178,7 @@ extern "C" {
 
     thyraSol = Teuchos::null;
 
+/*
 #ifdef ONLY_RETURN_OWNED_VECTOR
     x.ExtractCopy(answer);
 #else
@@ -205,13 +193,42 @@ extern "C" {
     xExtra.Import(x, import, Add);
     xExtra.ExtractCopy(answer);
 #endif
+*/
+    interface->spreadVector(x, answer);
 
-    delete[] myGlobalElements;
+    //delete[] myGlobalElements;
 
     elapsedTime = linearTime.stop();
     *out << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
 
     //cout << " ======================================" << endl;
+  }
+
+  void savetrilinosmatrix_(int* i) {
+    if (!interface->isSparsitySet()) interface->finalizeSparsity();
+    if (*i==0)
+      savedMatrix_A = Teuchos::rcp(new Epetra_CrsMatrix(*(interface->getOperator())));
+    else if (*i==1)
+      savedMatrix_C = Teuchos::rcp(new Epetra_CrsMatrix(*(interface->getOperator())));
+    else
+      assert(false);
+  }
+
+  void restoretrilinosmatrix_(int* i) {
+    if (*i==0)
+      interface->updateOperator(savedMatrix_A); 
+    else if (*i==1)
+      interface->updateOperator(savedMatrix_C); 
+    else
+      assert(false);
+  }
+
+  void matvecwithtrilinos_(double* x, double* answer) {
+    const Epetra_Map& map = interface->getRowMap(); 
+    Teuchos::RCP<Epetra_Vector> epetra_x = interface->getPartitionedVec(x);
+    Epetra_Vector y(map);
+    interface->getOperator()->Multiply(false, *epetra_x, y);
+    interface->spreadVector(y, answer);
   }
 
 } // extern"C"

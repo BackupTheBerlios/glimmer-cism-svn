@@ -40,6 +40,7 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_sparse_type.F90 glimmer_sparse.F90 \
                        glimmer_sparse_umfpack.F90 \
                        glimmer_sparse_slap.F90 \
+                       glimmer_sparse_trilinos.F90 \
 		       glimmer_coordinates.F90 \
                        glimmer_integrate.F90 ncdf_utils.F90 \
                        glimmer_map_CFproj.F90 glimmer_map_proj4.F90 \
@@ -51,7 +52,6 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_writestats.F90 writestats.c writestats.h
 nodist_libglimmer_a_SOURCES = glimmer_vers.F90
 if TRILINOS
-libglimmer_a_SOURCES += glimmer_sparse_trilinos.F90
 CALLTRILINOS_LIB = ../cpp/libcalltrilinos.a
 endif TRILINOS
 

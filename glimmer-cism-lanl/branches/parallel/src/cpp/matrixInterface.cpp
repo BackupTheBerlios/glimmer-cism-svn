@@ -2,22 +2,35 @@
 #include "matrixInterface.hpp"
 
 // Constructor
-TrilinosMatrix_Interface::TrilinosMatrix_Interface(int bandwidth, int mySize, int* myIndices, const Epetra_Comm& comm)
-  : bandwidth_(bandwidth), matrixOrder_(-1), comm_(comm) {
+TrilinosMatrix_Interface::TrilinosMatrix_Interface
+  (const Teuchos::RCP<const Epetra_Map>& rowMap,
+   int bandwidth, const Epetra_Comm& comm)
+  : rowMap_(rowMap), bandwidth_(bandwidth), matrixOrder_(-1), comm_(comm) {
   
-  rowMap_ =  Teuchos::rcp(new Epetra_Map(-1, mySize, myIndices, 1, comm) );
-  matrixOrder_ = rowMap_->NumGlobalElements();
+  matrixOrder_ = rowMap->NumGlobalElements();
 
-  operator_ = Teuchos::rcp(new Epetra_CrsMatrix(Copy, *rowMap_, bandwidth) );
-  isFillCompleted_ = 0;
+  operator_ = Teuchos::rcp(new Epetra_CrsMatrix(Copy, *rowMap, bandwidth) );
+  isFillCompleted_ = false;
 
   // create map of full vector
   fullMap_ =  Teuchos::rcp(new Epetra_LocalMap(matrixOrder_, 1, comm));
+
+  import_r2f = Teuchos::rcp(new Epetra_Import(*fullMap_, *rowMap_));
+  import_f2r = Teuchos::rcp(new Epetra_Import(*rowMap_, *fullMap_));
 }
 
 // Destructor
 TrilinosMatrix_Interface::~TrilinosMatrix_Interface() {
 }
+
+// Accessor methods
+bool TrilinosMatrix_Interface::isSparsitySet() const {return isFillCompleted_;}
+const int TrilinosMatrix_Interface::bandwidth() const {return bandwidth_;}
+const int TrilinosMatrix_Interface::matrixOrder() const {return matrixOrder_;}
+const Epetra_Map& TrilinosMatrix_Interface::getFullMap() const {return *fullMap_;}
+const Epetra_Map& TrilinosMatrix_Interface::getRowMap() const {return *rowMap_;}
+Teuchos::RCP<Epetra_CrsMatrix>& TrilinosMatrix_Interface::getOperator() {return operator_;}
+
 
 // Fix the sparsity patter by calling FillComplete
 void TrilinosMatrix_Interface::finalizeSparsity() {
@@ -26,14 +39,24 @@ void TrilinosMatrix_Interface::finalizeSparsity() {
   assert (ierr==0);
 }
 
-// Update the value of bandwidth_ // RN_20100121: probably not needed
-void TrilinosMatrix_Interface::updateBandwidth(int bandwidth) {
-  bandwidth_ = bandwidth;
-}
-
 // Update the operator and also the corresponding row map.
 void TrilinosMatrix_Interface::updateOperator(Teuchos::RCP<Epetra_CrsMatrix> newOperator) {
   operator_ = newOperator;
-  rowMap_ = Teuchos::rcp(new Epetra_Map(operator_->RowMap() ) );
-  isFillCompleted_ = false;
+  isFillCompleted_ = operator_->Filled();
 }
+
+Teuchos::RCP<Epetra_Vector> TrilinosMatrix_Interface::getPartitionedVec(double *fullRhs)
+{
+  Teuchos::RCP<Epetra_Vector> rhs_EV
+    = Teuchos::rcp(new Epetra_Vector(*rowMap_));
+  Epetra_Vector fullRhs_EV(View, *fullMap_, fullRhs); 
+  rhs_EV->Import(fullRhs_EV, *import_f2r, Insert);
+  return rhs_EV;
+}
+
+void TrilinosMatrix_Interface::spreadVector(const Epetra_Vector& vec, double* fullVec)
+{
+  Epetra_Vector fullVec_EV(View, *fullMap_, fullVec); 
+  fullVec_EV.Import(vec, *import_r2f, Insert);
+}
+
