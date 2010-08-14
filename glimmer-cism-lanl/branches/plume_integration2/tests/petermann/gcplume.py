@@ -278,14 +278,14 @@ class GCConfig(object):
                                      },
                       'CF output' : { 'variables' : ' '.join(['lsurf','usurf',
                                                               'thk','bmlt',
-                                                              'acab',
+                                                              #'acab',
                                                               'uvelhom',
                                                               'vvelhom',
-                                                              'uvelhom_srf',
-                                                              'vvelhom_srf',
-                                                              'thkmask','topg',
-                                                              'kinbcmask',
-                                                              'temp',
+                                                              #uvelhom_srf',
+                                                              #'vvelhom_srf',
+                                                              #'thkmask','topg',
+                                                              #'kinbcmask',
+                                                              #'temp',
 							      'efvs',
                                                               'tau_hom_xx','tau_hom_yy',
                                                               'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
@@ -657,6 +657,21 @@ class _GenInputJob(_AtomicJob):
                                              })
 
 
+class LinearShelfJob(_GenInputJob):
+
+    def __init__(self):
+        _GenInputJob.__init__(self)
+        self.ifthk = None
+
+    def _genInputCmd(self):
+        cmd = ['nc_gen_input']
+        cmd.extend(['ls', self.inputfile,
+                    int(self.m), int(self.n), int(self.nlevel), float(self.hx), float(self.hy),
+                    float(self.upthk), float(self.upvel), int(self.ifpos), float(self.ifthk),
+                    float(self.otopg), int(self.kinbcw)])
+        cmd = [_fortran_style('nc_gen_input', c) for c in cmd]
+        return cmd
+
 class SteadyShelfJob(_GenInputJob):
     
     def __init__(self):
@@ -751,7 +766,7 @@ class RegridJob(_BaseJob,_IO):
 
     def _setJobDir(self,jd):
         realDir = os.path.expandvars(jd)
-        if (not(os.path.fexists(realDir))):
+        if (not(os.path.lexists(realDir))):
             raise Exception("jobDir %s does not exist" % realDir)
         else:
             self.initJob.jobDir = realDir

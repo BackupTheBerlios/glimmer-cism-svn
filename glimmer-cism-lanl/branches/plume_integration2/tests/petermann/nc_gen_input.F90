@@ -63,6 +63,10 @@ program nc_gen_input
 
      call make_two_sided_shelf()
 
+  else if (type_code == 'ls') then
+  
+     call make_linear_shelf()
+
   else if (type_code == 'ss') then
 
      call make_steady_shelf()
@@ -571,7 +575,7 @@ contains
     uvelhom = 0.0
     vvelhom = 0.0
 
-    vvelhom(:,:,:) = upstream_vel
+    vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
 
     call write_nc_file(.true.)
 
@@ -579,6 +583,121 @@ contains
     deallocate(thck,topog,kinbcmask,uvelhom,vvelhom)
 
   end subroutine make_steady_shelf
+
+  subroutine make_linear_shelf()
+
+    ! local variables
+    integer :: i,j
+    integer :: ifpos,kinbcw
+    real :: hx,hy
+    real :: rhoi, rhoo
+    real :: upstream_thk, if_thk, upstream_vel
+    real :: chan_depth,otopg,ltopg,acab_per_year
+    real,dimension(:),allocatable :: rand_row
+
+    real :: k,tmp
+    real :: rand_amp
+
+    character (len=512) :: linear_shelf_params = "<fname> <nx> <ny> <n_level> <hx> <hy> <upstream_thk> &
+       & <upstream_vel> <ifpos> <ifthk> <ocean_depth> <kinbcw>"
+
+    if (command_argument_count() /= 13) then
+       write(*,*)"Incorrect number of parameters. Linear shelf requires: &
+            &  ",trim(linear_shelf_params)
+       stop 1
+    end if
+
+    call get_command_argument(2,argstr)
+    read(argstr,'(a512)') fname
+    write(*,*) 'fname ',trim(fname)
+
+    call get_command_argument(3, argstr)
+    read(argstr,'(i5)') nx
+    write(*,*) 'nx:',nx
+
+    call get_command_argument(4,argstr)
+    read(argstr,'(i5)') ny
+    write(*,*) 'ny:',ny
+
+    call get_command_argument(5,argstr)
+    read(argstr,'(i5)') n_level
+    write(*,*) 'n_level:',n_level
+
+    call get_command_argument(6,argstr)
+    read(argstr,'(f18.12)') hx
+    write(*,*) 'hx',hx
+
+    call get_command_argument(7,argstr)
+    read(argstr,'(f18.12)') hy
+    write(*,*) 'hy',hy
+
+    call get_command_argument(8,argstr)
+    read(argstr,'(f18.12)') upstream_thk
+    write(*,*) 'upstream_thk',upstream_thk
+
+    call get_command_argument(9,argstr)
+    read(argstr,'(f18.12)') upstream_vel
+    write(*,*) 'upstream_vel',upstream_vel
+
+    call get_command_argument(10,argstr)
+    read(argstr,'(i5)') ifpos
+    write(*,*) 'ifpos',ifpos
+
+    call get_command_argument(11,argstr)
+    read(argstr,'(f18.12)') if_thk
+    write(*,*) 'if_thk', if_thk
+
+    call get_command_argument(12,argstr)
+    read(argstr,'(f18.12)') otopg
+    write(*,*) 'otopg', otopg
+
+    call get_command_argument(13,argstr)
+    read(argstr,'(i5)') kinbcw
+    write(*,*) 'kinbc_width',kinbcw
+
+    allocate(xs(nx),ys(ny),level(n_level),xstag(nx-1),ystag(ny-1))
+    allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
+    allocate(uvelhom(nx-1,ny-1,n_level), vvelhom(nx-1,ny-1,n_level))
+!    allocate(rand_row(nx))
+
+    !now populate the dimension variables
+    xs = (/ ( (i-1)*hx,i=1,nx ) /)
+    ys = (/ ( (j-1)*hy,j=1,ny ) /)
+    level = (/ ( real(i)/real((n_level-1)), i=0,(n_level-1) ) /)
+    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
+    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! define the topography, thickness, kinbcmask       !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    !define topg
+    topog = -abs(otopg)
+    
+    !define thickness
+
+    thck = 0.0
+    thck(2:(nx-1),(ny-kinbcw):ny) = upstream_thk 
+    
+    do j=ifpos,(ny-kinbcw)
+       thck(2:(nx-1),j) = if_thk + real(j-ifpos)/(ny-kinbcw+1-ifpos) * (upstream_thk-if_thk)
+    end do
+
+    ! define kinbcmask
+    kinbcmask = 0
+    kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
+    
+    uvelhom = 0.0
+    vvelhom = 0.0
+
+    vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
+
+    call write_nc_file(.true.)
+
+    deallocate(level,xs,ys,xstag,ystag)
+    deallocate(thck,topog,kinbcmask,uvelhom,vvelhom)
+
+  end subroutine make_linear_shelf
 
   subroutine make_two_sided_shelf()
 
