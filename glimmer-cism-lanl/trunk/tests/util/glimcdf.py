@@ -68,7 +68,7 @@ def readData(file,header = True):
 
 
     
-class file_reader():
+class file_reader:
     ncols = 0
     nrows = 0
     xllcorner = 0
