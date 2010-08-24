@@ -125,14 +125,14 @@ glimmer_unittest_SOURCES = unittest_framework.F90 unittest.F90 unittest_glide_de
                            unittest_ice3d_lib.F90 unittest_pbc.F90
 glimmer_unittest_LDADD = libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB)
 
-glide_thermal_equib_SOURCES = thermal_equib.F90
+glide_thermal_equib_SOURCES = thermal_equib.F90 
 glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB)
 
 ALL_SRC=$(test_integrage_SOURCES) $(test_lithot_SOURCES) $(test_ts_SOURCES) $(test_setup_SOURCES) \
         $(test_config_SOURCES) $(nc2config_SOURCES) $(glex_ebm_SOURCES) $(glint_example_SOURCES) \
 	$(eis_glide_SOURCES) $(simple_glide_SOURCES) $(eismint3_glide_SOURCES) $(libglimmer_a_SOURCES) \
 	$(libglide_a_SOURCES) $(libglint_a_SOURCES) $(libclimate_a_SOURCES) $(spin_glide_SOURCES) \
-        $(glimmer_unittest_SOURCES)
+        $(glimmer_unittest_SOURCES) $(glide_thermal_equib_SOURCES)
 
 AM_FCFLAGS = $(NETCDF_CPPFLAGS) $(HDF5_CPPFLAGS)
 
