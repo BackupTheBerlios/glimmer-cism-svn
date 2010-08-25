@@ -28,7 +28,7 @@ module parallel
   integer,parameter :: uhalo = 0
 
   integer,parameter :: staggered_lhalo = lhalo
-  integer,parameter :: staggered_uhalo = 1
+  integer,parameter :: staggered_uhalo = 0
 
   integer,save :: global_ewn,global_nsn
 
