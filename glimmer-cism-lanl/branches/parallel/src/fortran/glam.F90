@@ -34,8 +34,6 @@ module glam
 
         type(glide_global_type), intent(inout) :: model
 
-        integer :: ewn, nsn
-
         integer ::         &
           ntrace_ir       ,&! number of tracers to be remapped
           nghost_ir         ! number of ghost cells used in remapping scheme
@@ -58,7 +56,7 @@ module glam
 
         ! put relevant model variables into a format that inc. remapping code wants
         ! (this subroutine lives in "remap_glamutils.F90")
-        call horizontal_remap_in(model%remap_wk, model%numerics%dt, model%geometry%thck(1:ewn-1,1:nsn-1),  &
+        call horizontal_remap_in(model%remap_wk, model%numerics%dt, model%geometry%thck,  &
                                   ntrace_ir,               nghost_ir,                             &
                                   model%numerics%dew,      model%numerics%dns,                    &
                                   model%velocity_hom%uflx, model%velocity_hom%vflx,               &
