@@ -70,6 +70,10 @@ module fo_upwind_advect
 
         type(glide_global_type), intent(inout) :: model
 
+        print *, ' '
+        print *, '(dH/dt using first-order upwinding)'
+        print *, 'time = ', model%numerics%time
+
         call run_ho_diagnostic(model)   ! get velocities and fluxes from HO dynamic subroutines
 
         call fo_upwind_advect_main( model%geometry%thck,    model%geomderv%stagthck,    &
@@ -183,14 +187,14 @@ module fo_upwind_advect
     thck = thck_old + ( 1 / (dns * dew) * flux_net ) * dt + (acab * dt)
 
     ! debugging
-    print *, ' '
-    print *, 'net volume change = ', sum( (thck-thck_old)*mask )*thk0 *dew*dns*len0**2 
-    print *, 'net calving flux = ', sum( thck * (1.0d0-mask) )*thk0*dew*dns*len0**2
-    print *, '(for the confined shelf experiment, the above two should sum to ~0)'
-    print *, 'mean accum/ablat rate = ', sum( acab * mask ) / sum(mask) / (dt*tim0) * scyr
-    print *, 'mean dH/dt = ', sum( (thck-thck_old)*mask )*thk0 / sum(mask) / (dt*tim0) * scyr
-    print *, 'sum of flux change (should be ~0) = ', sum( flux_net*vel0*thk0*len0 ) 
-    print *, ' '
+!    print *, ' '
+!    print *, 'net volume change = ', sum( (thck-thck_old)*mask )*thk0 *dew*dns*len0**2 
+!    print *, 'net calving flux = ', sum( thck * (1.0d0-mask) )*thk0*dew*dns*len0**2
+!    print *, '(for the confined shelf experiment, the above two should sum to ~0)'
+!    print *, 'mean accum/ablat rate = ', sum( acab * mask ) / sum(mask) / (dt*tim0) * scyr
+!    print *, 'mean dH/dt = ', sum( (thck-thck_old)*mask )*thk0 / sum(mask) / (dt*tim0) * scyr
+!    print *, 'sum of flux change (should be ~0) = ', sum( flux_net*vel0*thk0*len0 ) 
+!    print *, ' '
 !    pause
 
     thck = thck * mask               ! remove any mass advected outside of initial domain
