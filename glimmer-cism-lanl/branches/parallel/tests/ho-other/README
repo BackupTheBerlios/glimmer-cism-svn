@@ -1,18 +1,22 @@
 ho-other
 ========
-This directory contains a Python script for running an experiment involving
+This directory contains two Python scripts for running an experiment involving
 an ice sheet with an elipsoidal "hump" shape on a flat base.  To run the
 experiment, enter the following on a terminal command line:
 
-python hump.py filename.config
+For a serial job: python hump.py filename.config
+For a parallel job: hump.py parallel_filename.config number_of_processors
 
-This will run the script using the configuration file that you specify.
+If you want to run in parallel, the configuration file and number of processors 
+must be specified (but can be 1). If no parameters are specified, the code will 
+run in serial using the 'hump.config' configuration file. Otherwise, it will run 
+the script using the configuration file that you specify.
 There are two configuration files, "hump.PBJ.config" and "hump.PP.config" in 
 this directory.  The first ("PBJ") uses the Pattyn/Bocek/Johnson 
 implementation of the higher-order approximation while the second ("PP") uses 
-the Payne/Price implementation.  If you want to run the experiment using a 
-different configuration file you can include that filename as the command line 
-argument.
+the Payne/Price implementation.  The "PP" version currently has evolution=0
+so the ice sheet evolves, which exercises the new solvers being developed and 
+assessed with this test case. 
 
 The script performs the following three steps:
 1. Create a netCDF input file for Glimmer.
