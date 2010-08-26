@@ -50,7 +50,7 @@ module glam
         call geometry_derivs_unstag(model)
 
         print *, ' '
-        print *, '(dH/dt using incremental remapping)
+        print *, '(dH/dt using incremental remapping)'
         print *, 'time = ', model%numerics%time
 
         ! This driver is called from "glide_velo_higher.F90"
