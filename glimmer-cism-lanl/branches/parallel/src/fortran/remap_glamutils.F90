@@ -150,13 +150,12 @@ module remap_glamutils
     ngew = (wk%ewn_ir - ewn)/2
     ngns = (wk%nsn_ir - nsn)/2
 
-    where( thck*thk0 > thklim )
+    where( thck > thklim )
         wk%thck_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = thck(:,:)*thk0
     elsewhere
         wk%thck_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = 0.0d0
     end where
     
-    wk%thck_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = thck(:,:)*thk0
     wk%dew_ir(:,:,1)  = dew*len0; wk%dns_ir(:,:,1) = dns*len0
     wk%dewt_ir(:,:,1) = dew*len0; wk%dnst_ir(:,:,1) = dns*len0
     wk%dewu_ir(:,:,1) = dew*len0; wk%dnsu_ir(:,:,1) = dns*len0
