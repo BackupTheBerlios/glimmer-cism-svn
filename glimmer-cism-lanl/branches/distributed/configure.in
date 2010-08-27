@@ -42,6 +42,7 @@ FFLAGS=$glimmer_FFLAGS
 AC_LANG(Fortran)
 AC_FC_SRCEXT(f90)
 AX_F90_MODULE_FLAG
+EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
 
 # checking for f2003 command line parser
 AC_MSG_CHECKING([for f2003 command line parser])
@@ -203,9 +204,8 @@ if test "$ac_cv_netcdf_prefix" != ""; then
   AC_MSG_RESULT(netCDF location: $ac_cv_netcdf_prefix)
   FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_netcdf_prefix/include"
   LDFLAGS="$LDFLAGS -L$ac_cv_netcdf_prefix/lib"
-  AC_SUBST(NETCDF_LIBS,$NETCDF_LIBS)
 fi
-AC_CHECK_LIB(netcdf,NF_INQ_LIBVERS)
+AC_SEARCH_LIBS(NF_INQ_LIBVERS,[netcdf netcdff],,[AC_MSG_ERROR(cannot find netCDF fortran library)])
 AC_MSG_CHECKING([for f90 netCDF interface])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[use netcdf])],AC_MSG_RESULT([yes]),AC_MSG_FAILURE([no]))
 
@@ -255,16 +255,16 @@ If you are not sure what to do here but have BLAS installed in a standard locati
         #that this should be placed in the same directory as libumfpack (e.g. in the lib directory).  Check for that.
         LDFLAGS="$LDFLAGS $ac_cv_umfpack_prefix/lib/umf4_f77wrapper.o"
         AC_MSG_CHECKING(for UMFPACK F77 bindings)
-       # AC_LINK_IFELSE(AC_LANG_PROGRAM([],[]), AC_MSG_RESULT(yes), 
-       #                [AC_MSG_RESULT(no)
-       #                 AC_MSG_ERROR([
-#In order to use UFMPACK you need to compile umf4_f77wrapper.c 
-#(located in the Demo subdirectory of the source distribution) 
-#and place the resulting object file in the same directory as 
-#libumfpack.  This is not done with a standard UMFPACK install.  
-#If you downloaded a binary distribution of Umfpack, you may 
-#need to obtain the source at: 
-#http://www.cise.ufl.edu/research/sparse/umfpack.])])
+        AC_LINK_IFELSE(AC_LANG_PROGRAM([],[]), AC_MSG_RESULT(yes), 
+                       [AC_MSG_RESULT(no)
+                        AC_MSG_ERROR([
+In order to use UFMPACK you need to compile umf4_f77wrapper.c 
+(located in the Demo subdirectory of the source distribution) 
+and place the resulting object file in the same directory as 
+libumfpack.  This is not done with a standard UMFPACK install.  
+If you downloaded a binary distribution of Umfpack, you may 
+need to obtain the source at: 
+http://www.cise.ufl.edu/research/sparse/umfpack.])])
 fi
 
 #PARDISO
@@ -297,10 +297,20 @@ If the following Pardiso check fails, please use the --with-gomp flag and try ag
             AC_CHECK_LIB([pardiso],[pardiso], , AC_MSG_ERROR([Libpardiso not found.]),[-lblas])
 fi
 
-#AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
-#AM_CONDITIONAL(PARDISO, test "$ac_cv_pardiso_prefix" != "")
-
 #TRILINOS
+AC_MSG_CHECKING([whether mpi is enabled])
+AC_ARG_ENABLE(mpi, AS_HELP_STRING([--enable-mpi],[Build with HAVE_MPI flag]),
+[case "${enableval}" in
+ yes)  AC_DEFINE(HAVE_MPI,1,[Define to 1 if you want to enable extra profiling])
+       FCFLAGS="$FCFLAGS -DHAVE_MPI $MPI_COMPILE_FLAGS"
+       LDFLAGS="$LDFLAGS $MPI_LD_FLAGS" 
+       LIBS="$LIBS -lmpi"
+       EPETRA_LIBRARIES="-llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lFEApp -lsacado -lModeLaplace -lanasaziepetra -lanasazi -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -lgaleri -laztecoo -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos"
+       AC_MSG_RESULT([yes]);;	
+ no)   EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
+        AC_MSG_RESULT([no]);;
+ *) AC_MSG_ERROR(bad value ${enableval} for --enable-mpi) ;;
+esac],[AC_MSG_RESULT([no])])
 if test "$ac_cv_trilinos_prefix" != ""; then
         AC_MSG_RESULT([Using Trilinos to solve sparse linear systems, (located at $ac_cv_trilinos_prefix)])
 
@@ -319,20 +329,22 @@ If you are not sure what to do here but have LAPACK installed in a standard loca
             fi
 
             TRILINOS_PREFIX="$ac_cv_trilinos_prefix"
-            AC_MSG_CHECKING(for Trilinos Test)
-            FCFLAGS="$FCFLAGS -DTRILINOS $ax_cv_f90_modflag$ac_cv_trilinos_prefix/include -I../cpp"
-#            FCFLAGS="$FCFLAGS -DHAVE_MPI -DTRILINOS $ax_cv_f90_modflag$ac_cv_trilinos_prefix/include -I../cpp"
-            CXXFLAGS="$FCFLAGS -DTRILINOS -I$ac_cv_trilinos_prefix/include"
+            #AC_MSG_CHECKING(for Trilinos Test)
+            FCFLAGS="$FCFLAGS -DTRILINOS"
+            CXXFLAGS="$CXXFLAGS $CPPFLAGS -DTRILINOS -I$ac_cv_trilinos_prefix/include"
             LDFLAGS="$LDFLAGS -L$ac_cv_trilinos_prefix/lib" 
-	    #LIBS="$LIBS -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lkomplex -lifpack -lpamgen_extras -lpamgen -lamesos -lgaleri -laztecoo -ldpliris -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lshards -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lparmetis -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lmetis -lmpichcxx -lstd -lC"
-
-	    LIBS="$LIBS -llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lzoltan -lepetra -lrtop -lteuchos -lparmetis -lmetis"
+            #  Jaguar LIBS list
+	    LIBS="$LIBS -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lkomplex -lifpack -lpamgen_extras -lpamgen -lamesos -lgaleri -laztecoo -ldpliris -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lshards -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lparmetis -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lmetis -lmpichcxx -lstd -lC"
+            #  Coyote LIBS list
+            #EPETRA_LIBRARIES should be read from trilinos_build_path/include/Makefile.export.NOX
+            #for now, setting in enable_mpi option
 	    #LIBS="$LIBS $EPETRA_LIBRARIES -lstdc++"
 fi
 
 AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
 AM_CONDITIONAL(PARDISO, test "$ac_cv_pardiso_prefix" != "")
 AM_CONDITIONAL(TRILINOS, test "$ac_cv_trilinos_prefix" != "")
+
 
 #AC_LANG_POP(Fortran)
 

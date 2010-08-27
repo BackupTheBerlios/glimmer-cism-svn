@@ -1,28 +1,49 @@
-This is a 'helloworld.cpp' routine to test the build system.
-Do the following:
+AGS:08/04/2010
 
-1. Compile the 'helloworld.cpp'
-g++ -c helloworld.cpp
+The cpp directory is currently used to interface to the
+Trilinos linear solvers. These files are only compiled
+when glimmer is configured  --with-trilinos. A library
+called   libcalltrilinos.a  is the result, and is linked
+into executables through logic in src/fortran/Makefile.am.
 
-2. Copy 'helloworld.o' to ../fortran/
+There are 2 distinct implementations here. The switch
+between the two options is controlled by the 
+which_ho_sparse flag in the input file.
 
-3. Uncomment line 195 in 'glimmer_sparse_slap.F90' in order to to make a call to helloworld()
+*  which_ho_sparse = 3
+This uses solveTriadMatrixWithTrilinos.cpp, which is the 
+implementation that is called from sparse_easy_solve.  
+This takes the matrix in Triad format, redundantly on 
+every processor. It then converts the matrix to Trilinos
+(Epetra_CrsMatrix) format, distributed in parallel.
+  -- This implementation will be deprecated when we move
+     to the distributed fortran implementation in glimmer.
 
-4. Do 'make'. It will return an error while trying to build 'simple_glide', something as follows:
+*  which_ho_sparse = 3
+This uses trilinosLinearSolver.cpp (and matrixInterface.cpp)
+and is the implementation where the entries in the matrix
+are loaded directly into the Trilinos (Epetra_CrsMatrix)
+format. The hook to this is in putpcgc in glam_strs2.F90.
 
-gfortran   -I/local/netcdf-4.0.1/include  -L/local/netcdf-4.0.1/lib -o simple_glide  simple_glide.o libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a    -lnetcdf  /local/BLAS/blas_LINUX.a
-libglimmer.a(glimmer_sparse_slap.o): In function `__glimmer_sparse_slap__slap_solve':
-glimmer_sparse_slap.F90:(.text+0x4dd): undefined reference to `helloworld_'
-collect2: ld returned 1 exit status
-make[2]: *** [simple_glide] Error 1
-make[2]: Leaving directory `/home/hdnong/work/glimmer/src/fortran'
-make[1]: *** [all-recursive] Error 1
-make[1]: Leaving directory `/home/hdnong/work/glimmer/src/fortran'
-make: *** [all] Error 2
 
-5. In the compile line above, replace 'gfortran' with 'g++' and add 'helloworld.o' to the line. Also add '-lgfortranbegin -lgfortran' to the line as follows:
+In both cases, the options that control the linear solver
+methods are read from an input file called   strat1.xml.
+The full list of options is documented on the Trilinos
+web pages. Click on the Stratimikos package, documentation
+of the Trilinos version that you are using, and then the
+link to Stratimikos::DefaultLinearSolverBuilder.
 
-g++   -I/local/netcdf-4.0.1/include  -L/local/netcdf-4.0.1/lib -o simple_glide  simple_glide.o helloworld.o libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a    -lnetcdf  /local/BLAS/blas_LINUX.a -lgfortranbegin -lgfortran
+http://trilinos.sandia.gov/packages/docs/r10.4/packages/stratimikos/doc/html/classStratimikos_1_1DefaultLinearSolverBuilder.html
 
-6. To test the call to 'helloworld()', do
-./simple_glide ../../example/example.config > test.out
+
+More...As of today, before a distributed fortran code
+exists for parallelization of the matrix-loading phase,
+the parallelism is only over the matrix solve. Each
+processor redundantly runs the fortran code and 
+loads entries for the entire matrix. Both implementation
+here work by partitioning the matrix rows in parallel
+in the simplest way. Each processor ignores the matrix
+rows that it does not own. The final result, which is
+also distributed, is broadcast to all processors before
+returning it to the fortran code.
+

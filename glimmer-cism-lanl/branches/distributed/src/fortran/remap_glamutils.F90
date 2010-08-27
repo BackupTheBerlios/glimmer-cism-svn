@@ -105,10 +105,10 @@ module remap_glamutils
 !----------------------------------------------------------------------
 
     subroutine horizontal_remap_in( wk, dt,       thck,     &
-                                    ntrace,   nghost,   &
-                                    dew,      dns,      &
-                                    uflx,     vflx,     &
-                                    stagthck,  &
+                                    ntrace,   nghost,       &
+                                    dew,      dns,          &
+                                    uflx,     vflx,         &
+                                    stagthck, thklim,       &
                                     periodic_ew, periodic_ns)
 
     ! *sfp** get GLAM variables in order for use in inc. remapping code   
@@ -124,7 +124,7 @@ module remap_glamutils
          nghost             ! number of ghost cells
 
     real (kind = dp), dimension(:,:), intent(in) :: thck, uflx, vflx, stagthck
-    real (kind = dp), intent(in) :: dew, dns, dt
+    real (kind = dp), intent(in) :: dew, dns, dt, thklim
     real (kind = dp) :: dt_cfl
 
     logical, intent(in) :: periodic_ew, periodic_ns
@@ -149,8 +149,13 @@ module remap_glamutils
 
     ngew = (wk%ewn_ir - ewn)/2
     ngns = (wk%nsn_ir - nsn)/2
+
+    where( thck > thklim )
+        wk%thck_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = thck(:,:)*thk0
+    elsewhere
+        wk%thck_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = 0.0d0
+    end where
     
-    wk%thck_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = thck(:,:)*thk0
     wk%dew_ir(:,:,1)  = dew*len0; wk%dns_ir(:,:,1) = dns*len0
     wk%dewt_ir(:,:,1) = dew*len0; wk%dnst_ir(:,:,1) = dns*len0
     wk%dewu_ir(:,:,1) = dew*len0; wk%dnsu_ir(:,:,1) = dns*len0
@@ -243,7 +248,7 @@ module remap_glamutils
     thck = wk%thck_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn,1) / thk0
     
     !Apply accumulation
-    thck = thck + acab
+    thck = thck + acab*dt
     
     !Remove thickness from previously masked out locations
     thck = thck * wk%mask_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn)

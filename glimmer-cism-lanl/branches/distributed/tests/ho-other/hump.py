@@ -1,33 +1,99 @@
 #!/usr/bin/env python
+# This script runs an experiment with an ice "hump".
+# Files are written in the "output" subdirectory.
+# The script performs the following three steps:
+# 1. Create a netCDF input file for Glimmer.
+# 2. Run Glimmer, creating a netCDF output file.
+# 3. Move any additional files written by Glimmer to the "scratch" subdirectory.
+# Written by Glen Granzow at the University of Montana on April 13, 2010
 
-#Run with a command line argument that is the config file to read filenames and grid data from
+import sys, os, glob, shutil, numpy
+from netCDF import *
+from math import sqrt
+from ConfigParser import ConfigParser
 
-import glimcdf
-from math import sin,cos,tan,pi
-import numpy
-import sys
+# Check to see if a config file was specified on the command line.
+# If not, hump.config is used.
+if len(sys.argv) > 1:
+  if sys.argv[1][0] == '-': # The filename can't begin with a hyphen
+    print '\nUsage:  python hump.py [FILE.CONFIG]\n'
+    sys.exit(0)
+  else:
+    configfile = sys.argv[1]
+else:
+  configfile = 'hump.config'
 
-#Parse the config file to determine how to set up the netcdf file
-nc, shape = glimcdf.nc_from_config(sys.argv[1])
+# Check to see if #procs specified, relevant when running the code in parallel. 
+# If not, serial run (#procs==1) is performed. To run in parallel, the configure
+# file must be specifed, but the nu,ber of processors does not
+if len(sys.argv) > 2:
+    nprocs = sys.argv[2]
+else:
+  nprocs = '1'
 
-#Create variables for topography and ice thickness
-topg = glimcdf.setup_variable(nc, "topg")
-thk = glimcdf.setup_variable(nc, "thk")
+# Create a netCDF file according to the information in the config file.
+parser = ConfigParser()
+parser.read(configfile)
+nx = int(parser.get('grid','ewn'))
+ny = int(parser.get('grid','nsn'))
+nz = int(parser.get('grid','upn'))
+dx = float(parser.get('grid','dew'))
+dy = float(parser.get('grid','dns'))
+filename = parser.get('CF input', 'name')
 
-#Set this on a flat surface
-topg[:] = 0
+print 'Writing', filename
+try:
+  netCDFfile = NetCDFFile(filename,'w',format='NETCDF3_CLASSIC')
+except TypeError:
+  netCDFfile = NetCDFFile(filename,'w')
 
-#Create a hump of ice in the middle third of the domain, with a maximum heigt of 1000 m.
-cenx = shape.nx / 2
-ceny = shape.ny / 2
+netCDFfile.createDimension('time',1)
+netCDFfile.createDimension('x1',nx)
+netCDFfile.createDimension('y1',ny)
+netCDFfile.createDimension('level',nz)
+netCDFfile.createDimension('x0',nx-1) # staggered grid 
+netCDFfile.createDimension('y0',ny-1)
 
-i = numpy.indices((shape.nx, shape.ny)).astype("float32")
+x = dx*numpy.arange(nx,dtype='float32')
+y = dx*numpy.arange(ny,dtype='float32')
 
-#Create a field with the normalized distance from the center of the domain
-r_squared = 1.0/8.0 - ((i[1,:] - cenx)/shape.nx)**2 - ((i[0,:] - ceny)/shape.ny)**2 
+netCDFfile.createVariable('time','f',('time',))[:] = [0]
+netCDFfile.createVariable('x1','f',('x1',))[:] = x
+netCDFfile.createVariable('y1','f',('y1',))[:] = y
+netCDFfile.createVariable('x0','f',('x0',))[:] = dx/2 + x[:-1] # staggered grid
+netCDFfile.createVariable('y0','f',('y0',))[:] = dy/2 + y[:-1]
 
-H = (2000.0 * numpy.sqrt( numpy.where(r_squared > 0, r_squared, 0)))
+# Calculate values for the required variables.
+thk  = numpy.zeros([ny,nx],dtype='float32')
+topg = numpy.zeros([ny,nx],dtype='float32')
 
-thk[0,:,:] = H
+# Calculate the thickness of the (ellipsoidal) hump of ice
+for i in range(nx):
+  x = float(i-nx/2)/nx
+  for j in range(ny):
+    y = float(j-ny/2)/ny
+    r_squared = x*x+y*y
+    if r_squared < 0.125:
+      thk[j,i] = 2000.0 * sqrt(0.125 - r_squared)
 
-nc.close()
+# Create the required variables in the netCDF file.
+netCDFfile.createVariable('thk', 'f',('time','y1','x1'))[:] = thk
+netCDFfile.createVariable('topg','f',('time','y1','x1'))[:] = topg
+
+netCDFfile.close()
+
+# Run Glimmer
+print 'Running Glimmer/CISM'
+if len(sys.argv) > 2:
+   os.system('aprun -n'+nprocs+' ./simple_glide '+configfile+'')
+else:
+   os.system('echo '+configfile+' | simple_glide')
+
+# Clean up by moving extra files written by Glimmer to the "scratch" subdirectory
+# Look for files with extension "txt", "log", or "nc"
+for files in glob.glob('*.txt')+glob.glob('*.log')+glob.glob('*.nc'):
+# Delete any files already in scratch with these filenames 
+  if files in os.listdir('scratch'):
+    os.remove(os.path.join('scratch',files))
+# Move the new files to scratch
+  shutil.move(files,'scratch')

@@ -1,7 +1,4 @@
 SUBDIRS = SLAP_library
-#if TRILINOS
-#include $(TRILINOS_PREFIX)/include/Makefile.export.NOX
-#endif TRILINOS
 RESTART_STEM=glimmer_rst
 RESTART_INC_INS=$(RESTART_STEM)_body.inc.in $(RESTART_STEM)_head.inc.in
 RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
@@ -43,6 +40,7 @@ libglimmer_a_SOURCES = parallel.F90 glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_sparse_type.F90 glimmer_sparse.F90 \
                        glimmer_sparse_umfpack.F90 \
                        glimmer_sparse_slap.F90 \
+                       glimmer_sparse_trilinos.F90 \
 		       glimmer_coordinates.F90 \
                        glimmer_integrate.F90 ncdf_utils.F90 \
                        glimmer_map_CFproj.F90 glimmer_map_proj4.F90 \
@@ -54,7 +52,7 @@ libglimmer_a_SOURCES = parallel.F90 glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_writestats.F90 writestats.c writestats.h
 nodist_libglimmer_a_SOURCES = glimmer_vers.F90
 if TRILINOS
-libglimmer_a_LIBADD = ../cpp/call_trilinos.o ../cpp/Simple_Interface.o ../cpp/SI_Drive.o
+CALLTRILINOS_LIB = ../cpp/libcalltrilinos.a
 endif TRILINOS
 
 libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \
@@ -69,7 +67,9 @@ libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \
                      glide_thckmask.F90 glide_nonlin.F90 glide_grids.F90\
                      glam.F90 glam_strs2.F90 glam_thck_ppm.F90\
                      remap_advection.F90 remap_glamutils.F90 glide_ground.F90 \
-                     fo_upwind_advect.F90 glide_stress.F90
+                     fo_upwind_advect.F90 glide_stress.F90 glam_Basal_Proc.F90 \
+                     res_vect.F90 output_res.F90 fgmresD.f90 solver_flags.F90
+
 # *sfp* Added the last three lines above for addition of (1) Payne/Price HO dynamics,  
 # (2) LANL inc. remapping and a 1st-order upwind scheme for dH/dt calculation, and
 # (3) module for calc stresses from HO vels and visc and populating the stress tensor
@@ -95,23 +95,18 @@ endif PARDISO
 
 eismint3_glide_SOURCES = eismint3_glide.F90
 eismint3_glide_LDADD = libclimate.a libglide.a libglimmer.a \
-                       SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) 
+                       SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) 
 simple_glide_SOURCES = simple_glide.F90 
 simple_glide_LDADD = libclimate.a libglide.a libglimmer.a \
-                     SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
-if TRILINOS
-libglimmer_a_SOURCES += glimmer_sparse_trilinos.F90
-#simple_glide_LDADD += ../cpp/interface_modCXX.o ../cpp/helloCXX.o ../cpp/call_trilinos.o $(NOX_LIBRARIES)
-#simple_glide_LDADD += ../cpp/call_trilinos.o $(NOX_LIBRARIES)
-endif TRILINOS
+                     SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 eis_glide_SOURCES = eis_glide.F90
-eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 spin_glide_SOURCES = spin_glide.F90
-spin_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a  $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+spin_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB)
 glint_example_SOURCES = glint_example.F90
-glint_example_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+glint_example_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 glex_ebm_SOURCES = glex_ebm.F90
-glex_ebm_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+glex_ebm_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 nc2config_SOURCES = nc2config.F90
 nc2config_LDADD = libglimmer.a $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 
@@ -120,7 +115,7 @@ test_setup_SOURCES = test_setup.F90
 test_setup_LDADD = libglide.a libglimmer.a $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 test_ts_SOURCES = glimmer_ts.F90 glimmer_log.F90 test_ts.F90
 test_lithot_SOURCES = test_lithot.F90
-test_lithot_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+test_lithot_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 test_integrate_SOURCES = test_integrate.F90 glimmer_global.F90 \
                          glimmer_physcon.F90 glimmer_integrate.F90
 test_commandline_SOURCES = test_commandline.F90 glimmer_commandline.F90
@@ -128,16 +123,16 @@ test_writestats_SOURCES = test_writestats.F90 glimmer_writestats.F90 writestats.
 
 glimmer_unittest_SOURCES = unittest_framework.F90 unittest.F90 unittest_glide_deriv.F90 \
                            unittest_ice3d_lib.F90 unittest_pbc.F90
-glimmer_unittest_LDADD = libglide.a libglimmer.a SLAP_library/libslap.a
+glimmer_unittest_LDADD = libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB)
 
-glide_thermal_equib_SOURCES = thermal_equib.F90
-glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+glide_thermal_equib_SOURCES = thermal_equib.F90 
+glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB)
 
 ALL_SRC=$(test_integrage_SOURCES) $(test_lithot_SOURCES) $(test_ts_SOURCES) $(test_setup_SOURCES) \
         $(test_config_SOURCES) $(nc2config_SOURCES) $(glex_ebm_SOURCES) $(glint_example_SOURCES) \
 	$(eis_glide_SOURCES) $(simple_glide_SOURCES) $(eismint3_glide_SOURCES) $(libglimmer_a_SOURCES) \
 	$(libglide_a_SOURCES) $(libglint_a_SOURCES) $(libclimate_a_SOURCES) $(spin_glide_SOURCES) \
-        $(glimmer_unittest_SOURCES)
+        $(glimmer_unittest_SOURCES) $(glide_thermal_equib_SOURCES)
 
 AM_FCFLAGS = $(NETCDF_CPPFLAGS) $(HDF5_CPPFLAGS)
 

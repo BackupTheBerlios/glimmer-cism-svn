@@ -97,9 +97,10 @@ module glide_types
   !Constants that describe the options available
   integer, parameter :: TEMP_SURFACE_AIR_TEMP = 0
   integer, parameter :: TEMP_FULL_SOLUTION = 1
+  integer, parameter :: TEMP_STEADY = 2
 
-  integer, parameter :: FLWA_PATTERSON_BUDD = 0
-  integer, parameter :: FLWA_PATTERSON_BUDD_CONST_TEMP = 1
+  integer, parameter :: FLWA_PATERSON_BUDD = 0
+  integer, parameter :: FLWA_PATERSON_BUDD_CONST_TEMP = 1
   integer, parameter :: FLWA_CONST_FLWA = 2
 
 
@@ -118,6 +119,8 @@ module glide_types
   integer, parameter :: BWATER_LOCAL = 0
   integer, parameter :: BWATER_FLUX  = 1
   integer, parameter :: BWATER_NONE  = 2
+  integer, parameter :: BWATER_BASAL_PROC = 3  !*mb* basal water available from basal proc. module
+  integer, parameter :: BWATER_CONST = 4       !*mb* Constant thickness of water, e.g., to force Tpmp.
 
   integer, parameter :: HO_DIAG_NONE = 0
   integer, parameter :: HO_DIAG_PATTYN_UNSTAGGERED = 1
@@ -160,6 +163,11 @@ module glide_types
   integer, parameter :: HO_SOURCE_EXPLICIT = 1
   integer, parameter :: HO_SOURCE_DISABLED = 2
 
+  !*mb* added option to use the basal proc. model
+  integer, parameter :: BAS_PROC_DISABLED = 0
+  integer, parameter :: BAS_PROC_FULLCALC = 1
+  integer, parameter :: BAS_PROC_FASTCALC = 2
+
   type glide_options
 
     !*FD Holds user options controlling the methods used in the ice-model
@@ -172,17 +180,27 @@ module glide_types
     !*FD \item[0] Set column to surface air temperature
     !*FD \item[1] Do full temperature solution (also find vertical velocity
     !*FD and apparent vertical velocity)
+    !*FD \item[2] Do NOTHING - hold temperatures steady at initial value  
     !*FD \end{description}
 
     integer :: whichflwa = 0
 
     !*FD Method for calculating flow factor $A$:
     !*FD \begin{description} 
-    !*FD \item[0] \emph{Patterson and Budd} relationship 
-    !*FD \item[1] \emph{Patterson and Budd} relationship, 
+    !*FD \item[0] \emph{Paterson and Budd} relationship 
+    !*FD \item[1] \emph{Paterson and Budd} relationship, 
     !*FD with temperature set to $-10^{\circ}\mathrm{C}$ 
     !*FD \item[2] Set equal to $1\times 10^{-16}\,\mathrm{yr}^{-1}
     !*FD \,\mathrm{Pa}^{-n}$
+    !*FD \end{description}
+
+    ! *mb* added
+    integer :: which_bmod = 0
+    !Options for the basal processes code
+    !*FD \begin{description}
+    !*FD \item[0] Disabled
+    !*FD \item[1] Full calculation, with at least 3 nodes to represent the till layer
+    !*FD \item[2] Fast calculation, using Tulaczyk empirical parametrization
     !*FD \end{description}
 
     integer :: whichbwat = 2
@@ -192,6 +210,8 @@ module glide_types
     !*FD \item[0] Calculated from local basal water balance 
     !*FD \item[1] Compute the basal water flux, then find depth via calculation
     !*FD \item[2] Set to zero everywhere 
+    !*FD \item[3] Calculated from till water content, in the basal processes module
+    !*FD \item[4] Set to constant everywhere (10m).
     !*FD \end{description}
 
     integer :: whichmarn = 1
@@ -289,28 +309,25 @@ module glide_types
     !*FD \item[1] Plastic till sliding law, 
     !*FD $\tau_{b,i} = -\tau_c \frac{v_i}{\lVert v \rVert}
 
-!whlmod - added the following three options for Price-Payne higher-order (glam)
-    integer :: which_ho_babc = 0
-    !*FD Flag that describes basal boundary condition (betasquared) for glam: 
+    ! options for using the Payne/Price higher-order dynamical core
+    integer :: which_ho_babc = 4
+    !*FD Flag that describes basal boundary condition for PP dyn core: 
     !*FD \begin{description}
-    !*FD \item[0] constant value
-    !*FD \item[1] simple pattern (e.g., ice stream)
-    !*FD \item[2] read map from file
-    !*FD \item[3] proxy for till yield stress
-    !*FD \item[4] yield stress from basal processes model
-    !*FD \item[5] simple 2D ice shelf
-    !*FD \item[6] spatially periodic (ISMIP-HOM expt C)
-    !*FD \item[7] circular ice shelf
-    !*FD \item[8] frozen bed
-    !*FD \item[9] beta^2 field passed in from CISM
+    !*FD \item[0] constant value (hardcoded in, useful for debugging)
+    !*FD \item[1] simple pattern (hardcoded in, .... )
+    !*FD \item[2] use till yield stress from basal proc model (Picard-type iteration)
+    !*FD \item[3] circular ice shelf
+    !*FD \item[4] no slip everywhere (using stress basal bc and large value for B^2)
+    !*FD \item[5] beta^2 field passed in from CISM
+    !*FD \item[6] no slip everywhere (using Dirichlet, no slip basal bc)
+    !*FD \item[7] use till yield stress from basal proc model (Newton-type iteration)
     !*FD \end{description}
 
     integer :: which_ho_efvs = 0
-    !*FD Flag that indicates how effective viscosity is computed
+    !*FD Flag that indicates how effective viscosity is computed for PP dyn core:
     !*FD \begin{description}
     !*FD \item[0] compute from effective strain rate
     !*FD \item[1] constant value
-    !*FD \item[2] minimum value
 
     integer :: which_ho_resid = 0
     !*FD Flag that indicates method for computing residual in glam iteration
@@ -449,7 +466,7 @@ module glide_types
     logical               :: empty = .true.
     !*FD True if there is no ice anywhere in the domain, false otherwise.
 
-    real(dp) :: ivol, iarea !*FD ice volume and ice area
+    real(dp) :: ivol, iarea,iareag, iareaf !*FD ice volume and ice area
 
   end type glide_geometry
 
@@ -564,6 +581,8 @@ module glide_types
     real(dp),dimension(:,:)  ,pointer   :: diffu_y => null()
     real(dp),dimension(:,:)  ,pointer   :: total_diffu => null() !*FD total diffusivity
     real(dp),dimension(:,:)  ,pointer   :: beta  => null() !*FD basal shear coefficient
+    real(dp),dimension(:,:,:),pointer :: btraction => null() !*FD x-dir (1,:,:) and y-dir (2,:,:) "consistent" basal 
+                                                             !*FD traction fields (calculated from matrix coeffs) 
     type(glide_tensor)                  :: tau
     real(dp),dimension(:,:,:)  ,pointer :: gdsx => null() !*FD basal shear stress, x-dir
     real(dp),dimension(:,:,:)  ,pointer :: gdsy => null() !*FD basal shear stress, y-dir
@@ -575,6 +594,8 @@ module glide_types
     
     !*FD A mask that specifies where the velocity being read in should be held constant as a dirichlet condition
     integer, dimension(:,:), pointer    :: kinbcmask => null()
+    integer, dimension(:,:), pointer    :: dynbcmask => null()
+
   end type glide_velocity_hom
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -705,7 +726,7 @@ module glide_types
   type glide_grnd
     real(dp),dimension(:,:),pointer :: gl_ew => null()
     real(dp),dimension(:,:),pointer :: gl_ns => null()
-    real(sp),dimension(:,:),pointer :: gline_flux => null() !*FD flux at the
+    real(dp),dimension(:,:),pointer :: gline_flux => null() !*FD flux at the
                                                             !grounding line
   end type glide_grnd
   
@@ -832,6 +853,33 @@ module glide_types
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+  type glide_basalproc
+    !Tuneables, set in the config file 
+    real (kind = dp):: fric=0.45d0                   ! Till coeff of internal friction: ND
+    real (kind = dp):: etillo=0.7d0                  ! Till void ratio at No
+    real (kind = dp):: No=1000.d0                    ! Reference value of till effective stress
+    real (kind = dp):: Comp=0.12d0                   ! Till coeff of compressibility: ND
+    real (kind = dp):: Cv = 1.0d-8                   ! Till hydraulic diffusivity: m2/s
+    real (kind = dp):: Kh = 1.0d-10                  !Till hydraulic conductivity: m/s
+    real (kind = dp):: Zs = 3.0d0                    ! Solid till thickness: m
+    real (kind = dp):: aconst=994000000d0            ! Constant in till strength eq. (Pa)
+    real (kind = dp):: bconst=21.7                   ! Constant in till strength eq. (ND)
+    integer:: till_hot = 0
+    integer:: tnodes = 5
+
+    real(dp), dimension (:) , pointer :: till_dz => null()  !holds inital till layer spacing - 
+    
+    !Model variables that will be passed to other subroutines
+    real(dp),dimension(:,:)  ,pointer :: minTauf => null() !Bed strength calculated with basal proc. mod.
+    real(dp),dimension(:,:)  ,pointer :: Hwater  => null() !Water available from till layer (m)
+    !Model variabled necessary for hotstart
+    real(dp),dimension(:,:,:)  ,pointer :: u => null()     !Till excess pore pressure (Pa)
+    real(dp),dimension(:,:,:)  ,pointer :: etill  => null()  !Till void ratio (ND)  
+    
+  end type glide_basalproc
+
+  !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
   type glide_prof_type
      integer :: geomderv
      integer :: hvelos
@@ -862,6 +910,7 @@ module glide_types
     type(glide_tempwk)   :: tempwk
     type(glide_gridwk)   :: gridwk
     type(glide_paramets) :: paramets
+    type(glide_basalproc):: basalproc
     type(glimmap_proj) :: projection
     type(profile_type)   :: profile
     type(glide_prof_type) :: glide_prof
@@ -972,7 +1021,7 @@ contains
     ewn=model%general%ewn
     nsn=model%general%nsn
     upn=model%general%upn
-
+    
     ! Allocate appropriately
 
     allocate(model%general%x0(ewn-1))!; model%general%x0 = 0.0
@@ -1020,18 +1069,33 @@ contains
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%diffu_y)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%total_diffu)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%beta)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%scalar)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xz)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yz)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xx)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yy)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xy)
+    call coordsystem_allocate(model%general%velo_grid, 2, model%velocity_hom%btraction)
+
+! *sfp* changing dims of stress tensor arrays to be consistent with those expected by PP core 
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%scalar)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xz)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yz)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xx)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yy)
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xy)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%scalar)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xz)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%yz)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xx)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%yy)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xy)
+
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%gdsx)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%gdsy)
-    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%efvs)
+
+! *sfp* changing dims of efvs array to be consistent with those expected by PP core 
+!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%efvs)
+    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%efvs)
+
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%velmask)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%velnorm)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%kinbcmask)
+    call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%dynbcmask)
 
     call coordsystem_allocate(model%general%ice_grid, model%climate%acab)
     call coordsystem_allocate(model%general%ice_grid, model%climate%acab_tavg)
@@ -1129,6 +1193,12 @@ contains
     call coordsystem_allocate(model%general%ice_grid, model%gridwk%xyav) 
     call coordsystem_allocate(model%general%ice_grid, model%gridwk%yyav)
 
+    !allocate basal processes variables
+    call coordsystem_allocate(model%general%ice_grid, model%basalproc%Hwater)
+    call coordsystem_allocate(model%general%velo_grid, model%basalproc%minTauf)
+    allocate(model%basalproc%u (ewn-1,nsn-1,model%basalproc%tnodes)); model%basalproc%u=41.0d3
+    allocate(model%basalproc%etill (ewn-1,nsn-1,model%basalproc%tnodes));model%basalproc%etill=0.5d0
+
   end subroutine glide_allocarr
 
   subroutine glide_deallocarr(model)
@@ -1188,6 +1258,7 @@ contains
     deallocate(model%velocity_hom%diffu_y)
     deallocate(model%velocity_hom%total_diffu)
     deallocate(model%velocity_hom%beta)
+    deallocate(model%velocity_hom%btraction)
     deallocate(model%velocity_hom%tau%scalar)
     deallocate(model%velocity_hom%tau%xz)
     deallocate(model%velocity_hom%tau%yz)
@@ -1200,6 +1271,7 @@ contains
     deallocate(model%velocity_hom%velmask)
     deallocate(model%velocity_hom%velnorm)
     deallocate(model%velocity_hom%kinbcmask)
+    deallocate(model%velocity_hom%dynbcmask)
 
     deallocate(model%climate%acab)
     deallocate(model%climate%acab_tavg)
@@ -1277,6 +1349,12 @@ contains
     deallocate(model%gridwk%xxav) 
     deallocate(model%gridwk%xyav) 
     deallocate(model%gridwk%yyav) 
+
+    ! deallocate till variables
+    deallocate(model%basalproc%Hwater)
+    deallocate(model%basalproc%minTauf)
+    deallocate(model%basalproc%u)
+    deallocate(model%basalproc%etill)
 
   end subroutine glide_deallocarr
 

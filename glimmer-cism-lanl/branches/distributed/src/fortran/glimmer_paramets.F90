@@ -51,6 +51,8 @@ module glimmer_paramets
 
   implicit none; save
 
+  integer, parameter :: idiag = 30, jdiag = 50  ! point for diagnostic output
+
 #ifdef NO_RESCALE
   real(dp), parameter :: thk0 = 1          ! m
   real(dp), parameter :: len0 = 1        ! m
@@ -75,13 +77,10 @@ module glimmer_paramets
   real(dp), parameter :: acc0 = thk0 * vel0 / len0  ! m s^{-1} 
   ! ** for zero order model real(dp), parameter :: tim0 = thk0 / acc0      ! s
   real(dp), parameter :: tim0 = len0 / vel0      ! s
-  real(dp) :: tau0                        ! Pa note cannot define here as f90 wont allow
-                                          ! parameters with noninteger powers in - look
-                                          ! in initial in blah.f90 (not sure this applies now...)
+!  real(dp) :: tau0                        ! Pa note cannot define here as f90 wont allow
+!                                          ! parameters with noninteger powers in - look
+!                                          ! in initial in blah.f90 (not sure this applies now...)
 
-!whl - to do - remove lambda0
-  real(dp), parameter :: lambda0 = 80.0d3 / len0    ! basal topo/friction parameter for ismip-hom tests 
-                             
   real(sp), parameter :: conv = tim0 / scyr
 
   !MAKE_RESTART

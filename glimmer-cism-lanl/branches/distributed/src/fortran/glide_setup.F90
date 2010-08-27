@@ -101,6 +101,11 @@ contains
        model%options%gthf = 1
        call handle_gthf(section, model)
     end if
+    ! read till parameters
+    call GetSection(config,section,'till_options')
+    if (associated(section)) then
+       call handle_till_options(section, model)
+    end if
   end subroutine glide_readconfig
 
   subroutine glide_printconfig(model)
@@ -116,6 +121,7 @@ contains
     call print_options(model)
     call print_parameters(model)
     call print_gthf(model)
+    call print_till_options(model)
   end subroutine glide_printconfig
     
   subroutine glide_scale_params(model)
@@ -405,6 +411,7 @@ contains
     call GetValue(section,'ioparams',model%funits%ncfile)
     call GetValue(section,'temperature',model%options%whichtemp)
     call GetValue(section,'flow_law',model%options%whichflwa)
+    call GetValue(section,'basal_proc',model%options%which_bmod)
     call GetValue(section,'basal_water',model%options%whichbwat)
     call GetValue(section,'marine_margin',model%options%whichmarn)
     call GetValue(section,'slip_coeff',model%options%whichbtrc)
@@ -451,18 +458,25 @@ contains
     character(len=500) :: message
 
     ! local variables
-    character(len=*), dimension(0:1), parameter :: temperature = (/ &
+    character(len=*), dimension(0:2), parameter :: temperature = (/ &
          'isothermal', &
-         'full      '/)
+         'full',       &
+         'steady'      /)
     character(len=*), dimension(0:2), parameter :: flow_law = (/ &
-         'Patterson and Budd               ', &
-         'Patterson and Budd (temp=-10degC)', &
+         'Paterson and Budd               ', &
+         'Paterson and Budd (temp=-10degC)', &
          'const 1e-16a^-1Pa^-n             '/)
-    character(len=*), dimension(0:3), parameter :: basal_water = (/ &
+  !*mb* added options for basal processes model       
+    character(len=*), dimension(0:2), parameter :: which_bmod = (/ &
+         'Basal proc mod disabled '  , &
+         'Basal proc, high res. '   , &
+         'Basal proc, fast calc.' /)
+    character(len=*), dimension(0:4), parameter :: basal_water = (/ &
          'local water balance', &
          'local + const flux ', &
-         'flux calculation   ', &
-         'none               ' /)
+         'none               ', &
+         'From basal proc model  ', &
+         'Constant value (=10m)'/)
     character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
          'ignore            ', &
          'no ice shelf      ', &
@@ -507,23 +521,18 @@ contains
     character(len=*), dimension(0:1), parameter :: ho_bstress = (/ &
          'Linear bed (betasquared)', &
          'Plastic bed (tau0)      ' /)
-
-!whl - added Price-Payne higher-order (glam) options
-    character(len=*), dimension(0:9), parameter :: ho_whichbabc = (/ &
-         'constant betasquared    ', &
-         'simple pattern          ', &
-         'read map from file      ', &
-         'simple till yield stress', &
-         'yield stress from model ', &
-         'simple 2D ice shelf     ', &
-         'spatially periodic      ', &
-         'circular ice shelf      ', &
-         'frozen bed              ', &
-         'B^2 passed from CISM    ' /)
-    character(len=*), dimension(0:2), parameter :: ho_whichefvs = (/ &
+    character(len=*), dimension(0:7), parameter :: ho_whichbabc = (/ &
+         'constant B^2                           ', &
+         'simple pattern of B^2                  ', &
+         'till yield stress (Picard)             ', &
+         'circular ice shelf                     ', &
+         'no slip (using large B^2)              ', &
+         'B^2 passed from CISM                   ', &
+         'no slip (Dirichlet implementation)     ', &
+         'till yield stress (Newton) ' /)
+    character(len=*), dimension(0:1), parameter :: ho_whichefvs = (/ &
          'from eff strain rate    ', &
-         'constant value          ', &
-         'minimum value           ' /)
+         'constant value          ' /)
     character(len=*), dimension(0:2), parameter :: ho_whichresid = (/ &
          'max value               ', &
          'max value ignoring ubas ', &
@@ -541,11 +550,13 @@ contains
          '0-order SIA               ', &
          '1-st order model (Blatter-Pattyn) ', &
          '1-st order depth-integrated (SSA)' /)
-    character(len=*), dimension(0:3), parameter :: ho_whichsparse = (/ &
+    character(len=*), dimension(0:4), parameter :: ho_whichsparse = (/ &
          'BiCG with LU precondition  ', &
          'GMRES with LU precondition ', &
          'Unsymmetric Multifrontal   ', &
-         'Trilinos interface         '/)
+         'Compatible Trilinos interface ', &
+         'Standalone Trilinos interface '/)
+
     call write_log('GLIDE options')
     call write_log('-------------')
     write(message,*) 'I/O parameter file      : ',trim(model%funits%ncfile)
@@ -559,6 +570,11 @@ contains
        call write_log('Error, flow_law out of range',GM_FATAL)
     end if
     write(message,*) 'flow law                : ',model%options%whichflwa,flow_law(model%options%whichflwa)
+    call write_log(message)
+    if (model%options%which_bmod.lt.0 .or. model%options%which_bmod.ge.size(which_bmod)) then
+       call write_log('Error, basal_proc out of range',GM_FATAL)
+    end if
+    write(message,*) 'basal_proc              : ',model%options%which_bmod,which_bmod(model%options%which_bmod)
     call write_log(message)
     if (model%options%whichbwat.lt.0 .or. model%options%whichbwat.ge.size(basal_water)) then
        call write_log('Error, basal_water out of range',GM_FATAL)
@@ -637,38 +653,38 @@ contains
     call write_log(message)
 
 !whl - added Payne-Price higher-order (glam) options
-    write(message,*) 'ho_whichbabc          :',model%options%which_ho_babc,  &
+    write(message,*) 'ho_whichbabc            :',model%options%which_ho_babc,  &
                       ho_whichbabc(model%options%which_ho_babc)
     call write_log(message)
     if (model%options%which_ho_babc < 0 .or. model%options%which_ho_babc >= size(ho_whichbabc)) then
         call write_log('Error, HO basal BC input out of range', GM_FATAL)
     end if
-    write(message,*) 'ho_whichefvs          :',model%options%which_ho_efvs,  &
+    write(message,*) 'ho_whichefvs            :',model%options%which_ho_efvs,  &
                       ho_whichefvs(model%options%which_ho_efvs)
     call write_log(message)
     if (model%options%which_ho_efvs < 0 .or. model%options%which_ho_efvs >= size(ho_whichefvs)) then
         call write_log('Error, HO effective viscosity input out of range', GM_FATAL)
     end if
-    write(message,*) 'ho_whichresid         :',model%options%which_ho_resid,  &
+    write(message,*) 'ho_whichresid           :',model%options%which_ho_resid,  &
                       ho_whichresid(model%options%which_ho_resid)
     call write_log(message)
     if (model%options%which_ho_resid < 0 .or. model%options%which_ho_resid >= size(ho_whichresid)) then
         call write_log('Error, HO residual input out of range', GM_FATAL)
     end if
     !*sfp* added the next two for HO T calc
-    write(message,*) 'dispwhich         :',model%options%which_disp,  &
+    write(message,*) 'dispwhich               :',model%options%which_disp,  &
                       dispwhich(model%options%which_disp)
     call write_log(message)
     if (model%options%which_disp < 0 .or. model%options%which_disp >= size(dispwhich)) then
         call write_log('Error, which dissipation input out of range', GM_FATAL)
     end if
-    write(message,*) 'bmeltwhich         :',model%options%which_bmelt,  &
+    write(message,*) 'bmeltwhich              :',model%options%which_bmelt,  &
                       bmeltwhich(model%options%which_bmelt)
     call write_log(message)
     if (model%options%which_bmelt < 0 .or. model%options%which_bmelt >= size(bmeltwhich)) then
         call write_log('Error, which bmelt input out of range', GM_FATAL)
     end if
-    write(message,*) 'ho_whichsparse        :',model%options%which_ho_sparse,  &
+    write(message,*) 'ho_whichsparse          :',model%options%which_ho_sparse,  &
                       ho_whichsparse(model%options%which_ho_sparse)
     call write_log(message)
     if (model%options%which_ho_sparse < 0 .or. model%options%which_ho_sparse >= size(ho_whichsparse)) then
@@ -761,6 +777,73 @@ contains
     end if
     call write_log('')
   end subroutine print_parameters
+
+!Till options
+  subroutine handle_till_options(section,model)
+    use glimmer_config
+    use glide_types
+    implicit none
+    type(ConfigSection), pointer :: section
+    type(glide_global_type) :: model
+
+    if (model%options%which_bmod.eq.1) then
+        call GetValue(section, 'fric',  model%basalproc%fric)
+        call GetValue(section, 'etillo',  model%basalproc%etillo)
+        call GetValue(section, 'No',  model%basalproc%No)
+        call GetValue(section, 'Comp',  model%basalproc%Comp)
+        call GetValue(section, 'Cv',  model%basalproc%Cv)
+        call GetValue(section, 'Kh',  model%basalproc%Kh)
+    else if (model%options%which_bmod.eq.2) then
+        call GetValue(section, 'aconst',  model%basalproc%aconst)
+        call GetValue(section, 'bconst',  model%basalproc%bconst)
+    end if
+    if (model%options%which_bmod.gt.0) then
+        call GetValue(section, 'Zs',  model%basalproc%Zs)
+        call GetValue(section, 'tnodes',  model%basalproc%tnodes)
+        call GetValue(section, 'till_hot', model%basalproc%till_hot)
+    end if  
+
+  end subroutine handle_till_options    
+
+    subroutine print_till_options(model)
+    use glide_types
+    use glimmer_log
+    implicit none
+    type(glide_global_type)  :: model
+    character(len=100) :: message
+
+if (model%options%which_bmod.gt.0) then 
+    call write_log('Till options')
+    call write_log('----------')
+    if (model%options%which_bmod.eq.1) then
+        write(message,*) 'Internal friction           : ',model%basalproc%fric
+        call write_log(message)
+        write(message,*) 'Reference void ratio        : ',model%basalproc%etillo
+        call write_log(message)
+        write(message,*) 'Reference effective Stress  : ',model%basalproc%No
+        call write_log(message)
+        write(message,*) 'Compressibility             : ',model%basalproc%Comp
+        call write_log(message)
+        write(message,*) 'Diffusivity                 : ',model%basalproc%Cv
+        call write_log(message)
+        write(message,*) 'Hyd. conductivity           : ',model%basalproc%Kh
+        call write_log(message)
+    end if
+    if (model%options%which_bmod.eq.2) then
+       write(message,*) 'aconst  : ',model%basalproc%aconst
+       call write_log(message)
+       write(message,*) 'bconst  : ',model%basalproc%aconst
+       call write_log(message)
+    end if
+       write(message,*) 'Solid till thickness : ',model%basalproc%Zs
+       call write_log(message)
+       write(message,*) 'Till nodes number : ',model%basalproc%tnodes
+       call write_log(message)
+       write(message,*) 'till_hot  :',model%basalproc%till_hot
+    call write_log(message)
+
+   end if
+  end subroutine print_till_options
 
   ! Sigma levels
   subroutine handle_sigma(section, model)

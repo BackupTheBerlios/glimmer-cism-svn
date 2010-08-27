@@ -1,5 +1,4 @@
-#ifdef HAVE_CONFIG_H
-#include "config.inc"
+#ifdef HAVE_CONFIG_H #include "config.inc"
 #endif
 
 #include "glide_nan.inc"
@@ -10,7 +9,7 @@
 module glide_velo_higher
     !Includes for the higher-order velocity computations that this calls out to
     use ice3d_lib
-    use glam_strs2, only: glam_velo_fordsiapstr, umask
+    use glam_strs2, only: glam_velo_fordsiapstr, JFNK, umask
 
     !globals
     use glimmer_global, only : dp
@@ -71,23 +70,26 @@ contains
       use parallel
         use glide_thckmask
         use glide_mask
+        use solver_flags
         
         type(glide_global_type),intent(inout) :: model
         !For HO masking
         logical :: empty
         integer :: totpts
+        integer, save :: tstep ! JFL to be removed
         real(sp), dimension(model%general%ewn-1, model%general%nsn-1) :: stagmassb
 
         !TEMPORARY arrays, these should at some point be placed in Model
         !probably
         integer, dimension(model%general%ewn-1, model%general%nsn-1)  :: geom_mask_stag
         real(dp), dimension(model%general%ewn-1, model%general%nsn-1) :: latbc_norms_stag
-        real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
-        ! *sfp** specify subroutine arguments here that are not already in the 
-        ! model derived type. These are just dummy values for now
-        ! to get things compiling ... 
 
-        minTauf = 0.0d0
+        tstep = tstep + 1 ! JFL to be removed
+        NL_solver = 1 ! input by user, 1: Picard, 2: JFNK
+
+!        print *, 'time step=', tstep 
+!        if (tstep .ge. 20) NL_solver = 2
+!        if (tstep .eq. 22) stop 
 
         !Beta field computations that change in time
         !TREY "hump.config" sets this to 0, so the "if"s are skipped
@@ -116,8 +118,13 @@ contains
         !Compute the normal vectors to the marine margin for the staggered grid
         call glide_marine_margin_normal(model%geomderv%stagthck, geom_mask_stag, latbc_norms_stag)
 
-        !TREY modified "hump.config" to use HO_DIAG_PP at suggestion of Steve Price
+
+        ! save the final mask to 'dynbcmask' for exporting to netCDF output file
+        model%velocity_hom%dynbcmask = geom_mask_stag
+
         if (model%options%which_ho_diagnostic == HO_DIAG_PATTYN_STAGGERED) then
+           !TREY modified "hump.config" to use HO_DIAG_PP at suggestion of Steve Price.
+           !JEFF We had originally worked down this branch, because that is how the hump.config file was set.  
            call not_parallel(__FILE__,__LINE__)
            
 #ifdef VERY_VERBOSE
@@ -183,6 +190,8 @@ contains
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
            !TREY
+           if (NL_solver .eq. 1) then ! Picard (standard solver)
+
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
                                         model%numerics%dew,      model%numerics%dns,                &
@@ -191,20 +200,65 @@ contains
                                         model%geometry%lsrf,     model%geometry%topg,               &
                                         model%geomderv%dthckdew, model%geomderv%dthckdns,           &
                                         model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
-                                        model%geomderv%dusrfdew-model%geomderv%dthckdew,            &
-                                        model%geomderv%dusrfdns-model%geomderv%dthckdns,            & 
+!                                        model%geomderv%dthckdew_unstag, model%geomderv%dthckdns_unstag, &
+!                                        model%geomderv%dusrfdew_unstag, model%geomderv%dusrfdns_unstag, &
+!                                        model%geomderv%dusrfdew-model%geomderv%dthckdew_unstag,         &
+!                                        model%geomderv%dusrfdns-model%geomderv%dthckdns_unstag,         & 
+!                                        model%geomderv%dlsrfdew_unstag,            &
+!                                        model%geomderv%dlsrfdew_unstag,            &
+                                        model%geomderv%dlsrfdns,            & 
+                                        model%geomderv%dlsrfdns,            & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
-                                        minTauf, geom_mask_stag,                                    &
+                                        model%basalproc%minTauf,                                    & 
+                                        model%velocity_hom%btraction,                               & 
+                                        geom_mask_stag,                                             &
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &
-                                        model%options%which_ho_sparse,                               &
+                                        model%options%which_ho_sparse,                              &
                                         model%options%periodic_ew,                                  &
                                         model%options%periodic_ns,                                  &
                                         model%velocity_hom%beta,                                    & 
                                         model%velocity_hom%uvel, model%velocity_hom%vvel,           &
                                         model%velocity_hom%uflx, model%velocity_hom%vflx,           &
                                         model%velocity_hom%efvs )
+
+          elseif (NL_solver .eq. 2) then ! JFNK (solver in development...)
+
+            call JFNK                  ( model%general%ewn,       model%general%nsn,                 &
+                                        model%general%upn,                                          &
+                                        model%numerics%dew,      model%numerics%dns,                &
+                                        model%numerics%sigma,    model%numerics%stagsigma,          &
+                                        model%geometry%thck,     model%geometry%usrf,               &
+                                        model%geometry%lsrf,     model%geometry%topg,               &
+                                        model%geomderv%dthckdew, model%geomderv%dthckdns,           &
+                                        model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
+!                                        model%geomderv%dthckdew_unstag, model%geomderv%dthckdns_unstag, &
+!                                        model%geomderv%dusrfdew_unstag, model%geomderv%dusrfdns_unstag, &
+!                                        model%geomderv%dusrfdew-model%geomderv%dthckdew_unstag,         &
+!                                        model%geomderv%dusrfdns-model%geomderv%dthckdns_unstag,         & 
+!                                        model%geomderv%dlsrfdew_unstag,            &
+!                                        model%geomderv%dlsrfdew_unstag,            &
+                                        model%geomderv%dlsrfdns,            & 
+                                        model%geomderv%dlsrfdns,            & 
+                                        model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
+                                        model%basalproc%minTauf,                                    & 
+                                        model%velocity_hom%btraction,                               & 
+                                        geom_mask_stag,                                             &
+                                        model%options%which_ho_babc,                                &
+                                        model%options%which_ho_efvs,                                &
+                                        model%options%which_ho_resid,                               &
+                                        model%options%which_ho_sparse,                              &
+                                        model%options%periodic_ew,                                  &
+                                        model%options%periodic_ns,                                  &
+                                        model%velocity_hom%beta,                                    & 
+                                        model%velocity_hom%uvel, model%velocity_hom%vvel,           &
+                                        model%velocity_hom%uflx, model%velocity_hom%vflx,           &
+                                        model%velocity_hom%efvs )
+           else
+              call write_log('Invalid NL_solver flag.',GM_FATAL)
+           end if
+
          end if
         !Compute the velocity norm - this is independant of the methods used to compute the u and v components so
         !we put it out here

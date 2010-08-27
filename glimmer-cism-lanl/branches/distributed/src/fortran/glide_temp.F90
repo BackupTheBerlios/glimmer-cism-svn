@@ -203,7 +203,7 @@ contains
 
     !*FD Calculates the ice temperature, according to one
     !*FD of several alternative methods.
-    use parallel
+
     use glimmer_utils,  only : tridiag
     use glimmer_global, only : dp
     use glimmer_paramets,       only : thk0
@@ -267,7 +267,9 @@ contains
 
     case(1) ! Do full temperature solution ---------------------------------------------
 
+
        ! Calculate time-derivatives of thickness and upper surface elevation ------------
+
        call timeders(model%thckwk,   &
             model%geometry%thck,     &
             model%geomderv%dthckdtm, &
@@ -330,11 +332,9 @@ contains
                model%velocity%wvel,                        &
                model%geometry%thck,                        &
                model%climate% acab)
-
        end select
        ! apply periodic ew BC
        if (model%options%periodic_ew) then
-          call not_parallel(__FILE__,__LINE__)
           call wvel_ew(model)
        end if
 
@@ -361,13 +361,10 @@ contains
                 + model%velocity_hom%vvel(:,ew-1,ns) + model%velocity_hom%vvel(:,ew,ns-1) + model%velocity_hom%vvel(:,ew,ns) )
           end do
        end do
-       call parallel_halo(model%tempwk%hadv_u)
-       call parallel_halo(model%tempwk%hadv_v)
 
        call hadvall(model, &
             model%temper%temp, &
             model%geometry%thck)
-       call parallel_halo(model%tempwk%initadvt)
 
        ! zeroth iteration
        iter = 0
@@ -387,7 +384,7 @@ contains
                      model%temper%temp(:,ew,ns-2:ns+2),      &
                      model%tempwk%hadv_u(:,ew,ns), &
                      model%tempwk%hadv_v(:,ew,ns))
-
+               
                 call findvtri(model,ew,ns,subd,diag,supd,diagadvt, &
                      weff, &
                      GLIDE_IS_FLOAT(model%geometry%thkmask(ew,ns)))
@@ -462,7 +459,7 @@ contains
        end do
 
        model%temper%niter = max(model%temper%niter, iter )
-
+       
        ! set temperature of thin ice to the air temperature and set ice free nodes to zero
        do ns = 1,model%general%nsn
           do ew = 1,model%general%ewn
@@ -484,7 +481,6 @@ contains
           model%temper%temp(:,model%general%ewn+1,:) = model%temper%temp(:,3,:)
        end if
 
-       call parallel_temp_halo(model%temper%temp)
        ! Calculate basal melt rate --------------------------------------------------
 
        call calcbmlt(model, &
@@ -512,15 +508,19 @@ contains
             GLIDE_IS_FLOAT(model%geometry%thkmask), &
             model%tempwk%wphi)
 
-    case(2) ! Do something else, unspecified ---------------------------------------
+!    case(2) ! Do something else, unspecified ---------------------------------------
+!
+!       do ns = 1,model%general%nsn
+!          do ew = 1,model%general%ewn
+!             model%temper%temp(:,ew,ns) = dmin1(0.0d0,dble(model%climate%artm(ew,ns))) * (1.0d0 - model%numerics%sigma)
+!             call corrpmpt(model%temper%temp(:,ew,ns),model%geometry%thck(ew,ns),model%temper%bwat(ew,ns),&
+!                  model%numerics%sigma,model%general%upn)
+!          end do
+!       end do
 
-       do ns = 1,model%general%nsn
-          do ew = 1,model%general%ewn
-             model%temper%temp(:,ew,ns) = dmin1(0.0d0,dble(model%climate%artm(ew,ns))) * (1.0d0 - model%numerics%sigma)
-             call corrpmpt(model%temper%temp(:,ew,ns),model%geometry%thck(ew,ns),model%temper%bwat(ew,ns),&
-                  model%numerics%sigma,model%general%upn)
-          end do
-       end do
+    case(2) ! *sfp* stealing this un-used option ... 
+
+        ! DO NOTHING. That is, hold T const. at initially assigned value
 
     end select
 
@@ -542,7 +542,6 @@ contains
  
        enddo   ! k 
     endif      ! l_smooth_temp 
-    call parallel_temp_halo(model%temper%temp)              
 
     ! Calculate Glenn's A --------------------------------------------------------
 
@@ -638,6 +637,7 @@ contains
   !-------------------------------------------------------------------------
 
   subroutine hadvall(model,temp,thck)
+
     use glimmer_global, only : dp 
 
     implicit none
@@ -803,7 +803,7 @@ contains
   !-----------------------------------------------------------------------
 
   subroutine finddisp(model,thck,whichdisp,efvs,stagthck,dusrfdew,dusrfdns,flwa)
-    use parallel
+
     use glimmer_global, only : dp
     use glimmer_physcon, only : gn
 
@@ -835,7 +835,7 @@ contains
     ! 2. works best for eismint divide (symmetry) but 1 likely to be better for full expts
 
     model%tempwk%dissip = 0.0d0
-
+    
     do ns = 2, model%general%nsn-1
        do ew = 2, model%general%ewn-1
           if (thck(ew,ns) > model%numerics%thklim) then
@@ -923,13 +923,13 @@ contains
 !    end do
 
     end select
-    call parallel_halo(model%tempwk%dissip)
+
   end subroutine finddisp
 
   !-----------------------------------------------------------------------------------
 
   subroutine calcbmlt(model,whichbmelt,temp,thck,stagthck,dusrfdew,dusrfdns,ubas,vbas,bmlt,floater)
-    use parallel
+
     use glimmer_global, only : dp 
 
     implicit none 
@@ -945,7 +945,7 @@ contains
     real(dp) :: slterm, newmlt
 
  
-    integer :: ewp, nsp,up,ew,ns
+    integer :: ewp, nsp, up, ew, ns
 
     do ns = 2, model%general%nsn-1
        do ew = 2, model%general%ewn-1
@@ -979,10 +979,19 @@ contains
                         ! so that for now, basal vel at upn is multiplied by basal stress at upn-1 to get frictional
                         ! heating term. This may not be entirely correct ... 
                              slterm = slterm - &
-                                ( model%velocity_hom%tau%xz(model%general%upn-1,ewp,nsp) * &
+                                
+                                !! NEW version: uses consistent basal tractions                
+                                ( -model%velocity_hom%btraction(1,ewp,nsp) * &
                                   model%velocity_hom%uvel(model%general%upn,ewp,nsp) + &
-                                  model%velocity_hom%tau%yz(model%general%upn-1,ewp,nsp) * &
+                                  -model%velocity_hom%btraction(2,ewp,nsp) * &
                                   model%velocity_hom%vvel(model%general%upn,ewp,nsp) )
+                                
+                                !!!! OLD version: uses HO basal shear stress calc. from FD                
+                                !( model%velocity_hom%tau%xz(model%general%upn-1,ewp,nsp) * &
+                                !  model%velocity_hom%uvel(model%general%upn,ewp,nsp) + &
+                                !  model%velocity_hom%tau%yz(model%general%upn-1,ewp,nsp) * &
+                                !  model%velocity_hom%vvel(model%general%upn,ewp,nsp) )
+
                         end do
                     end do
 
@@ -1057,7 +1066,6 @@ contains
           bmlt(model%general%ewn,ns) = bmlt(2,ns)
        end do
     end if
-    call parallel_halo(bmlt)
   end subroutine calcbmlt
 
 !-------------------------------------------------------------------
@@ -1258,7 +1266,7 @@ contains
 
     !*FD Calculates Glenn's $A$ over the three-dimensional domain,
     !*FD using one of three possible methods.
-    use parallel
+
     use glimmer_physcon
     use glimmer_paramets, only : thk0, vis0
 
@@ -1309,7 +1317,7 @@ contains
                  -actenl / gascon/)               ! Value of -Q/R when T* is below -263K
  
     select case(flag)
-    case(FLWA_PATTERSON_BUDD)
+    case(FLWA_PATERSON_BUDD)
 
       ! This is the Paterson and Budd relationship
 
@@ -1331,7 +1339,7 @@ contains
         end do
       end do
 
-    case(FLWA_PATTERSON_BUDD_CONST_TEMP)
+    case(FLWA_PATERSON_BUDD_CONST_TEMP)
 
       ! This is the Paterson and Budd relationship, but with the temperature held constant
       ! at -5 deg C
@@ -1354,7 +1362,6 @@ contains
       flwa = default_flwa
   
     end select
-    call parallel_halo(flwa)
 
   end subroutine calcflwa 
 

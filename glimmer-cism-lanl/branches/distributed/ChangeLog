@@ -1,3 +1,22 @@
+2010-07-26 William Lipscomb
+ Several minor changes:
+ * src/fortran/glide_diagnostics: formatting changes
+ * src/fortran/glimmer_paramets.F90: added idiag and jdiag for gridcell diagnostics
+ * src/fortran/glint_main.F90: added calls to glide_write_diag.  The frequency of
+	diagnostic writes is determined by ndiag in the namelist.
+ * src/fortran/glide_setup.F90: changed description of bwat option 2 to 'none'
+	instead of 'flux calculation'; minor formatting changes
+ * src/fortran/glide_temp.F90: corrected spelling of "Paterson"
+ * src/fortran/glide_types.F90: ditto
+	
+2010-07-23 William Lipscomb
+ * src/fortran/glide_thck.F90: fixed a major bug
+    During the Picard iteration for the nonlinear solve, the RHS of the matrix 
+    was being recomputed for each iteration instead of being held fixed after
+    the first pass.  Fixed this by replacing '.true.' with 'first_p' in the
+    call to thck_evolve.
+ * Looks as though the ChangeLog hasn't been updated for a while
+
 2009-05-05 Magnus Hagdorn
  * src/fortran/eis_glide.F90: get elapsed wall clock time
  * src/fortran/eismint3_glide.F90: ditto

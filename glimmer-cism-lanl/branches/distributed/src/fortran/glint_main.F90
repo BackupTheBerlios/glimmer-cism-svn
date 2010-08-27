@@ -55,6 +55,9 @@ module glint_main
   use glint_constants
   use glimmer_anomcouple
 
+  use glimmer_paramets, only: idiag, jdiag
+  use glide_diagnostics
+
   ! ------------------------------------------------------------
   ! GLIMMER_PARAMS derived type definition
   ! This is where default values are set.
@@ -208,6 +211,7 @@ contains
     real(rk),dimension(:,:),allocatable :: orog_temp,if_temp,vf_temp,sif_temp,svf_temp,sd_temp,alb_temp ! Temporary output arrays
     integer,dimension(:),allocatable :: mbts,idts ! Array of mass-balance and ice dynamics timesteps
     logical :: anomaly_check ! Set if we've already initialised anomaly coupling
+    real(rk) :: timeyr       ! time in years
 
     ! Initialise start time and calling model time-step ----------------------------------------
     ! We ignore t=0 by default 
@@ -311,6 +315,10 @@ contains
 
        where (params%total_coverage>0.0) params%cov_normalise=params%cov_normalise+1.0
        where (params%total_cov_orog>0.0) params%cov_norm_orog=params%cov_norm_orog+1.0
+
+       ! Write initial diagnostics for this instance
+       timeyr = real(params%start_time/8760.)
+       call glide_write_diag(params%instances(i)%model, timeyr, idiag, jdiag)
 
        ! Initialise anomaly coupling
        if (.not.anomaly_check) then 
@@ -491,6 +499,7 @@ contains
     real(rk),dimension(:,:),pointer :: precip
     real(rk),dimension(:,:),pointer :: temp
     real(rk) :: yearfrac
+    real(rk) :: timeyr       ! time in years
 
     ! Check we're expecting a call now --------------------------------------------------------------
 
@@ -680,7 +689,14 @@ contains
              ice_tstep=(ice_tstep.or.icets)
           end if
 
-       enddo
+          ! write ice sheet diagnostics
+          if (mod(params%instances(i)%model%numerics%timecounter,  &
+                  params%instances(i)%model%numerics%ndiag)==0)  then
+             timeyr = time / (days_in_year*24.d0) 
+             call glide_write_diag(params%instances(i)%model, timeyr, idiag, jdiag)
+          endif
+
+       enddo    ! ninstances
 
        ! Scale output water fluxes to be in mm/s
 
