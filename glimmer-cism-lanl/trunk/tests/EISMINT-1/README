@@ -1,0 +1,10 @@
+Sarah Shannon: 1st Sep 2010
+
+These EISMINT-1 configuration files have been obtained from http://svn.berlios.d
+e/svnroot/repos/glimmer-cism/glimmer-cism/glimmer-tests/trunk/ 
+
+Two modification have been made to minimise the file size of the golden standard: 
+
+1. Only output these variables: thk wvel uvel vvel temp 
+2. Change the frequency the output data is written from every 1000 years to ever
+y 40,000 years. 
