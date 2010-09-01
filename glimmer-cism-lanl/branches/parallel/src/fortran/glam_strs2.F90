@@ -1643,15 +1643,15 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
         if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
             uk_1(loc(1):loc(2)) = uvel(:,ew,ns)
-            uk_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at base
-            uk_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at top
+            uk_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at top
+            uk_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at base
 
             vk_1(loc(1):loc(2)) = vvel(:,ew,ns)
-            vk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at base
-            vk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at top
+            vk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at top
+            vk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at base
 
-            g_flag(loc(1)-1) = 2 ! ghost at base
-            g_flag(loc(2)+1) = 1 ! ghost at top
+            g_flag(loc(1)-1) = 1 ! ghost at top
+            g_flag(loc(2)+1) = 2 ! ghost at base
         end if
     end do
   end do
@@ -1680,10 +1680,10 @@ subroutine ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
       do ew = 1,ewn-1
           if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
-            ughost(1,ew,ns) = uk_1(loc(1)-1) ! ghost at base
-            ughost(2,ew,ns) = uk_1(loc(2)+1) ! ghost at top
-            vghost(1,ew,ns) = vk_1(loc(1)-1) ! ghost at base
-            vghost(2,ew,ns) = vk_1(loc(2)+1) ! ghost at top
+            ughost(1,ew,ns) = uk_1(loc(1)-1) ! ghost at top
+            ughost(2,ew,ns) = uk_1(loc(2)+1) ! ghost at base
+            vghost(1,ew,ns) = vk_1(loc(1)-1) ! ghost at top
+            vghost(2,ew,ns) = vk_1(loc(2)+1) ! ghost at base
           else 
             ughost(1,ew,ns) = 0d0
             ughost(2,ew,ns) = 0d0
