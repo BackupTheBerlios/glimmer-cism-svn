@@ -34,7 +34,7 @@ real (kind = dp) :: scale_ghosts = 0.0d0
            i = matrix%row(nele)
            j = matrix%col(nele)
            Au_b_wig(i) = Au_b_wig(i) + matrix%val(nele) * uvec(j)
-         
+
         enddo
 
       else 
@@ -43,6 +43,7 @@ real (kind = dp) :: scale_ghosts = 0.0d0
       
       do i = 1, nu
          Au_b_wig(i) = Au_b_wig(i) - bvec(i)
+         print *, counter, i, g_flag(i), Au_b_wig(i), bvec(i)
       enddo
 
       uvec = Au_b_wig
