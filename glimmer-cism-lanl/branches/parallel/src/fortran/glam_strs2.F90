@@ -1504,7 +1504,8 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
 
   integer, intent(in) :: ewn, nsn, upn, counter, whichbabc, whichefvs
   integer, intent(in) :: nu1, nu2
-  integer, dimension(nu1), intent(in) :: g_flag ! g_flag = 1 for ghost cell
+  integer, dimension(nu1), intent(in) :: g_flag ! 0 :reg cell
+                                                ! 1 :top ghost, 2 :base ghost
   integer, dimension(:,:), intent(in) :: uindx, umask
 
   type(sparse_matrix_type), intent(inout) :: matrixA, matrixC
@@ -1635,7 +1636,7 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
   integer :: ew, ns
   integer, dimension(2) :: loc
 
-  g_flag = 0 ! flag for ghost cells
+  g_flag = 0
 
   do ns = 1,nsn-1
    do ew = 1,ewn-1
@@ -1649,8 +1650,8 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
             vk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at base
             vk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at top
 
-            g_flag(loc(1)-1) = 1 
-            g_flag(loc(2)+1) = 1 
+            g_flag(loc(1)-1) = 2 ! ghost at base
+            g_flag(loc(2)+1) = 1 ! ghost at top
         end if
     end do
   end do

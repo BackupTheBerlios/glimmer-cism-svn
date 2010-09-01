@@ -11,7 +11,8 @@ use glide_mask
 implicit none
 
 integer :: i, j, counter, nu, nele, whatsparse ! nu: size of uvec and bvec
-integer, dimension(nu), intent(in) :: g_flag ! g_flag = 1 for ghost cell
+integer, dimension(nu), intent(in) :: g_flag ! 0 :reg cell
+                                             ! 1 :top ghost, 2 :base ghost
 
 type(sparse_matrix_type),  intent(in) :: matrix
 
