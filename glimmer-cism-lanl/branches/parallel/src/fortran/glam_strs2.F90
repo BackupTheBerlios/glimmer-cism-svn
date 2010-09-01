@@ -302,10 +302,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     end do; end do
  end if
 
-!! hack of the boundary conditions for basal processes model test case (comment
-!! out for standard model runs) 
-!    umask(ewn-4,4:nsn-4) = 41                  ! make this boundary a calving front
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
