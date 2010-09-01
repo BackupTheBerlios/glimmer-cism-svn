@@ -251,6 +251,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer :: ew, ns, up     ! counters for horiz and vert do loops
 
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
+  real (kind = dp), parameter :: NL_tol = 1.0d-06   ! to have same criterion
+                                                    ! than with JFNK
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
@@ -261,7 +263,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! variables used for incorporating generic wrapper to sparse solver
   type(sparse_matrix_type) :: matrix
   real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1, F
-  real (kind = dp) :: err, L2norm, L2square
+  real (kind = dp) :: err, L2norm, L2square, NL_target
   integer :: iter, pic
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
   integer, save :: tstep    ! JFL to be removed
@@ -371,7 +373,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  ! do pic =1, 80
+  ! do pic =1, 100
   do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
@@ -492,6 +494,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !    print *, 'L2 with/without ghost (k)= ', counter, &
 !              sqrt(DOT_PRODUCT(F,F)), L2norm
+!    if (pic .eq. 1) NL_target = NL_tol * L2norm
+!    if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
