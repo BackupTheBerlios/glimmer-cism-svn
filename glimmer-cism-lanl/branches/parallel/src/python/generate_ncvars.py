@@ -378,7 +378,7 @@ class PrintNC_template(PrintVars):
                     dimstring = dimstring + ','
                 if dims[i] == 'time':
                     dimstring = dimstring + 'outfile%timecounter'
-                elif dims[i] == 'level':
+                elif dims[i] == 'level' or dims[i] == 'levels':
                     dimstring = dimstring + 'up'
                 else:
                     dimstring = dimstring + '1'
@@ -387,6 +387,10 @@ class PrintNC_template(PrintVars):
                 # handle 3D fields
                 spaces = ' '*3
                 self.stream.write("       do up=1,NCO%nlevel\n")
+            elif  'levels' in dims:
+                # handle 3D fields
+                spaces = ' '*3
+                self.stream.write("       do up=1,NCO%nlevel-1\n")
 
                         
             if 'factor' in var:
@@ -397,7 +401,7 @@ class PrintNC_template(PrintVars):
                                                                                                                spaces,data, dimstring))
             self.stream.write("%s       call nc_errorhandle(__FILE__,__LINE__,status)\n"%(spaces))
 
-            if  'level' in dims:
+            if  'level' in dims or 'levels' in dims:
                 self.stream.write("       end do\n")
             # remove self since it's not time dependent
             if 'time' not in dims:
@@ -426,7 +430,7 @@ class PrintNC_template(PrintVars):
                         dimstring = dimstring + ','
                     if dims[i] == 'time':
                         dimstring = dimstring + 'infile%current_time'
-                    elif dims[i] == 'level':
+                    elif dims[i] == 'level' or dims[i] == 'levels':
                         dimstring = dimstring + 'up'
                     else:
                         dimstring = dimstring + '1'
@@ -435,6 +439,9 @@ class PrintNC_template(PrintVars):
                     # handle 3D fields
                     spaces = ' '*3
                     self.stream.write("       do up=1,NCI%nlevel\n")
+                elif 'levels' in dims:
+                    spaces = ' '*3
+                    self.stream.write("       do up=1,NCI%nlevel-1\n")
 
                 self.stream.write("%s       status = nf90_get_var(NCI%%id, varid, &\n%s            %s, (/%s/))\n"%(spaces,
                                                                                                                spaces,var['data'], dimstring))
@@ -442,7 +449,7 @@ class PrintNC_template(PrintVars):
                 if 'factor' in var:
                     self.stream.write("%s       if (scale) then\n%s       %s = %s/(%s)\n%s       end if\n"%(spaces,spaces,var['data'],var['data'],var['factor'],spaces))
 
-                if  'level' in dims:
+                if  'level' in dims or 'levels' in dims:
                     self.stream.write("       end do\n")
                 
                 self.stream.write("    end if\n\n")
