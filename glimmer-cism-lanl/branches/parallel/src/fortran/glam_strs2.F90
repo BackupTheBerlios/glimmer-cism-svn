@@ -210,12 +210,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  beta,                   &
                                  uvel,     vvel,         &
                                  uflx,     vflx,         &
-                                 efvs )
+                                 efvs, tstep )
 
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn
+  integer, intent(in) :: ewn, nsn, upn, tstep  ! JFL to be removed
   integer, dimension(:,:),   intent(inout)  :: umask
   ! NOTE: 'inout' status to 'umask' should be changed to 'in' at some point, 
   ! but for now this allows for some minor internal hacks to CISM-defined mask  
@@ -266,7 +266,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp) :: err, L2norm, L2square, NL_target
   integer :: iter, pic
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
-  integer, save :: tstep    ! JFL to be removed
 
   ! AGS: partition information for distributed solves
   integer, allocatable, dimension(:) :: myIndices
@@ -367,7 +366,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! START of Picard iteration
   ! ****************************************************************************************
 
-!  tstep = tstep + 1 ! JFL to be removed
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
@@ -640,12 +638,12 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                                  beta,                   & 
                                  uvel,     vvel,         &
                                  uflx,     vflx,         &
-                                 efvs )
+                                 efvs, tstep )
 
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn
+  integer, intent(in) :: ewn, nsn, upn, tstep
   integer, dimension(:,:),   intent(inout)  :: umask  !*sfp* replaces the prev., internally calc. mask
                                                       ! ... 'inout' status allows for a minor alteration
                                                       ! to cism defined mask, which don't necessarily 
@@ -697,7 +695,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp) :: crap
   integer :: tot_its, itenb, maxiteGMRES, iout, icode
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
-  integer, save :: tstep ! JFL to be removed
 
   ! AGS: partition information for distributed solves
   integer, allocatable, dimension(:) :: myIndices
@@ -798,8 +795,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
-  tstep = tstep + 1 ! JFL to be removed
-
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
 
@@ -833,6 +828,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 !==============================================================================
 
 !      print *, 'target with L2norm with or without ghost?'
+
     if (k .eq. 1) NL_target = NL_tol * L2norm
 
     print *, 'L2 with, without ghost (k)= ', k, L2norm_wig, L2norm
@@ -847,7 +843,11 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       dx  = 0d0 ! initial guess
 
-      tol = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
+      if (tstep .lt. 5) then
+         tol = 0.9d0 * L2norm_wig  ! setting the tolerance for fgmres
+      else 
+         tol = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
+      endif
 
       epsilon = 1d-07 ! for J*vector approximation
 
