@@ -32,6 +32,7 @@ glimmer_FCFLAGS=$FCFLAGS
 glimmer_FFLAGS=$FFLAGS
 AC_DEFINE_UNQUOTED(GLIMMER_FCFLAGS,"${glimmer_FCFLAGS}",[fortran compiler flags the model is configured with])
 
+AC_PROG_CXX 
 AC_PROG_CC
 AC_PROG_FC
 AC_PROG_F77
@@ -160,6 +161,7 @@ if test "$ac_cv_netcdf_prefix" != ""; then
   AC_MSG_RESULT(netCDF location: $ac_cv_netcdf_prefix)
   FCFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_netcdf_prefix/include"
   LDFLAGS="$LDFLAGS -L$ac_cv_netcdf_prefix/lib"
+  CXXFLAGS="$FCFLAGS $ax_cv_f90_modflag$ac_cv_netcdf_prefix/include"	
 fi
 AC_SEARCH_LIBS(NF_INQ_LIBVERS,[netcdf netcdff],,[AC_MSG_ERROR(cannot find netCDF fortran library)])
 AC_MSG_CHECKING([for f90 netCDF interface])
@@ -343,5 +345,5 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([],
                 AC_MSG_RESULT(yes)], [AC_MSG_RESULT(no)])
 
 
-AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile])
+AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile tests/util/Makefile])
 AC_OUTPUT([glimmer-config src/fortran/glimmer_vers.F90.in])
