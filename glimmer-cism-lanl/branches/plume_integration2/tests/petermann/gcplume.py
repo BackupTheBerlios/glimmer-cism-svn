@@ -259,6 +259,7 @@ class GCConfig(object):
                                               'start_umc' : 3,
                                               },
                       'boundary condition params' : {'use_lateral_stress_bc' : True,
+                                                     'use_plastic_bnd_cond' : False,
                                                      'tau_xy_0' : 50.0e3,
                                                      'use_shelf_bc_1' : False,
                                                      'use_sticky_wall' : False, # create a 'sticky spot' along wall or not
@@ -278,14 +279,14 @@ class GCConfig(object):
                                      },
                       'CF output' : { 'variables' : ' '.join(['lsurf','usurf',
                                                               'thk','bmlt',
-                                                              #'acab',
+                                                              'acab',
                                                               'uvelhom',
                                                               'vvelhom',
                                                               #uvelhom_srf',
                                                               #'vvelhom_srf',
-                                                              #'thkmask','topg',
-                                                              #'kinbcmask',
-                                                              #'temp',
+                                                              'thkmask','topg',
+                                                              'kinbcmask',
+                                                              'temp',
 							      'efvs',
                                                               'tau_hom_xx','tau_hom_yy',
                                                               'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
@@ -783,7 +784,7 @@ class RegridJob(_BaseJob,_IO):
         return self.initJob.m
     m = property(fget=_getm,fset=_setm)
 
-    def _setn(self,):
+    def _setn(self,n):
         self.initJob.n = n
     def _getn(self):
         return self.initJob.n
