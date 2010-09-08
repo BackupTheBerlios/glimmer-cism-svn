@@ -460,6 +460,7 @@ contains
 
      call GetValue(section, 'tau_xy_0', model%bnd_cond_params%tau_xy_0)
      call GetValue(section, 'use_lateral_stress_bc', model%bnd_cond_params%use_lateral_stress_bc)
+     call GetValue(section, 'use_plastic_bnd_cond', model%bnd_cond_params%use_plastic_bnd_cond)
      call GetValue(section, 'use_shelf_bc_1', model%bnd_cond_params%use_shelf_bc_1)
      call GetValue(section, 'use_sticky_wall', model%bnd_cond_params%use_sticky_wall)
      call GetValue(section, 'sticky_length', model%bnd_cond_params%sticky_length)
@@ -844,9 +845,14 @@ contains
     call write_log(message)
     write(message, *) 'use_lateral_stress_bc: ', model%bnd_cond_params%use_lateral_stress_bc
     call write_log(message)
+    write(message, *) 'use_plastic_bnd_cond: ', model%bnd_cond_params%use_lateral_stress_bc
+    call write_log(message)
+
     if (model%bnd_cond_params%use_lateral_stress_bc) then
         write(message, *) 'tau_xy_0: ', model%bnd_cond_params%tau_xy_0
 	call write_log(message)
+    elseif  (model%bnd_cond_params%use_plastic_bnd_cond) then
+        call write_log('Imposing plastic yield bnd condition along given curves')
     else
     	call write_log('Imposing no-slip boundary conditions on the east/west boundaries')
     end if   

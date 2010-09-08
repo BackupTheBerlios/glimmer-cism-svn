@@ -23,6 +23,7 @@ use glimmer_log,      only : write_log
 use glide_mask
 use glimmer_sparse_type
 use glimmer_sparse
+use glam_bnd_cond
 
 use glide_types, only : glide_picard_params, glide_bnd_cond_params
 use xls
@@ -326,6 +327,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dew,  dns,   sigma,          &
                      2,           efvs,           &
                      vvel,        uvel,           &
+		     .false.,                     & ! this_is_x_direction == .false.
                      thck,        dusrfdns,       &
                      dusrfdew,    dthckdew,       &
                      d2usrfdew2,  d2thckdew2,     &
@@ -337,6 +339,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
+		     bnd_cond_params,             &
                      bnd_cond_params%tau_xy_0 / tau0_glam, &
 		     bnd_cond_params%use_lateral_stress_bc, &
 		     bnd_cond_params%use_sticky_wall, &
@@ -384,6 +387,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dew,  dns,   sigma,          &
                      1,           efvs,           &
                      uvel,        vvel,           &
+		     .true.,                      & !this_is_x_direction == .true.
                      thck,        dusrfdew,       &
                      dusrfdew,    dthckdew,       &
                      d2usrfdew2,  d2thckdew2,     &
@@ -395,6 +399,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      uindx,       umask,          &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
+		     bnd_cond_params,             &
                      0.0_dp, .false.,             &
 		     bnd_cond_params%use_sticky_wall,  &
 		     bnd_cond_params%sticky_length,    &
@@ -971,6 +976,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                        dew,  dns,   sigma,          &
                        pt,          efvs,           &
                        thisvel,     othervel,       &
+		       this_is_x_direction,         &
                        thck,        thisdusrfdx,    &
                        dusrfdew,    dthckdew,       &
                        d2usrfdew2,  d2thckdew2,     &
@@ -982,9 +988,10 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                        uindx,       mask,           &
                        lsrf,        topg,           &
                        minTauf,     flwa,           &   
-                       tau_xy_0, use_lateral_stress_bc, &
+		       bnd_cond_params,             &
+		       tau_xy_0, use_lateral_stress_bc, &
 		       use_sticky_wall, &
-		       sticky_length,   &
+                       sticky_length,   &
                        beta, count )
 
   ! Main subroutine for determining coefficients that go into the LHS matrix A 
@@ -999,6 +1006,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
   real (kind = dp), dimension(:,:,:), intent(in) :: efvs, thisvel, &
                                                     othervel
+  logical, intent(in)   :: this_is_x_direction				
   real (kind = dp), dimension(:,:), intent(in) :: stagthck, thisdusrfdx,     &
                                                   dusrfdew,   dthckdew,      &
                                                   d2usrfdew2, d2thckdew2,    &
@@ -1014,8 +1022,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
   real (kind = dp), dimension(:,:,:), intent(in) :: flwa
 
+  type(glide_bnd_cond_params), intent(in) :: bnd_cond_params    
   real (kind = dp), intent(in) :: tau_xy_0             !should be non-dimensional here      
-
   logical, intent(in) :: use_lateral_stress_bc, use_sticky_wall
   integer, intent(in) :: sticky_length
 
@@ -1026,6 +1034,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   real (kind = dp), dimension(2,2,2) :: local_efvs 
   real (kind = dp), dimension(2,2)   :: local_efvs2  
   real (kind = dp)                    :: efvs_usable
+  real (kind = dp), dimension(2) :: norm_vect
 
   real (kind = dp), dimension(3,3,3) :: localothervel
   real (kind = dp), dimension(upn) :: boundaryvel
@@ -1079,8 +1088,110 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 !    pause
 
     loc(1) = loc_array(ew,ns)
+    
+    if (bnd_cond_params%use_plastic_bnd_cond .and. is_bnd_point(bnd_cond_params, ew, ns)) then
 
-    if (use_sticky_wall .and. ew == ewn-1 .and. ns .ge. (nsn/2 - sticky_length/2) .and. ns .le. (nsn/2 + sticky_length/2)) then
+        ! apply no normal flow condition
+	! apply imposed lateral stress (plastic yield) condition
+
+	call get_normal_vector(bnd_cond_params, ew,ns, norm_vect)
+
+	!impose shear stress condition and no normal flow, which means 
+        !   2* efvs * d(v_tangential)/dn = 2 * efvs * epsdot_12 = tau_12
+	!   u . n  = 0
+
+
+	! this sets the upper and lower ghost point's velocities equal to zero
+!	locplusup = loc(1)   !upper ghost point
+!       call valueset(0.0_dp)
+!       locplusup = loc(1) + upn + 1  !lower ghost point
+!       call valueset(0.0_dp)
+
+        !now (july 24) let's try setting the ghost point velocities equal
+        !to the values adjacent vertically to them
+	   
+        call putpcgc( 1.0_dp,loc_array(ew,ns)+upn+1,loc_array(ew,ns)+upn+1)
+	call putpcgc(-1.0_dp,loc_array(ew,ns)+upn  ,loc_array(ew,ns)+upn+1)
+	rhsd(loc_array(ew,ns)+upn+1) = 0.0_dp 
+	call putpcgc( 1.0_dp,loc_array(ew,ns)      ,loc_array(ew,ns)      )
+	call putpcgc(-1.0_dp,loc_array(ew,ns)+1    ,loc_array(ew,ns)      )
+	rhsd(loc_array(ew,ns) ) = 0.0_dp 
+
+        do up = 1,upn !0,(upn+1)
+
+	!Note, effective viscosities are on a vertically-staggard grid,
+        ! but horizontally is on the thickness grid.  The stress terms are
+        ! on the thickness grid too, which is why we average vertically only              
+
+!             if (up == 1) then
+!	         local_efvs(1,:,:) = 0.0_dp
+!	         local_efvs(2,:,:) = efvs(1,ew:ew+1,ns:ns+1)      !old line     
+!             elseif (up == upn) then
+!                    local_efvs(1,:,:) = efvs(upn-1,ew:ew+1,ns:ns+1) !old line
+!		    local_efvs(2,:,:) = 0.0_dp
+!              else
+!                    local_efvs = efvs(up-1:up,ew:ew+1,ns:ns+1)   !old line
+!              end if
+!
+!             efvs_usable = sum(local_efvs) / (sum(local_efvs/local_efvs, mask=local_efvs > 1.0d-18))
+	      
+         if (up == 1) then
+         	 local_efvs2(1,:) = 0.0_dp
+		 if (ew .le. (ewn-1)/2.0) then
+		   local_efvs2(2,:) = efvs(1    ,ew+1,ns:ns+1)
+		 else
+		   local_efvs2(2,:) = efvs(1    ,ew  ,ns:ns+1)
+  		 end if
+         elseif (up == upn) then
+		 if (ew .le. (ewn-1)/2.0) then
+		    local_efvs2(1,:) = efvs(upn-1,ew+1,ns:ns+1)
+		 else
+	            local_efvs2(1,:) = efvs(upn-1,ew  ,ns:ns+1)
+                 end if
+		 local_efvs2(2,:) = 0.0_dp
+         else
+		 if (ew .le. (ewn-1)/2.0) then	         		 
+		    local_efvs2(:,:) = efvs(up-1:up,ew+1,ns:ns+1)
+                 else
+		    local_efvs2(:,:) = efvs(up-1:up,ew,  ns:ns+1)	
+		 end if
+         end if 
+
+	      efvs_usable = sum(local_efvs2) / (sum(local_efvs2/local_efvs2, mask=local_efvs2 > 1.0d-18))
+
+
+	 if (this_is_x_direction) then
+	    if (norm_vect(1) .eq. 0.0_dp) then
+	         !impose the shear condition instead
+            else
+	       	  ! impose v.n = 0
+		  call putpcgc( norm_vect(1), loc_array(ew,ns)+up,loc_array(ew,ns)+up)
+		  rhsd (loc_array(ew,ns)+up) = - othervel(ew,ns,up) * norm_vect(2)
+            end if
+	else
+	   if (norm_vect(2) .eq. 0.0_dp) then
+	      ! Impose d(v_tangential)/dn = 1/(2*efvs) * tau_12
+              !         if (ew .le. (ewn-1)/2.0) then
+!                 call putpcgc( 1.0_dp,loc_array(ew+2,ns)+up,loc_array(ew,ns)+up)
+!                 call putpcgc(-1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
+!                 rhsd(loc_array(ew,ns)+up) = - tau_xy_0  * (2*dew) /  efvs_usable
+!              else
+!                 call putpcgc( 1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
+!                 call putpcgc(-1.0_dp,loc_array(ew-2,ns)+up,loc_array(ew,ns)+up)  
+!                 rhsd(loc_array(ew,ns)+up) =   tau_xy_0  * (2*dew) /  efvs_usable
+!              end if
+	   else
+	        call putpcgc( norm_vect(2), loc_array(ew,ns)+up,loc_array(ew,ns)+up)
+		rhsd (loc_array(ew,ns)+up) = - othervel(ew,ns,up) * norm_vect(1)
+	   
+	   end if
+	end if
+	       
+              
+      end do
+
+
+    elseif (use_sticky_wall .and. ew == ewn-1 .and. ns .ge. (nsn/2 - sticky_length/2) .and. ns .le. (nsn/2 + sticky_length/2)) then
 
         ! at fake corner point, set both uvel and vvel to 0.0
 !        write(*,*) 'Setting velocity at ew,ns:',ew,ns
@@ -1093,10 +1204,6 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
            call valueset( 0.0_dp )                ! vel at margin set to 0 
 	end do 
 
-!    elseif (use_plastic_yield_bnd) then
-!        if (plastic_yield_mask(ew,ns) == 1) then
-!	   ! apply bc here
-!	end if    
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elseif ( GLIDE_HAS_ICE(mask(ew,ns)) .and. .not. &
          GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns)) .and. .not. &
