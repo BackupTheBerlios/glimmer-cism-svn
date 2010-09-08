@@ -1,4 +1,4 @@
-
+from submit_GC_job import submit_job
 from gcplume import *
 import os
 
@@ -35,14 +35,15 @@ for tau_xy_0 in [0,10, 25, 50]:
         j.use_plume = 0
         j.plume_dt = 0.0
         
-        j.gc = {'options' : { 'flow_law' : 2,
+        j.gc = {'options' : { 'flow_law' : 0,
+                              'temperature' : 0,
                               },
                 'Petermann shelf' : { 'accumulation_rate' : acab,
              		              'thk_steady_tol' : 1.0e-3*j.ice_dt,
                                      },
                 'boundary condition params' : {'tau_xy_0' : tau_xy_0 * 1000.0,
                                                },
-	        'picard parameters' : {'small_vel' : 0.0001,
+	        'picard parameters' : {'small_vel' : 0.01,
 	 			       'minres' : 1.0e-6,
 				       'y_overrideres' : 1.0e-9,
 					'cvg_accel' : 1.25,
@@ -51,7 +52,7 @@ for tau_xy_0 in [0,10, 25, 50]:
                 }
         j.assertCanStage()
         j.serialize()
-        j.stage()
-        j.run()
+        print( "submitting job %s" % j.name)
+        submit_job(j,'gladish@cims.nyu.edu','24:00:00','q')
     
     

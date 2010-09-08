@@ -65,6 +65,7 @@ def queue_job(mode, j):
                            'run_GC_%s.sh' % j.name)
 
     if (mode != 'q'):
+        print("running job script  %s" % runcmd)
         subprocess.call(['sh', runcmd])
     else:
         print('queueing jobscript: %s' % runcmd)
@@ -80,8 +81,8 @@ def submit_job(job,email,walltime,mode):
         j = job
 
     j.assertCanStage()
-
     write_jobscript(j,email,j.serialFile,walltime)
+    
     queue_job(mode,j)
 
     
@@ -102,7 +103,7 @@ def main():
     if (len(sys.argv) != 4 ):
         print('ERROR: incorrect number of arguments')
         print(USAGE)
-        exit(1)
+        return
 
     #
     # set variables

@@ -8,12 +8,12 @@ def kickoff( start_index, email, walltime ):
     j = SteadyShelfJob()
     j.default_flwa = 1.0e-16
     j.uniform_acab = -1.2
-    j.n = 50
-    j.m = 20
+    j.n = 46
+    j.m = 22
     j.nlevel = 3
     j.tend = 200.0
     j.tstart = 0.0
-    j.ice_dt = 0.1
+    j.ice_dt = 0.025
     j.hx = 1000.0
     j.hy = 1000.0
     j.use_plume = 1
@@ -21,14 +21,14 @@ def kickoff( start_index, email, walltime ):
     j.otopg = -2000.0
     j.upthk = 600.0
     j.randthk = 0.0
-    j.gc = {'options' : {'flow_law' : 2,
+    j.gc = {'options' : {'flow_law' : 0,
                          'temperature' : 0,
                          },
             'boundary condition params' : {'tau_xy_0' : 50.0e+3,
                                            'x_invariant' : False,
                                            'use_lateral_stress_bc' : True,
                                            },
-            'picard parameters' : {'small_vel' : 0.0001,
+            'picard parameters' : {'small_vel' : 0.01,
                                    'minres' : 1.0e-6,
                                    'y_overrideres' : 1.0e-9,
                                    'cvg_accel' : 1.25,
@@ -64,21 +64,16 @@ def kickoff( start_index, email, walltime ):
                            'tempbot' : t,
                            'salttop' : 34.765,
                            'saltbot' : 34.765,
-                           'plume_min_thickness' : 25.0,
+                           'plume_min_thickness' : 20.0,
                            'phi'     : phi}
 
                 j.assertCanStage()
                 j.serialize()
-                f = open('/Users/carl/kickoff9log.txt','a')
-                try:
-                    submit_job(j,email, walltime,'i')
-                except:
-                    f.write('%s job failed\n' % j.name)
-                f.close()
+                submit_job(j,email, walltime,'q')
                     
 
 if __name__ == '__main__':
 
     start_index = int(sys.argv[1])
-    kickoff(start_index, 'gladish@cims.nyu.edu', '12:00:00')
+    kickoff(start_index, 'gladish@cims.nyu.edu', '48:00:00')
 
