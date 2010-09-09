@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/python
 
 import gcplume
 import pickle
@@ -24,3 +24,4 @@ j.stage()
 j.run()
 j.completed = True
 
+#j.serialize()
