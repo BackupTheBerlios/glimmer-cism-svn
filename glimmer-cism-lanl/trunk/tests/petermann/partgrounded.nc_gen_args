@@ -1,2 +1,0 @@
-#!/bin/sh
-nc_gen_input 46 86 200.d0 200.d0 40 1000.d0 80 800.d0 900.d0 5000.d0 2.d0 50.d0 partgrounded.in.nc
