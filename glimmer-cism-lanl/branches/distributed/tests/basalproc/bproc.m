@@ -36,7 +36,7 @@ artm = T0 * ones( r, c );
 bheatflx = q0 * ones( r, c );
 acab = b0 * ones( r, c );
 
-topg = repmat( linspace( 1e3, 1e3-(slope*(c-1)*dew), c), r, 1 );      %% for debugging
+topg = repmat( linspace( -9e2, -9e2-(slope*(c-1)*dew), c), r, 1 );      %% for debugging
 
 % temp = repmat( linspace( (-H0*(rho_i/rho_w)-50)/1.25, -H0*(rho_i/rho_w)-50, c-3), r, 1 ) + 0;        %% force to be near floatationg at ds end
 % topg = [ temp, repmat(temp(:,end-3), 1, 3 ) ];
@@ -44,8 +44,8 @@ topg = repmat( linspace( 1e3, 1e3-(slope*(c-1)*dew), c), r, 1 );      %% for deb
 usrf = topg + thck;
 
 %% put buffer of zero thickness cells around perimeter (for remapping)
-thck(1:3,:) = 0; thck(:,1:3) = 0; thck(end-2:end,:) = 0; thck(:,end-2:end) = 0;
-usrf(1:3,:) = 0; usrf(:,1:3) = 0; usrf(end-2:end,:) = 0; usrf(:,end-2:end) = 0;
+thck(1:2,:) = 0; thck(:,1:2) = 0; thck(end-1:end,:) = 0; thck(:,end-3:end) = 0;
+usrf(1:2,:) = 0; usrf(:,1:2) = 0; usrf(end-1:end,:) = 0; usrf(:,end-3:end) = 0;
 
 figure(1), imagesc( x/1e3, y/1e3, thck ), axis xy, axis equal, axis tight, colorbar
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'thickness (m)' )
@@ -95,7 +95,7 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'geo flux (W m^2)' )
 
 % %% add a kinbcmask field to specify where 0 flux bcs are
 kinbcmask = zeros(size(minTauf));
-kinbcmask(1:4,:) = 1; kinbcmask(end-3:end,:) = 1; kinbcmask(:,1:4) = 1;
+kinbcmask(1:3,:) = 1; kinbcmask(end-2:end,:) = 1; kinbcmask(:,1:3) = 1;
 
 uvelhom = zeros( l, r-1, c-1 );
 for i=1:l

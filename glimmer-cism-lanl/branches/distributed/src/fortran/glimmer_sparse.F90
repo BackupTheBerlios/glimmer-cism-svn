@@ -56,7 +56,7 @@ contains
             call slap_default_options(opt%slap, opt%base) 
 
         else if (method == SPARSE_SOLVER_GMRES) then
-           call not_parallel(__FILE__,__LINE__)
+!           call not_parallel(__FILE__,__LINE__)
             call slap_default_options(opt%slap, opt%base)
             opt%slap%use_gmres = .true.
 
@@ -95,7 +95,7 @@ contains
 
         if (options%base%method == SPARSE_SOLVER_BICG .or. &
             options%base%method == SPARSE_SOLVER_GMRES) then
-           call not_parallel(__FILE__,__LINE__)
+!           call not_parallel(__FILE__,__LINE__)
             allocate(workspace%slap)
             call slap_allocate_workspace(matrix, options%slap, workspace%slap, max_nonzeros)
 

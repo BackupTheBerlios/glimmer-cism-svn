@@ -210,12 +210,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  beta,                   &
                                  uvel,     vvel,         &
                                  uflx,     vflx,         &
-                                 efvs )
+                                 efvs, tstep )
   use parallel
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn
+  integer, intent(in) :: ewn, nsn, upn, tstep  ! JFL to be removed
   integer, dimension(:,:),   intent(inout)  :: umask
   ! NOTE: 'inout' status to 'umask' should be changed to 'in' at some point, 
   ! but for now this allows for some minor internal hacks to CISM-defined mask  
@@ -251,6 +251,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer :: ew, ns, up     ! counters for horiz and vert do loops
 
   real (kind = dp), parameter :: minres = 1.0d-4    ! assume vel fields converged below this resid 
+  real (kind = dp), parameter :: NL_tol = 1.0d-06   ! to have same criterion
+                                                    ! than with JFNK
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
@@ -261,10 +263,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! variables used for incorporating generic wrapper to sparse solver
   type(sparse_matrix_type) :: matrix
   real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1, F
-  real (kind = dp) :: err, L2norm, L2square
+  real (kind = dp) :: err, L2norm, L2square, NL_target
   integer :: iter, pic
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
-  integer, save :: tstep    ! JFL to be removed
 
   ! AGS: partition information for distributed solves
   integer, allocatable, dimension(:) :: myIndices
@@ -301,10 +302,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
         endif
     end do; end do
  end if
-
-!! hack of the boundary conditions for basal processes model test case (comment
-!! out for standard model runs) 
-!    umask(ewn-4,4:nsn-4) = 41                  ! make this boundary a calving front
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -371,13 +368,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! START of Picard iteration
   ! ****************************************************************************************
 
-!  tstep = tstep + 1 ! JFL to be removed
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  ! do pic =1, 80
+  ! do pic =1, 100
   do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
@@ -501,6 +497,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !    print *, 'L2 with/without ghost (k)= ', counter, &
 !              sqrt(DOT_PRODUCT(F,F)), L2norm
+!    if (pic .eq. 1) NL_target = NL_tol * L2norm
+!    if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
@@ -645,12 +643,12 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                                  beta,                   & 
                                  uvel,     vvel,         &
                                  uflx,     vflx,         &
-                                 efvs )
+                                 efvs, tstep )
 
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn
+  integer, intent(in) :: ewn, nsn, upn, tstep
   integer, dimension(:,:),   intent(inout)  :: umask  !*sfp* replaces the prev., internally calc. mask
                                                       ! ... 'inout' status allows for a minor alteration
                                                       ! to cism defined mask, which don't necessarily 
@@ -702,7 +700,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp) :: crap
   integer :: tot_its, itenb, maxiteGMRES, iout, icode
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
-  integer, save :: tstep ! JFL to be removed
 
   ! AGS: partition information for distributed solves
   integer, allocatable, dimension(:) :: myIndices
@@ -803,8 +800,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
-  tstep = tstep + 1 ! JFL to be removed
-
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
 
@@ -838,6 +833,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 !==============================================================================
 
 !      print *, 'target with L2norm with or without ghost?'
+
     if (k .eq. 1) NL_target = NL_tol * L2norm
 
     print *, 'L2 with, without ghost (k)= ', k, L2norm_wig, L2norm
@@ -852,7 +848,11 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       dx  = 0d0 ! initial guess
 
-      tol = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
+      if (tstep .lt. 5) then
+         tol = 0.9d0 * L2norm_wig  ! setting the tolerance for fgmres
+      else 
+         tol = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
+      endif
 
       epsilon = 1d-07 ! for J*vector approximation
 
@@ -1056,15 +1056,15 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     end if; end do; end do
   end if
 
-  if (main_task) then
-    print *, 'nsn=', nsn
-    print *, 'ewn=', ewn
-    print *, 'uvel shape =', shape(uvel)
-    print *, 'vvel shape =', shape(vvel)
-    print *, 'thck shape =', shape(thck)
-    print *, 'efvs shape =', shape(efvs)
-    print *, 'flwafact shape =', shape(flwafact)
-  endif
+!  if (main_task) then
+!    print *, 'nsn=', nsn
+!    print *, 'ewn=', ewn
+!    print *, 'uvel shape =', shape(uvel)
+!    print *, 'vvel shape =', shape(vvel)
+!    print *, 'thck shape =', shape(thck)
+!    print *, 'efvs shape =', shape(efvs)
+!    print *, 'flwafact shape =', shape(flwafact)
+!  endif
 
   do ns = 2,nsn-1
       do ew = 2,ewn-1
@@ -1522,7 +1522,8 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
 
   integer, intent(in) :: ewn, nsn, upn, counter, whichbabc, whichefvs
   integer, intent(in) :: nu1, nu2
-  integer, dimension(nu1), intent(in) :: g_flag ! g_flag = 1 for ghost cell
+  integer, dimension(nu1), intent(in) :: g_flag ! 0 :reg cell
+                                                ! 1 :top ghost, 2 :base ghost
   integer, dimension(:,:), intent(in) :: uindx, umask
 
   type(sparse_matrix_type), intent(inout) :: matrixA, matrixC
@@ -1653,22 +1654,22 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
   integer :: ew, ns
   integer, dimension(2) :: loc
 
-  g_flag = 0 ! flag for ghost cells
+  g_flag = 0
 
   do ns = 1,nsn-1
    do ew = 1,ewn-1
         if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
             uk_1(loc(1):loc(2)) = uvel(:,ew,ns)
-            uk_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at base
-            uk_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at top
+            uk_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at top
+            uk_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at base
 
             vk_1(loc(1):loc(2)) = vvel(:,ew,ns)
-            vk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at base
-            vk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at top
+            vk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at top
+            vk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at base
 
-            g_flag(loc(1)-1) = 1 
-            g_flag(loc(2)+1) = 1 
+            g_flag(loc(1)-1) = 1 ! ghost at top
+            g_flag(loc(2)+1) = 2 ! ghost at base
         end if
     end do
   end do
@@ -1697,10 +1698,10 @@ subroutine ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
       do ew = 1,ewn-1
           if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
-            ughost(1,ew,ns) = uk_1(loc(1)-1) ! ghost at base
-            ughost(2,ew,ns) = uk_1(loc(2)+1) ! ghost at top
-            vghost(1,ew,ns) = vk_1(loc(1)-1) ! ghost at base
-            vghost(2,ew,ns) = vk_1(loc(2)+1) ! ghost at top
+            ughost(1,ew,ns) = uk_1(loc(1)-1) ! ghost at top
+            ughost(2,ew,ns) = uk_1(loc(2)+1) ! ghost at base
+            vghost(1,ew,ns) = vk_1(loc(1)-1) ! ghost at top
+            vghost(2,ew,ns) = vk_1(loc(2)+1) ! ghost at base
           else 
             ughost(1,ew,ns) = 0d0
             ughost(2,ew,ns) = 0d0

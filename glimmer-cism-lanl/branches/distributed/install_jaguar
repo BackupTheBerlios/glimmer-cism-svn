@@ -1,9 +1,14 @@
 # install script for Jaguar systems using full debug mode
 # before running:
-#  (a) add 3 lines to /src/fortran/Makefile.am to allow SLAP to be built in full debug mode:
+#  (a) add 3 lines to /src/fortran/SLAP_library/Makefile.am to prevent SLAP library from being built 
+#   with full debug mode:
 #        (1) F77=ftn -O2 (2) FC= ftn -O2 (3) F90= ftn -O2
 #  (b) comment out Coyote LIBS and uncomment out Jaguar LIBS in configure.in (search for 'Jaguar')
-#
+#  (c) in src/fortran/ cp parallel_[mpi,single,slap].F90 parallel.F90 to grab type of parallelization you want
+#      this is an intermediate solution to accommodate all the different development options
+#      mpi option: under construction and allows full decomposed code
+#      single option: run with aprun -n1 executable *.config to get parallel trilinos only (which_ho_sparse=3)
+#      slap option: run code as originally designed, where only slap solver works (which_ho_sparse=1)
 ./configure \
 --prefix=$HOME/work/distributed \
 FC="ftn -Minform=inform -Mbounds -g -Mchkptr" \

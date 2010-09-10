@@ -23,9 +23,11 @@ module parallel
   implicit none
 
   integer,parameter :: lhalo = 0
-  logical,parameter :: main_task = .true.
-  integer,parameter :: this_rank = 0
   integer,parameter :: uhalo = 0
+  integer,parameter :: main_rank = 0
+
+  logical,save :: main_task
+  integer,save :: comm,tasks,this_rank
 
   integer,parameter :: staggered_lhalo = lhalo
   integer,parameter :: staggered_uhalo = 0
@@ -127,7 +129,11 @@ contains
   end function
 
   subroutine parallel_finalise
+    use mpi
     implicit none
+    integer :: ierror 
+    ! begin 
+    call mpi_finalize(ierror)
   end subroutine
 
   subroutine parallel_halo_integer_2d(a)
@@ -161,7 +167,15 @@ contains
   end subroutine
 
   subroutine parallel_initialise
+    use mpi 
     implicit none
+    integer :: ierror 
+    ! begin 
+    call mpi_init(ierror)
+    comm = mpi_comm_world
+    call mpi_comm_size(comm,tasks,ierror)
+    call mpi_comm_rank(comm,this_rank,ierror)
+    main_task = (this_rank==main_rank)
   end subroutine
 
   subroutine parallel_print_integer_2d(name,a)
@@ -232,7 +246,9 @@ contains
     character(len=*) :: file
     ! begin
     write(0,*) "STOP in ",file," at line ",line
-    stop
+    ! stop
+    write(0,*) "RUNNING in parallel_single mode, so STOP IGNORED."
+
   end subroutine
 
   subroutine parallel_temp_halo(a)

@@ -52,8 +52,8 @@ extern "C" {
     RowMap.MyGlobalElements(&MyGlobalElements[0]);
 
 #ifdef HAVE_MPI
-    int nPEs;
-    MPI_Comm_size(MPI_COMM_WORLD, &nPEs);
+    int tasks;
+    MPI_Comm_size(MPI_COMM_WORLD, &tasks);
 #endif
 
     int anEst = nnz / order + 1;
