@@ -696,7 +696,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   real (kind = dp), dimension(:), allocatable :: dx, F, F_plus
   real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
   real (kind = dp), dimension(:,:), allocatable :: vv, wk
-  real (kind = dp) :: L2norm, L2norm_wig, tol, epsilon,NL_target
+  real (kind = dp) :: L2norm, L2norm_wig, tol, gamma_l, epsilon,NL_target
   real (kind = dp) :: crap
   integer :: tot_its, itenb, maxiteGMRES, iout, icode
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
@@ -848,11 +848,15 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       dx  = 0d0 ! initial guess
 
+!      call forcing_term (k, L2norm_wig, gamma_l)
+
       if (tstep .lt. 5) then
-         tol = 0.9d0 * L2norm_wig  ! setting the tolerance for fgmres
+         gamma_l = 0.9d0 
       else 
-         tol = 0.01d0 * L2norm_wig ! setting the tolerance for fgmres
+         gamma_l = 0.01d0
       endif
+
+      tol = gamma_l * L2norm_wig ! setting the tolerance for fgmres
 
       epsilon = 1d-07 ! for J*vector approximation
 
@@ -1450,6 +1454,43 @@ subroutine form_matrix( matrix ) ! for JFNK solver
   matrix%val = pcgval
 
 end subroutine form_matrix
+
+!***********************************************************************
+
+subroutine forcing_term ( k, L2normk_1, gamma_l ) 
+
+  ! Calculates the forcing term (i.e. the factor that multiplies the initial
+  ! L2 norm to determine the tolerance for the linear solve in the JFNK solver)
+  ! at iteration k given the L2norm at k-1 and k-2.
+  ! jfl, 10 Sept 2010
+
+  ! See eq 2.6 in S.C. Eisenstat, H.F. Walker, Choosing the forcing terms in
+  ! an inexact Newton method, SIAM J. Sci. Comput. 17 (1996) 16-32.
+
+  implicit none
+      
+  integer, intent(in) :: k
+  real (kind = dp), intent(in) :: L2normk_1 ! L2 norm at k-1
+  real (kind = dp), intent(out):: gamma_l
+  real (kind = dp) :: gamma_ini, gamma_min, expo
+  real (kind = dp), save :: L2normk_2      ! L2 norm at k-2
+
+      gamma_ini = 0.9d0
+      gamma_min = 0.01d0
+      expo      = 2d0
+
+      if (k .eq. 1) then
+         gamma_l = gamma_ini
+      else
+         gamma_l = (L2normk_1 / L2normk_2)**expo
+      endif
+
+      if (gamma_l .gt. gamma_ini) gamma_l = gamma_ini
+      if (gamma_l .lt. gamma_min) gamma_l = gamma_min
+      
+      L2normk_2 = L2normk_1
+
+end subroutine forcing_term
 
 !***********************************************************************
 
