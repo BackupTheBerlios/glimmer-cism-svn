@@ -1,9 +1,8 @@
 %% Plot steady profiles
 
-f0 = '/scratch/gc_output/0bmlt_500m/0bmlt.nc';
-f1 = '/scratch/gc_output/1bmlt_500m/1bmlt.nc';
-f2 = '/scratch/gc_output/2bmlt_500m/2bmlt.nc';
-f5 = '/scratch/gc_output/5bmlt_500m/5bmlt.nc';
+f0 = './nc_files/1d_0_bmlt_sept12.5.out.nc';
+f1 = './nc_files/1d_10_bmlt_sept12.5.out.nc';
+f2 = './nc_files/1d_25_bmlt_sept12.5.out.nc';
 
 hx = 500.0;
 hy = hx;
@@ -25,7 +24,7 @@ fs = 18;
 plot0 = true;
 plot1 = true;
 plot2 = true;
-plot5 = true;
+plot5 = false;
 
 [~,y0,~,y1,thck,~,vvel] = nc_read(f0, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
@@ -51,7 +50,7 @@ xlabel('km','FontSize',fs);
 if (plot1) 
 [~,y0,~,y1,thck,~,vvel] = nc_read(f1, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
-bmelt = -5.0;
+bmelt = -10.0;
 [y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, bmelt);
 
 subplot(2,1,1);
@@ -66,7 +65,7 @@ end
 if (plot2) 
 [~,y0,~,y1,thck,~,vvel] = nc_read(f2, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
-bmelt = -10.0;
+bmelt = -25.0;
 [y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, bmelt);
 
 subplot(2,1,1);
@@ -81,30 +80,48 @@ end
 if (plot5)
 [~,y0,~,y1,thck,~,vvel] = nc_read(f5, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
-bmelt = -25.0;
+bmelt = -5.0;
 [y,v,h,w] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, bmelt);
 
 subplot(2,1,1);
 plot(ycvel/1000, vvelc, 'g*');
 plot((y-0.5*hy)/1000, v, 'g');
 
-end
-legend('0.0 m/year', '0.0 m/year Exact Sol.', ...
-       '5.0 m/year', '5.0 m/year Exact Sol.', ...
-       '10.0 m/year','10.0 m/year Exact Sol.', ...
-       '25.0 m/year','25.0 m/year Exact Sol.', ...
-       'Location','BestOutside') %,'FontSize',fs);
-hold off
-
-if (plot5)
 subplot(2,1,2);
 plot(ycthk/1000, thkc, 'g*');
 plot(y/1000, h, 'g');
-end 
+
+end
+
+if (plot5)  
+subplot(2,1,1);
 legend('0.0 m/year', '0.0 m/year Exact Sol.', ...
        '5.0 m/year', '5.0 m/year Exact Sol.', ...
        '10.0 m/year','10.0 m/year Exact Sol.', ...
        '25.0 m/year','25.0 m/year Exact Sol.', ...
        'Location','BestOutside') %,'FontSize',fs);
-
+hold off;
+subplot(2,1,2);
+legend('0.0 m/year', '0.0 m/year Exact Sol.', ...
+       '5.0 m/year', '5.0 m/year Exact Sol.', ...
+       '10.0 m/year','10.0 m/year Exact Sol.', ...
+       '25.0 m/year','25.0 m/year Exact Sol.', ...
+       'Location','BestOutside') %,'FontSize',fs);
+hold off;
+else
+    
+subplot(2,1,1);
+legend('0.0 m/year', '0.0 m/year Exact Sol.', ...
+       '10.0 m/year','10.0 m/year Exact Sol.', ...
+       '25.0 m/year','25.0 m/year Exact Sol.', ...
+       'Location','BestOutside') %,'FontSize',fs);
 hold off
+subplot(2,1,2);
+legend('0.0 m/year', '0.0 m/year Exact Sol.', ...
+       '10.0 m/year','10.0 m/year Exact Sol.', ...
+       '25.0 m/year','25.0 m/year Exact Sol.', ...
+       'Location','BestOutside') %,'FontSize',fs);
+hold off
+
+end
+   
