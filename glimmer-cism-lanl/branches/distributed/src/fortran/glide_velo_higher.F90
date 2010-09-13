@@ -8,6 +8,7 @@
 
 module glide_velo_higher
     !Includes for the higher-order velocity computations that this calls out to
+
     use ice3d_lib
     use glam_strs2, only: glam_velo_fordsiapstr, JFNK, umask
 
@@ -225,43 +226,17 @@ contains
 
           elseif (NL_solver .eq. 2) then ! JFNK (solver in development...)
 
-            call JFNK                  ( model%general%ewn,       model%general%nsn,                 &
-                                        model%general%upn,                                          &
-                                        model%numerics%dew,      model%numerics%dns,                &
-                                        model%numerics%sigma,    model%numerics%stagsigma,          &
-                                        model%geometry%thck,     model%geometry%usrf,               &
-                                        model%geometry%lsrf,     model%geometry%topg,               &
-                                        model%geomderv%dthckdew, model%geomderv%dthckdns,           &
-                                        model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
-!                                        model%geomderv%dthckdew_unstag, model%geomderv%dthckdns_unstag, &
-!                                        model%geomderv%dusrfdew_unstag, model%geomderv%dusrfdns_unstag, &
-!                                        model%geomderv%dusrfdew-model%geomderv%dthckdew_unstag,         &
-!                                        model%geomderv%dusrfdns-model%geomderv%dthckdns_unstag,         & 
-!                                        model%geomderv%dlsrfdew_unstag,            &
-!                                        model%geomderv%dlsrfdew_unstag,            &
-                                        model%geomderv%dlsrfdns,            & 
-                                        model%geomderv%dlsrfdns,            & 
-                                        model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
-                                        model%basalproc%minTauf,                                    & 
-                                        model%velocity_hom%btraction,                               & 
-                                        geom_mask_stag,                                             &
-                                        model%options%which_ho_babc,                                &
-                                        model%options%which_ho_efvs,                                &
-                                        model%options%which_ho_resid,                               &
-                                        model%options%which_ho_sparse,                              &
-                                        model%options%periodic_ew,                                  &
-                                        model%options%periodic_ns,                                  &
-                                        model%velocity_hom%beta,                                    & 
-                                        model%velocity_hom%uvel, model%velocity_hom%vvel,           &
-                                        model%velocity_hom%uflx, model%velocity_hom%vflx,           &
-                                        model%velocity_hom%efvs, tstep)
-           else
-              call write_log('Invalid NL_solver flag.',GM_FATAL)
-           end if
+            call JFNK                  (model, geom_mask_stag, tstep) 
+          else
+
+            call write_log('Invalid NL_solver flag.',GM_FATAL)
+          end if
 
          end if
+
         !Compute the velocity norm - this is independant of the methods used to compute the u and v components so
         !we put it out here
+
         model%velocity_hom%velnorm = sqrt(model%velocity_hom%uvel**2 + model%velocity_hom%vvel**2)
         model%velocity_hom%is_velocity_valid = .true.
         

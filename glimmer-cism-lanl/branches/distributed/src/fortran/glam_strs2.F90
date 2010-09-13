@@ -16,6 +16,7 @@ module glam_strs2
 
 !***********************************************************************
 
+use ,intrinsic :: iso_c_binding
 use glimmer_paramets, only : dp
 use glimmer_physcon,  only : gn, rhoi, rhoo, grav, pi, scyr
 use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, evs0, tau0_glam
@@ -23,6 +24,7 @@ use glimmer_log,      only : write_log
 use glide_mask
 use glimmer_sparse_type
 use glimmer_sparse
+use glide_types, only : glide_global_type
 
 implicit none
 
@@ -623,64 +625,58 @@ end subroutine glam_velo_fordsiapstr
 
 !***********************************************************************
 
-subroutine JFNK                 (ewn,      nsn,    upn,  &
-                                 dew,      dns,          &
-                                 sigma,    stagsigma,    &
-                                 thck,     usrf,         &
-                                 lsrf,     topg,         &
-                                 dthckdew, dthckdns,     &
-                                 dusrfdew, dusrfdns,     & 
-                                 dlsrfdew, dlsrfdns,     &
-                                 stagthck, flwa,         & 
-                                 mintauf,                & 
-                                 btraction,              & 
-                                 umask,                  & 
-                                 whichbabc,              &
-                                 whichefvs,              &
-                                 whichresid,             &
-                                 whichsparse,            &
-                                 periodic_ew,periodic_ns,&
-                                 beta,                   & 
-                                 uvel,     vvel,         &
-                                 uflx,     vflx,         &
-                                 efvs, tstep )
+subroutine JFNK                 (model,umask,tstep)
 
+  use ,intrinsic :: iso_c_binding 
+  use glide_types, only : glide_global_type
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn, tstep
+  type(glide_global_type) ,intent(inout) :: model
+
   integer, dimension(:,:),   intent(inout)  :: umask  !*sfp* replaces the prev., internally calc. mask
                                                       ! ... 'inout' status allows for a minor alteration
                                                       ! to cism defined mask, which don't necessarily 
                                                       ! associate all/any boundaries as a unique mask value.
-  real (kind = dp), intent(in) :: dew, dns
+  integer, intent(in) :: tstep
 
-  real (kind = dp), dimension(:),     intent(in)  :: sigma, stagsigma
-  real (kind = dp), dimension(:,:),   intent(in)  :: thck, usrf, lsrf, topg
-  real (kind = dp), dimension(:,:),   intent(in)  :: dthckdew, dthckdns
-  real (kind = dp), dimension(:,:),   intent(in)  :: dusrfdew, dusrfdns
-  real (kind = dp), dimension(:,:),   intent(in)  :: dlsrfdew, dlsrfdns
-  real (kind = dp), dimension(:,:),   intent(in)  :: stagthck
-  real (kind = dp), dimension(:,:),   intent(in)  :: minTauf
-  real (kind = dp), dimension(:,:,:), intent(inout) :: btraction            ! consistent basal traction array
-  real (kind = dp), dimension(:,:,:), intent(in)  :: flwa
+! new glide_global_type variables for everything needed to pass thru trilinos as a pointer. For now, model_object=model
+  type(glide_global_type) ,target  :: model_object
+  type(glide_global_type) ,pointer :: fptr=>NULL()
+  type(c_ptr)                      :: c_ptr_to_object
+
+! split off of derived types
+! intent(in)
+  integer :: ewn, nsn, upn
+  real (kind = dp) :: dew, dns
+
+  real (kind = dp), dimension(:)  :: sigma, stagsigma
+  real (kind = dp), dimension(:,:)  :: thck, usrf, lsrf, topg
+  real (kind = dp), dimension(:,:)  :: dthckdew, dthckdns
+  real (kind = dp), dimension(:,:)  :: dusrfdew, dusrfdns
+  real (kind = dp), dimension(:,:)  :: dlsrfdew, dlsrfdns
+  real (kind = dp), dimension(:,:)  :: stagthck
+  real (kind = dp), dimension(:,:)  :: minTauf
+  real (kind = dp), dimension(:,:,:) :: btraction            ! consistent basal traction array
+  real (kind = dp), dimension(:,:,:)  :: flwa
   
   !*sfp* This is the betasquared field from CISM (externally specified), and should eventually
   ! take the place of the subroutine 'calcbetasquared' below (for now, using this value instead
   ! will simply be included as another option within that subroutine) 
-  real (kind = dp), dimension(:,:),   intent(in)  :: beta 
+  real (kind = dp), dimension(:,:)  :: beta 
 
 
 !whl - to do - Merge whichbabc with whichbtrc?
-  integer, intent(in) :: whichbabc
-  integer, intent(in) :: whichefvs
-  integer, intent(in) :: whichresid
-  integer, intent(in) :: whichsparse
-  logical, intent(in) :: periodic_ew, periodic_ns
+  integer :: whichbabc
+  integer :: whichefvs
+  integer :: whichresid
+  integer :: whichsparse
+  logical :: periodic_ew, periodic_ns
 
-  real (kind = dp), dimension(:,:,:), intent(out) :: uvel, vvel
-  real (kind = dp), dimension(:,:),   intent(out) :: uflx, vflx
-  real (kind = dp), dimension(:,:,:), intent(out) :: efvs
+! intent(out)
+  real (kind = dp), dimension(:,:,:) :: uvel, vvel
+  real (kind = dp), dimension(:,:) :: uflx, vflx
+  real (kind = dp), dimension(:,:,:) :: efvs
 
   integer :: ew, ns, up, nele, k
 
@@ -704,6 +700,42 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   ! AGS: partition information for distributed solves
   integer, allocatable, dimension(:) :: myIndices
   integer :: mySize = -1
+
+! KJE pushed down derived type 'model' a level 
+  ewn = model%general%ewn
+  nsn = model%general%nsn
+  upn = model%general%upn
+  dew = model%numerics%dew
+  dns = model%numerics%dns
+  sigma = model%numerics%sigma
+  stagsigma = model%numerics%stagsigma
+  thck = model%geometry%thck
+  usrf = model%geometry%usrf
+  lsrf = model%geometry%lsrf
+  topg = model%geometry%topg
+  dthckdew = model%geomderv%dthckdew_unstag
+  dthckdns = model%geomderv%dthckdns_unstag
+  dusrfdew = model%geomderv%dusrfdew_unstag
+  dusrfdns = model%geomderv%dusrfdns_unstag
+  dlsrfdew = model%geomderv%dlsrfdew_unstag
+  dlsrfdns = model%geomderv%dlsrfdns_unstag
+  stagthck = model%geomderv%stagthck
+  flwa = model%temper%flwa*vis0/vis0_glam
+  mintauf = model%basalproc%minTauf
+  btraction = model%velocity_hom%btraction
+  whichbabc = model%options%which_ho_babc
+  whichefvs = model%options%which_ho_efvs
+  whichresid = model%options%which_ho_resid
+  whichsparse = model%options%which_ho_sparse
+  periodic_ew = model%options%periodic_ew
+  periodic_ns = model%options%periodic_ns
+  beta = model%velocity_hom%beta
+
+  uvel = model%velocity_hom%uvel
+  vvel = model%velocity_hom%vvel
+  uflx = model%velocity_hom%uflx
+  vflx = model%velocity_hom%vflx
+  efvs = model%velocity_hom%efvs
 
   ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
@@ -971,6 +1003,12 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   deallocate(F, F_plus)
   deallocate(wk1, wk2)
   deallocate(vv, wk)
+
+  model%velocity_hom%uvel = uvel
+  model%velocity_hom%vvel = vvel
+  model%velocity_hom%uflx = uflx
+  model%velocity_hom%vflx = vflx
+  model%velocity_hom%efvs = efvs
 
   return
 
