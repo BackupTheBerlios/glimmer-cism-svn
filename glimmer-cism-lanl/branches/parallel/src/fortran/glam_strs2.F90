@@ -417,7 +417,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
       L2norm  = L2square
       F(1:pcgsize(1)) = vk_1(:)
       
-!   call output_res(ewn,nsn,upn,uindx,counter,size(vk_1),vk_1, 2) ! JFL
+   call output_res(ewn,nsn,upn,uindx,counter,size(vk_1),vk_1, 2) ! JFL
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
@@ -2142,6 +2142,8 @@ subroutine bodyset(ew,  ns,  up,           &
 
   integer, dimension(2) :: bcflag  ! indicates choice of sfc and basal bcs ...
 
+  real (kind = dp) :: scalebabc
+
   locplusup = loc(1) + up
 
   if( lateralboundry )then
@@ -2190,11 +2192,23 @@ subroutine bodyset(ew,  ns,  up,           &
                                 onesideddiff,                   &
                                 normal,        fwdorbwd)
 
-        ! add on coeff. associated w/ du/digma  
+        ! add on coeff. associated w/ du/dsigma  
         g(:,3,3) = g(:,3,3) &
                  + vertimainbc( stagthck(ew,ns), bcflag, dup(up),     &
                                 local_efvs,      betasquared,   g_vert,    nz, &
                                 plastic_coeff=plastic_coeff_lhs(pt,ew,ns)  )
+
+        !! test scaling of basal bc coeffs (for JFNK solver)
+        if( bcflag(1) == 1 )then
+           !scalebabc = ( betasquared / ( sum( local_efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
+           !scalebabc = abs( g(3,3,3) );     ! use vert stress grad coeff for scaling
+           !scalebabc = 1.0d4 
+           scalebabc = 1.0d0
+           if( scalebabc .le. 0.0d0 )then
+            scalebabc = 1.0d0
+           end if
+           g = g / scalebabc
+        end if
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
         ! (w.r.t. cols), on a new row ...
@@ -2213,7 +2227,13 @@ subroutine bodyset(ew,  ns,  up,           &
                                                    normal,fwdorbwd)              &
                                                  * local_othervel )
 
+             !! test scaling of basal bc coeffs (for JFNK solver)
+             if( bcflag(1) == 1 )then
+                rhsd(locplusup) = rhsd(locplusup) / scalebabc
+             end if
+
     end if     ! up = 1 or up = upn (IF at lateral boundary and IF at surface or bed)
+
 
     ! If in main body and at ice/ocean boundary, calculate depth-averaged stress
     ! due to sea water, bc normal vector components should be boundary normal 
@@ -2352,10 +2372,24 @@ subroutine bodyset(ew,  ns,  up,           &
 
      g_norm = g              ! save for basal traction calculation
 
-     ! add on coeff. associated w/ du/digma
+     ! add on coeff. associated w/ du/dsigma
      g(:,2,2) = g(:,2,2)   &
               + vertimainbc( stagthck(ew,ns),bcflag,dup(up),local_efvs,betasquared, &
                             g_vert, nz, plastic_coeff=plastic_coeff_lhs(pt,ew,ns) )
+
+
+     !! test scaling of basal bc coeffs (for JFNK solver)
+     if( bcflag(1) == 1 )then
+        !scalebabc = ( betasquared / ( sum( local_efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
+        !scalebabc = abs( g(3,2,2) );     ! use vert stress grad coeff for scaling
+        !scalebabc = 1.0d4 
+        scalebabc = 1.0d0
+        if( scalebabc .le. 0.0d0 )then
+            scalebabc = 1.0d0
+        end if
+        g = g / scalebabc
+     end if
+
 
      ! put the coeff. for the b.c. equation in the same place as the prev. equation
      ! (w.r.t. cols), on a new row ...
@@ -2375,6 +2409,12 @@ subroutine bodyset(ew,  ns,  up,           &
                                              local_efvs,                    &
                                              oneortwo, twoorone, g_cros )  &
                                               * local_othervel )
+
+             !! test scaling of basal bc coeffs (for JFNK solver)
+             if( bcflag(1) == 1 )then
+                rhsd(locplusup) = rhsd(locplusup) / scalebabc
+             end if
+
      else
           rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
                                              slopex,        slopey,         &
