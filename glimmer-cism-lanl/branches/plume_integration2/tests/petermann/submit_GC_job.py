@@ -66,7 +66,10 @@ def queue_job(mode, j):
 
     if (mode != 'q'):
         print("running job script  %s" % runcmd)
-        subprocess.call(['sh', runcmd])
+        if (mode == 'fake'):
+            pass
+        else:
+            subprocess.call(['sh', runcmd])
     else:
         print('queueing jobscript: %s' % runcmd)
         retcode = subprocess.call(['qsub', runcmd])
