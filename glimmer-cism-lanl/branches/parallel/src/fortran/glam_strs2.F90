@@ -1088,8 +1088,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
             ! "effstr" = eff. strain rate squared
             effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
                          0.25_dp * (vgradew + ugradns)**2 + &
-                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
-!                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
+!                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
+                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
 
     ! -----------------------------------------------------------------------------------
     ! NOTES on capping vs. non-capping version of eff. strain rate calc.
@@ -1106,9 +1106,9 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! available as a config file option or possibly removed altogether.   
 
     ! Old "capping" scheme       ! these lines must be active to use the "capping" scheme for the efvs calc
-            where (effstr < effstrminsq)
-                   effstr = effstrminsq
-            end where
+!            where (effstr < effstrminsq)
+!                   effstr = effstrminsq
+!            end where
 
     ! Note that the vert dims are explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
