@@ -417,7 +417,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
       L2norm  = L2square
       F(1:pcgsize(1)) = vk_1(:)
       
-   call output_res(ewn,nsn,upn,uindx,counter,size(vk_1),vk_1, 2) ! JFL
+!   call output_res(ewn,nsn,upn,uindx,counter,size(vk_1),vk_1, 2) ! JFL
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
