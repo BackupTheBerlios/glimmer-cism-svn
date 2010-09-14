@@ -1,0 +1,32 @@
+
+How to use the matlab scripts in this directory:
+
+
+To produce a figure comparing the model-computed steady-states against 
+quasi-analytic steady-states, do the following.
+
+1.  Kickoff the 12 cases corresponding to acab = {-2.0, 0.0, +2.0} and
+    tau_xy_0 = {0 kPa, 10 kPa, 25 kPa, 50 kPa} by running the script
+
+    python <source tree root>/tests/petermann/task_scripts/kickoff_steady.py <unique_str> <queue_mode>
+
+    where <unique_str> is some string like 'sept13.1' and <queue_mode> is 'q'
+    to queue up the jobs and 'i' to run them interactively in sequence.
+
+2.  The job output will be written to $GC_JOBS/ssj1_<tau_xy_0>_kPa_<acab>_acab_<unique_str>
+
+3.  Extract the final state for each run by doing:
+    a) Create a directory and cd into it
+    b) Run:  nc_last_time_slice.py $GC_JOBS/ssj1_*_<unique_str>/*out.nc
+    c) scp the directory onto a CIMS machine
+
+4.  Need to generate the quasi-analytical solutions corresponding to the set of runs that were done.  Edit the script src/matlab/make_exact_sol.m and run it on a CIMS machine.  The files will be outputted to the location specified in the variable file_prefix.
+
+5.  The script <src tree root>/src/matlab/shear_exact_solution.py needs to be edited
+    to point to the correct model output netcdf files.  Edit the model_prefix and 
+    model_suffix variables to point to the correct set of netcdf files.
+
+    Also edit the exact_prefix and exact_suffix to point to the set of .mat files 
+    created by make_exact_sol.m.
+
+6. Run shear_exact_solution.m, which generates the desired figure.
