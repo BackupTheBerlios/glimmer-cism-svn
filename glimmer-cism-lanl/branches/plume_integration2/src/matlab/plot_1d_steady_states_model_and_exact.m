@@ -1,8 +1,8 @@
 %% Plot steady profiles
 
-f0 = './nc_files/1d_0_bmlt_sept12.5.out.nc';
-f1 = './nc_files/1d_10_bmlt_sept12.5.out.nc';
-f2 = './nc_files/1d_25_bmlt_sept12.5.out.nc';
+f0 = '~/research/gcp_resources/nc_files/1d_0_bmlt_sept12.5.out.nc';
+f1 = '~/research/gcp_resources/nc_files/1d_10_bmlt_sept12.5.out.nc';
+f2 = '~/research/gcp_resources/nc_files/1d_25_bmlt_sept12.5.out.nc';
 
 hx = 500.0;
 hy = hx;

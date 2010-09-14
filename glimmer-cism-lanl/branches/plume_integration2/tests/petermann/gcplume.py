@@ -438,9 +438,18 @@ class _BaseJob(_HasJobDir):
         It has the public functions: assertCanStage, stage, serialize, run.
         '''
         _HasJobDir.__init__(self)
-        self._name = None
-        self.completed = False
 
+        self._name = None
+        
+        self.completed = False
+        self.started = False
+        self.timeStop = 0.0
+        self.timeStart = 0.0
+        self.timeStartStr = ''
+        self.timeStopStr = ''
+        self.error = False
+        self.errorMessage = ''
+        
         #any constants that should basically never change
         self.kinbcw = 2
         self.plume_landw = 2
@@ -855,6 +864,6 @@ class CheckpointJob(_BaseJob):
 def _check_call(cmd):
     retcode = subprocess.call(cmd)
     if (retcode != 0):
-        raise Exception("Error running %s" % ' '.join(cmd))
+        raise Exception("Error running:\n       %s" % ' '.join(cmd))
     
     
