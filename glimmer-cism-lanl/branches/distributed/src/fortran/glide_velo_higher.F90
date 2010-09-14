@@ -226,7 +226,9 @@ contains
 
           elseif (NL_solver .eq. 2) then ! JFNK (solver in development...)
 
+! noxsolve could eventually go here 
             call JFNK                  (model, geom_mask_stag, tstep) 
+
           else
 
             call write_log('Invalid NL_solver flag.',GM_FATAL)

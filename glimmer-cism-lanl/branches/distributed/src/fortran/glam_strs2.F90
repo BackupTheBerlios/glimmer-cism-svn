@@ -626,6 +626,8 @@ end subroutine glam_velo_fordsiapstr
 !***********************************************************************
 
 subroutine JFNK                 (model,umask,tstep)
+!                                 efvs, tstep )
+  use parallel
 
   use ,intrinsic :: iso_c_binding 
   use glide_types, only : glide_global_type
@@ -650,20 +652,20 @@ subroutine JFNK                 (model,umask,tstep)
   integer :: ewn, nsn, upn
   real (kind = dp) :: dew, dns
 
-  real (kind = dp), dimension(:)  :: sigma, stagsigma
-  real (kind = dp), dimension(:,:)  :: thck, usrf, lsrf, topg
-  real (kind = dp), dimension(:,:)  :: dthckdew, dthckdns
-  real (kind = dp), dimension(:,:)  :: dusrfdew, dusrfdns
-  real (kind = dp), dimension(:,:)  :: dlsrfdew, dlsrfdns
-  real (kind = dp), dimension(:,:)  :: stagthck
-  real (kind = dp), dimension(:,:)  :: minTauf
-  real (kind = dp), dimension(:,:,:) :: btraction            ! consistent basal traction array
-  real (kind = dp), dimension(:,:,:)  :: flwa
+  real (kind = dp), dimension(:)     ,pointer :: sigma, stagsigma
+  real (kind = dp), dimension(:,:)   ,pointer :: thck, usrf, lsrf, topg
+  real (kind = dp), dimension(:,:)   ,pointer :: dthckdew, dthckdns
+  real (kind = dp), dimension(:,:)   ,pointer :: dusrfdew, dusrfdns
+  real (kind = dp), dimension(:,:)   ,pointer :: dlsrfdew, dlsrfdns
+  real (kind = dp), dimension(:,:)   ,pointer :: stagthck
+  real (kind = dp), dimension(:,:,:) ,pointer :: flwa
+  real (kind = dp), dimension(:,:)   ,pointer :: minTauf
+  real (kind = dp), dimension(:,:,:) ,pointer :: btraction            ! consistent basal traction array
   
   !*sfp* This is the betasquared field from CISM (externally specified), and should eventually
   ! take the place of the subroutine 'calcbetasquared' below (for now, using this value instead
   ! will simply be included as another option within that subroutine) 
-  real (kind = dp), dimension(:,:)  :: beta 
+  real (kind = dp), dimension(:,:)  ,pointer :: beta 
 
 
 !whl - to do - Merge whichbabc with whichbtrc?
@@ -674,9 +676,9 @@ subroutine JFNK                 (model,umask,tstep)
   logical :: periodic_ew, periodic_ns
 
 ! intent(out)
-  real (kind = dp), dimension(:,:,:) :: uvel, vvel
-  real (kind = dp), dimension(:,:) :: uflx, vflx
-  real (kind = dp), dimension(:,:,:) :: efvs
+  real (kind = dp), dimension(:,:,:) ,pointer :: uvel, vvel
+  real (kind = dp), dimension(:,:)   ,pointer :: uflx, vflx
+  real (kind = dp), dimension(:,:,:) ,pointer :: efvs
 
   integer :: ew, ns, up, nele, k
 
@@ -707,35 +709,37 @@ subroutine JFNK                 (model,umask,tstep)
   upn = model%general%upn
   dew = model%numerics%dew
   dns = model%numerics%dns
-  sigma = model%numerics%sigma
-  stagsigma = model%numerics%stagsigma
-  thck = model%geometry%thck
-  usrf = model%geometry%usrf
-  lsrf = model%geometry%lsrf
-  topg = model%geometry%topg
-  dthckdew = model%geomderv%dthckdew_unstag
-  dthckdns = model%geomderv%dthckdns_unstag
-  dusrfdew = model%geomderv%dusrfdew_unstag
-  dusrfdns = model%geomderv%dusrfdns_unstag
-  dlsrfdew = model%geomderv%dlsrfdew_unstag
-  dlsrfdns = model%geomderv%dlsrfdns_unstag
-  stagthck = model%geomderv%stagthck
-  flwa = model%temper%flwa*vis0/vis0_glam
-  mintauf = model%basalproc%minTauf
-  btraction = model%velocity_hom%btraction
+  sigma => model%numerics%sigma(:)
+  stagsigma => model%numerics%stagsigma(:)
+  thck => model%geometry%thck(:,:)
+  usrf => model%geometry%usrf(:,:)
+  lsrf => model%geometry%lsrf(:,:)
+  topg => model%geometry%topg(:,:)
+  dthckdew => model%geomderv%dthckdew(:,:)
+  dthckdns => model%geomderv%dthckdns(:,:)
+  dusrfdew => model%geomderv%dusrfdew(:,:)
+  dusrfdns => model%geomderv%dusrfdns(:,:)
+  dlsrfdew => model%geomderv%dlsrfdew(:,:)
+  dlsrfdns => model%geomderv%dlsrfdns(:,:)
+  stagthck => model%geomderv%stagthck(:,:)
+  flwa => model%temper%flwa(:,:,:)
+  mintauf => model%basalproc%minTauf(:,:)
+  btraction = model%velocity_hom%btraction(:,:,:)
   whichbabc = model%options%which_ho_babc
   whichefvs = model%options%which_ho_efvs
   whichresid = model%options%which_ho_resid
   whichsparse = model%options%which_ho_sparse
   periodic_ew = model%options%periodic_ew
   periodic_ns = model%options%periodic_ns
-  beta = model%velocity_hom%beta
+  beta => model%velocity_hom%beta(:,:)
 
-  uvel = model%velocity_hom%uvel
-  vvel = model%velocity_hom%vvel
-  uflx = model%velocity_hom%uflx
-  vflx = model%velocity_hom%vflx
-  efvs = model%velocity_hom%efvs
+  uvel => model%velocity_hom%uvel(:,:,:)
+  vvel => model%velocity_hom%vvel(:,:,:)
+  uflx => model%velocity_hom%uflx(:,:)
+  vflx => model%velocity_hom%vflx(:,:)
+  efvs => model%velocity_hom%efvs(:,:,:)
+
+  flwa(:,:,:)=flwa(:,:,:)*vis0/vis0_glam
 
   ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
