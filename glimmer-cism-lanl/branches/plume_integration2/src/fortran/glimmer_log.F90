@@ -185,7 +185,7 @@ contains
     if (local_type.eq.GM_FATAL) then
        write(*,*) "Fatal error encountered, exiting..."
        call close_log
-       stop
+       stop 1
     end if
   end subroutine write_log
 
