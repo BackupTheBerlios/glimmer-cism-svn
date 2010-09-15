@@ -20,7 +20,9 @@ quasi-analytic steady-states, do the following.
     b) Run:  nc_last_time_slice.py $GC_JOBS/ssj1_*_<unique_str>/*out.nc
     c) scp the directory onto a CIMS machine
 
-4.  Need to generate the quasi-analytical solutions corresponding to the set of runs that were done.  Edit the script src/matlab/make_exact_sol.m and run it on a CIMS machine.  The files will be outputted to the location specified in the variable file_prefix.
+4.  Need to generate the quasi-analytical solutions corresponding to the set of runs that were done.
+    Edit the script src/matlab/make_exact_sol.m and run it on a CIMS machine.  
+    The files will be outputted to the location specified in the variable file_prefix.
 
 5.  The script <src tree root>/src/matlab/shear_exact_solution.py needs to be edited
     to point to the correct model output netcdf files.  Edit the model_prefix and 
@@ -30,3 +32,22 @@ quasi-analytic steady-states, do the following.
     created by make_exact_sol.m.
 
 6. Run shear_exact_solution.m, which generates the desired figure.
+
+
+To do the 1-dimensional case:
+
+1. Kickoff the 3 cases corresponding to acab = {0, 5, 10} meters/year by running:
+   python <project root>/tests/peterman/task_scripts/kickoff_1d_variable_bmlt.py <unique_str> <queue_mode>
+
+2. Job output will be $GC_JOBS/1d_<acab>_bmlt_<unique_str>
+
+3. Similar to point 3 above.
+
+4. Edit the matlab script <project root>/src/matlab/plot_1d_steady_states_model_and_exact to point
+   to the nc files containing the model-produced steady-states.  Check the matlab constants.
+
+5. Run plot_1d_steady_states_model_and_exact to produce the figures.
+
+
+To do the flat shear velocity diagnosis case:
+
