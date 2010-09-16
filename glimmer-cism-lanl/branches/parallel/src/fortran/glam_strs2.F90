@@ -2065,8 +2065,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         call valueset(0.0_dp)
         do up = up_start, upn
            locplusup = loc(1) + up
-!           call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
-           call valueset( 0.0_dp )                ! vel at margin set to 0 
+           call valueset( thisvel(up,ew,ns) )     ! vel at margin set to initial value 
+!           call valueset( 0.0_dp )                ! vel at margin set to 0 
         end do
 
     end if
