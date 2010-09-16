@@ -15,8 +15,12 @@ def process_files(fnames):
         #print('scanning %s' % fname)
         p = subprocess.Popen(['ncdump','-h',fname],stdout=subprocess.PIPE)
         (output,err) = p.communicate()
-        final_time = int(re.search(r'UNLIMITED ; // \(([0-9]+) currently',
-                                   output).group(1))
+        m = re.search(r'UNLIMITED ; // \(([0-9]+) currently',
+                                   output)
+        if (m is None):
+            raise ("Could not match for number of time slices")
+        
+        final_time = int(m.group(1))
 
         cmd = ['ncra','-dtime,%s,%s' % (final_time-1,
                                                         final_time),

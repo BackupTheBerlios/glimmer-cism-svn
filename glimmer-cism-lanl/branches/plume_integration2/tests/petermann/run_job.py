@@ -7,15 +7,15 @@ import time
 
 USAGE = "run_job.py <jobfile>"
 
-try:
-    if (len(sys.argv) < 2 ):
-        print ('Not enough arguments.\n Usage:\n %s \n' % USAGE)
-        exit(1)
+if (len(sys.argv) < 2 ):
+    print ('Not enough arguments.\n Usage:\n %s \n' % USAGE)
+    exit(1)
 	
-    jfile = sys.argv[1]
-
-    f = open(jfile,'r')
-
+jfile = sys.argv[1]
+    
+f = open(jfile,'r')
+    
+try:
     try:
 	j = pickle.load(f)
     finally:
@@ -45,6 +45,7 @@ except Exception, e:
     j.completed = False
     j.error = True
     j.errorMessage = str(e)
+    print(j.errorMessage)
 
 j.serialize()
 

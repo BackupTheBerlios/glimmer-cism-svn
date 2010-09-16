@@ -21,10 +21,11 @@ def kickoff(unique_str, queue_mode, email, walltime):
             j.uniform_acab = acab
 
             # fixed default properties
-            j.m = 20
-            j.n = 40
-            j.hx = 1000.0
-            j.hy = 1000.0
+            j.m = 50
+            j.n = 100
+            j.hx = 20000.0 / j.m
+            j.hy = 40000.0 / j.n
+
             j.nlevel = 3
 
             j.default_flwa = 1.0e-16
@@ -35,7 +36,7 @@ def kickoff(unique_str, queue_mode, email, walltime):
 
             j.tend = 400.0
             j.tstart = 0.0
-            j.ice_dt = 0.1
+            j.ice_dt = 0.0125
 
             j.use_plume = 0
             
@@ -55,11 +56,13 @@ def kickoff(unique_str, queue_mode, email, walltime):
                                           },
                     'boundary condition params' : {'tau_xy_0' : tau_xy_0 * 1000.0,
                                                    },
-                    'picard parameters' : {'small_vel' : 0.01,
+                    'picard parameters' : {'small_vel' : 0.05,
                                            'minres' : 1.0e-6,
                                            'y_overrideres' : 1.0e-9,
                                            'cvg_accel' : 1.25,
                                            },
+                    'CF output' : {'frequency' : 0.5,
+                                   },
 #                    'plume' : {'plume_const_bmlt' : True,
 #                               'plume_const_bmlt_rate' : -1.0 * acab,
 #                               },
@@ -79,7 +82,7 @@ if __name__ == '__main__':
         print (USAGE)
 
     else:
-        kickoff( sys.argv[1], sys.argv[2],'gladish@cims.nyu.edu','24:00:00')
+        kickoff( sys.argv[1], sys.argv[2],'gladish@cims.nyu.edu','96:00:00')
     
 
     

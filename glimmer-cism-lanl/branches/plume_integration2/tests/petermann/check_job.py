@@ -34,19 +34,19 @@ for jfile in sys.argv[2:]:
 
     try:
         
-        if (not(j.started)):
+        if (not(j.started) and not(j.error)):
             msg = "not started"
         elif (j.started and not(j.completed or j.error)):
             msg = "running"
-
-        elif (j.completed):
+        elif (j.completed and not(j.error)):
             msg = "completed"
             if (not(printCompleted)):
                 printMsg = False
         elif (j.error):
             msg = "error: %s" % j.errorMessage
 
-    except AttributeError:
+    except AttributeError,e:
+	print(e)
         msg = "old job version"
         
     if (printMsg):
