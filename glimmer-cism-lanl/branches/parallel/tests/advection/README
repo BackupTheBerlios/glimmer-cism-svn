@@ -1,0 +1,22 @@
+
+Notes on how to run this test (e.g. to compare 1st-order and inc.  remapping advection schemes)
+
+ - run the advection.m script in order to generate "advection.mat" file
+
+ - run python script to generate netcdf input from .mat file: "python advection.py advection.config"
+
+ - in fo_upwind_advect.F90, comment out "thck = thck * mask" near the end of the main subroutine
+
+ - in remap_glamutils.F90, comment out "thck = thck + acab*dt" and "thck = thck * wk%mask_ir" from near the end of "horizontal_remap_out"
+
+ - in glam_strs2.F90, comment out all calls to "sparse_easy_solve" (this assumes that which_ho_sparse = 1 in advection.config file)
+
+ - build the code and copy the "simple_glide" executable into this dir
+
+ - choose which advection scheme to test in the advection.config file: "evolution = 3" is incremental remapping, "evolution = 4" is 1st-order upwinding
+
+ - run the code by "./simple_glide advection.config"
+
+ use something like ncview to look at the netcdf output file, "advection.out.nc"
+
+SFP 9-16-10 
