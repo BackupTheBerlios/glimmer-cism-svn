@@ -60,13 +60,12 @@ module glam
                                   ntrace_ir,               nghost_ir,                             &
                                   model%numerics%dew,      model%numerics%dns,                    &
                                   model%velocity_hom%uflx, model%velocity_hom%vflx,               &
-                                  model%geomderv%stagthck, model%numerics%thklim,                 &
-                                  model%options%periodic_ew,             model%options%periodic_ns)
+                                  model%geomderv%stagthck, model%numerics%thklim )
 
         ! call inc. remapping code for thickness advection (i.e. dH/dt calcualtion)
         ! (this subroutine lives in "remap_advection.F90")
         call horizontal_remap( model%remap_wk%dt_ir,                                         &
-                               model%remap_wk%ewn_ir,      model%remap_wk%nsn_ir,            &
+                               model%general%ewn-1,        model%general%nsn-1,              &
                                ntrace_ir,   nghost_ir,                                       &
                                model%remap_wk%ubar_ir,     model%remap_wk%vbar_ir,           &
                                model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
@@ -77,9 +76,8 @@ module glam
 
         ! put output from inc. remapping code back into format that model wants
         ! (this subroutine lives in "remap_glamutils.F90")
-        call horizontal_remap_out (model%remap_wk, model%geometry%thck,                 &
-                                   model%climate%acab, model%numerics%dt,               &
-                                   model%options%periodic_ew, model%options%periodic_ns)
+        call horizontal_remap_out(model%remap_wk, model%geometry%thck,                 &
+                                   model%climate%acab, model%numerics%dt )
 
 
     end subroutine inc_remap_driver
