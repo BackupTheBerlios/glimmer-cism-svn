@@ -19,7 +19,7 @@ else:
     printCompleted = False
     jfiles = sys.argv[1:]
 
-for jfile in sys.argv[2:]:
+for jfile in jfiles:
 
     f = open(jfile,'r')
 

@@ -3,12 +3,12 @@ import os
 from gcplume import *
 from submit_GC_job import *
 
-def kickoff( email, walltime ):
+def kickoff( email, walltime,unique_str, queue_mode ):
 
     j = LinearShelfJob()
     j.default_flwa = 1.0e-16
     j.uniform_acab = -1.2
-    j.n = 50
+    j.n = 30
     j.m = 20
     j.nlevel = 3
     j.tend = 200.0
@@ -26,7 +26,7 @@ def kickoff( email, walltime ):
     j.plume = { 'plume_min_thickness' : 50.0,
                 }
 
-    j.gc = {'options' : {'flow_law' : 0,
+    j.gc = {'options' : {'flow_law' : 2,
                          'temperature' : 0,
                          },
             'boundary condition params' : {'tau_xy_0' : 50.0e+3,
@@ -34,7 +34,7 @@ def kickoff( email, walltime ):
                                            'use_lateral_stress_bc' : False,
                                            },
             'Petermann shelf' : { 'air_temperature' : -20.0,
-                                  'accumulation_rate' : -1.2,
+                                  'accumulation_rate' : j.uniform_acab,
                                   },
 
             'picard parameters' : {'small_vel' : 0.01,
@@ -48,18 +48,17 @@ def kickoff( email, walltime ):
             }
 
 
-    oceantemps = [-0.5, 0.0, 0.5]
-    oceantemps = [0.0]
-    oceantemps = [-2.0]
+    oceantemps = [-2.0,-0.5, 0.0, 0.5]
+#    oceantemps = [0.0]
     upvels = [-900.0, -1000.0, -1100.0]
-    upvels = [-1000.0]
+#    upvels = [-1000.0]
     phis = [0.0]
 
     for t in oceantemps:
         for upvel in upvels:
             for phi in phis:
 
-                j.name = 'pn_%.1fC_%.1fma_%.0fd_noslip' % (t,upvel,phi)
+                j.name = 'pn_%.1fC_%.1fma_%.0fd_noslip_%s' % (t,upvel,phi,unique_str)
                 
                 jdir = os.path.join(os.path.expandvars('$GC_JOBS'),
                                     j.name)
@@ -79,15 +78,16 @@ def kickoff( email, walltime ):
 
                 j.assertCanStage()
                 j.serialize()
-                f = open('/Users/carl/kickoff9log.txt','a')
-                try:
-                    submit_job(j,email, walltime,'i')
-                except:
-                    f.write('%s job failed\n' % j.name)
-                f.close()
-                    
+                submit_job(j,email, walltime,queue_mode)
+
+USAGE = 'python kickoff_noslip_central.py <unique_str> <queue_mode>'
 
 if __name__ == '__main__':
 
-    kickoff('gladish@cims.nyu.edu', '12:00:00')
+    if (len(sys.argv) != 3 ):
+        raise Exception("Call like: \n %s" % USAGE)
+    unique_str = sys.argv[1]
+    queue_mode = sys.argv[2]
+    
+    kickoff('gladish@cims.nyu.edu', '24:00:00',unique_str, 'q')
 

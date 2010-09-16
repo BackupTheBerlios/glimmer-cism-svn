@@ -8,7 +8,7 @@ def kickoff(unique_str, queue_mode, email, walltime):
 
     
     for tau_xy_0 in [0,10, 25, 50]:
-        for acab in [-2.0, 0.0, 2.0]:
+        for acab in [0.0]:
             
             j = SteadyShelfJob()
             j.name = 'ssj1_%s_kPa_%s_acab_%s' % (tau_xy_0, acab,unique_str)
@@ -18,11 +18,11 @@ def kickoff(unique_str, queue_mode, email, walltime):
             j.jobDir = jd
 
             # varying properties
-            j.uniform_acab = acab
+            j.uniform_acab = acab  #goes into intial profile guess
 
             # fixed default properties
-            j.m = 50
-            j.n = 100
+            j.m = 20
+            j.n = 40
             j.hx = 20000.0 / j.m
             j.hy = 40000.0 / j.n
 
@@ -36,7 +36,7 @@ def kickoff(unique_str, queue_mode, email, walltime):
 
             j.tend = 400.0
             j.tstart = 0.0
-            j.ice_dt = 0.0125
+            j.ice_dt = 0.05
 
             j.use_plume = 0
             
