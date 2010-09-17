@@ -1,19 +1,28 @@
 %% Plot steady profiles
 
-f0 = '~/research/gcp_resources/nc_files/1d_0_bmlt_sept15.1.out.nc';
-f1 = '~/research/gcp_resources/nc_files/1d_10_bmlt_sept15.1.out.nc';
-f2 = '~/research/gcp_resources/nc_files/1d_25_bmlt_sept15.1.out.nc';
+f0 = '~/research/gcp_resources/nc_files/one_d_0_bmlt_15.4.out.nc';
+f1 = '~/research/gcp_resources/nc_files/one_d_10_bmlt_15.4.out.nc';
+f2 = '~/research/gcp_resources/nc_files/one_d_25_bmlt_15.4.out.nc';
+
+%f0 = '~/research/gcp_resources/nc_files/1d_0_bmlt_sept15.3.out.nc';
+%f1 = '~/research/gcp_resources/nc_files/1d_10_bmlt_sept15.3.out.nc';
+%f2 = '~/research/gcp_resources/nc_files/1d_25_bmlt_sept15.3.out.nc';
+
+f0 = '~/research/gcp_resources/nc_files/one_d_0_bmlt_sept15.40.out.nc';
+f1 = '~/research/gcp_resources/nc_files/one_d_10_bmlt_sept15.40.out.nc';
+f2 = '~/research/gcp_resources/nc_files/one_d_25_bmlt_sept15.40.out.nc';
 
 m = 5;
-n = 100;
+n = 80;
+%n= 100;
+n = 40;
 
 hx = 40000.0 / n;
 hy = hx;
 
 kinbcw = 2;
-ythk0 = (n-kinbcw)*hy;
-yvel0 = (n-kinbcw-0.5)*hy;
-yend = 4*hy;
+ystart = (n-kinbcw-0.5)*hy;
+yend = (4)*hy;
 
 A = 1.0*10^(-16); 
 
@@ -35,7 +44,7 @@ plot5 = false;
 [~,y0,~,y1,thck,~,vvel] = nc_read(f0, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 acab = 0.0;
-[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, acab);
+[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n_points, u0, h0, acab);
 
 subplot(2,1,1);
 hold on
@@ -57,7 +66,7 @@ if (plot1)
 [~,y0,~,y1,thck,~,vvel] = nc_read(f1, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 acab = -10.0;
-[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, acab);
+[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n_points, u0, h0, acab);
 
 subplot(2,1,1);
 plot(ycvel/1000, vvelc, 'k*');
@@ -72,7 +81,7 @@ if (plot2)
 [~,y0,~,y1,thck,~,vvel] = nc_read(f2, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 acab = -25.0;
-[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, acab);
+[y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n_points, u0, h0, acab);
 
 subplot(2,1,1);
 plot(ycvel/1000, vvelc, 'r*');
@@ -87,7 +96,7 @@ if (plot5)
 [~,y0,~,y1,thck,~,vvel] = nc_read(f5, -1);
 [ycvel,ycthk, vvelc, thkc] = centerline_profile(y0,y1,vvel,thck);
 acab = -5.0;
-[y,v,h,w] = steady_ice_1(A,rhoi,rhoo,g,ythk0,yend,n_points, u0, h0, acab);
+[y,v,h,w] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n_points, u0, h0, acab);
 
 subplot(2,1,1);
 plot(ycvel/1000, vvelc, 'g*');

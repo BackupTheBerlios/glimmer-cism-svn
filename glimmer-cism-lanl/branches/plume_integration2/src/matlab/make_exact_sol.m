@@ -1,19 +1,22 @@
 
 
 file_prefix = '/home/gladish/research/gcp_resources/mat_files/ssj1_';
-file_suffix = '_exact.sept14.400m.mat';
+file_suffix = '_exact.sept16.1000m.mat';
 
 m = 50;
+m = 20;
 n = 100;
+n = 40;
 
 hx = 20000.0 / m;
 hy = 40000.0 / n;
 
 upvel = -1000.0;
 upthk = 600.0;
-yin = (n - 2.5) * hy;  % correct for velocity
 %yin = (n - 2.0) * hy;   % correct for thickness
-yout = 4.0 * hy;  % correct for thickness
+%yout = 4.0 * hy;  % correct for thickness
+yin = (n - 2.5) * hy;  % correct for velocity
+yout = (4.0-0.5) * hy; %correct for velocity
 
 tauxy0 = [0,10, 25, 50];
 acab = [-2.0, 0.0, 2.0];
@@ -27,7 +30,7 @@ for i=1:length(tauxy0)
 [exact_y, exact_thk, exact_vvel, exact_thk_pat] = ...
     quasi_exact_shear_sol(upvel, upthk, yin, ...
                           yout, acab(j), tauxy0(i)*1000.0, ...
-                          L, ny);
+                          L, n);
 
 filename = strcat(file_prefix, ...
 		  sprintf('%i',tauxy0(i)),'_kPa_', ...

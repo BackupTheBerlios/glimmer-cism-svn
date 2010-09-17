@@ -5,16 +5,16 @@
 % to know where the netcdf files containing the model output are:
 
 model_prefix = '/home/gladish/research/gcp_resources/nc_files/last_time.ssj1_';
-model_suffix = '_sept14.1.out.nc';
+model_suffix = '_sept16.1.out.nc';
 
 % to know where the quasi-exact solution .mat files are:
 exact_prefix = '/home/gladish/research/gcp_resources/mat_files/ssj1_';
-exact_suffix = '_exact.sept14.400m.mat';
+exact_suffix = '_exact.sept16.1000m.mat';
 
 tau = [0,10,25,50];
 %tau = [0];
 acab = [-2.0, 0.0, 2.0];
-%acab = [0.0];
+acab = [0.0];
 
 markers = 'brgk';
 
