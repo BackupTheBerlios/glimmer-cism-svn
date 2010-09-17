@@ -572,6 +572,7 @@ contains
          ,  cl & 
          ,  ef &
          ,  tiuniform &
+         ,  min_melt_depth &
          ,  nus &
          ,  nbar &
          ,  nice &
@@ -753,6 +754,7 @@ contains
     ftb = 8.32d-2    ! offset of liquidus for seawater (tf at s=0, z=surface)
     ftc = -7.61d-4   ! freezing temp change with depth (tf decrease with zeta)
     tiuniform = -25.d0      ! temperature of shelf (heat conduction during melting)
+    min_melt_depth = 0.d0 !minimum depth at which melting occurs (crude separation modelling)
     si = 0.d0        ! salinity of shelf (salt trapped in ice during freezing)
     nus = +1.d0      ! nusselt number: 
     ! >=0 - that constant value
@@ -1399,7 +1401,7 @@ contains
     integer :: icalcan,kcalcan,icalcen,kcalcen
 
     ! local variables
-    integer :: i,k,l,mflag
+    integer :: i,k,l,mflag,depthflag
 
     real(kind=kdp),dimension(m_grid,n_grid) :: pdepc,bspeed,speed
     real(kind=kdp) :: rhopac,rhoa,delrho,rhoq,redg,tt,vmid,umid
@@ -1506,6 +1508,7 @@ contains
                 ! or freeze and calculate freezing point of ice at shelf base
                 tfb = fta*salt(i,k) + ftb + ftc*(gldep + wcdep -bpos(i,k))
                 mflag = (1 + int(sign(1.d0,temp(i,k) - tfb)))/2
+                depthflag = (1 + int(sign(1.d0, gldep + wcdep - bpos(i,k) - min_melt_depth)))/2
                 tfi = (1 - mflag)*fta*si  &
                      + ftb + ftc*(gldep + wcdep - bpos(i,k))
 
@@ -1516,7 +1519,7 @@ contains
                 c3 = gambs*gambt*(tfb - temp(i,k))
 
                 ! calculate melt rate
-                bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1)
+                bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
 
 
                 !! multiply by 10 if freezing
@@ -2603,7 +2606,7 @@ contains
     ! local variables
 
     integer :: i,k,l,icalcan,kcalcan,icalcen,kcalcen
-    integer :: idel,kdel,idx,kdy,ihilf,khilf,mflag,seedindex
+    integer :: idel,kdel,idx,kdy,ihilf,khilf,mflag,depthflag,seedindex
 
     real(kind=kdp),dimension(m_grid,n_grid) :: deltat,deltas
     real(kind=kdp),dimension(m_grid,n_grid):: pdepc,pdepcp,vmid
@@ -2961,6 +2964,8 @@ contains
 
                 tfb = fta*salta(i,k) + ftb + ftc*(gldep+wcdep-bpos(i,k))
                 mflag = (1 + int(sign(1.d0,tempa(i,k) - tfb)))/2
+                depthflag = (1 + int(sign(1.d0, gldep + wcdep - bpos(i,k) - min_melt_depth)))/2
+
                 tfi = (1 - mflag)*fta*si  &
                      + ftb + ftc*(gldep + wcdep - bpos(i,k))
 
@@ -2971,7 +2976,7 @@ contains
                 c3 = gambs*gambt*(tfb - tempa(i,k))
 
                 ! calculate melt rate
-                bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1)
+                bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
 
                 !! multiply by 10 if freezing
                 !              if (mflag.eq.0) then

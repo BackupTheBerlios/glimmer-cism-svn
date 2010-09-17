@@ -52,6 +52,7 @@ module plume_global
 
   !ice-related parameters
   real(kind=kdp) :: lat,c0,ci,nu0,pr,sc,fta,ftb,ftc,si,nus,kt,ks,tiuniform
+  real(kind=kdp) :: min_melt_depth
   real(kind=kdp) :: ar,eps,nbar,r(lice),re(lice),thi(lice),vol(lice)
   real(kind=kdp) :: wi(lice),cmin(lice),cseed(lice),nuss(lice)
 

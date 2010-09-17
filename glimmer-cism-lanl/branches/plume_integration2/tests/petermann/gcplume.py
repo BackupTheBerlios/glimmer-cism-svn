@@ -67,6 +67,8 @@ class PlumeNamelist(object):
                      'saltbot' : None,
                      'temptop' : None,
                      'tempbot' : None,
+                     'tiuniform' : None,
+                     'min_melt_depth' : 0.0,
                      'phi' : None,
                      'ah' : 100.0,   
                      'kh' : 100.0,
