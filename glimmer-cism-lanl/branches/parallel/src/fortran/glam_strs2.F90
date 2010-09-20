@@ -371,7 +371,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  ! do pic =1, 100
+!   do pic =1, 100
+!      if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
   do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
@@ -493,7 +494,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    print *, 'L2 with/without ghost (k)= ', counter, &
 !              sqrt(DOT_PRODUCT(F,F)), L2norm
 !    if (pic .eq. 1) NL_target = NL_tol * L2norm
-!    if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
@@ -843,13 +843,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
       dx  = 0d0 ! initial guess
 
-!      call forcing_term (k, L2norm_wig, gamma_l)
-
-      if (tstep .lt. 5) then
-         gamma_l = 0.9d0 
-      else 
-         gamma_l = 0.01d0
-      endif
+      call forcing_term (k, L2norm_wig, gamma_l)
 
       tol = gamma_l * L2norm_wig ! setting the tolerance for fgmres
 
