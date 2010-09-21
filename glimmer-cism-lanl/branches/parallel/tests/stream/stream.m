@@ -13,17 +13,22 @@ flag = 0;       %% USE RAYMOND PROFILE
 flag = 1;       %% USE SCHOOF PROFILE
 
 kinflag = 1;    %% apply kinematic bc (analytic soln) at up/downstream ends
-% kinflag = 0;    %% apply 0 vel bc at up/downstream ends
+kinflag = 0;    %% apply 0 vel bc at up/downstream ends
 
 n = 3;
-m = 2;
+m = 1.55;
 
-r = 20;         % !! r needs to be even # divisible by 2 !!
-c = 20;
+% r = 20;         % !! r needs to be even # divisible by 2 !!
+% % c = 20;
 % c = 200;
+
+r = 40;
+c = 400;
+
+% levels = 5;
 levels = 11;
 
-L = 1.5e4; 
+L = 1.4e4;
 A = 1e-16;
 B = A^(-1/n);
 
@@ -46,7 +51,7 @@ tau0s = taud * abs( yy / L ).^m;
 
 % yield stress (for Raymond solution only)
 % tau0r = mean( tau0s );
-tau0r = 5e3;
+tau0r = 5.2e3;
 
 % Raymond solution
 ur = 2 * A / (n+1) * ( (taud - tau0r)/H )^n * ( W^(n+1) - yy.^(n+1) );
@@ -64,21 +69,19 @@ us = us - min( us );
 if( flag == 0 )
     figure(198), clf
     subplot(2,1,1), hold on
-    plot( yy/1e3, ur - min(ur), 'r-', 'linewidth', 2.0 ), hold on, grid on
+    plot( yy/1e3, ur - min(ur), 'r-', 'linewidth', 2.0 ), hold on
     xlabel( 'dist across flow (m)'), ylabel( 'velocity (m/a)'), title( 'Raymond solution' )
     box on
     subplot(2,1,2), hold on
-    plot( yy/1e3, tau0r*ones(size(yy))/1e3, 'r-', 'linewidth', 2.0 ), hold on, grid on
     xlabel( 'dist across flow (m)'), ylabel( 'yield stress (kPa)')
     box on
 else
     figure(199), clf
     subplot(2,1,1), hold on
-    plot( yy/1e3, us - min(us), 'r-', 'linewidth', 2.0 ), hold on, grid on
+    plot( yy/1e3, us - min(us), 'r-', 'linewidth', 2.0 ), hold on
     xlabel( 'dist across flow (m)'), ylabel( 'velocity (m/a)'), title( 'Schoof solution' )
     box on
     subplot(2,1,2), hold on
-    plot( yy/1e3, tau0s/1e3, 'r-', 'linewidth', 2.0 ), hold on, grid on
     xlabel( 'dist across flow (m)'), ylabel( 'yield stress (kPa)')
     box on
 end
@@ -93,15 +96,15 @@ usrf = topg + thck;
 if( flag == 0 )         % assign Raymond profile
     tauf_profile = tau0r*ones(r-7,1);        
     tauf = 1e5 * ones( r-1, c-1 );
-    % tauf(4:end-3,3:end-2) = repmat( tauf_profile, 1, c-5 );     %% no slip at/near up/downstream ends
-    tauf(4:end-3,:) = repmat( tauf_profile, 1, c-1 );     %% use periodic bcs for cont. along flow
+    tauf(4:end-3,3:end-2) = repmat( tauf_profile, 1, c-5 );     %% no slip at/near up/downstream ends
+%     tauf(4:end-3,:) = repmat( tauf_profile, 1, c-1 );     %% use periodic bcs for cont. along flow
     u_profile = repmat( [ 0 0 fliplr(ur) ur(2:end) 0 0 ], levels, 1 );     
 else                    % assign Schoof
     
     tauf_profile = [ fliplr(tau0s(2:end)), tau0s ]';        
     tauf = 1e5 * ones( r-1, c-1 );
-    % tauf(3:end-2,3:end-2) = repmat( tauf_profile, 1, c-5 );     %% no slip at/near up/downstream ends
-    tauf(3:end-2,:) = repmat( tauf_profile, 1, c-1 );     %% use periodic bcs for cont. along flow
+    tauf(3:end-2,3:end-2) = repmat( tauf_profile, 1, c-5 );     %% no slip at/near up/downstream ends
+%     tauf(3:end-2,:) = repmat( tauf_profile, 1, c-1 );     %% use periodic bcs for cont. along flow
     u_profile = repmat( [ 0 0 fliplr(us) us(2:end) 0 0 ], levels, 1 );
 end
 
@@ -144,6 +147,9 @@ else
     filename = 'stream.schoof.nc'; 
 end
 
+%filename = 'stream.out.nc'; 
+
+    
 ncid = netcdf.open( filename, 'nowrite' );
 
 %% get id for variable names (use ncview to find var names?)
@@ -165,17 +171,23 @@ if( flag == 0 )
     subplot(2,1,1), hold on
     plot( yy2/1e3, uvel(:,round(c/2),1), 'bo:' )
     plot( yy2/1e3, uvel(:,end,1), 'b*' )              %% boundary value
-    legend( 'analytic', 'model', 'model boundary' )
+%     legend( 'analytic', 'model', 'model boundary' )
+    legend( 'analytic', 'model' )
     subplot(2,1,2), hold on
+    plot( yy2/1e3, tauf(:,round(c/2))/1e3, 'r-', 'linewidth', 2.0 )
     plot( yy2/1e3, -btractx(:,round(c/2),1)/1e3, 'bo:' )
+    legend( 'specified', 'model' )
 else
     figure(199)
     subplot(2,1,1), hold on
     plot( yy2/1e3, uvel(:,round(c/2),1), 'bo:' )
     plot( yy2/1e3, uvel(:,end,1), 'b*' )              %% boundary value
-    legend( 'analytic', 'model', 'model boundary' )
+%     legend( 'analytic', 'model', 'model boundary' )
+    legend( 'analytic', 'model' )
     subplot(2,1,2), hold on
+    plot( yy2/1e3, tauf(:,round(c/2))/1e3, 'r-', 'linewidth', 2.0 )
     plot( yy2/1e3, -btractx(:,round(c/2),1)/1e3, 'bo:' )
+    legend( 'specified', 'model' )
 end
 
 
