@@ -27,8 +27,8 @@ program nc_gen_input
   character (len=2) :: type_code
 
   !variables to be used in all cases and in netcdf writing
-  character(len=128) :: argstr
-  character (len=512) :: fname
+  character(len=1024) :: argstr
+  character (len=2056) :: fname
   integer :: nx,ny,n_level
 
   !data arrays
