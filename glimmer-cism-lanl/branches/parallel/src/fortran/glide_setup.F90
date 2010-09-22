@@ -441,6 +441,7 @@ contains
     !*sfp* added options for type of dissipation and bmelt calc. in temperature calc.
     call GetValue(section, 'which_disp',         model%options%which_disp)
     call GetValue(section, 'which_bmelt',        model%options%which_bmelt)
+    call GetValue(section, 'which_ho_nonlinear', model%options%which_ho_nonlinear)
     call GetValue(section, 'which_ho_sparse',    model%options%which_ho_sparse)
     call GetValue(section, 'which_ho_sparse_fallback', model%options%which_ho_sparse_fallback)
   end subroutine handle_ho_options
@@ -545,6 +546,9 @@ contains
          '0-order SIA                       ', &
          '1-st order model (Blatter-Pattyn) ', &
          '1-st order depth-integrated (SSA) ' /)
+    character(len=*), dimension(0:1), parameter :: which_ho_nonlinear = (/ &
+         'use standard Picard iteration  ', &
+         'use JFNK                       '/)
     character(len=*), dimension(0:4), parameter :: ho_whichsparse = (/ &
          'BiCG with LU precondition      ', &
          'GMRES with LU precondition     ', &
@@ -678,6 +682,12 @@ contains
     call write_log(message)
     if (model%options%which_bmelt < 0 .or. model%options%which_bmelt >= size(bmeltwhich)) then
         call write_log('Error, which bmelt input out of range', GM_FATAL)
+    end if
+    write(message,*) 'which_ho_nonlinear       :',model%options%which_ho_nonlinear,  &
+                      which_ho_nonlinear(model%options%which_ho_nonlinear)
+    call write_log(message)
+    if (model%options%which_ho_nonlinear < 0 .or. model%options%which_ho_nonlinear >= size(which_ho_nonlinear)) then
+        call write_log('Error, HO nonlinear solution input out of range', GM_FATAL)
     end if
     write(message,*) 'ho_whichsparse          :',model%options%which_ho_sparse,  &
                       ho_whichsparse(model%options%which_ho_sparse)

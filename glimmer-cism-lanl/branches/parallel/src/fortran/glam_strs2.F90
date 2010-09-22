@@ -9,6 +9,7 @@
 ! include macros for glide mask definitions
 
 #include "glide_mask.inc"
+#include "config.inc"
 
 !***********************************************************************
 
@@ -85,7 +86,7 @@ implicit none
   real (kind = dp), dimension(:,:,:,:), allocatable :: ghostbvel
 
   ! variables for use in sparse matrix calculation
-  real (kind = dp), dimension(:), allocatable :: pcgval, rhsd
+  real (kind = dp), dimension(:), allocatable :: pcgval, rhsd 
   integer, dimension(:), allocatable :: pcgcol, pcgrow
   integer, dimension(2) :: pcgsize
   integer :: ct
@@ -96,7 +97,11 @@ implicit none
   !  1: load directly into Trilinos format, skipping Triad matrix altogether
   !     Note: only option 1 will work for distributed fortran fill
 !  integer :: load_directly_into_trilinos = 1
+
+  !*sfp* NOTE: these redefined here so that they are "in scope" and can avoid being passed as args
   integer :: whatsparse ! needed for putpgcg()
+  integer :: nonlinear  ! flag for indicating type of nonlinar iteration (Picard vs. JFNK)
+
   real (kind = dp) :: linearSolveTime = 0
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
 
@@ -205,6 +210,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  whichbabc,              &
                                  whichefvs,              &
                                  whichresid,             &
+                                 whichnonlinear,         &
                                  whichsparse,            &
                                  periodic_ew,periodic_ns,&
                                  beta,                   &
@@ -241,6 +247,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer, intent(in) :: whichbabc    ! options for betasquared field to use
   integer, intent(in) :: whichefvs    ! options for efvs calculation (calculate it or make it uniform)
   integer, intent(in) :: whichresid   ! options for method to use when calculating vel residul
+  integer, intent(in) :: whichnonlinear  ! options for which method for doing elliptic solve
   integer, intent(in) :: whichsparse  ! options for which method for doing elliptic solve
   logical, intent(in) :: periodic_ew, periodic_ns  ! options for applying periodic bcs or not
 
@@ -256,7 +263,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 100                  ! max no. of iterations
+  integer, parameter :: cmax = 250                  ! max no. of iterations
   integer :: counter, linit                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -273,6 +280,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
+
+  ! assign value for nonlinear iteration flag
+  nonlinear = whichnonlinear
 
   ! calc geometric 2nd deriv. for generic input variable 'ipvr', returns 'opvr'
   call geom2ders(ewn, nsn, dew, dns, usrf, stagthck, d2usrfdew2, d2usrfdns2)
@@ -304,7 +314,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
  end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
 
   ! allocate space for storing temporary across-flow comp of velocity
@@ -633,6 +642,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                                  whichbabc,              &
                                  whichefvs,              &
                                  whichresid,             &
+                                 whichnonlinear,         &
                                  whichsparse,            &
                                  periodic_ew,periodic_ns,&
                                  beta,                   & 
@@ -670,6 +680,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   integer, intent(in) :: whichbabc
   integer, intent(in) :: whichefvs
   integer, intent(in) :: whichresid
+  integer, intent(in) :: whichnonlinear
   integer, intent(in) :: whichsparse
   logical, intent(in) :: periodic_ew, periodic_ns
 
@@ -702,6 +713,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 
   ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
+  nonlinear = whichnonlinear
 
 !whl - Moved initialization stuff to glam_velo_fordsiapstr_init
 
@@ -791,7 +803,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   allocate( vv(2*pcgsize(1),img1), wk(2*pcgsize(1), img))
 
   !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
-  
+
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
 
@@ -815,7 +827,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                  dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
                  dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
                  d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
-                 stagthck, whichbabc, uindx, umask,              &
+                 stagthck, whichbabc,            &
+                 uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
                  vk_1, uk_1, pcgsize(1), 2*pcgsize(1), g_flag,   &
                  F, L2norm, matrixA, matrixC)
@@ -894,7 +907,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                  dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
                  dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
                  d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
-                 stagthck, whichbabc, uindx, umask,              &
+                 stagthck, whichbabc,            &
+                 uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
                  vk_1_plus, uk_1_plus, pcgsize(1), 2*pcgsize(1), g_flag, &
                  F_plus, crap, matrixtp, matrixtp)
@@ -928,15 +942,12 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
       call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1, vvel, ghostbvel )
       call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1, uvel, ghostbvel )
 
-
 ! WATCHOUT FOR PERIODIC BC      
 
   end do
 
   call ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
                           ughost, vghost )
-
-!*sfp* removed call to 'calcstrsstr' here (stresses now calculated externally)
 
   do ns = 1,nsn-1
       do ew = 1,ewn-1 
@@ -1525,7 +1536,8 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
                  dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
                  dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
                  d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
-                 stagthck, whichbabc, uindx, umask,              &
+                 stagthck, whichbabc,            &
+                 uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
                  vtp, utp, nu1, nu2, g_flag,                     &
                  F, L2norm, matrixA, matrixC)
@@ -2120,7 +2132,7 @@ subroutine bodyset(ew,  ns,  up,           &
   ! storage space for coefficients that go w/ the discretization at the local point up, ew, ns.
   ! Note that terms other than 'g' are used for storing particular parts needed for calculation
   ! of the basal traction vector.
-  real (kind = dp), dimension(3,3,3) :: g, g_cros, g_vert, g_norm, g_vel_lhs, g_vel_rhs
+  real (kind = dp), dimension(3,3,3) :: g, h, g_cros, g_vert, g_norm, g_vel_lhs, g_vel_rhs
 
   ! source term for the rhs when using ice shelf lateral boundary condition,
   ! e.g. source = rho*g*H/(2*Neff) * ( 1 - rho_i / rho_w ) for ice shelf
@@ -2192,17 +2204,9 @@ subroutine bodyset(ew,  ns,  up,           &
                                 local_efvs,      betasquared,   g_vert,    nz, &
                                 plastic_coeff=plastic_coeff_lhs(pt,ew,ns)  )
 
-        !! test scaling of basal bc coeffs (for JFNK solver)
-        if( bcflag(1) == 1 )then
-           !scalebabc = ( betasquared / ( sum( local_efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
-           !scalebabc = abs( g(3,3,3) );     ! use vert stress grad coeff for scaling
-           !scalebabc = 1.0d4 
-           scalebabc = 1.0d0
-           if( scalebabc .le. 0.0d0 )then
-            scalebabc = 1.0d0
-           end if
-           g = g / scalebabc
-        end if
+        !! scale basal bc coeffs when using JFNK solver 
+        scalebabc = scalebasalbc( g, bcflag, lateralboundry, betasquared, local_efvs )
+        g = g / scalebabc
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
         ! (w.r.t. cols), on a new row ...
@@ -2219,12 +2223,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                                    oneortwo,      twoorone,      &
                                                    onesideddiff,                 &
                                                    normal,fwdorbwd)              &
-                                                 * local_othervel )
-
-             !! test scaling of basal bc coeffs (for JFNK solver)
-             if( bcflag(1) == 1 )then
-                rhsd(locplusup) = rhsd(locplusup) / scalebabc
-             end if
+                                                 * local_othervel ) / scalebabc
 
     end if     ! up = 1 or up = upn (IF at lateral boundary and IF at surface or bed)
 
@@ -2251,8 +2250,8 @@ subroutine bodyset(ew,  ns,  up,           &
     ! That is achieved in the following if construct ...
 
 !    if( cc < 10 )then   ! use this to "pre-condition" the shelf BC w/ the simple, 1d version
-!    if( cc >= 0 )then   ! use this to use only the 1d version
-    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
+    if( cc >= 0 )then   ! use this to use only the 1d version
+!    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
 
     ! --------------------------------------------------------------------------------------
     ! (1) source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
@@ -2327,6 +2326,7 @@ subroutine bodyset(ew,  ns,  up,           &
      ! which results from moving them from the LHS over to the RHS, is explicit and 
      ! hast NOT been moved inside of "croshorizmin" (as is the case for the analogous
      ! boundary condition routines).
+
      rhsd(locplusup) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
 
   end if
@@ -2372,18 +2372,9 @@ subroutine bodyset(ew,  ns,  up,           &
                             g_vert, nz, plastic_coeff=plastic_coeff_lhs(pt,ew,ns) )
 
 
-     !! test scaling of basal bc coeffs (for JFNK solver)
-     if( bcflag(1) == 1 )then
-        !scalebabc = ( betasquared / ( sum( local_efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
-        !scalebabc = abs( g(3,2,2) );     ! use vert stress grad coeff for scaling
-        !scalebabc = 1.0d4 
-        scalebabc = 1.0d0
-        if( scalebabc .le. 0.0d0 )then
-            scalebabc = 1.0d0
-        end if
-        g = g / scalebabc
-     end if
-
+     !! scale basal bc coeffs when using JFNK solver 
+     scalebabc = scalebasalbc( g, bcflag, lateralboundry, betasquared, local_efvs )
+     g = g / scalebabc
 
      ! put the coeff. for the b.c. equation in the same place as the prev. equation
      ! (w.r.t. cols), on a new row ...
@@ -2402,12 +2393,8 @@ subroutine bodyset(ew,  ns,  up,           &
                                              dup(up),       local_othervel, &
                                              local_efvs,                    &
                                              oneortwo, twoorone, g_cros )  &
-                                              * local_othervel )
+                                              * local_othervel ) / scalebabc
 
-             !! test scaling of basal bc coeffs (for JFNK solver)
-             if( bcflag(1) == 1 )then
-                rhsd(locplusup) = rhsd(locplusup) / scalebabc
-             end if
 
      else
           rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
@@ -2421,7 +2408,8 @@ subroutine bodyset(ew,  ns,  up,           &
                                              velbc=velbcvect(pt,ew,ns),     &
                                              plastic_coeff=plastic_coeff_rhs(pt,ew,ns) ) &
                                               * local_othervel )            &
-                                             + plastic_rhs(pt,ew,ns) / (sum(local_efvs(2,:,:))/4.0d0)*(len0/thk0)
+                                             + plastic_rhs(pt,ew,ns) / (sum(local_efvs(2,:,:))/4.0d0) &
+                                             *(len0/thk0)
       end if
 
       ! The following calculates the basal traction AFTER an updated solution is obtain by passing the new
@@ -4183,7 +4171,7 @@ subroutine putpcgc(value,col,row)
  
   implicit none
  
-  integer, intent(in) :: row, col 
+  integer, intent(in) :: row, col
   real (kind = dp), intent(in) :: value 
 
     if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then
@@ -4206,6 +4194,56 @@ subroutine putpcgc(value,col,row)
   return
  
 end subroutine putpcgc 
+
+!***********************************************************************
+
+function scalebasalbc( coeffblock, bcflag, lateralboundry, beta, efvs )
+
+  ! *sfp* This function is used to scale the matrix coeffs and rhs vector coeff
+  ! of the basal boundary condition when using JFNK for the nonlinear iteration
+  ! (iteration on viscosity). 
+  implicit none
+
+  integer, dimension(2), intent(in) :: bcflag         
+  logical :: lateralboundry
+  real (kind = dp), dimension(:,:,:), intent(in) :: coeffblock 
+  real (kind = dp), dimension(:,:,:), intent(in) :: efvs       
+  real (kind = dp), intent(in) :: beta
+
+  real (kind = dp) :: scale, scalebasalbc 
+
+    if( nonlinear == 1 )then
+        if( bcflag(1) == 1 )then
+
+           ! use the dominant terms in the coeff associated with the velocity under consideration
+           !scale = ( betasquared / ( sum( local_efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
+
+           ! Use the magnitude of the coeff associated with the vert stress gradients. 
+           ! NOTE that relevant coeffs are stored in diff parts of block depending 
+           ! on type of boudnary     
+           if( lateralboundry )then
+               scale = abs( coeffblock(3,3,3) );  
+           else
+               scale = abs( coeffblock(3,2,2) );     
+           end if                
+
+           if( scale .le. 0.0d0 )then
+            scale = 1.0d0
+           end if
+
+        else
+            scale = 1.0d0
+        end if
+
+    else
+        scale = 1.0d0
+    end if
+
+    scalebasalbc = scale
+
+  return
+
+end function scalebasalbc   
 
 !***********************************************************************
 

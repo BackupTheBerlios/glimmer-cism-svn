@@ -132,6 +132,9 @@ module glide_types
   integer, parameter :: HO_PROG_POLLARD = 2
   integer, parameter :: HO_PROG_BUELER = 3
 
+  integer, parameter :: HO_NONLIN_PICARD = 0
+  integer, parameter :: HO_NONLIN_JFNK = 1
+
   integer, parameter :: HO_BETA_ALL_NAN = 0
   integer, parameter :: HO_BETA_USE_SOFT = 1
   integer, parameter :: HO_BETA_USE_BTRC = 2
@@ -356,6 +359,12 @@ module glide_types
     !*FD \item[1] for 1-st order solution (e.g. Blatter-Pattyn)
     !*FD \item[2] for 1-st order depth-integrated solution (SSA)
     !*FD \begin{description}
+
+    integer :: which_ho_nonlinear = 0
+    !*FD Flag that indicates method for solving the nonlinear iteration when solving 
+    !*FD the first-order momentum balance
+    !*FD \item[0] use the standard Picard iteration
+    !*FD \item[1] use Jacobian Free Newton Krylov (JFNK) method
 
     integer :: which_ho_sparse = 0
     !*FD Flag that indicates method for solving the sparse linear system
@@ -1072,25 +1081,25 @@ contains
     call coordsystem_allocate(model%general%velo_grid, 2, model%velocity_hom%btraction)
 
 ! *sfp* changing dims of stress tensor arrays to be consistent with those expected by PP core 
-!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%scalar)
-!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xz)
-!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yz)
-!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xx)
-!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yy)
-!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xy)
-    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%scalar)
-    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xz)
-    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%yz)
-    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xx)
-    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%yy)
-    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xy)
+    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%scalar)
+    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xz)
+    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yz)
+    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xx)
+    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%yy)
+    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%tau%xy)
+!    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%scalar)
+!    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xz)
+!    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%yz)
+!    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xx)
+!    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%yy)
+!    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%tau%xy)
 
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%gdsx)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%gdsy)
 
 ! *sfp* changing dims of efvs array to be consistent with those expected by PP core 
-!    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%efvs)
-    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%efvs)
+    call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%efvs)
+!    call coordsystem_allocate(model%general%ice_grid, upn-1, model%velocity_hom%efvs)
 
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%velmask)
     call coordsystem_allocate(model%general%velo_grid, upn, model%velocity_hom%velnorm)
