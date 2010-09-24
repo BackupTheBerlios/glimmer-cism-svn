@@ -2264,7 +2264,7 @@ contains
           jcw(i,domain_kmin) = jcw(i,domain_kmin + 1)
           jcd_fl(i,domain_kmin) = jcd_fl(i,domain_kmin + 1)
           pdep(i,domain_kmin) = pdep(i,domain_kmin + 1)
-          ipos(i,domain_kmin) = bpos(i,domain_kmin) + pdep(i,domain_kmin)
+          ipos(i,domain_kmin) = bpos(i,domain_kmin + 1) - pdep(i,domain_kmin + 1)
 
           !          jcd_fl(i,domain_kmin) = 0       
           !          jcw(i,domain_kmin) = 0            
@@ -2287,7 +2287,7 @@ contains
           jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
           jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
           pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
-          ipos(i,domain_kmax) = bpos(i,domain_kmax) - pdep(i,domain_kmax)          
+          ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)       
 
           !          jcd_fl(i,domain_kmax) = 0       
           !          jcw(i,domain_kmax) = 0
