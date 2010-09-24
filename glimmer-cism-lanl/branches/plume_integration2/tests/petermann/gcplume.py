@@ -455,6 +455,8 @@ class _BaseJob(_HasJobDir):
         #any constants that should basically never change
         self.kinbcw = 2
         self.plume_landw = 2
+        self.ice_zero_thk_buf = 1
+        self.total_side_buf = self.plume_landw + self.ice_zero_thk_buf
 
 
     def assertCanStage(self):
@@ -606,7 +608,10 @@ class _GenInputJob(_AtomicJob):
         self.ifpos = 5
         self.rhoi = 910.0
         self.rhoo = 1028.0
-
+        self.kx = 0.0
+        self.chan_amp = 0.0
+        self.chan_init_length = 5000.0
+        
         #fields that must be defined 
         self.m = None
         self.n = None
@@ -659,10 +664,13 @@ class _GenInputJob(_AtomicJob):
                                            'nsn' : self.n,
                                            'upn' : self.nlevel
                                            })
-        self._gcconfig.vals['plume'].update({'plume_imax' : self.m + 2*self.plume_landw,
-                                             'plume_imin' : 1,
+        self._gcconfig.vals['plume'].update({'plume_imax' : self.m +
+                                             2*(self.plume_landw) -
+                                             self.total_side_buf,
+                                             'plume_imin' : 1+
+                                             self.total_side_buf,
                                              'plume_kmin' : self.ifpos,
-                                             'plume_kmax' : self.n + 1*self.plume_landw,
+                                             'plume_kmax' : self.n + self.plume_landw,
                                              'plume_nl_file' : self.plume_nl_file,
                                              'plume_output_file' : self.plume_output_file,
                                              'plume_output_prefix' : self.name,
@@ -695,7 +703,8 @@ class SteadyShelfJob(_GenInputJob):
                     int(self.m),int(self.n), int(self.nlevel),float(self.hx),float(self.hy),
                     float(self.upthk),float(self.upvel),int(self.ifpos),
                     float(self.otopg), int(self.kinbcw), float(self.uniform_acab), float(self.rhoi),
-                    float(self.rhoo), float(self.default_flwa),float( self.randthk)])
+                    float(self.rhoo), float(self.default_flwa),float(self.randthk),
+                    float(self.kx), float(self.chan_amp),float(self.chan_init_length)])
         cmd = [_fortran_style('nc_gen_input', c) for c in cmd]
         return cmd
 
@@ -736,12 +745,14 @@ ssj.gc.update({'options' : {'flow_law' : 0,
             
 
 class RegridJob(_BaseJob,_IO):
+
+#    def __init__(self,initJobFile):
+#        __init__(self,initJobFile,None)
     
-    def __init__(self,initJobFile):
+    def __init__(self,initJobFile,initJobDir):
         _BaseJob.__init__(self)
 
         self.initJobFile = initJobFile
-
 
         f = open(initJobFile,'r')
         try:
@@ -749,12 +760,14 @@ class RegridJob(_BaseJob,_IO):
         finally:
             f.close()
 
-        _initJobDir = os.path.dirname(os.path.abspath(initJobFile))
+        if (initJobDir is None):
+            _initJobDir = os.path.dirname(os.path.abspath(initJobFile))
+        else:
+            _initJobDir = initJobDir
         _initJobName = self.initJob.name
 
         self.inputNcFile = os.path.join(_initJobDir,
-                                        self.initJob.outputfile)
-
+                                        os.path.basename(self.initJob.outputfile))
 
         # figure out new name for this job
         if (len(_initJobName.split('_restart_')) > 1):

@@ -97,7 +97,9 @@ contains
     integer :: i,j
     integer :: firstarg = 2
     integer :: ramp_width
-    real :: hx,hy,up_thk,if_thk,k_x,chan_amp,chan_depth,upstream_vel
+    real :: hx,hy,up_thk,if_thk
+    real :: k_x,chan_amp,chan_depth
+    real :: upstream_vel
     real :: otopg,ltopg
     real :: cutoff_usrf,rhoi_rhow,central_amp
 
@@ -431,10 +433,12 @@ contains
     ! local variables
     integer :: i,j
     integer :: ifpos,kinbcw
+    integer,parameter :: zero_buf = 1
     real :: hx,hy
     real :: rhoi, rhoo, glen_A
     real :: upstream_vel, upstream_thk
-    real :: chan_depth,otopg,ltopg,acab_per_year
+    real :: kx,chan_amp,chan_depth,chan_init_length
+    real :: otopg,ltopg,acab_per_year
     real,dimension(:),allocatable :: rand_row
 
     real :: k,tmp
@@ -442,9 +446,9 @@ contains
 
     character (len=512) :: steady_shelf_params = "<fname> <nx> <ny> <n_level> <hx> <hy> <upstream_thk> &
        & <upstream_vel> <ifpos> <ocean_depth> <kinbcw> <acab_per_year> &
-       & <rhoi> <rhoo> <glen_A> <rand_amp>"
+       & <rhoi> <rhoo> <glen_A> <rand_amp> <kx> <chan_amp> <chan_init_length>"
 
-    if (command_argument_count() /= 17) then
+    if (command_argument_count() /= 20) then
        write(*,*)"Incorrect number of parameters. Steady shelf requires: &
             &  ",trim(steady_shelf_params)
        stop 1
@@ -514,10 +518,22 @@ contains
     read(argstr,'(f18.12)') rand_amp
     write(*,*) 'rand_amp', rand_amp
 
+    call get_command_argument(18, argstr)
+    read(argstr,'(f18.12)') kx
+    write(*,*) 'kx', kx
+
+    call get_command_argument(19, argstr)
+    read(argstr,'(f18.12)') chan_amp
+    write(*,*) 'chan_amp', chan_amp
+
+    call get_command_argument(20, argstr)
+    read(argstr,'(f18.12)') chan_init_length
+    write(*,*) 'chan_init_length', chan_init_length
+
     allocate(xs(nx),ys(ny),level(n_level),xstag(nx-1),ystag(ny-1))
     allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
     allocate(uvelhom(nx-1,ny-1,n_level), vvelhom(nx-1,ny-1,n_level))
-    allocate(rand_row(nx))
+    allocate(rand_row(nx-2*zero_buf))
 
     !now populate the dimension variables
     xs = (/ ( (i-1)*hx,i=1,nx ) /)
@@ -536,7 +552,7 @@ contains
     !define thickness
 
     thck = 0.0
-    thck(:,(ny-kinbcw):ny) = upstream_thk 
+    thck(1+zero_buf:nx-zero_buf,(ny-kinbcw):ny) = upstream_thk 
     
     k = (rhoi*g*0.25*(1.0-rhoi/rhoo))**3.0
 
@@ -547,9 +563,10 @@ contains
                (upstream_thk*upstream_vel)**3.0 * &
                (ny - kinbcw + 1 - j)*hy
           tmp = tmp ** 0.25  
-          thck(:,j) = abs(upstream_vel*upstream_thk) / tmp
+          thck(1+zero_buf:nx-zero_buf,j) = abs(upstream_vel*upstream_thk) / tmp
           call random_number(rand_row)
-          thck(:,j) = thck(:,j)*(1+rand_amp*(0.5-rand_row))
+          thck(1+zero_buf:nx-zero_buf,j) = thck(1+zero_buf:nx-zero_buf,j) * &
+	                                   (1+rand_amp*(0.5-rand_row))
        end do
 
     else
@@ -559,14 +576,24 @@ contains
               ((upstream_vel*upstream_thk)**4.0 - (upstream_vel*upstream_thk - &
                                                    acab_per_year*(ny-kinbcw+1-j)*hy)**4.0)
          tmp = tmp ** 0.25
-         thck(:,j) = abs(upstream_vel*upstream_thk - &
-                         acab_per_year*(ny-kinbcw+1-j)*hy)/tmp
+         thck(1+zero_buf:nx-zero_buf,j) = abs(upstream_vel*upstream_thk - &
+                                          acab_per_year*(ny-kinbcw+1-j)*hy)/tmp
          call random_number(rand_row)
-         thck(:,j) = thck(:,j)*(1+rand_amp*(0.5-rand_row))
+         thck(1+zero_buf:nx-zero_buf,j) = thck(1+zero_buf:nx-zero_buf,j)* &
+                                          (1+rand_amp*(0.5-rand_row))
 
       end do
 
     end if
+
+    do i=1,nx
+    	do j=ifpos,(ny-kinbcw-1)
+		chan_depth = 0.5 * chan_amp &
+	                  * (1-exp( real(j-(ny-kinbcw))*hy/chan_init_length))&
+        	          * (1-cos((real(i-1)/real(nx-1))*2*pi*kx))
+             	thck(i,j) = thck(i,j) - chan_depth
+          end do
+       end do
 
     ! define kinbcmask
     kinbcmask = 0
@@ -589,6 +616,7 @@ contains
     ! local variables
     integer :: i,j
     integer :: ifpos,kinbcw
+    integer,parameter :: zero_buf = 1
     real :: hx,hy
     real :: rhoi, rhoo
     real :: upstream_thk, if_thk, upstream_vel
@@ -658,7 +686,7 @@ contains
     allocate(xs(nx),ys(ny),level(n_level),xstag(nx-1),ystag(ny-1))
     allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
     allocate(uvelhom(nx-1,ny-1,n_level), vvelhom(nx-1,ny-1,n_level))
-!    allocate(rand_row(nx))
+    allocate(rand_row(nx-2*zero_buf))
 
     !now populate the dimension variables
     xs = (/ ( (i-1)*hx,i=1,nx ) /)
@@ -677,10 +705,10 @@ contains
     !define thickness
 
     thck = 0.0
-    thck(2:(nx-1),(ny-kinbcw):ny) = upstream_thk 
+    thck(1+zero_buf:(nx-zero_buf),(ny-kinbcw):ny) = upstream_thk 
     
     do j=ifpos,(ny-kinbcw)
-       thck(2:(nx-1),j) = if_thk + real(j-ifpos)/(ny-kinbcw+1-ifpos) * (upstream_thk-if_thk)
+       thck(1+zero_buf:(nx-zero_buf),j) = if_thk + real(j-ifpos)/(ny-kinbcw+1-ifpos) * (upstream_thk-if_thk)
     end do
 
     ! define kinbcmask
