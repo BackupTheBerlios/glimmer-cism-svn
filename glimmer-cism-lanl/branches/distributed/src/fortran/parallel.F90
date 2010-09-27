@@ -29,10 +29,12 @@ module parallel
   logical,save :: main_task
   integer,save :: comm,tasks,this_rank
 
+  ! distributed grid
+  integer,save :: global_ewn,global_nsn,local_ewn,local_nsn,own_ewn,own_nsn
+  integer,save :: ewlb,ewub,nslb,nsub
+
   integer,parameter :: staggered_lhalo = lhalo
   integer,parameter :: staggered_uhalo = 0
-
-  integer,save :: global_ewn,global_nsn
 
   interface broadcast
      module procedure broadcast_character
@@ -63,28 +65,48 @@ module parallel
 contains
 
   subroutine broadcast_character(c)
+    use mpi
     implicit none
     character(len=*) :: c
+    integer :: ierror,n
+    ! begin
+    n = len(c)
+    call mpi_bcast(c,n,mpi_character,main_rank,comm,ierror)
   end subroutine
 
   subroutine broadcast_integer(i)
+    use mpi
     implicit none
-    integer :: i
+    integer :: i,ierror
+    ! begin
+    call mpi_bcast(i,1,mpi_integer,main_rank,comm,ierror)
   end subroutine
 
   subroutine broadcast_integer_1d(a)
     implicit none
     integer,dimension(:) :: a
+
+    if (tasks >= 2) then
+       call not_parallel(__FILE__, __LINE__)
+    endif 
   end subroutine
 
   subroutine broadcast_logical(l)
+    use mpi
     implicit none
     logical :: l
+    integer :: ierror
+    ! begin
+    call mpi_bcast(l,1,mpi_logical,main_rank,comm,ierror)
   end subroutine
 
   subroutine broadcast_real8_1d(a)
     implicit none
     real(8),dimension(:) :: a
+
+    if (tasks >= 2) then
+       call not_parallel(__FILE__, __LINE__)
+    endif 
   end subroutine
 
   subroutine distributed_grid(ewn,nsn)
@@ -93,6 +115,20 @@ contains
     ! begin
     global_ewn = ewn
     global_nsn = nsn
+
+    if (tasks >= 2) then
+		ewlb = 1
+		ewub = global_ewn
+		local_ewn = ewub-ewlb+1
+		own_ewn = local_ewn-lhalo-uhalo
+		ewn = local_ewn
+	
+		nslb = 1
+		nsub = global_nsn
+		local_nsn = nsub-nslb+1
+		own_nsn = local_nsn-lhalo-uhalo
+		nsn = local_nsn
+    endif 
   end subroutine
 
   function distributed_owner(ew,ewn,ns,nsn)
@@ -101,11 +137,20 @@ contains
     integer :: ew,ewn,ns,nsn
     ! begin
     distributed_owner = .true.
+
+    if (tasks >= 2) then
+       ! Do nothing
+    endif 
   end function
 
   subroutine global_sum(x,y)
     implicit none
     real(8) :: x,y
+
+    if (tasks >= 2) then
+        ! Do nothing.  x and y are two values to be summed across all distributed nodes.
+        ! In parallel_single model, their local sums should remain unchanged.
+    endif 
   end subroutine
 
   subroutine not_parallel(file,line)
@@ -114,10 +159,15 @@ contains
     character(len=*) :: file
     ! begin
     write(0,*) "WARNING: not parallel in ",file," at line ",line
+    STOP
   end subroutine
 
   subroutine parallel_barrier
     implicit none
+
+    if (tasks >= 2) then
+       call not_parallel(__FILE__, __LINE__)
+    endif 
   end subroutine
 
   function parallel_boundary(ew,ewn,ns,nsn)
@@ -126,6 +176,11 @@ contains
     integer :: ew,ewn,ns,nsn
     ! begin
     parallel_boundary = (ew==1.or.ew==ewn.or.ns==1.or.ns==nsn)
+
+    if (tasks >= 2) then
+		! Do nothing.
+		! The value of parallel_boundary is correct for parallel_single mode.
+    endif 
   end function
 
   subroutine parallel_finalise
@@ -139,31 +194,55 @@ contains
   subroutine parallel_halo_integer_2d(a)
     implicit none
     integer,dimension(:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif 
   end subroutine
 
   subroutine parallel_halo_real8_2d(a)
     implicit none
     real(8),dimension(:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif 
   end subroutine
 
   subroutine parallel_halo_real8_3d(a)
     implicit none
     real(8),dimension(:,:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif 
   end subroutine
 
   subroutine parallel_halo_verify_integer_2d(a)
     implicit none
     integer,dimension(:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif 
   end subroutine
 
   subroutine parallel_halo_verify_real8_2d(a)
     implicit none
     real(8),dimension(:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif 
   end subroutine
 
   subroutine parallel_halo_verify_real8_3d(a)
     implicit none
     real(8),dimension(:,:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif 
   end subroutine
 
   subroutine parallel_initialise
@@ -248,17 +327,24 @@ contains
     write(0,*) "STOP in ",file," at line ",line
     ! stop
     write(0,*) "RUNNING in parallel_single mode, so STOP IGNORED."
-
   end subroutine
 
   subroutine parallel_temp_halo(a)
     implicit none
     real(8),dimension(:,:,:) :: a
+
+    if (tasks >= 2) then
+       call not_parallel(__FILE__, __LINE__)
+    endif 
   end subroutine
 
   subroutine parallel_velo_halo(a)
     implicit none
     real(8),dimension(:,:) :: a
+
+    if (tasks >= 2) then
+       call not_parallel(__FILE__, __LINE__)
+    endif 
   end subroutine
 
 end module parallel

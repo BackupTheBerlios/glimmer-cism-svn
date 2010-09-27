@@ -232,7 +232,7 @@ contains
     ! *sfp** added for summer modeling school
     if (model%options%whichevol== EVOL_FO_UPWIND ) then
 
-       call not_parallel(__FILE__,__LINE__)
+        ! JEFF - Review for distributed. OK for parallel Trilinos. call not_parallel(__FILE__,__LINE__)
         call fo_upwind_advect_init( model%general%ewn, model%general%nsn )
 
     endif
@@ -252,7 +252,9 @@ contains
  
     if (model%options%hotstart.ne.1) then
        ! initialise Glen's flow parameter A using an isothermal temperature distribution
-       call not_parallel(__FILE__,__LINE__)
+       ! JEFF - Review for distributed.  Distributed is Ok for 0 method called here. 
+       ! Method 1 involves derivs, therefore marked as not_parallel. 
+       ! call not_parallel(__FILE__,__LINE__)
        call timeevoltemp(model,0)
     end if
 
@@ -446,8 +448,8 @@ contains
 
     ! *sfp** added for summer modeling school
     case(EVOL_FO_UPWIND) ! Use first order upwind scheme for mass transport
-
-       call not_parallel(__FILE__,__LINE__)
+       ! JEFF Check for distributed.  Changed to parallel_stop ignored in "parallel_single" mode.
+       call parallel_stop(__FILE__,__LINE__)
        call fo_upwind_advect_driver( model )
  
     end select

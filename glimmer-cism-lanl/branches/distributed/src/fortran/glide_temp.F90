@@ -213,6 +213,8 @@ contains
     use glide_bwater
     use glimmer_physcon, only: rhoi, shci, coni   ! for temperature smoothing
 
+    use parallel
+
     implicit none
 
     !------------------------------------------------------------------------------------
@@ -259,6 +261,8 @@ contains
 
     case(0) ! Set column to surface air temperature -------------------------------------
 
+       ! JEFF - Ok for distributed since using air temperature at grid point to initialize.
+
        do ns = 1,model%general%nsn
           do ew = 1,model%general%ewn
              model%temper%temp(:,ew,ns) = dmin1(0.0d0,dble(model%climate%artm(ew,ns)))
@@ -267,6 +271,9 @@ contains
 
     case(1) ! Do full temperature solution ---------------------------------------------
 
+       ! JEFF - Concerned about halos and these derivatives.
+       ! Changed to stop which is ignored for parallel_single case.
+       call parallel_stop(__FILE__, __LINE__)
 
        ! Calculate time-derivatives of thickness and upper surface elevation ------------
 

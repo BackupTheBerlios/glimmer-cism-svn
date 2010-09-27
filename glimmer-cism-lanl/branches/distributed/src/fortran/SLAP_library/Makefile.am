@@ -1,4 +1,7 @@
 lib_LIBRARIES = libslap.a
+F77=ftn -O2 
+FC=ftn -O2
+F90=ftn -O2
 if EXT_BLAS
  BLAS =
 else
