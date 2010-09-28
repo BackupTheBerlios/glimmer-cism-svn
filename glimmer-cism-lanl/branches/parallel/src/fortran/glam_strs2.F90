@@ -36,6 +36,7 @@ implicit none
   real (kind = dp), allocatable, dimension(:),         save :: dups
   real (kind = dp), allocatable, dimension(:,:,:,:,:), save :: corr
   real (kind = dp), allocatable, dimension(:,:,:,:),   save :: usav
+  real (kind = dp), dimension(2),                      save :: usav_avg
   real (kind = dp), allocatable, dimension(:,:,:),     save :: tvel
   real (kind = dp), allocatable, dimension(:),         save :: dup, dupm
 
@@ -1114,8 +1115,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
             ! "effstr" = eff. strain rate squared
             effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
                          0.25_dp * (vgradew + ugradns)**2 + &
-!                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
                          f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
+!                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
 
     ! -----------------------------------------------------------------------------------
     ! NOTES on capping vs. non-capping version of eff. strain rate calc.
@@ -1823,8 +1824,11 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   end if
 
-  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
-  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
+  !*sfp* Old version
+  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if  
+
+  !*sfp* correction from Carl Gladdish
+  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if   
 
   select case (whichresid)
 
@@ -1873,6 +1877,155 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   return
 
 end function mindcrshstr
+
+!***********************************************************************
+
+function mindcrshstr2(pt,whichresid,vel,counter,resid)
+
+  ! Function to perform 'unstable manifold correction' (see Hindmarsch and Payne, 1996,
+  ! "Time-step limits for stable solutions of the ice-sheet equation", Annals of 
+  ! Glaciology, 23, p.74-85)
+
+  ! Alternate unstable manifold scheme, based on DeSmedt, Pattyn, and De Goen, J. Glaciology 2010
+  ! Written by Carl Gladdish
+
+  implicit none
+
+  real (kind = dp), intent(in), dimension(:,:,:) :: vel
+  integer, intent(in) :: counter, pt, whichresid 
+  real (kind = dp), intent(out) :: resid
+
+  real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: mindcrshstr2
+
+  integer, parameter :: start_umc = 3
+  real (kind=dp), parameter :: cvg_accel = 2.0_dp
+  real (kind = dp), parameter :: small = 1.0e-16_dp
+
+  real (kind=dp) in_prod, len_new, len_old, mean_rel_diff, sig_rel_diff
+  real (kind=dp) :: theta
+  real (kind = dp), intrinsic :: abs, acos
+  
+  integer, dimension(2), save :: new = 1, old = 2
+  integer :: locat(3)
+  
+  integer :: nr
+  integer,      dimension(size(vel,1),size(vel,2),size(vel,3)) :: vel_ne_0
+  real(kind=dp),dimension(size(vel,1),size(vel,2),size(vel,3)) :: rel_diff
+
+  if (counter == 1) then
+    usav(:,:,:,pt) = 0.0d0
+    corr(:,:,:,:,:) = 0.0d0
+  end if
+
+  corr(:,:,:,new(pt),pt) = vel - usav(:,:,:,pt)           
+
+  if (counter >= start_umc) then
+  
+  in_prod = sum( corr(:,:,:,new(pt),pt) * corr(:,:,:,old(pt),pt) )
+  len_new = sqrt(sum( corr(:,:,:,new(pt),pt) * corr(:,:,:,new(pt),pt) ))
+  len_old = sqrt(sum( corr(:,:,:,old(pt),pt) * corr(:,:,:,old(pt),pt) ))
+ 
+  theta = acos( in_prod / (len_new * len_old + small) )
+    
+   if (theta  < (1.0/8.0)*pi) then
+        mindcrshstr2 = usav(:,:,:,pt) + cvg_accel * corr(:,:,:,new(pt),pt)
+!        print *, theta/pi, 'increased correction'
+   else if(theta < (19.0/20.0)*pi) then
+        mindcrshstr2 = vel
+!        print *, theta/pi, 'standard correction'
+   else 
+        mindcrshstr2 = usav(:,:,:,pt) + (1.0/cvg_accel) * corr(:,:,:,new(pt),pt)
+!        print *, theta/pi, 'decreasing correction'
+   end if
+
+  else 
+
+    mindcrshstr2 = vel;
+ !   print *, 'Not attempting adjustment to correction'  
+   
+  end if
+
+
+  ! now swap slots for storing the previous correction
+  if (new(pt) == 1) then
+      old(pt) = 1; new(pt) = 2
+  else
+      old(pt) = 2; new(pt) = 1
+  end if
+
+  if (counter == 1) then
+        usav_avg = 1.0_dp
+  else
+        usav_avg(1) = sum( abs(usav(:,:,:,1)) ) / size(vel)  ! a x-dir transport velocity scale
+        usav_avg(2) = sum( abs(usav(:,:,:,2)) ) / size(vel)  ! a y-dir transport velocity scale
+  end if
+
+!  print *, 'usav_avg(1)',usav_avg(1),'usav_avg(2)',usav_avg(2)
+
+  select case (whichresid)
+
+  ! options for residual calculation method, as specified in configuration file 
+  ! (see additional notes in "higher-order options" section of documentation)
+  ! case(0): use max of abs( vel_old - vel ) / vel ) 
+  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels 
+  ! case(2): use mean of abs( vel_old - vel ) / vel )
+
+   case(0)
+    rel_diff = 0.0_dp
+    vel_ne_0 = 0
+    where ( mindcrshstr2 .ne. 0.0_dp )
+        vel_ne_0 = 1
+        rel_diff = abs((usav(:,:,:,pt) - mindcrshstr2) / mindcrshstr2) & 
+                           * usav_avg(pt)/sqrt(sum(usav_avg ** 2.0))
+    end where
+
+    resid = maxval( rel_diff, MASK = mindcrshstr2 .ne. 0.0_dp )
+    locat = maxloc( rel_diff, MASK = mindcrshstr2 .ne. 0.0_dp )
+
+!    mean_rel_diff = sum(rel_diff) / sum(vel_ne_0)
+!    sig_rel_diff = sqrt( sum((rel_diff - mean_rel_diff) ** 2.0 )/ sum(vel_ne_0) )
+!    print *, 'mean', mean_rel_diff, 'sig', sig_rel_diff
+
+    !write(*,*) 'locat', locat
+    !call write_xls('resid1.txt',abs((usav(1,:,:,pt) - mindcrshstr2(1,:,:)) / (mindcrshstr2(1,:,:) + 1e-20)))
+
+   case(1)
+    !**cvg*** should replace vel by mindcrshstr2 in the following lines, I belive
+    nr = size( vel, dim=1 ) ! number of grid points in vertical ...
+    resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
+                        MASK = vel .ne. 0.0_dp)
+    locat = maxloc( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
+            MASK = vel .ne. 0.0_dp)
+
+   case(2)
+    !**cvg*** should replace vel by mindcrshstr2 in the following lines, I belive
+    nr = size( vel, dim=1 )
+    vel_ne_0 = 0
+    where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
+
+    ! include basal velocities in resid. calculation when using MEAN
+    resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
+            MASK = vel .ne. 0.0_dp) / sum( vel_ne_0 )
+
+    ! ignore basal velocities in resid. calculation when using MEAN
+    ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
+    !           MASK = vel .ne. 0.0_dp) / sum( vel_ne_0(1:nr-1,:,:) )
+
+    ! NOTE that the location of the max residual is somewhat irrelevent here
+    !      since we are using the mean resid for convergence testing
+    locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+
+  end select
+
+  usav(:,:,:,pt) = mindcrshstr2
+
+    ! Additional debugging line, useful when trying to determine if convergence is being consistently 
+    ! held up by the residual at one or a few particular locations in the domain.
+!    print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
+
+  return
+
+end function mindcrshstr2
 
 !***********************************************************************
 
@@ -2246,20 +2399,19 @@ subroutine bodyset(ew,  ns,  up,           &
                                                    normal,fwdorbwd)              &
                                                  * local_othervel ) / scalebabc
 
-!        if( nonlinear == HO_NONLIN_JFNK )then
-!            storeoffdiag = .true.
-!            h = croshorizmainbc_lat(dew,           dns,           & 
-!                                slopex,        slopey,        &
-!                                dsigmadew(up), dsigmadns(up), & 
-!                                pt,            2,             & 
-!                                dup(up),       local_othervel,& 
-!                                oneortwo,      twoorone,      & 
-!                                onesideddiff,                 &
-!                                 normal,fwdorbwd) 
-!   
-!            call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt ) 
-!            storeoffdiag = .false.
-!        end if     
+        if( nonlinear == HO_NONLIN_JFNK )then
+            storeoffdiag = .true.
+            h = croshorizmainbc_lat(dew,           dns,           & 
+                                slopex,        slopey,        &
+                                dsigmadew(up), dsigmadns(up), & 
+                                pt,            2,             & 
+                                dup(up),       local_othervel,& 
+                                oneortwo,      twoorone,      & 
+                                onesideddiff,                 &
+                                 normal,fwdorbwd) 
+            call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt ) 
+            storeoffdiag = .false.
+        end if     
 
     end if     ! up = 1 or up = upn (IF at lateral boundary and IF at surface or bed)
 
@@ -2350,19 +2502,19 @@ subroutine bodyset(ew,  ns,  up,           &
                                                normal,        fwdorbwd)       &
                                               * local_othervel ) + source
 
-!     if( nonlinear == HO_NONLIN_JFNK )then
-!         storeoffdiag = .true.
-!         h = croshorizmainbc_lat(dew,           dns,            &
-!                                 slopex,        slopey,         &
-!                                 dsigmadew(up), dsigmadns(up),  &
-!                                 pt,            1,              &
-!                                 dup(up),       local_othervel, &
-!                                 oneortwo,      twoorone,       &
-!                                 onesideddiff,                  &
-!                                 normal,        fwdorbwd)
-!         call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt )
-!         storeoffdiag = .false.
-!     end if
+     if( nonlinear == HO_NONLIN_JFNK )then
+         storeoffdiag = .true.
+         h = croshorizmainbc_lat(dew,           dns,            &
+                                 slopex,        slopey,         &
+                                 dsigmadew(up), dsigmadns(up),  &
+                                 pt,            1,              &
+                                 dup(up),       local_othervel, &
+                                 oneortwo,      twoorone,       &
+                                 onesideddiff,                  &
+                                 normal,        fwdorbwd)
+         call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt )
+         storeoffdiag = .false.
+     end if
 
   else   ! NOT at a lateral boundary 
 
@@ -2379,12 +2531,12 @@ subroutine bodyset(ew,  ns,  up,           &
 
      rhsd(locplusup) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
 
-!     if( nonlinear == HO_NONLIN_JFNK )then
-!         storeoffdiag = .true.
-!         h = croshorizmain(pt,up,local_efvs)   
-!         call fillsprsemain(h,locplusup,loc,up,pt)
-!         storeoffdiag = .false.
-!     end if     
+     if( nonlinear == HO_NONLIN_JFNK )then
+         storeoffdiag = .true.
+         h = croshorizmain(pt,up,local_efvs)   
+         call fillsprsemain(h,locplusup,loc,up,pt)
+         storeoffdiag = .false.
+     end if     
 
   end if
 
@@ -2452,18 +2604,18 @@ subroutine bodyset(ew,  ns,  up,           &
                                              oneortwo, twoorone, g_cros )  &
                                               * local_othervel ) / scalebabc
 
-!     if( nonlinear == HO_NONLIN_JFNK )then
-!         storeoffdiag = .true.
-!         h = croshorizmainbc(dew,           dns,            &
-!                             slopex,        slopey,         &
-!                             dsigmadew(up), dsigmadns(up),  &
-!                             pt,            bcflag,         &
-!                             dup(up),       local_othervel, &
-!                             local_efvs,                    &
-!                             oneortwo, twoorone, g_cros )   
-!         call fillsprsemain(h,locplusup,loc,up,pt)
-!         storeoffdiag = .false.
-!     end if     
+         if( nonlinear == HO_NONLIN_JFNK )then
+             storeoffdiag = .true.
+             h = croshorizmainbc(dew,           dns,            &
+                                 slopex,        slopey,         &
+                                 dsigmadew(up), dsigmadns(up),  &
+                                 pt,            bcflag,         &
+                                 dup(up),       local_othervel, &
+                                 local_efvs,                    &
+                                 oneortwo, twoorone, g_cros )   
+             call fillsprsemain(h,locplusup,loc,up,pt)
+             storeoffdiag = .false.
+         end if     
 
      else
           rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
@@ -2480,18 +2632,18 @@ subroutine bodyset(ew,  ns,  up,           &
                                              + plastic_rhs(pt,ew,ns) / (sum(local_efvs(2,:,:))/4.0d0) &
                                              *(len0/thk0)
 
-!     if( nonlinear == HO_NONLIN_JFNK )then
-!         storeoffdiag = .true.
-!         h = croshorizmainbc(dew,           dns,            &
-!                             slopex,        slopey,         &
-!                             dsigmadew(up), dsigmadns(up),  &
-!                             pt,            bcflag,         &
-!                             dup(up),       local_othervel, &
-!                             local_efvs,                    &
-!                             oneortwo, twoorone, g_cros )   
-!         call fillsprsemain(h,locplusup,loc,up,pt)
-!         storeoffdiag = .false.
-!     end if     
+         if( nonlinear == HO_NONLIN_JFNK )then
+             storeoffdiag = .true.
+             h = croshorizmainbc(dew,           dns,            &
+                                 slopex,        slopey,         &
+                                 dsigmadew(up), dsigmadns(up),  &
+                                 pt,            bcflag,         &
+                                 dup(up),       local_othervel, &
+                                 local_efvs,                    &
+                                 oneortwo, twoorone, g_cros )   
+             call fillsprsemain(h,locplusup,loc,up,pt)
+             storeoffdiag = .false.
+         end if     
 
       end if
 
@@ -4288,7 +4440,8 @@ subroutine putpcgc(value,col,row,pt)
           pcgval(ct) = value
           pcgcol(ct) = col
           pcgrow(ct) = row
-        end if	
+          ct = ct + 1
+        end if
     else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
         ! load entry into Triad sparse matrix format
         if( pt == 1 )then ! store uv coeffs 
@@ -4296,17 +4449,15 @@ subroutine putpcgc(value,col,row,pt)
               pcgvaluv(ct) = value
               pcgcoluv(ct) = col
               pcgrowuv(ct) = row
-            end if	
+            end if
         else if( pt == 2 )then ! store vu coeffs
             if (value /= 0.0d0) then
               pcgvalvu(ct) = value
               pcgcolvu(ct) = col
               pcgrowvu(ct) = row
-            end if	
+            end if
         end if
     end if
-    ct = ct + 1
-
 
    end if
    
