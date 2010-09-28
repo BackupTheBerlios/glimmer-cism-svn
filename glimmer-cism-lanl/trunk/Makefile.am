@@ -1,5 +1,5 @@
-SUBDIRS = m4macros src 
-EXTRA_DIST = bootstrap tests
+SUBDIRS = m4macros src tests/util
+EXTRA_DIST = bootstrap 
 bin_SCRIPTS=glimmer-config
 
 # Add a target to run an automatic test
