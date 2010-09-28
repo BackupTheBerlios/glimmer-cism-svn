@@ -103,7 +103,6 @@ module glide_types
   integer, parameter :: FLWA_PATERSON_BUDD_CONST_TEMP = 1
   integer, parameter :: FLWA_CONST_FLWA = 2
 
-
   !...etc, don't have time to do all of these now
 
   integer, parameter :: EVOL_PSEUDO_DIFF = 0
@@ -132,8 +131,8 @@ module glide_types
   integer, parameter :: HO_PROG_POLLARD = 2
   integer, parameter :: HO_PROG_BUELER = 3
 
-  integer, parameter :: HO_NONLIN_PICARD = 0
-  integer, parameter :: HO_NONLIN_JFNK = 1
+!  integer, parameter :: HO_NONLIN_PICARD = 0    !*sfp* these are now defined in 'glimmer_sparse.F90'
+!  integer, parameter :: HO_NONLIN_JFNK = 1
 
   integer, parameter :: HO_BETA_ALL_NAN = 0
   integer, parameter :: HO_BETA_USE_SOFT = 1

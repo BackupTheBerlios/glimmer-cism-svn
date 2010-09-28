@@ -70,7 +70,6 @@ contains
     subroutine run_ho_diagnostic(model)
         use glide_thckmask
         use glide_mask
-        use solver_flags
         
         type(glide_global_type),intent(inout) :: model
         !For HO masking

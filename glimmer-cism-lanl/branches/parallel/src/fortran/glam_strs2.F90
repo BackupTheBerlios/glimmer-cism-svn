@@ -1,4 +1,4 @@
-
+ 
 ! "glam_strs2.F90"
 !
 ! 3d velocity calculation based on Blatter/Pattyn, 1st-order equations, by Tony Payne (Univ.
@@ -24,6 +24,7 @@ use glimmer_log,      only : write_log
 use glide_mask
 use glimmer_sparse_type
 use glimmer_sparse
+use glide_types
 
 implicit none
 
@@ -89,6 +90,9 @@ implicit none
   real (kind = dp), dimension(:), allocatable :: pcgval, rhsd 
   integer, dimension(:), allocatable :: pcgcol, pcgrow
   integer, dimension(2) :: pcgsize
+  ! additional storage needed for off diagonal blocks when using JFNK for nonlinear iteration 
+  real (kind = dp), dimension(:), allocatable :: pcgvaluv, pcgvalvu
+  integer, dimension(:), allocatable :: pcgcoluv, pcgrowuv, pcgcolvu, pcgrowvu
   integer :: ct
 
 !RN_20100125: The following are for Trilinos:
@@ -101,6 +105,7 @@ implicit none
   !*sfp* NOTE: these redefined here so that they are "in scope" and can avoid being passed as args
   integer :: whatsparse ! needed for putpgcg()
   integer :: nonlinear  ! flag for indicating type of nonlinar iteration (Picard vs. JFNK)
+  logical, save :: storeoffdiag = .false. ! true only if using JFNK solver and block, off diag coeffs needed
 
   real (kind = dp) :: linearSolveTime = 0
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
@@ -263,7 +268,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 250                  ! max no. of iterations
+  integer, parameter :: cmax = 100                  ! max no. of iterations
   integer :: counter, linit                                ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -362,14 +367,16 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! set residual and iteration counter to initial values
   resid = 1.0_dp
   counter = 1
-  linit = 0;
+  L2norm = 1.0d20
+  linit = 0
 
   ! print some info to the screen to update on iteration progress
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics solver'
   print *, ' '
-  print *, 'iter #     uvel resid         vvel resid       target resid'
-  print *, ' '
+!  print *, 'iter #     uvel resid         vvel resid       target resid'
+  print *, 'iter #     resid (L2 norm)       target resid'
+!  print *, ' '
 
   ! ****************************************************************************************
   ! START of Picard iteration
@@ -380,9 +387,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-!   do pic =1, 100
-!      if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
-  do while ( maxval(resid) > minres .and. counter < cmax)
+
+  do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
+  !do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
     ! calc effective viscosity using previously calc vel. field
@@ -502,7 +509,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !    print *, 'L2 with/without ghost (k)= ', counter, &
 !              sqrt(DOT_PRODUCT(F,F)), L2norm
-!    if (pic .eq. 1) NL_target = NL_tol * L2norm
+    if (counter .le. 2) NL_target = NL_tol * L2norm
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
@@ -587,11 +594,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     counter = counter + 1   ! advance the iteration counter
 
-    ! output the iteration status: iteration number, max residual, and location of max residual
-    ! (send output to the screen or to the log file, per whichever line is commented out) 
-    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
-    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
-    !call write_log (message)
+!    ! output the iteration status: iteration number, max residual, and location of max residual
+!    ! (send output to the screen or to the log file, per whichever line is commented out) 
+!    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
+!    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
+!    !call write_log (message)
+
+    print '(i4,3g20.6)', counter, L2norm, NL_target
 
   end do
 
@@ -696,7 +705,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   character(len=100) :: message
 
 !*sfp* needed to incorporate generic wrapper to solver
-  type(sparse_matrix_type) :: matrixA, matrixC, matrixtp
+  type(sparse_matrix_type) :: matrixA, matrixC, matrixtp, matrixAuv, matrixAvu
   real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1
   real (kind = dp), dimension(:), allocatable :: vectp, uk_1_plus, vk_1_plus
   real (kind = dp), dimension(:), allocatable :: dx, F, F_plus
@@ -795,6 +804,14 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
             matrixC%val(pcgsize(2)))
   allocate(matrixtp%row(pcgsize(2)), matrixtp%col(pcgsize(2)), &
             matrixtp%val(pcgsize(2)))
+
+  !*sfp* allocation for storage of (block matrix) off diagonal terms in coeff sparse matrix
+  ! (these terms are usually sent to the RHS and treated as a source term in the operator splitting
+  ! done in the standard Picard iteration)
+  allocate (pcgrowuv(pcgsize(2)),pcgcoluv(pcgsize(2)),pcgvaluv(pcgsize(2)))
+  allocate (pcgrowvu(pcgsize(2)),pcgcolvu(pcgsize(2)),pcgvalvu(pcgsize(2)))
+  allocate(matrixAuv%row(pcgsize(2)),matrixAuv%col(pcgsize(2)),matrixAuv%val(pcgsize(2)))
+  allocate(matrixAvu%row(pcgsize(2)),matrixAvu%col(pcgsize(2)),matrixAvu%val(pcgsize(2)))
 
   allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)),g_flag(pcgsize(1)) )
   allocate( vectp(pcgsize(1)), uk_1_plus(pcgsize(1)), vk_1_plus(pcgsize(1)))
@@ -963,7 +980,11 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   deallocate(tvel)
   deallocate(uindx,corr,usav)
   deallocate(pcgval,pcgrow,pcgcol,rhsd)
+  deallocate(pcgvaluv,pcgrowuv,pcgcoluv)
+  deallocate(pcgvalvu,pcgrowvu,pcgcolvu)
   deallocate(matrixA%row, matrixA%col, matrixA%val)
+  deallocate(matrixAuv%row, matrixAuv%col, matrixAuv%val)
+  deallocate(matrixAvu%row, matrixAvu%col, matrixAvu%val)
   deallocate(matrixC%row, matrixC%col, matrixC%val)
   deallocate(matrixtp%row, matrixtp%col, matrixtp%val)
   deallocate(uk_1, vk_1, g_flag)
@@ -1503,7 +1524,7 @@ subroutine apply_precond( matrixA, matrixC, nu1, nu2, wk1, wk2, whichsparse )
       answer = 0d0 ! initial guess
       vectp(:) = wk1(1:nu1) ! rhs for precond v
       if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then
-         call sparse_easy_solve(matrixA, vectp, answer, err, iter, whichsparse)
+         call sparse_easy_solve(matrixA, vectp, answer, err, iter, whichsparse, nonlinear_solver = nonlinear)
       else
          call restoretrilinosmatrix(0);
          call solvewithtrilinos(vectp, answer, linearSolveTime)
@@ -1517,7 +1538,7 @@ subroutine apply_precond( matrixA, matrixC, nu1, nu2, wk1, wk2, whichsparse )
       answer = 0d0 ! initial guess
       vectp(:) = wk1(nu1+1:nu2) ! rhs for precond u
       if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then
-         call sparse_easy_solve(matrixC, vectp, answer, err, iter, whichsparse)
+         call sparse_easy_solve(matrixC, vectp, answer, err, iter, whichsparse, nonlinear_solver = nonlinear)
       else
          call restoretrilinosmatrix(1);
          call solvewithtrilinos(vectp, answer, linearSolveTime)
@@ -1802,8 +1823,8 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   end if
 
-  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
-  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
+  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
+  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
 
   select case (whichresid)
 
@@ -2210,7 +2231,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
         ! put the coeff. for the b.c. equation in the same place as the prev. equation
         ! (w.r.t. cols), on a new row ...
-        call fillsprsebndy( g, locplusup, loc_latbc, up, normal )
+        call fillsprsebndy( g, locplusup, loc_latbc, up, normal, pt )
 
         ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
         ! which results from moving them from the LHS over to the RHS, has been moved
@@ -2224,6 +2245,21 @@ subroutine bodyset(ew,  ns,  up,           &
                                                    onesideddiff,                 &
                                                    normal,fwdorbwd)              &
                                                  * local_othervel ) / scalebabc
+
+!        if( nonlinear == HO_NONLIN_JFNK )then
+!            storeoffdiag = .true.
+!            h = croshorizmainbc_lat(dew,           dns,           & 
+!                                slopex,        slopey,        &
+!                                dsigmadew(up), dsigmadns(up), & 
+!                                pt,            2,             & 
+!                                dup(up),       local_othervel,& 
+!                                oneortwo,      twoorone,      & 
+!                                onesideddiff,                 &
+!                                 normal,fwdorbwd) 
+!   
+!            call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt ) 
+!            storeoffdiag = .false.
+!        end if     
 
     end if     ! up = 1 or up = upn (IF at lateral boundary and IF at surface or bed)
 
@@ -2299,7 +2335,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
     ! put the coeff. for the b.c. equation in the same place as the prev. equation
     ! (w.r.t. cols), on a new row ...
-    call fillsprsebndy( g, locplusup, loc_latbc, up, normal )
+    call fillsprsebndy( g, locplusup, loc_latbc, up, normal, pt )
 
     ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
     ! which results from moving them from the LHS over to the RHS, has been moved
@@ -2314,6 +2350,20 @@ subroutine bodyset(ew,  ns,  up,           &
                                                normal,        fwdorbwd)       &
                                               * local_othervel ) + source
 
+!     if( nonlinear == HO_NONLIN_JFNK )then
+!         storeoffdiag = .true.
+!         h = croshorizmainbc_lat(dew,           dns,            &
+!                                 slopex,        slopey,         &
+!                                 dsigmadew(up), dsigmadns(up),  &
+!                                 pt,            1,              &
+!                                 dup(up),       local_othervel, &
+!                                 oneortwo,      twoorone,       &
+!                                 onesideddiff,                  &
+!                                 normal,        fwdorbwd)
+!         call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt )
+!         storeoffdiag = .false.
+!     end if
+
   else   ! NOT at a lateral boundary 
 
 ! *********************************************************************************************
@@ -2321,13 +2371,20 @@ subroutine bodyset(ew,  ns,  up,           &
 
      g = normhorizmain(pt,up,local_efvs)
      g(:,2,2) = g(:,2,2) + vertimain(hsum(local_efvs),up)
-     call fillsprsemain(g,locplusup,loc,up)
+     call fillsprsemain(g,locplusup,loc,up,pt)
      ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
      ! which results from moving them from the LHS over to the RHS, is explicit and 
      ! hast NOT been moved inside of "croshorizmin" (as is the case for the analogous
      ! boundary condition routines).
 
      rhsd(locplusup) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
+
+!     if( nonlinear == HO_NONLIN_JFNK )then
+!         storeoffdiag = .true.
+!         h = croshorizmain(pt,up,local_efvs)   
+!         call fillsprsemain(h,locplusup,loc,up,pt)
+!         storeoffdiag = .false.
+!     end if     
 
   end if
 
@@ -2378,7 +2435,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
      ! put the coeff. for the b.c. equation in the same place as the prev. equation
      ! (w.r.t. cols), on a new row ...
-     call fillsprsemain(g,locplusup,loc,up)
+     call fillsprsemain(g,locplusup,loc,up,pt)
 
      ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
      ! which results from moving them from the LHS over to the RHS, has been moved
@@ -2395,6 +2452,18 @@ subroutine bodyset(ew,  ns,  up,           &
                                              oneortwo, twoorone, g_cros )  &
                                               * local_othervel ) / scalebabc
 
+!     if( nonlinear == HO_NONLIN_JFNK )then
+!         storeoffdiag = .true.
+!         h = croshorizmainbc(dew,           dns,            &
+!                             slopex,        slopey,         &
+!                             dsigmadew(up), dsigmadns(up),  &
+!                             pt,            bcflag,         &
+!                             dup(up),       local_othervel, &
+!                             local_efvs,                    &
+!                             oneortwo, twoorone, g_cros )   
+!         call fillsprsemain(h,locplusup,loc,up,pt)
+!         storeoffdiag = .false.
+!     end if     
 
      else
           rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
@@ -2410,6 +2479,20 @@ subroutine bodyset(ew,  ns,  up,           &
                                               * local_othervel )            &
                                              + plastic_rhs(pt,ew,ns) / (sum(local_efvs(2,:,:))/4.0d0) &
                                              *(len0/thk0)
+
+!     if( nonlinear == HO_NONLIN_JFNK )then
+!         storeoffdiag = .true.
+!         h = croshorizmainbc(dew,           dns,            &
+!                             slopex,        slopey,         &
+!                             dsigmadew(up), dsigmadns(up),  &
+!                             pt,            bcflag,         &
+!                             dup(up),       local_othervel, &
+!                             local_efvs,                    &
+!                             oneortwo, twoorone, g_cros )   
+!         call fillsprsemain(h,locplusup,loc,up,pt)
+!         storeoffdiag = .false.
+!     end if     
+
       end if
 
       ! The following calculates the basal traction AFTER an updated solution is obtain by passing the new
@@ -3320,37 +3403,37 @@ end function horiztermds
 
 !***********************************************************************
  
-subroutine fillsprsemain(inp,locplusup,ptindx,up)
+subroutine fillsprsemain(inp,locplusup,ptindx,up,pt)
 
   ! scatter coefficients from 3x3x3 block "g" onto sparse matrix row
   implicit none
 
   real (kind = dp), dimension(3,3,3), intent(in):: inp
-  integer, intent(in) :: locplusup, up
+  integer, intent(in) :: locplusup, up, pt
   integer, dimension(6), intent(in) :: ptindx
 
   ! insert entries to "g" that are on same level
-  call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup)
-  call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup)
-  call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup)
-  call putpcgc(inp(2,2,3),ptindx(4)+up,locplusup)
-  call putpcgc(inp(2,2,1),ptindx(5)+up,locplusup)
+  call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup,pt)
+  call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup,pt)
+  call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup,pt)
+  call putpcgc(inp(2,2,3),ptindx(4)+up,locplusup,pt)
+  call putpcgc(inp(2,2,1),ptindx(5)+up,locplusup,pt)
 
   ! add points for level above (that is, points in "g"  with a LARGER first index,
   ! which correspond to grid points that are CLOSER TO THE BED than at current level)
-  call putpcgc(inp(3,2,2),ptindx(1)+up+1,locplusup)
-  call putpcgc(inp(3,3,2),ptindx(2)+up+1,locplusup)
-  call putpcgc(inp(3,1,2),ptindx(3)+up+1,locplusup)
-  call putpcgc(inp(3,2,3),ptindx(4)+up+1,locplusup)
-  call putpcgc(inp(3,2,1),ptindx(5)+up+1,locplusup)
+  call putpcgc(inp(3,2,2),ptindx(1)+up+1,locplusup,pt)
+  call putpcgc(inp(3,3,2),ptindx(2)+up+1,locplusup,pt)
+  call putpcgc(inp(3,1,2),ptindx(3)+up+1,locplusup,pt)
+  call putpcgc(inp(3,2,3),ptindx(4)+up+1,locplusup,pt)
+  call putpcgc(inp(3,2,1),ptindx(5)+up+1,locplusup,pt)
 
   ! add points for level below (that is, points in "g" with a SMALLER first index,
   ! which correspond to grid points that are CLOSER TO THE SURFACE than at current level) 
-  call putpcgc(inp(1,2,2),ptindx(1)+up-1,locplusup)
-  call putpcgc(inp(1,3,2),ptindx(2)+up-1,locplusup)
-  call putpcgc(inp(1,1,2),ptindx(3)+up-1,locplusup)
-  call putpcgc(inp(1,2,3),ptindx(4)+up-1,locplusup)
-  call putpcgc(inp(1,2,1),ptindx(5)+up-1,locplusup)
+  call putpcgc(inp(1,2,2),ptindx(1)+up-1,locplusup,pt)
+  call putpcgc(inp(1,3,2),ptindx(2)+up-1,locplusup,pt)
+  call putpcgc(inp(1,1,2),ptindx(3)+up-1,locplusup,pt)
+  call putpcgc(inp(1,2,3),ptindx(4)+up-1,locplusup,pt)
+  call putpcgc(inp(1,2,1),ptindx(5)+up-1,locplusup,pt)
 
   return
 
@@ -3358,14 +3441,14 @@ end subroutine fillsprsemain
 
 !***********************************************************************
 
-subroutine fillsprsebndy(inp,locplusup,ptindx,up,normal)
+subroutine fillsprsebndy(inp,locplusup,ptindx,up,normal,pt)
 
   ! scatter coeff. from 3x3x3 block "g" onto sparse matrix row. This subroutine
   ! is specifically for the boundary conditions, which are handled differently
   ! than points in the "main" body of the domain (interior to boundaries).
   implicit none
 
-  integer, intent(in) :: locplusup, up
+  integer, intent(in) :: locplusup, up, pt
   integer, dimension(6), intent(in) :: ptindx
   real (kind = dp), dimension(3,3,3), intent(in) :: inp
   real (kind = dp), dimension(2), intent(in) :: normal
@@ -3373,72 +3456,72 @@ subroutine fillsprsebndy(inp,locplusup,ptindx,up,normal)
   ! at points where mixed centered and one-side diffs. would apply
   if( normal(1) == 0.0_dp )then         ! at boundary normal to y, centered diffs in x 
     if( normal(2) == -1.0_dp )then      ! at boundary w/ normal [0,-1]
-           call putpcgc(inp(1,3,3),ptindx(5)+up-1,locplusup)
-           call putpcgc( inp(2,3,3)+inp(1,2,1),ptindx(5)+up,locplusup)
-           call putpcgc(inp(3,3,3),ptindx(5)+up+1,locplusup)
-           call putpcgc(inp(1,2,3),ptindx(4)+up,locplusup)
+           call putpcgc(inp(1,3,3),ptindx(5)+up-1,locplusup,pt)
+           call putpcgc( inp(2,3,3)+inp(1,2,1),ptindx(5)+up,locplusup,pt)
+           call putpcgc(inp(3,3,3),ptindx(5)+up+1,locplusup,pt)
+           call putpcgc(inp(1,2,3),ptindx(4)+up,locplusup,pt)
     else                                ! at boundary w/ normal [0,1]
-           call putpcgc(inp(1,3,3),ptindx(4)+up-1,locplusup)
-           call putpcgc(inp(2,3,3)+inp(1,2,3),ptindx(4)+up,locplusup)
-           call putpcgc(inp(3,3,3),ptindx(4)+up+1,locplusup)
-           call putpcgc(inp(1,2,1),ptindx(5)+up,locplusup)
+           call putpcgc(inp(1,3,3),ptindx(4)+up-1,locplusup,pt)
+           call putpcgc(inp(2,3,3)+inp(1,2,3),ptindx(4)+up,locplusup,pt)
+           call putpcgc(inp(3,3,3),ptindx(4)+up+1,locplusup,pt)
+           call putpcgc(inp(1,2,1),ptindx(5)+up,locplusup,pt)
     end if
-    call putpcgc(inp(1,2,2),ptindx(1)+up,locplusup)
+    call putpcgc(inp(1,2,2),ptindx(1)+up,locplusup,pt)
   end if
 
   if( normal(2) == 0.0_dp )then            ! at boundary normal to x, centered diffs in y 
         if( normal(1) == -1.0_dp )then     ! at boundary w/ normal [-1,0]
-           call putpcgc(inp(1,3,3),ptindx(3)+up-1,locplusup)
-           call putpcgc( inp(2,3,3)+inp(2,1,2),ptindx(3)+up,locplusup)
-           call putpcgc(inp(3,3,3),ptindx(3)+up+1,locplusup)
-           call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup)
+           call putpcgc(inp(1,3,3),ptindx(3)+up-1,locplusup,pt)
+           call putpcgc( inp(2,3,3)+inp(2,1,2),ptindx(3)+up,locplusup,pt)
+           call putpcgc(inp(3,3,3),ptindx(3)+up+1,locplusup,pt)
+           call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup,pt)
         else                                 ! at boundary w/ normal [1,0]
-           call putpcgc(inp(1,3,3),ptindx(2)+up-1,locplusup)
-           call putpcgc( inp(2,3,3)+inp(2,3,2),ptindx(2)+up,locplusup)
-           call putpcgc(inp(3,3,3),ptindx(2)+up+1,locplusup)
-           call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup)
+           call putpcgc(inp(1,3,3),ptindx(2)+up-1,locplusup,pt)
+           call putpcgc( inp(2,3,3)+inp(2,3,2),ptindx(2)+up,locplusup,pt)
+           call putpcgc(inp(3,3,3),ptindx(2)+up+1,locplusup,pt)
+           call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup,pt)
     end if
-    call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup)
+    call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup,pt)
   end if
 
   ! at corners where only one-side diffs. apply
   if( normal(1) .gt. 0.0_dp .and. normal(2) .ne. 0.0_dp )then
     if( normal(2) .gt. 0.0_dp )then      ! corner w/ normal [ 1/sqrt(2), 1/sqrt(2) ]
-           call putpcgc(inp(1,3,3),ptindx(2)+up-1,locplusup)
-           call putpcgc(inp(3,3,3),ptindx(2)+up+1,locplusup)
-           call putpcgc(inp(2,3,3)+inp(2,3,2)+inp(1,2,3),ptindx(2)+up,locplusup)
-           call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup)
-           call putpcgc(inp(1,2,2),ptindx(6)+up,locplusup)
-           call putpcgc(inp(1,2,1),ptindx(5)+up,locplusup)
-           call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup)
+           call putpcgc(inp(1,3,3),ptindx(2)+up-1,locplusup,pt)
+           call putpcgc(inp(3,3,3),ptindx(2)+up+1,locplusup,pt)
+           call putpcgc(inp(2,3,3)+inp(2,3,2)+inp(1,2,3),ptindx(2)+up,locplusup,pt)
+           call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup,pt)
+           call putpcgc(inp(1,2,2),ptindx(6)+up,locplusup,pt)
+           call putpcgc(inp(1,2,1),ptindx(5)+up,locplusup,pt)
+           call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup,pt)
     else                                 ! corner w/ normal [ 1/sqrt(2), -1/sqrt(2) ]
-           call putpcgc(inp(1,3,3),ptindx(2)+up-1,locplusup)
-           call putpcgc(inp(3,3,3),ptindx(2)+up+1,locplusup)
-           call putpcgc(inp(2,3,3)+inp(1,2,1)+inp(2,3,2),ptindx(2)+up,locplusup)
-           call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup)
-           call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup)
-           call putpcgc(inp(1,2,2),ptindx(6)+up,locplusup)
-           call putpcgc(inp(1,2,3),ptindx(4)+up,locplusup)
+           call putpcgc(inp(1,3,3),ptindx(2)+up-1,locplusup,pt)
+           call putpcgc(inp(3,3,3),ptindx(2)+up+1,locplusup,pt)
+           call putpcgc(inp(2,3,3)+inp(1,2,1)+inp(2,3,2),ptindx(2)+up,locplusup,pt)
+           call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup,pt)
+           call putpcgc(inp(2,1,2),ptindx(3)+up,locplusup,pt)
+           call putpcgc(inp(1,2,2),ptindx(6)+up,locplusup,pt)
+           call putpcgc(inp(1,2,3),ptindx(4)+up,locplusup,pt)
     end if
   end if
 
   if( normal(1) .lt. 0.0_dp .and. normal(2) .ne. 0.0_dp )then
     if( normal(2) .gt. 0.0_dp )then       ! corner w/ normal [ -1/sqrt(2), 1/sqrt(2) ]
-           call putpcgc(inp(1,3,3),ptindx(3)+up-1,locplusup)
-           call putpcgc(inp(3,3,3),ptindx(3)+up+1,locplusup)
-           call putpcgc(inp(2,3,3)+inp(1,2,3)+inp(2,1,2),ptindx(3)+up,locplusup)
-           call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup)
-           call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup)
-           call putpcgc(inp(1,2,2),ptindx(6)+up,locplusup)
-           call putpcgc(inp(1,2,1),ptindx(5)+up,locplusup)
+           call putpcgc(inp(1,3,3),ptindx(3)+up-1,locplusup,pt)
+           call putpcgc(inp(3,3,3),ptindx(3)+up+1,locplusup,pt)
+           call putpcgc(inp(2,3,3)+inp(1,2,3)+inp(2,1,2),ptindx(3)+up,locplusup,pt)
+           call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup,pt)
+           call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup,pt)
+           call putpcgc(inp(1,2,2),ptindx(6)+up,locplusup,pt)
+           call putpcgc(inp(1,2,1),ptindx(5)+up,locplusup,pt)
     else                                  ! corner w/ normal [ -1/sqrt(2), -1/sqrt(2) ]
-           call putpcgc(inp(1,3,3),ptindx(3)+up-1,locplusup)
-           call putpcgc(inp(3,3,3),ptindx(3)+up+1,locplusup)
-           call putpcgc(inp(2,3,3)+inp(2,1,2)+inp(1,2,1),ptindx(3)+up,locplusup)
-           call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup)
-           call putpcgc(inp(1,2,2),ptindx(6)+up,locplusup)
-           call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup)
-           call putpcgc(inp(1,2,3),ptindx(4)+up,locplusup)
+           call putpcgc(inp(1,3,3),ptindx(3)+up-1,locplusup,pt)
+           call putpcgc(inp(3,3,3),ptindx(3)+up+1,locplusup,pt)
+           call putpcgc(inp(2,3,3)+inp(2,1,2)+inp(1,2,1),ptindx(3)+up,locplusup,pt)
+           call putpcgc(inp(2,2,2),ptindx(1)+up,locplusup,pt)
+           call putpcgc(inp(1,2,2),ptindx(6)+up,locplusup,pt)
+           call putpcgc(inp(2,3,2),ptindx(2)+up,locplusup,pt)
+           call putpcgc(inp(1,2,3),ptindx(4)+up,locplusup,pt)
     end if
   end if
 
@@ -4167,12 +4250,16 @@ end subroutine geom2ders
 
 !***********************************************************************
 
-subroutine putpcgc(value,col,row) 
+subroutine putpcgc(value,col,row,pt) 
  
   implicit none
  
   integer, intent(in) :: row, col
+  integer, intent(in), optional :: pt
   real (kind = dp), intent(in) :: value 
+
+   !*sfp* For now, ignoring the possibility of using JFNK w/ Trilinos ...
+   if( nonlinear == HO_NONLIN_PICARD )then
 
     if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then
         ! Option to load entry into Triad sparse matrix format
@@ -4190,7 +4277,39 @@ subroutine putpcgc(value,col,row)
            call putintotrilinosmatrix(row, col, value)
         end if
     end if
+ 
+ 
+   !*sfp* for JFNK, store he main block diagonal coeffs and off diag coeffs 
+   elseif ( nonlinear == HO_NONLIN_JFNK )then
 
+    if ( .not. storeoffdiag ) then ! block diag coeffs in normal storage space
+        ! load entry into Triad sparse matrix format
+        if (value /= 0.0d0) then
+          pcgval(ct) = value
+          pcgcol(ct) = col
+          pcgrow(ct) = row
+        end if	
+    else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
+        ! load entry into Triad sparse matrix format
+        if( pt == 1 )then ! store uv coeffs 
+            if (value /= 0.0d0) then
+              pcgvaluv(ct) = value
+              pcgcoluv(ct) = col
+              pcgrowuv(ct) = row
+            end if	
+        else if( pt == 2 )then ! store vu coeffs
+            if (value /= 0.0d0) then
+              pcgvalvu(ct) = value
+              pcgcolvu(ct) = col
+              pcgrowvu(ct) = row
+            end if	
+        end if
+    end if
+    ct = ct + 1
+
+
+   end if
+   
   return
  
 end subroutine putpcgc 
