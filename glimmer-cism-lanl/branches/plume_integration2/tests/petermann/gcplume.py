@@ -456,7 +456,7 @@ class _BaseJob(_HasJobDir):
         self.kinbcw = 2
         self.plume_landw = 2
         self.ice_zero_thk_buf = 1
-        self.total_side_buf = self.plume_landw + self.ice_zero_thk_buf
+        self.total_side_buf = self.ice_zero_thk_buf
 
 
     def assertCanStage(self):
