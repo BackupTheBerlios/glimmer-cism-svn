@@ -912,10 +912,10 @@ contains
 
     ! initialise all arrays (0 is assigned to all array locations)
 
-    u = 0.d0
-    v = 0.d0
-    ua = 0.d0
-    va = 0.d0
+    utrans = 0.d0
+    vtrans = 0.d0
+    utransa = 0.d0
+    vtransa = 0.d0
     su = 0.d0
     sv = 0.d0
     u0 = 0.d0
@@ -934,7 +934,7 @@ contains
     jcd_negdep = 0
     jcd_fseed = 0
     ctot = 0.d0
-    tf = 0.d0
+    tfreeze = 0.d0
     entr = 0.d0
     thk_def = 0.d0
     atemp = 0.d0
@@ -947,8 +947,8 @@ contains
     tint = tiuniform
 
     ! initialise ice to zero even when frazil is off so that densities are correct
-    c = 0.d0
-    ca = 0.d0
+    c_ice = 0.d0
+    ca_ice = 0.d0
     fmelt = 0.d0
     fppn = 0.d0
     fnuc = 0.d0
@@ -959,7 +959,7 @@ contains
 
     if (intrace) then
        intrin = 0
-       intr = 0.d0
+       intracer = 0.d0
     end if
 
     ! get cell dimensions
@@ -1362,8 +1362,8 @@ contains
 
                 if (frazil) then
                    do l = 1,nice
-                      c(i,k,l) = cinf(l)
-                      ca(i,k,l) = cinf(l)
+                      c_ice(i,k,l) = cinf(l)
+                      ca_ice(i,k,l) = cinf(l)
                    end do
                    ctot(i,k) = cinftot
                    ctota(i,k) = cinftot
@@ -1375,11 +1375,11 @@ contains
                 if (intrace) then
                    do l = ninfmin,ninfmax
                       if (intrin(i,k).eq.l) then
-                         intr(i,k,l) = 1.d0
-                         intra(i,k,l) = 1.d0
+                         intracer(i,k,l) = 1.d0
+                         intracera(i,k,l) = 1.d0
                       else
-                         intr(i,k,l) = 0.d0
-                         intra(i,k,l) = 0.d0
+                         intracer(i,k,l) = 0.d0
+                         intracera(i,k,l) = 0.d0
                       end if
                    end do
                 end if
@@ -1406,7 +1406,7 @@ contains
     real(kind=kdp),dimension(m_grid,n_grid) :: pdepc,bspeed,speed
     real(kind=kdp) :: rhopac,rhoa,delrho,rhoq,redg,tt,vmid,umid
     real(kind=kdp) :: rich,sm,arg,delta,iold, phase, extra_entr
-    real(kind=kdp) :: dragrt,prden,scden,gambt,gambs,tfb,tfi,c1,c2,c3
+    real(kind=kdp) :: dragrt,prden,scden,gambt,gambs,tfreezeb,tfreezei,c1,c2,c3
     real(kind=kdp) :: deltam(m_grid,n_grid),fppntot,ucrit,ucl
     
 
@@ -1506,17 +1506,17 @@ contains
                 ! calculate freezing point of plume at shelf base,
                 ! decide if melt (mflag = 1) 
                 ! or freeze and calculate freezing point of ice at shelf base
-                tfb = fta*salt(i,k) + ftb + ftc*(gldep + wcdep -bpos(i,k))
-                mflag = (1 + int(sign(1.d0,temp(i,k) - tfb)))/2
+                tfreezeb = fta*salt(i,k) + ftb + ftc*(gldep + wcdep -bpos(i,k))
+                mflag = (1 + int(sign(1.d0,temp(i,k) - tfreezeb)))/2
                 depthflag = (1 + int(sign(1.d0, gldep + wcdep - bpos(i,k) - min_melt_depth)))/2
-                tfi = (1 - mflag)*fta*si  &
+                tfreezei = (1 - mflag)*fta*si  &
                      + ftb + ftc*(gldep + wcdep - bpos(i,k))
 
                 ! calculate coefficients in quadratic to be solved
-                c1 = lat/c0 + mflag*(ci/c0)*(tfi-tint(i,k))
-                c2 = gambs*(lat/c0 + mflag*(ci/c0)*(tfb-tint(i,k)))  &
-                     &   + gambt*(tfi-temp(i,k))
-                c3 = gambs*gambt*(tfb - temp(i,k))
+                c1 = lat/c0 + mflag*(ci/c0)*(tfreezei-tint(i,k))
+                c2 = gambs*(lat/c0 + mflag*(ci/c0)*(tfreezeb-tint(i,k)))  &
+                     &   + gambt*(tfreezei-temp(i,k))
+                c3 = gambs*gambt*(tfreezeb - temp(i,k))
 
                 ! calculate melt rate
                 bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
@@ -1547,14 +1547,14 @@ contains
 
                 fppntot = 0.d0
                 do l=1,nice
-                   if (c(i,k,l).gt.0.d0) then
+                   if (c_ice(i,k,l).gt.0.d0) then
 
                       ! calculate precipitation of frazil
                       ucl = &
                            dsqrt((1.0d-1*g*re(l)*(rho0-rhoi))/(rho0*drag(i,k)))
                       ucrit = (1.d0 - bspeed(i,k)*bspeed(i,k)/(ucl*ucl))
                       fppn(i,k,l) = &
-                           dmin1(-(rhoi/rho0)*c(i,k,l)*wi(l)*ucrit,0.d0)
+                           dmin1(-(rhoi/rho0)*c_ice(i,k,l)*wi(l)*ucrit,0.d0)
 
                       fppntot = fppntot + fppn(i,k,l)
                    end if
@@ -1575,8 +1575,8 @@ contains
 
 	  if (jcs(i,k) .ne. 1) cycle
 
-          delta = dt*(rdxu(i)*(u(i-1,k)-u(i,k)) &
-               + rdyv(k)*(v(i,k-1)-v(i,k))) + &
+          delta = dt*(rdxu(i)*(utrans(i-1,k)-utrans(i,k)) &
+               + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) + &
                dt* deltam(i,k)
 
           if (use_min_plume_thickness) then
@@ -1892,15 +1892,15 @@ contains
                 sxy = sx -sy
                 r1 = (sign(one,sxy) + 1.d0)*5.0d-1
                 r2 = one - r1
-                termnl=(r1*sy + r2*sx)*(ua(ihilf,khilf)*dble(jcd_u(ihilf,khilf)) &
-                     + dble(1 - jcd_u(ihilf,khilf))*ua(i,k)) &
-                     + r1*sxy*(ua(ihilf,k)*dble(jcd_u(ihilf,k)) &
-                     + dble(1 - jcd_u(ihilf,k))*ua(i,k)) &
-                     - r2*sxy*(ua(i,khilf)*dble(jcd_u(i,khilf)) &
-                     + dble(1 - jcd_u(i,khilf))*ua(i,k)) &
-                     - (r2*sy + r1*sx)*ua(i,k)
+                termnl=(r1*sy + r2*sx)*(utransa(ihilf,khilf)*dble(jcd_u(ihilf,khilf)) &
+                     + dble(1 - jcd_u(ihilf,khilf))*utransa(i,k)) &
+                     + r1*sxy*(utransa(ihilf,k)*dble(jcd_u(ihilf,k)) &
+                     + dble(1 - jcd_u(ihilf,k))*utransa(i,k)) &
+                     - r2*sxy*(utransa(i,khilf)*dble(jcd_u(i,khilf)) &
+                     + dble(1 - jcd_u(i,khilf))*utransa(i,k)) &
+                     - (r2*sy + r1*sx)*utransa(i,k)
 
-                termnl2 = - ua(i,k)*dt*((su(ihilf,k) - su(i,k))*idel/dxx  &
+                termnl2 = - utransa(i,k)*dt*((su(ihilf,k) - su(i,k))*idel/dxx  &
                      + (sv(iidx,k) - sv(iidx,k-1))*rdyv(k))
 
              end if
@@ -1920,7 +1920,7 @@ contains
 
              ! final
              !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-             u(i,k) = (ua(i,k)+corx+islope+slorho+termnl+termnl2+hordif)*tbotm
+             utrans(i,k) = (utransa(i,k)+corx+islope+slorho+termnl+termnl2+hordif)*tbotm
 
           end if
           !*******************************************************************
@@ -2108,15 +2108,15 @@ contains
              sxy = sx -sy
              r1 = (dsign(one,sxy) + 1.d0)*5.0d-1
              r2 = one - r1
-             termnl=(r1*sy + r2*sx)*(va(ihilf,khilf)*dble(jcd_v(ihilf,khilf)) &
-                  + dble(1 - jcd_v(ihilf,khilf))*va(i,k)) &
-                  + r1*sxy*(va(ihilf,k)*dble(jcd_v(ihilf,k)) &
-                  + dble(1 - jcd_v(ihilf,k))*va(i,k)) &
-                  - r2*sxy*(va(i,khilf)*dble(jcd_v(i,khilf)) &
-                  + dble(1 - jcd_v(i,khilf))*va(i,k)) &
-                  - (r2*sy + r1*sx)*va(i,k)
+             termnl=(r1*sy + r2*sx)*(vtransa(ihilf,khilf)*dble(jcd_v(ihilf,khilf)) &
+                  + dble(1 - jcd_v(ihilf,khilf))*vtransa(i,k)) &
+                  + r1*sxy*(vtransa(ihilf,k)*dble(jcd_v(ihilf,k)) &
+                  + dble(1 - jcd_v(ihilf,k))*vtransa(i,k)) &
+                  - r2*sxy*(vtransa(i,khilf)*dble(jcd_v(i,khilf)) &
+                  + dble(1 - jcd_v(i,khilf))*vtransa(i,k)) &
+                  - (r2*sy + r1*sx)*vtransa(i,k)
 
-             termnl2 = - va(i,k)*dt*((sv(i,khilf) - sv(i,k))*kdel/dyy  &
+             termnl2 = - vtransa(i,k)*dt*((sv(i,khilf) - sv(i,k))*kdel/dyy  &
                   + (su(i,kkdy) - su(i-1,kkdy))*rdxu(i))
           end if
           !          
@@ -2135,7 +2135,7 @@ contains
           !          
           ! final
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          v(i,k) = (va(i,k)+cory+islope+slorho+termnl+termnl2+hordif)*tbotm
+          vtrans(i,k) = (vtransa(i,k)+cory+islope+slorho+termnl+termnl2+hordif)*tbotm
 
        end do
     end do
@@ -2164,24 +2164,24 @@ contains
           if (jcs(i,k).ne.1) cycle
           pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k)) + small
           pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1)) + small
-          su(i,k) = u(i,k)/pdepu
-          sv(i,k) = v(i,k)/pdepv
+          su(i,k) = utrans(i,k)/pdepu
+          sv(i,k) = vtrans(i,k)/pdepv
           ! test for negative depths and set flow to zero if so
-          delta = dt*(rdxu(i)*(u(i-1,k)-u(i,k)) &
-               + rdyv(k)*(v(i,k-1)-v(i,k))) 
+          delta = dt*(rdxu(i)*(utrans(i-1,k)-utrans(i,k)) &
+               + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) 
 
           if (bpos(i,k) < (ipos(i,k) - delta)) then
-             u(i,k) = 0.d0
+             utrans(i,k) = 0.d0
              su(i,k) = 0.d0
-             u(i-1,k) = 0.d0
+             utrans(i-1,k) = 0.d0
              su(i-1,k) = 0.d0
-             v(i,k) = 0.d0
+             vtrans(i,k) = 0.d0
              sv(i,k) = 0.d0
-             v(i,k-1) = 0.d0
+             vtrans(i,k-1) = 0.d0
              sv(i,k-1) = 0.d0
           endif
-          ua(i,k) = u(i,k)
-          va(i,k) = v(i,k)
+          utransa(i,k) = utrans(i,k)
+          vtransa(i,k) = vtrans(i,k)
           u0a(i,k) = u0(i,k)
           v0a(i,k) = v0(i,k)
        end do
@@ -2204,9 +2204,9 @@ contains
     if (kcalcan.le.(domain_kmin+1)) then
        do i = domain_imin,domain_imax - 1
           su(i,domain_kmin) = su(i,domain_kmin+1)
-          u(i,domain_kmin) = su(i,domain_kmin+1)*5.0d-1*(pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))
+          utrans(i,domain_kmin) = su(i,domain_kmin+1)*5.0d-1*(pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))
           sv(i,domain_kmin) = sv(i,domain_kmin+1)
-          v(i,domain_kmin) = sv(i,domain_kmin+1)*pdep(i,domain_kmin+1)
+          vtrans(i,domain_kmin) = sv(i,domain_kmin+1)*pdep(i,domain_kmin+1)
        end do
     end if
 
@@ -2214,9 +2214,9 @@ contains
     if (kcalcen.ge.(domain_kmax - 1)) then
        do i = domain_imin,domain_imax - 1
           su(i,domain_kmax) = su(i,domain_kmax-1)
-          u(i,domain_kmax) = su(i,domain_kmax-1)*5.0d-1*(pdep(i,domain_kmax-1) + pdep(i+1,domain_kmax-1))
+          utrans(i,domain_kmax) = su(i,domain_kmax-1)*5.0d-1*(pdep(i,domain_kmax-1) + pdep(i+1,domain_kmax-1))
           sv(i,domain_kmax) = sv(i,domain_kmax-1)
-          v(i,domain_kmax) = sv(i,domain_kmax-1)*pdep(i,domain_kmax-1)
+          vtrans(i,domain_kmax) = sv(i,domain_kmax-1)*pdep(i,domain_kmax-1)
        end do
     end if
 
@@ -2224,9 +2224,9 @@ contains
     if (icalcan.le.(domain_imin+1)) then
        do k = domain_kmin,domain_kmax-1
           su(domain_imin,k) = su(domain_imin+1,k)
-          u(domain_imin,k) = su(domain_imin+1,k)*pdep(domain_imin+1,k)
+          utrans(domain_imin,k) = su(domain_imin+1,k)*pdep(domain_imin+1,k)
           sv(domain_imin,k) = sv(domain_imin+1,k)
-          v(domain_imin,k) = sv(domain_imin+1,k)*5.0d-1*(pdep(domain_imin+1,k)+pdep(domain_imin+1,k+1))
+          vtrans(domain_imin,k) = sv(domain_imin+1,k)*5.0d-1*(pdep(domain_imin+1,k)+pdep(domain_imin+1,k+1))
        end do
     end if
 
@@ -2234,9 +2234,9 @@ contains
     if (icalcen.ge.(domain_imax - 1)) then
        do k = domain_kmin, domain_kmax - 1
           su(domain_imax,k) = su(domain_imax-1,k)
-          u(domain_imax,k) = su(domain_imax-1,k)*pdep(domain_imax-1,k)
+          utrans(domain_imax,k) = su(domain_imax-1,k)*pdep(domain_imax-1,k)
           sv(domain_imax,k) = sv(domain_imax-1,k)
-          v(domain_imax,k) = sv(domain_imax-1,k)*5.0d-1*(pdep(domain_imax-1,k)+ &
+          vtrans(domain_imax,k) = sv(domain_imax-1,k)*5.0d-1*(pdep(domain_imax-1,k)+ &
                pdep(domain_imax-1,k+1))
        end do
     end if
@@ -2350,15 +2350,15 @@ contains
           salt(i,domain_kmin) = salt(i,domain_kmin+1)                          
           salta(i,domain_kmin) = salta(i,domain_kmin+1)                          
           rhop(i,domain_kmin) = rhop(i,domain_kmin+1)                          
-          tf(i,domain_kmin) = tf(i,domain_kmin+1)                          
+          tfreeze(i,domain_kmin) = tfreeze(i,domain_kmin+1)                          
        end do
 
        if (frazil) then
           do i = domain_imin,domain_imax
              ctot(i,domain_kmin) = ctot(i,domain_kmin+1)                          
              do l = 1,nice
-		c(i,domain_kmin,l) = c(i,domain_kmin+1,l)
-		ca(i,domain_kmin,l) = ca(i,domain_kmin+1,l)
+		c_ice(i,domain_kmin,l) = c_ice(i,domain_kmin+1,l)
+		ca_ice(i,domain_kmin,l) = ca_ice(i,domain_kmin+1,l)
              end do
           end do
        end if
@@ -2366,8 +2366,8 @@ contains
        if (intrace) then
           do i = domain_imin,domain_imax
              do l = ninfmin,ninfmax
-		intr(i,domain_kmin,l) = intr(i,domain_kmin+1,l)
-		intra(i,domain_kmin,l) = intra(i,domain_kmin+1,l)
+		intracer(i,domain_kmin,l) = intracer(i,domain_kmin+1,l)
+		intracera(i,domain_kmin,l) = intracera(i,domain_kmin+1,l)
              end do
           end do
        end if
@@ -2384,15 +2384,15 @@ contains
           salt(i,domain_kmax) = salt(i,domain_kmax-1)                          
           salta(i,domain_kmax) = salta(i,domain_kmax-1)                          
           rhop(i,domain_kmax) = rhop(i,domain_kmax-1)                          
-          tf(i,domain_kmax) = tf(i,domain_kmax-1)                          
+          tfreeze(i,domain_kmax) = tfreeze(i,domain_kmax-1)                          
        end do
 
        if (frazil) then
           do i = domain_kmin,domain_kmax
              ctot(i,domain_kmax) = ctot(i,domain_kmax-1)                          
              do l = 1,nice
-		c(i,domain_kmax,l) = c(i,domain_kmax-1,l)
-		ca(i,domain_kmax,l) = ca(i,domain_kmax-1,l)
+		c_ice(i,domain_kmax,l) = c_ice(i,domain_kmax-1,l)
+		ca_ice(i,domain_kmax,l) = ca_ice(i,domain_kmax-1,l)
              end do
           end do
        end if
@@ -2400,8 +2400,8 @@ contains
        if (intrace) then
           do i = domain_imin,domain_imax
              do l = ninfmin,ninfmax
-		intr(i,domain_kmax,l) = intr(i,domain_kmax-1,l)
-		intra(i,domain_kmax,l) = intra(i,domain_kmax-1,l)
+		intracer(i,domain_kmax,l) = intracer(i,domain_kmax-1,l)
+		intracera(i,domain_kmax,l) = intracera(i,domain_kmax-1,l)
              end do
           end do
        end if
@@ -2418,15 +2418,15 @@ contains
           salt(domain_imin,k) = salt(domain_imin+1,k)                          
           salta(domain_imin,k) = salta(domain_imin+1,k)                          
           rhop(domain_imin,k) = rhop(domain_imin+1,k)                          
-          tf(domain_imin,k) = tf(domain_imin+1,k)                          
+          tfreeze(domain_imin,k) = tfreeze(domain_imin+1,k)                          
        end do
 
        if (frazil) then
           do k = domain_kmin,domain_kmax
              ctot(domain_imin,k) = ctot(domain_imin+1,k)                          
              do l = 1,nice
-		c(domain_imin,k,l) = c(domain_imin+1,k,l)
-		ca(domain_imin,k,l) = ca(domain_imin+1,k,l)
+		c_ice(domain_imin,k,l) = c_ice(domain_imin+1,k,l)
+		ca_ice(domain_imin,k,l) = ca_ice(domain_imin+1,k,l)
              end do
           end do
        end if
@@ -2434,8 +2434,8 @@ contains
        if (intrace) then
           do k = domain_kmin,domain_kmax
              do l = ninfmin,ninfmax
-		intr(domain_imin,k,l) = intr(domain_imin+1,k,l)
-		intra(domain_imin,k,l) = intra(domain_imin+1,k,l)
+		intracer(domain_imin,k,l) = intracer(domain_imin+1,k,l)
+		intracera(domain_imin,k,l) = intracera(domain_imin+1,k,l)
              end do
           end do
        end if
@@ -2452,15 +2452,15 @@ contains
           salt(domain_imax,k) = salt(domain_imax-1,k)                          
           salta(domain_imax,k) = salta(domain_imax-1,k)                          
           rhop(domain_imax,k) = rhop(domain_imax-1,k)                          
-          tf(domain_imax,k) = tf(domain_imax-1,k)                          
+          tfreeze(domain_imax,k) = tfreeze(domain_imax-1,k)                          
        end do
 
        if (frazil) then
           do k = domain_kmin,domain_kmax
              ctot(domain_imax,k) = ctot(domain_imax-1,k)                          
              do l = 1,nice
-		c(domain_imax,k,l) = c(domain_imax-1,k,l)
-		ca(domain_imax,k,l) = ca(domain_imax-1,k,l)
+		c_ice(domain_imax,k,l) = c_ice(domain_imax-1,k,l)
+		ca_ice(domain_imax,k,l) = ca_ice(domain_imax-1,k,l)
              end do
           end do
        end if
@@ -2468,8 +2468,8 @@ contains
        if (intrace) then
           do k = domain_kmin,domain_kmax
              do l = ninfmin,ninfmax
-		intr(domain_imax,k,l) = intr(domain_imax-1,k,l)
-		intra(domain_imax,k,l) = intra(domain_imax-1,k,l)
+		intracer(domain_imax,k,l) = intracer(domain_imax-1,k,l)
+		intracera(domain_imax,k,l) = intracera(domain_imax-1,k,l)
              end do
           end do
        end if
@@ -2568,14 +2568,14 @@ contains
           pdepe = bpos(i+1,k) - ipos(i+1,k)
           dunew = 5.0d-1*(pdepe + pdepc)
           if (dunew.gt.small) then
-             su(i,k) = u(i,k)/dunew
+             su(i,k) = utrans(i,k)/dunew
              jcd_u(i,k) = 1
           endif
           ! v-component
           pdepn = bpos(i,k+1) - ipos(i,k+1)
           dvnew = 5.0d-1*(pdepn + pdepc)
           if (dvnew.gt.small) then
-             sv(i,k) = v(i,k)/dvnew
+             sv(i,k) = vtrans(i,k)/dvnew
              jcd_v(i,k) = 1
           endif
        end do
@@ -2617,7 +2617,7 @@ contains
     real(kind=kdp) :: tt
     real(kind=kdp) :: dxx,dyy,sx,sy,sxy,r1,r2
     real(kind=kdp) :: dife,difw,difn,difs
-    real(kind=kdp) :: dragrt,prden,scden,gambt,gambs,tfb,tfi,c1,c2,c3
+    real(kind=kdp) :: dragrt,prden,scden,gambt,gambs,tfreezeb,tfreezei,c1,c2,c3
     real(kind=kdp) :: gamct,gamcs,ucrit,ucl
     real(kind=kdp) :: fmelttot,wturb,mfac1,mfac2,gi,gim1,mi,mip1
     real(kind=kdp) :: amb_depth
@@ -2660,18 +2660,18 @@ contains
                 if (frazil) then
                    ctota(i,k) = 0.d0
                    do l = 1,nice
-                      ca(i,k,l) = (c(i,k+1,l)*slon + c(i+1,k,l)*sloe &
-                           + c(i,k-1,l)*slos + c(i-1,k,l)*slow)/sumslo
-                      ctota(i,k) = ctota(i,k) + ca(i,k,l)
+                      ca_ice(i,k,l) = (c_ice(i,k+1,l)*slon + c_ice(i+1,k,l)*sloe &
+                           + c_ice(i,k-1,l)*slos + c_ice(i-1,k,l)*slow)/sumslo
+                      ctota(i,k) = ctota(i,k) + ca_ice(i,k,l)
                    end do
                    rhop(i,k) = (1.d0-ctota(i,k))*rhop(i,k)+ctota(i,k)*rhoi
                 end if
 
                 if (intrace) then
                    do l = ninfmin,ninfmax
-                      intra(i,k,l) =  &
-                           (intr(i,k+1,l)*slon + intr(i+1,k,l)*sloe  &
-                           + intr(i,k-1,l)*slos + intr(i-1,k,l)*slow)/sumslo
+                      intracera(i,k,l) =  &
+                           (intracer(i,k+1,l)*slon + intracer(i+1,k,l)*sloe  &
+                           + intracer(i,k-1,l)*slos + intracer(i-1,k,l)*slow)/sumslo
                    end do
                 end if
 
@@ -2705,7 +2705,7 @@ contains
           ! calculate freezing temperature at plume 
           ! mid-depth (even if no frazil)
           depth(i,k) = gldep + wcdep - 5.0d-1*(ipos(i,k) + bpos(i,k))
-          tf(i,k) = freezing_temp_func(salta(i,k),depth(i,k))
+          tfreeze(i,k) = freezing_temp_func(salta(i,k),depth(i,k))
        end do
     end do
 
@@ -2774,7 +2774,7 @@ contains
                 if (pdepc(i,k).gt.edepth) then         
                    do l=1,nice
                       deltac(i,k,l) = deltac(i,k,l)  &
-                           + dt*entr(i,k)*(-ca(i,k,l))/pdepcp(i,k)
+                           + dt*entr(i,k)*(-ca_ice(i,k,l))/pdepcp(i,k)
                    end do
                 end if
              end do
@@ -2836,26 +2836,26 @@ contains
              if (frazil) then
                 do l = 1,nice
                    deltac(i,k,l) = deltac(i,k,l) &
-                        + (r1*sy+r2*sx)*(ca(ihilf,khilf,l)*jcw(ihilf,khilf) &
-                        + (1 - jcw(ihilf,khilf))*ca(i,k,l))  &
-                        + r1*sxy*(ca(ihilf,k,l)*jcw(ihilf,k)  &
-                        + (1-jcw(ihilf,k))*ca(i,k,l)) &
-                        - r2*sxy*(ca(i,khilf,l)*jcw(i,khilf) &
-                        + (1-jcw(i,khilf))*ca(i,k,l)) &
-                        - (r2*sy+r1*sx)*ca(i,k,l)      
+                        + (r1*sy+r2*sx)*(ca_ice(ihilf,khilf,l)*jcw(ihilf,khilf) &
+                        + (1 - jcw(ihilf,khilf))*ca_ice(i,k,l))  &
+                        + r1*sxy*(ca_ice(ihilf,k,l)*jcw(ihilf,k)  &
+                        + (1-jcw(ihilf,k))*ca_ice(i,k,l)) &
+                        - r2*sxy*(ca_ice(i,khilf,l)*jcw(i,khilf) &
+                        + (1-jcw(i,khilf))*ca_ice(i,k,l)) &
+                        - (r2*sy+r1*sx)*ca_ice(i,k,l)      
                 end do
              end if
 
              if (intrace) then
                 do l = ninfmin,ninfmax
                    deltatr(i,k,l) = deltatr(i,k,l) &
-                        + (r1*sy+r2*sx)*(intra(ihilf,khilf,l)*jcw(ihilf,khilf) &
-                        + (1 - jcw(ihilf,khilf))*intra(i,k,l)) &
-                        + r1*sxy*(intra(ihilf,k,l)*jcw(ihilf,k)  &
-                        + (1-jcw(ihilf,k))*intra(i,k,l)) &
-                        - r2*sxy*(intra(i,khilf,l)*jcw(i,khilf) &
-                        + (1-jcw(i,khilf))*intra(i,k,l)) &
-                        - (r2*sy+r1*sx)*intra(i,k,l)      
+                        + (r1*sy+r2*sx)*(intracera(ihilf,khilf,l)*jcw(ihilf,khilf) &
+                        + (1 - jcw(ihilf,khilf))*intracera(i,k,l)) &
+                        + r1*sxy*(intracera(ihilf,k,l)*jcw(ihilf,k)  &
+                        + (1-jcw(ihilf,k))*intracera(i,k,l)) &
+                        - r2*sxy*(intracera(i,khilf,l)*jcw(i,khilf) &
+                        + (1-jcw(i,khilf))*intracera(i,k,l)) &
+                        - (r2*sy+r1*sx)*intracera(i,k,l)      
                 end do
              end if
 
@@ -2899,10 +2899,10 @@ contains
                 if (jcs(i,k) .ne. 1) cycle
 
                 do l = 1,nice
-                   dife = (ca(i+1,k,l) - ca(i,k,l))*jcw(i+1,k)*kh*rdx(i)
-                   difw = (ca(i,k,l) - ca(i-1,k,l))*jcw(i-1,k)*kh*rdx(i-1)
-                   difn = (ca(i,k+1,l) - ca(i,k,l))*jcw(i,k+1)*kh*rdy(k)
-                   difs = (ca(i,k,l) - ca(i,k-1,l))*jcw(i,k-1)*kh*rdy(k-1)
+                   dife = (ca_ice(i+1,k,l) - ca_ice(i,k,l))*jcw(i+1,k)*kh*rdx(i)
+                   difw = (ca_ice(i,k,l) - ca_ice(i-1,k,l))*jcw(i-1,k)*kh*rdx(i-1)
+                   difn = (ca_ice(i,k+1,l) - ca_ice(i,k,l))*jcw(i,k+1)*kh*rdy(k)
+                   difs = (ca_ice(i,k,l) - ca_ice(i,k-1,l))*jcw(i,k-1)*kh*rdy(k-1)
                    deltac(i,k,l) = deltac(i,k,l)  &
                         + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt
                 end do
@@ -2918,13 +2918,13 @@ contains
 
                 do l = ninfmin,ninfmax
                    dife =  &
-                        (intra(i+1,k,l) - intra(i,k,l))*jcw(i+1,k)*kh*rdx(i)
+                        (intracera(i+1,k,l) - intracera(i,k,l))*jcw(i+1,k)*kh*rdx(i)
                    difw =  &
-                        (intra(i,k,l) - intra(i-1,k,l))*jcw(i-1,k)*kh*rdx(i-1)
+                        (intracera(i,k,l) - intracera(i-1,k,l))*jcw(i-1,k)*kh*rdx(i-1)
                    difn =  &
-                        (intra(i,k+1,l) - intra(i,k,l))*jcw(i,k+1)*kh*rdy(k)
+                        (intracera(i,k+1,l) - intracera(i,k,l))*jcw(i,k+1)*kh*rdy(k)
                    difs =  &
-                        (intra(i,k,l) - intra(i,k-1,l))*jcw(i,k-1)*kh*rdy(k-1)
+                        (intracera(i,k,l) - intracera(i,k-1,l))*jcw(i,k-1)*kh*rdy(k-1)
                    deltatr(i,k,l) = deltatr(i,k,l)  &
                         + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt
                 end do
@@ -2962,18 +2962,18 @@ contains
                 ! of warmest ice steepens gradient) but is not represented
                 ! in heat source terms
 
-                tfb = fta*salta(i,k) + ftb + ftc*(gldep+wcdep-bpos(i,k))
-                mflag = (1 + int(sign(1.d0,tempa(i,k) - tfb)))/2
+                tfreezeb = fta*salta(i,k) + ftb + ftc*(gldep+wcdep-bpos(i,k))
+                mflag = (1 + int(sign(1.d0,tempa(i,k) - tfreezeb)))/2
                 depthflag = (1 + int(sign(1.d0, gldep + wcdep - bpos(i,k) - min_melt_depth)))/2
 
-                tfi = (1 - mflag)*fta*si  &
+                tfreezei = (1 - mflag)*fta*si  &
                      + ftb + ftc*(gldep + wcdep - bpos(i,k))
 
                 ! calculate coefficients in quadratic to be solved
-                c1 = lat/c0 + mflag*(ci/c0)*(tfi-tint(i,k))
-                c2 = gambs*(lat/c0 + mflag*(ci/c0)*(tfb-tint(i,k)))  &
-                     + gambt*(tfi-tempa(i,k))
-                c3 = gambs*gambt*(tfb - tempa(i,k))
+                c1 = lat/c0 + mflag*(ci/c0)*(tfreezei-tint(i,k))
+                c2 = gambs*(lat/c0 + mflag*(ci/c0)*(tfreezeb-tint(i,k)))  &
+                     + gambt*(tfreezei-tempa(i,k))
+                c3 = gambs*gambt*(tfreezeb - tempa(i,k))
 
                 ! calculate melt rate
                 bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
@@ -3012,7 +3012,7 @@ contains
                 if (pdepc(i,k).gt.mdepth) then         
                    do l=1,nice
                       deltac(i,k,l) = deltac(i,k,l)  &
-                           - dt*bmelt(i,k)*ca(i,k,l)/pdepcp(i,k)
+                           - dt*bmelt(i,k)*ca_ice(i,k,l)/pdepcp(i,k)
                    end do
                 end if
              end do
@@ -3036,13 +3036,13 @@ contains
                    ! ----------------------------
                    ! jenkins and bombosch version
                    ! ----------------------------
-                   if (ca(i,k,1).ge.cmin(1)) then
+                   if (ca_ice(i,k,1).ge.cmin(1)) then
 
                       ! a) calculate growth/melting of frazil 
                       gamct = (nuss(1)*kt)/(ar*r(1))
                       gamcs = (nuss(1)*ks)/(ar*r(1))
 
-                      c1 = 5.0d-1*lat*r(1)/(c0*ca(i,k,1)*pdepc(i,k)*gamct)
+                      c1 = 5.0d-1*lat*r(1)/(c0*ca_ice(i,k,1)*pdepc(i,k)*gamct)
                       c2 = ftb + ftc*depth(i,k) - tempa(i,k)  &
                            + lat*gamcs/(c0*gamct)
                       c3 = (2.0d0*ctota(i,k)*pdepc(i,k)*gamcs/r(1)) &
@@ -3058,13 +3058,13 @@ contains
                            dsqrt((1.0d-1*g*re(1)*(rho0-rhoi))/(rho0*drag(i,k)))
                       ucrit = (1.d0 - bspeed(i,k)*bspeed(i,k)/(ucl*ucl))
                       fppn(i,k,1) =  &
-                           dmin1(-(rhoi/rho0)*ca(i,k,1)*wi(1)*ucrit,0.d0)
+                           dmin1(-(rhoi/rho0)*ca_ice(i,k,1)*wi(1)*ucrit,0.d0)
 
                       ! c) calculate overall frazil source for this 
                       ! size class and 
                       !    total melt for ts source
                       deltac(i,k,1) = deltac(i,k,1)  &
-                           - dt*fppn(i,k,1)*ca(i,k,1)/pdepcp(i,k) &
+                           - dt*fppn(i,k,1)*ca_ice(i,k,1)/pdepcp(i,k) &
                            + (rho0/rhoi)*dt*(fppn(i,k,1) &
                            - fmelt(i,k,1))/pdepcp(i,k)
                       fmelttot = fmelt(i,k,1)
@@ -3084,49 +3084,49 @@ contains
                               + ((4.d0*eps)/(15.d0*nu0))*re(l)*re(l))
                          fnuc(i,k,l) =  &
                               - (rhoi/rho0)*pdepc(i,k)*pi*dble(nbar)*wturb &
-                              *(re(1)**3/re(l))*ca(i,k,l)
+                              *(re(1)**3/re(l))*ca_ice(i,k,l)
                          fnuc(i,k,1) = fnuc(i,k,1) - fnuc(i,k,l)
                       end do
 
                       ! b) calculate growth/melting of frazil 
-                      mfac1 = (2.d0*c0*kt/lat)*(tf(i,k) - tempa(i,k))
+                      mfac1 = (2.d0*c0*kt/lat)*(tfreeze(i,k) - tempa(i,k))
                       mfac2 = (rhoi/rho0)*pdepc(i,k)
 
-                      if (tempa(i,k).lt.tf(i,k)) then
-                         gi = mfac1*nuss(1)*ca(i,k,1)/(r(1)*r(1))
+                      if (tempa(i,k).lt.tfreeze(i,k)) then
+                         gi = mfac1*nuss(1)*ca_ice(i,k,1)/(r(1)*r(1))
                          fmelt(i,k,1) = mfac2*(vol(1)/(vol(2) - vol(1)))*gi
 
                          do l=2,nice-1
-                            gi = mfac1*nuss(l)*ca(i,k,l)/(r(l)*r(l))
-                            gim1 = mfac1*nuss(l-1)*ca(i,k,l-1)/(r(l-1)*r(l-1))
+                            gi = mfac1*nuss(l)*ca_ice(i,k,l)/(r(l)*r(l))
+                            gim1 = mfac1*nuss(l-1)*ca_ice(i,k,l-1)/(r(l-1)*r(l-1))
                             fmelt(i,k,l) = mfac2*( &
                                  (vol(l)/(vol(l+1) - vol(l)))*gi  &           
                                  - (vol(l)/(vol(l) - vol(l-1)))*gim1)         
                          end do
 
-                         gim1 = mfac1*nuss(nice-1)*ca(i,k,nice-1) &
+                         gim1 = mfac1*nuss(nice-1)*ca_ice(i,k,nice-1) &
                               /(r(nice-1)*r(nice-1))
                          fmelt(i,k,nice) = - mfac2* &
                               (vol(nice)/(vol(nice) - vol(nice-1)))*gim1
                       else
-                         mi = mfac1*nuss(1)*ca(i,k,1) &
+                         mi = mfac1*nuss(1)*ca_ice(i,k,1) &
                               *(1.d0/r(1) + 1.d0/thi(1))/r(1)
-                         mip1 = mfac1*nuss(2)*ca(i,k,2) &
+                         mip1 = mfac1*nuss(2)*ca_ice(i,k,2) &
                               *(1.d0/r(2) + 1.d0/thi(2))/r(2)
                          fmelt(i,k,1) = mfac2*  &
                               ((vol(1)/(vol(2) - vol(1)))*mip1 - mi)
 
                          do l=2,nice-1
-                            mi = mfac1*nuss(l)*ca(i,k,l) &
+                            mi = mfac1*nuss(l)*ca_ice(i,k,l) &
                                  *(1.d0/r(l) + 1.d0/thi(l))/r(l)
-                            mip1 = mfac1*nuss(l+1)*ca(i,k,l+1)* &
+                            mip1 = mfac1*nuss(l+1)*ca_ice(i,k,l+1)* &
                                  (1.d0/r(l+1) + 1.d0/thi(l+1))/r(l+1)
                             fmelt(i,k,l) = mfac2*( &
                                  (vol(l)/(vol(l+1) - vol(l)))*mip1     &       
                                  - (vol(l)/(vol(l) - vol(l-1)))*mi)  
                          end do
 
-                         mi = mfac1*nuss(nice)*ca(i,k,nice)* &
+                         mi = mfac1*nuss(nice)*ca_ice(i,k,nice)* &
                               (1.d0/r(nice) + 1.d0/thi(nice))/r(nice)
                          fmelt(i,k,nice) = - mfac2* &
                               (vol(nice)/(vol(nice) - vol(nice-1)))*mi
@@ -3138,7 +3138,7 @@ contains
                               dsqrt((1.0d-1*g*re(l)*(rho0-rhoi))/(rho0*drag(i,k)))
                          ucrit = (1.d0-bspeed(i,k)*bspeed(i,k)/(ucl*ucl))
                          fppn(i,k,l) =  &
-                              dmin1(-(rhoi/rho0)*ca(i,k,l)*wi(l)*ucrit,0.d0)
+                              dmin1(-(rhoi/rho0)*ca_ice(i,k,l)*wi(l)*ucrit,0.d0)
                       end do
 
                       ! d) calculate overall frazil source for this 
@@ -3146,7 +3146,7 @@ contains
                       !    total melt for ts source
                       do l=1,nice
                          deltac(i,k,l) = deltac(i,k,l) &
-                              - dt*fppn(i,k,l)*ca(i,k,l)/pdepcp(i,k) &
+                              - dt*fppn(i,k,l)*ca_ice(i,k,l)/pdepcp(i,k) &
                               + (rho0/rhoi)*dt*(fppn(i,k,l) + fnuc(i,k,l)  &
                               - fmelt(i,k,l))/pdepcp(i,k)
                          fmelttot = fmelttot + fmelt(i,k,l)
@@ -3161,7 +3161,7 @@ contains
                 ! calculate change of heat and salt due to frazil 
                 ! meltwater/freezewater flux
                 deltat(i,k) = deltat(i,k)  &
-                     + dt*fmelttot*(tf(i,k) - tempa(i,k))/pdepcp(i,k)
+                     + dt*fmelttot*(tfreeze(i,k) - tempa(i,k))/pdepcp(i,k)
                 deltas(i,k) = deltas(i,k)  &
                      - dt*fmelttot*salta(i,k)/pdepcp(i,k)
 
@@ -3195,11 +3195,11 @@ contains
           do i = icalcan,icalcen
              do k = kcalcan,kcalcen
                 do l = 1,nice
-                   if (ca(i,k,l) + deltac(i,k,l).ge.0.d0) then
-                      c(i,k,l) = ca(i,k,l) + deltac(i,k,l)
+                   if (ca_ice(i,k,l) + deltac(i,k,l).ge.0.d0) then
+                      c_ice(i,k,l) = ca_ice(i,k,l) + deltac(i,k,l)
                    else
-                      c(i,k,l) = 0.d0
-                      frzcut(l) = frzcut(l) - ca(i,k,l) - deltac(i,k,l)
+                      c_ice(i,k,l) = 0.d0
+                      frzcut(l) = frzcut(l) - ca_ice(i,k,l) - deltac(i,k,l)
                    end if
                 end do
              end do
@@ -3210,7 +3210,7 @@ contains
           do i = icalcan,icalcen
              do k = kcalcan,kcalcen
                 do l = 1,nice
-                   c(i,k,l) = ca(i,k,l) + deltac(i,k,l)
+                   c_ice(i,k,l) = ca_ice(i,k,l) + deltac(i,k,l)
                 end do
              end do
           end do
@@ -3222,7 +3222,7 @@ contains
           do k = kcalcan,kcalcen
              ctot(i,k) = 0.d0
              do l = 1,nice
-                ctot(i,k) = ctot(i,k) + c(i,k,l) 
+                ctot(i,k) = ctot(i,k) + c_ice(i,k,l) 
              end do
           end do
        end do
@@ -3233,7 +3233,7 @@ contains
        do i = icalcan,icalcen
           do k = kcalcan,kcalcen
              do l = ninfmin,ninfmax
-                intr(i,k,l) = intra(i,k,l) + deltatr(i,k,l)
+                intracer(i,k,l) = intracera(i,k,l) + deltatr(i,k,l)
              end do
           end do
        end do
@@ -3252,7 +3252,7 @@ contains
           do i = icalcan,icalcen
              do k = kcalcan,kcalcen
                 if (pdepc(i,k).gt.fdepth) then
-                   if (tempa(i,k).lt.tf(i,k)) then
+                   if (tempa(i,k).lt.tfreeze(i,k)) then
                       seedindex = min(k,seedindex)
                    end if
                 end if
@@ -3264,7 +3264,7 @@ contains
                 if (pdepc(i,seedindex).gt.fdepth) then
                    ctot(i,seedindex) = 0.d0
                    do l=1,nice
-                      c(i,seedindex,l) = cseed(l)
+                      c_ice(i,seedindex,l) = cseed(l)
                       ctot(i,seedindex) = ctota(i,seedindex) + cseed(l)
                    end do
                 end if
@@ -3284,14 +3284,14 @@ contains
           do i = icalcan,icalcen
              do k = kcalcan,kcalcen
                 if (pdepc(i,k).gt.fdepth) then         
-                   if (tempa(i,k).gt.tf(i,k)) then
+                   if (tempa(i,k).gt.tfreeze(i,k)) then
                       jcd_fseed(i,k) = 0
                    else
                       if (jcd_fseed(i,k).eq.0) then
                          ctot(i,k) = 0.d0
                          do l = 1,nice
-                            if (c(i,k,l).lt.cseed(l)) c(i,k,l) = cseed(l)
-                            ctot(i,k) = ctot(i,k) + c(i,k,l)
+                            if (c_ice(i,k,l).lt.cseed(l)) c_ice(i,k,l) = cseed(l)
+                            ctot(i,k) = ctot(i,k) + c_ice(i,k,l)
                          end do
                          jcd_fseed(i,k) = 1     
                       end if
@@ -3317,24 +3317,24 @@ contains
     !     
     if (frazil) then
        ctota = ctot
-       ca = c
+       ca_ice = c_ice
     end if
     !       do i = icalcan,icalcen
     !          do k = kcalcan,kcalcen
     !             ctota(i,k) = ctot(i,k)
     !             do l = 1,nice
-    !                ca(i,k,l) = c(i,k,l)
+    !                ca_ice(i,k,l) = c_ice(i,k,l)
     !             end do
     !          end do
     !       end do
     !    end if
     !     
     if (intrace) then
-       intra = intr
+       intracera = intracer
        !       do i = icalcan,icalcen
        !          do k = kcalcan,kcalcen
        !             do l = ninfmin,ninfmax
-       !                intra(i,k,l) = intr(i,k,l)
+       !                intracera(i,k,l) = intracer(i,k,l)
        !             end do
        !          end do
        !       end do

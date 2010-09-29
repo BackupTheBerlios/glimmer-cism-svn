@@ -59,7 +59,7 @@ module plume_io
   ! 2D scalars: rhop,temp,tempa,tins,salt,salta,rhoamb
   !             entr,atemp,asalt,drag
   ! 2D: u,v,ua,va,su,sv,
-  ! 3D arrays: c, ca, ctot, ctota, tf, 
+  ! 3D arrays: c_ice, ca_ice, ctot, ctota, tfreeze, 
 
   integer :: nc_id,time_counter
   integer :: time_dimid,x_dimid,y_dimid
@@ -379,7 +379,7 @@ contains
                   rhoamb(i,k),rhop(i,k),rhoap(i,k),rhopp(i,k), &
                   entr(i,k)*31557600.d0,atemp(i,k),asalt(i,k), &
                   bmelt(i,k)*wtoi,btemp(i,k),bsalt(i,k), &
-                  tf(i,k),depinf(i,k),real(jcs(i,k))
+                  tfreeze(i,k),depinf(i,k),real(jcs(i,k))
           end do
        end do
 
@@ -409,7 +409,7 @@ contains
           do i = 1,m_grid
              do k = 1,n_grid
                 do l = 1,nice
-                   write(ffrazil,'(4(" ",d13.7))') c(i,k,l),fmelt(i,k,l)*wtoi, &
+                   write(ffrazil,'(4(" ",d13.7))') c_ice(i,k,l),fmelt(i,k,l)*wtoi, &
                         fppn(i,k,l)*wtoi,fnuc(i,k,l)*wtoi
                 end do
              end do
@@ -737,8 +737,8 @@ contains
     real(kind=kdp),parameter :: sec_per_year = 365.25d0 * 24.d0*3600.d0
 
     call check(nf90_put_var(nc_id, time_varid, time / sec_per_year,(/ time_counter /)))
-    call check(nf90_put_var(nc_id, u_varid, u, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, v_varid, v, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, u_varid, utrans, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, v_varid, vtrans, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, su_varid, su, (/1,1,time_counter/)))     
     call check(nf90_put_var(nc_id, sv_varid, sv, (/1,1,time_counter/)))     
     call check(nf90_put_var(nc_id, pdep_varid, pdep, (/1,1,time_counter/)))

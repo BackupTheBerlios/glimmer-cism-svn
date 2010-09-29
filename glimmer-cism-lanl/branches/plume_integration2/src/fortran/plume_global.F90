@@ -44,8 +44,8 @@ module plume_global
   integer,allocatable,dimension(:,:) :: jcd_fl,jcd_negdep,jcd_fseed
 
   !ice-related variables
-  real(kind=kdp),allocatable,dimension(:,:,:) :: c,ca 
-  real(kind=kdp),allocatable,dimension(:,:) :: ctot,ctota,tf
+  real(kind=kdp),allocatable,dimension(:,:,:) :: c_ice,ca_ice
+  real(kind=kdp),allocatable,dimension(:,:) :: ctot,ctota,tfreeze
   real(kind=kdp),pointer,dimension(:,:) :: bmelt
   real(kind=kdp),allocatable,dimension(:,:) :: btemp,bsalt,ctempd
   real(kind=kdp),allocatable,dimension(:,:) :: tint !ice shelf interior temperature
@@ -66,7 +66,7 @@ module plume_global
   integer,allocatable,dimension(:,:) :: intrin !inflow tracers
 
   real(kind=kdp),dimension(:,:),allocatable :: saltinf,tempinf,depinf
-  real(kind=kdp),dimension(:,:,:),allocatable :: intr,intra
+  real(kind=kdp),dimension(:,:,:),allocatable :: intracer,intracera
 
   real(kind=kdp) :: meltinf,cinf(lice),cinftot,depinffix,depinit
 
@@ -123,9 +123,9 @@ module plume_global
   real(kind=kdp),allocatable,dimension(:) :: ahdx,ahdxu,ahdy,ahdyv
 
   ! transports (depth integrated velocities)
-  real(kind=kdp),allocatable,dimension(:,:) :: u,v
+  real(kind=kdp),allocatable,dimension(:,:) :: utrans,vtrans
   ! arrays holding a copy of the transports from the previous timestep 
-  real(kind=kdp),allocatable,dimension(:,:) :: ua,va
+  real(kind=kdp),allocatable,dimension(:,:) :: utransa,vtransa
   ! average velocities
   real(kind=kdp),allocatable,dimension(:,:) :: su,sv
 
@@ -151,14 +151,14 @@ contains
     allocate (pdep(m,n),ipos(m,n),bpos(m,n))
     allocate (jcs(m,n),jcw(m,n),jcd_u(m,n),jcd_v(m,n),jcd_fl(m,n))
     allocate (jcd_negdep(m,n),jcd_fseed(m,n))
-    allocate (c(m,n,lice),ca(m,n,lice),ctot(m,n),ctota(m,n))
-    allocate (tf(m,n))
+    allocate (c_ice(m,n,lice),ca_ice(m,n,lice),ctot(m,n),ctota(m,n))
+    allocate (tfreeze(m,n))
     allocate (bmelt(m,n))
     allocate (btemp(m,n),bsalt(m,n),ctempd(m,n))
 
     allocate (fmelt(m,n,lice),fppn(m,n,lice),fnuc(m,n,lice))
-    allocate (saltinf(m,n),tempinf(m,n),depinf(m,n),intr(m,n,linf))
-    allocate (intra(m,n,linf),intrin(m,n))
+    allocate (saltinf(m,n),tempinf(m,n),depinf(m,n),intracer(m,n,linf))
+    allocate (intracera(m,n,linf),intrin(m,n))
 
     allocate (rhop(m,n),temp(m,n),tempa(m,n),tins(m,n))
     allocate (salt(m,n),salta(m,n),rhoamb(m,n))
@@ -168,7 +168,7 @@ contains
 
     allocate (ahdx(m),ahdxu(m),ahdy(n),ahdyv(n))
 
-    allocate (u(m,n),ua(m,n),v(m,n),va(m,n))
+    allocate (utrans(m,n),utransa(m,n),vtrans(m,n),vtransa(m,n))
     allocate (su(m,n),sv(m,n))
     allocate (u0(m,n),v0(m,n),u0a(m,n),v0a(m,n))
     allocate (tang(m,n))
@@ -183,13 +183,13 @@ contains
     deallocate(intrin)
     deallocate(pdep,ipos,bpos)
     deallocate(jcs,jcw,jcd_u,jcd_v,jcd_fl,jcd_negdep,jcd_fseed)
-    deallocate(c,ca,ctot,ctota,tf,btemp,bsalt,ctempd)
+    deallocate(c_ice,ca_ice,ctot,ctota,tfreeze,btemp,bsalt,ctempd)
     deallocate(bmelt)
     deallocate(fmelt,fppn,fnuc)
-    deallocate(saltinf,tempinf,depinf,intr,intra)
+    deallocate(saltinf,tempinf,depinf,intracer,intracera)
     deallocate(ahdx,ahdxu,ahdy,ahdyv)
     deallocate(rhop,temp,tempa,tins,salt,salta,rhoamb,entr,atemp,asalt,drag,thk_def)
-    deallocate(u,ua,v,va,su,sv,u0,v0,u0a,v0a,tang)
+    deallocate(utrans,utransa,vtrans,vtransa,su,sv,u0,v0,u0a,v0a,tang)
     deallocate(tint)
 
   end subroutine deallocate_arrays
