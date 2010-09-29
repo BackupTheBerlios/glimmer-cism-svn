@@ -38,11 +38,6 @@ module glam
           ntrace_ir       ,&! number of tracers to be remapped
           nghost_ir         ! number of ghost cells used in remapping scheme
 
-        ! This argument is not already included in the model derived type, so add it here
-        ! (needs to be added at some point in the future)
-        real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
-        minTauf = 0.0d0
-
         ! Compute the new geometry derivatives for this time step
         call geometry_derivs(model)
         call geometry_derivs_unstag(model)
