@@ -377,7 +377,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, ' '
 !  print *, 'iter #     uvel resid         vvel resid       target resid'
   print *, 'iter #     resid (L2 norm)       target resid'
-!  print *, ' '
+  print *, ' '
 
   ! ****************************************************************************************
   ! START of Picard iteration
@@ -390,8 +390,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! or the max no. of iterations is exceeded
 
   do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
-  !do while ( maxval(resid) > minres .and. counter < cmax)
-  !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
+  !do while ( maxval(resid) > minres .and. counter < cmax)   ! standard residual calculation
+  !do while ( resid(1) > minres .and. counter < cmax)        ! standard residual (for 1d solutions where d*/dy=0) 
 
     ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
@@ -601,7 +601,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
 !    !call write_log (message)
 
-    print '(i4,3g20.6)', counter, L2norm, NL_target
+    print '(i4,3g20.6)', counter, L2norm, NL_target    ! Output when using L2norm for convergence
 
   end do
 
@@ -1115,8 +1115,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
             ! "effstr" = eff. strain rate squared
             effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
                          0.25_dp * (vgradew + ugradns)**2 + &
-                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
-!                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
+                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
+!                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
 
     ! -----------------------------------------------------------------------------------
     ! NOTES on capping vs. non-capping version of eff. strain rate calc.
@@ -1133,9 +1133,9 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! available as a config file option or possibly removed altogether.   
 
     ! Old "capping" scheme       ! these lines must be active to use the "capping" scheme for the efvs calc
-!            where (effstr < effstrminsq)
-!                   effstr = effstrminsq
-!            end where
+            where (effstr < effstrminsq)
+                   effstr = effstrminsq
+            end where
 
     ! Note that the vert dims are explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
@@ -2438,8 +2438,8 @@ subroutine bodyset(ew,  ns,  up,           &
     ! That is achieved in the following if construct ...
 
 !    if( cc < 10 )then   ! use this to "pre-condition" the shelf BC w/ the simple, 1d version
-    if( cc >= 0 )then   ! use this to use only the 1d version
-!    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
+!    if( cc >= 0 )then   ! use this to use only the 1d version
+    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
 
     ! --------------------------------------------------------------------------------------
     ! (1) source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
