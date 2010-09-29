@@ -43,13 +43,13 @@ contains
         type(sparse_solver_options) :: opt
 
         opt%base%method = method
-        opt%base%maxiters = 2000
+        opt%base%maxiters = 100
 
         if ( present(nonlinear) )then
-            if (nonlinear .eq. HO_NONLIN_PICARD) opt%base%tolerance  = 1e-12 ! Picard
+            if (nonlinear .eq. HO_NONLIN_PICARD) opt%base%tolerance  = 1e-11 ! Picard
             if (nonlinear .eq. HO_NONLIN_JFNK) opt%base%tolerance  = 1e-03 ! JFNK
         else
-            opt%base%tolerance  = 1e-12 ! Picard
+            opt%base%tolerance  = 1e-11 ! Picard
         end if
 
         !Solver specific options
