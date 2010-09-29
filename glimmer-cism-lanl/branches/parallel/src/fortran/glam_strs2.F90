@@ -4486,7 +4486,7 @@ function scalebasalbc( coeffblock, bcflag, lateralboundry, beta, efvs )
         if( bcflag(1) == 1 )then
 
            ! use the dominant terms in the coeff associated with the velocity under consideration
-           !scale = ( betasquared / ( sum( local_efvs(2,:,:) ) / 4.0_dp ) ) * (len0 / thk0)
+           !scale = beta / ( sum( efvs(2,:,:) ) / 4.0_dp ) * (len0 / thk0)
 
            ! Use the magnitude of the coeff associated with the vert stress gradients. 
            ! NOTE that relevant coeffs are stored in diff parts of block depending 
