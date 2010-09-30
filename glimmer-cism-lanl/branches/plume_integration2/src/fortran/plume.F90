@@ -1678,9 +1678,9 @@ contains
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
 
-          if (k == kcalcen) then
-             !!write(*,*) 'North edge'
-          end if
+          !if (k == kcalcen) then
+          !   !!write(*,*) 'North edge'
+          !end if
 
           skip_u_calc = .false.
 
@@ -2956,27 +2956,23 @@ contains
                 ! calculate freezing point of plume at shelf base,
                 ! decide if melt (mflag = 1) 
                 ! or freeze and calculate freezing point of ice at shelf
-                ! base.  note that heat 
-                ! conduction into the ice shelf is taken into account here
-                ! if melting (as removal 
-                ! of warmest ice steepens gradient) but is not represented
-                ! in heat source terms
+                ! base
 
                 tfreezeb = fta*salta(i,k) + ftb + ftc*(gldep+wcdep-bpos(i,k))
                 mflag = (1 + int(sign(1.d0,tempa(i,k) - tfreezeb)))/2
-                depthflag = (1 + int(sign(1.d0, gldep + wcdep - bpos(i,k) - min_melt_depth)))/2
+                !depthflag = (1 + int(sign(1.d0, gldep + wcdep - bpos(i,k) - min_melt_depth)))/2
 
-                tfreezei = (1 - mflag)*fta*si  &
-                     + ftb + ftc*(gldep + wcdep - bpos(i,k))
+                !tfreezei = (1 - mflag)*fta*si  &
+                !     + ftb + ftc*(gldep + wcdep - bpos(i,k))
 
                 ! calculate coefficients in quadratic to be solved
-                c1 = lat/c0 + mflag*(ci/c0)*(tfreezei-tint(i,k))
-                c2 = gambs*(lat/c0 + mflag*(ci/c0)*(tfreezeb-tint(i,k)))  &
-                     + gambt*(tfreezei-tempa(i,k))
-                c3 = gambs*gambt*(tfreezeb - tempa(i,k))
+                !c1 = lat/c0 + mflag*(ci/c0)*(tfreezei-tint(i,k))
+                !c2 = gambs*(lat/c0 + mflag*(ci/c0)*(tfreezeb-tint(i,k)))  &
+                !     + gambt*(tfreezei-tempa(i,k))
+                !c3 = gambs*gambt*(tfreezeb - tempa(i,k))
 
                 ! calculate melt rate
-                bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
+                !bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
 
                 !! multiply by 10 if freezing
                 !              if (mflag.eq.0) then

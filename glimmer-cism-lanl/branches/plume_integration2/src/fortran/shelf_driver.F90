@@ -102,6 +102,9 @@ program shelf_driver
   model%climate%acab(:,:) = climate_cfg%accumulation_rate / scale2d_f1
   model%climate%artm(:,:) = climate_cfg%artm
 
+  !initialise ice temperature to air temperature
+  call timeevoltemp(model,0)
+
   allocate(upstream_thck(model%general%ewn-2*thk_zero_margin))
   upstream_thck = model%geometry%thck(thk_zero_margin+1:model%general%nsn-thk_zero_margin,model%general%nsn)
 
