@@ -35,6 +35,8 @@ rhoo = 1028.0;
 g = 9.81;
 
 fs = 18;
+lwidth = 1;
+lwidth_dot = 1;
 
 plot0 = true;
 plot1 = true;
@@ -48,17 +50,17 @@ acab = 0.0;
 
 subplot(2,1,1);
 hold on
-plot(ycvel/1000, vvelc, 'b*');
-plot((y-0.5*hy)/1000, v, 'b');
-title('Steady Ice Velocity for various uniform melt rates','FontSize',fs);
+plot(ycvel/1000, vvelc, 'b*','LineWidth',lwidth_dot);
+plot((y-0.5*hy)/1000, v, 'b','LineWidth',lwidth);
+title('Steady Ice Velocity','FontSize',fs);
 ylabel('m/year','FontSize',fs);
 xlabel('km','FontSize',fs);
 
 subplot(2,1,2);
 hold on
-plot(ycthk/1000, thkc, 'b*');
-plot((y)/1000, h, 'b');
-title('Steady Ice Thickness for various uniform melt rates','FontSize',fs);
+plot(ycthk/1000, thkc, 'b*','LineWidth',lwidth_dot);
+plot((y)/1000, h, 'b','LineWidth',lwidth);
+title('Steady Ice Thickness','FontSize',fs);
 ylabel('meters','FontSize',fs);
 xlabel('km','FontSize',fs);
 
@@ -69,12 +71,12 @@ acab = -10.0;
 [y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n_points, u0, h0, acab);
 
 subplot(2,1,1);
-plot(ycvel/1000, vvelc, 'k*');
-plot((y-0.5*hy)/1000, v, 'k');
+plot(ycvel/1000, vvelc, 'k*','LineWidth',lwidth_dot);
+plot((y-0.5*hy)/1000, v, 'k','LineWidth',lwidth);
 
 subplot(2,1,2);
-plot(ycthk/1000, thkc, 'k*');
-plot(y/1000, h, 'k');
+plot(ycthk/1000, thkc, 'k*','LineWidth',lwidth_dot);
+plot(y/1000, h, 'k','LineWidth',lwidth);
 end
 
 if (plot2) 
@@ -84,12 +86,12 @@ acab = -25.0;
 [y,v,h,~] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n_points, u0, h0, acab);
 
 subplot(2,1,1);
-plot(ycvel/1000, vvelc, 'r*');
-plot((y-0.5*hy)/1000, v, 'r');
+plot(ycvel/1000, vvelc, 'r*','LineWidth',lwidth_dot);
+plot((y-0.5*hy)/1000, v, 'r','LineWidth',lwidth);
 
 subplot(2,1,2);
-plot(ycthk/1000, thkc, 'r*');
-plot(y/1000, h, 'r');
+plot(ycthk/1000, thkc, 'r*','LineWidth',lwidth_dot);
+plot(y/1000, h, 'r','LineWidth',lwidth);
 end
 
 if (plot5)
@@ -99,12 +101,12 @@ acab = -5.0;
 [y,v,h,w] = steady_ice_1(A,rhoi,rhoo,g,ystart,yend,n_points, u0, h0, acab);
 
 subplot(2,1,1);
-plot(ycvel/1000, vvelc, 'g*');
-plot((y-0.5*hy)/1000, v, 'g');
+plot(ycvel/1000, vvelc, 'g*','LineWidth',lwidth_dot);
+plot((y-0.5*hy)/1000, v, 'g','LineWidth',lwidth);
 
 subplot(2,1,2);
-plot(ycthk/1000, thkc, 'g*');
-plot(y/1000, h, 'g');
+plot(ycthk/1000, thkc, 'g*','LineWidth',lwidth_dot);
+plot(y/1000, h, 'g','LineWidth',lwidth);
 
 end
 

@@ -52,12 +52,15 @@ exact_sol_filename = strcat(exact_prefix, ...
 load (exact_sol_filename,  'exact_y', 'exact_thk', 'exact_vvel','exact_thk_pat');
 
 fs = 11;
+lwidth = 2;
+lwidth_pat = 1;
+lwidth_dot = 1;
 
 subplot(2,1,1);
 hold on
-plot(  exact_y / 1000.0, exact_vvel, 'k');  % exact solution
+plot(  exact_y / 1000.0, exact_vvel, 'k','LineWidth',lwidth);  % exact solution
 plot(  model_yvel(4:end) / 1000.0, model_vvel(4:end), ...
-       strcat(modelmarks,'*'));   % model output
+       strcat(modelmarks,'*'),'LineWidth',lwidth_dot);   % model output
 
 xlabel('y (km)','FontSize',fs);
 ylabel('velocity','FontSize',fs);
@@ -68,10 +71,10 @@ title(strcat('Steady velocity profile (',...
 
 subplot(2,1,2);
 hold on
-plot( exact_y / 1000.0, exact_thk, 'k');    %exact solution
-plot( exact_y / 1000.0, exact_thk_pat, 'm'); % Paterson solution
+plot( exact_y / 1000.0, exact_thk, 'k','LineWidth',lwidth);    %exact solution
+plot( exact_y / 1000.0, exact_thk_pat, 'm','LineWidth',lwidth_pat); % Paterson solution
 plot( model_ythk(5:end) / 1000.0, model_thk(5:end), ...
-      strcat(modelmarks,'*'));   % model output
+      strcat(modelmarks,'*'),'LineWidth',lwidth_dot);   % model output
 xlabel('y (km)','FontSize',fs);
 ylabel('height','FontSize',fs);
 title(strcat('Steady height profile (',...
