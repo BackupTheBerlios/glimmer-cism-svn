@@ -61,8 +61,6 @@ run_eismint_1 (){
 	fname=$(echo ${EISMINT}|sed 's/config/nc/g') >> $logfile
 	    
 	if $DIFFTOOL $fname $prefix/tests/SIA/EISMINT-1/golden_std/$fname -a 1e-8 ; then
-
-#	if $DIFFTOOL $fname /data/ggsrs/test_suite/glimmer-cism-lanl/EISMINT-1/short/golden_std/$fname -a 1e-8 ; then
 	    echo "EISMINT-1" $fname "**TEST OK**" "using" $compiler "compiler">> $logfile
 	    echo "EISMINT-1" $fname "**TEST OK**" "using" $compiler "compiler"
 	else
