@@ -54,10 +54,11 @@ program shelf_driver
   character(len=512) :: plume_nl,plume_output_nc_file,plume_output_prefix,plume_ascii_output_dir
   logical :: plume_suppress_ascii_output,plume_suppress_logging
   logical :: plume_write_all_states= .false.
+  integer :: plume_write_every_n = 1
 
   real(kind=dp) :: plume_min_subcycle_time
   real(kind=dp) :: plume_min_spinup_time,plume_max_spinup_time
-  real(kind=dp) :: plume_steadiness_tol
+  real(kind=dp) :: plume_steadiness_tol,plume_speed_steadiness_tol
 
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
   logical :: plume_const_bmlt
@@ -181,11 +182,13 @@ program shelf_driver
           plume_bmelt_out, &
           plume_btemp_out, &
           plume_steadiness_tol, &
+          plume_speed_steadiness_tol, &
           plume_min_spinup_time, &
 	  plume_max_spinup_time, &
           .true.,&
 	  plume_reached_steady, &
-          plume_write_all_states)
+          plume_write_all_states, &
+          plume_write_every_n)
 
      if (.not. plume_reached_steady) then
 	call write_log("Plume did not reach a steady state",GM_WARNING)
@@ -299,11 +302,13 @@ program shelf_driver
              plume_bmelt_out, &
              plume_btemp_out, &            
              plume_steadiness_tol, &
+             plume_speed_steadiness_tol, &
              plume_min_subcycle_time, &
 	     0.0_dp, &
              .false., &                   !not necessarily running to steady
 	     plume_reached_steady, &
-             plume_write_all_states)
+             plume_write_all_states, &
+             plume_write_every_n)
 
         call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
              model%general%ewn, model%general%nsn, fake_landw)
@@ -442,10 +447,12 @@ contains
     call GetValue(section, 'suppress_logging', plume_suppress_logging)
     call GetValue(section, 'plume_output_prefix',plume_output_prefix)
     call GetValue(section, 'plume_write_all_states',plume_write_all_states)
+    call GetValue(section, 'plume_write_every_n', plume_write_every_n)
     call GetValue(section, 'plume_min_spinup_time',plume_min_spinup_time)
     call GetValue(section, 'plume_max_spinup_time',plume_max_spinup_time)
     call GetValue(section, 'plume_min_subcycle_time',plume_min_subcycle_time)
     call GetValue(section, 'plume_steadiness_tol', plume_steadiness_tol)
+    call GetValue(section, 'plume_speed_steadiness_tol', plume_speed_steadiness_tol)
     call GetValue(section, 'plume_imin',plume_imin)
     call GetValue(section, 'plume_imax',plume_imax)
     call GetValue(section, 'plume_kmin',plume_kmin)
@@ -469,9 +476,11 @@ contains
     call write_log(message)
     write(message,*) 'plume_write_all_states:', plume_write_all_states
     call write_log(message)
-    write(message,*) 'plume_min_spinup_time',plume_min_spinup_time
+    write(message,*) 'plume_write_every_n:', plume_write_every_n
     call write_log(message)
-    write(message,*) 'plume_max_spinup_time',plume_max_spinup_time
+    write(message,*) 'plume_min_spinup_time:',plume_min_spinup_time
+    call write_log(message)
+    write(message,*) 'plume_max_spinup_time:',plume_max_spinup_time
     call write_log(message)
     write(message,*) 'plume_min_subcycle_time', plume_min_subcycle_time
     call write_log(message)

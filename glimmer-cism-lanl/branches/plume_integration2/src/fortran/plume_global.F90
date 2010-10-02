@@ -92,7 +92,7 @@ module plume_global
   real(kind=kdp) :: pi,dcr,g,dt,gdt,fdt,small,edepth,mdepth,fdepth,septol
   real(kind=kdp) :: ah,kh,dzincr,temptop,tempbot,saltbot,salttop
   real(kind=kdp) :: tgrad,sgrad,wcdep,gldep,ifdep,rho0,rhoi
-  real(kind=kdp) :: plume_min_thickness
+  real(kind=kdp) :: plume_min_thickness, entr_time_const
   real(kind=kdp) :: cdb,cdbvar,ef,cl
   real(kind=kdp) :: phi ! latitude
   real(kind=kdp) :: radian,f	
@@ -105,7 +105,7 @@ module plume_global
   !scalar fields
   real(kind=kdp),allocatable,dimension(:,:) :: rhop,temp,tempa,tins
   real(kind=kdp),allocatable,dimension(:,:) :: salt,salta,rhoamb
-  real(kind=kdp),allocatable,dimension(:,:) :: entr,atemp,asalt,drag,thk_def
+  real(kind=kdp),allocatable,dimension(:,:) :: entr,atemp,asalt,drag,thk_def,artf_entr_frac
   real(kind=kdp) :: samb(lamb),tamb(lamb),rhovf(lamb)
   real(kind=kdp) :: frzcut(lice)
 
@@ -162,7 +162,7 @@ contains
 
     allocate (rhop(m,n),temp(m,n),tempa(m,n),tins(m,n))
     allocate (salt(m,n),salta(m,n),rhoamb(m,n))
-    allocate (entr(m,n),thk_def(m,n))
+    allocate (entr(m,n),thk_def(m,n),artf_entr_frac(m,n))
     allocate (atemp(m,n),asalt(m,n))
     allocate (drag(m,n))
 
@@ -188,7 +188,8 @@ contains
     deallocate(fmelt,fppn,fnuc)
     deallocate(saltinf,tempinf,depinf,intracer,intracera)
     deallocate(ahdx,ahdxu,ahdy,ahdyv)
-    deallocate(rhop,temp,tempa,tins,salt,salta,rhoamb,entr,atemp,asalt,drag,thk_def)
+    deallocate(rhop,temp,tempa,tins,salt,salta,rhoamb,entr,atemp,asalt,drag)
+    deallocate(thk_def,artf_entr_frac)
     deallocate(utrans,utransa,vtrans,vtransa,su,sv,u0,v0,u0a,v0a,tang)
     deallocate(tint)
 

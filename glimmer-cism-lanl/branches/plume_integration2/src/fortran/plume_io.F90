@@ -67,7 +67,7 @@ module plume_io
   integer :: u_varid,v_varid,su_varid,sv_varid
   integer :: pdep_varid,bpos_varid,ipos_varid
   integer :: bmelt_varid,btemp_varid,bsalt_varid
-  integer :: rhop_varid,temp_varid,salt_varid,entr_varid,thk_def_varid
+  integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
 
 contains
@@ -703,10 +703,10 @@ contains
     call check( nf90_put_att(nc_id, jcd_v_varid, 'long_name', 'v mask') )
     call check( nf90_put_att(nc_id, jcd_v_varid, 'standard_name', 'v mask') )
 
-    call io_append_output('Creating variable thk_def')
-    call check( nf90_def_var(nc_id,'thk_def',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),thk_def_varid))
-    call check( nf90_put_att(nc_id, thk_def_varid, 'long_name', 'thickness deficiency') )
-    call check( nf90_put_att(nc_id, thk_def_varid, 'standard_name', 'thickness deficiency') )
+    call io_append_output('Creating variable artf_entr_frac')
+    call check( nf90_def_var(nc_id,'artf_entr_frac',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),artf_entr_frac_varid))
+    call check( nf90_put_att(nc_id, artf_entr_frac_varid, 'long_name', 'fraction of artificial entr') )
+    call check( nf90_put_att(nc_id, artf_entr_frac_varid, 'standard_name', 'fraction of artificial entr') )
 
     !call io_append_output('Creating variable jcd_negdep')
     !call check( nf90_def_var(nc_id,'jcd_negdep',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_negdep_varid) )
@@ -755,7 +755,7 @@ contains
     call check(nf90_put_var(nc_id, jcw_varid, jcw, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcd_u_varid, jcd_u, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcd_v_varid, jcd_v, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, thk_def_varid, thk_def, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, artf_entr_frac_varid, artf_entr_frac, (/1,1,time_counter/)))
 
     !call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
     !call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))

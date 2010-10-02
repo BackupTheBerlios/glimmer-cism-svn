@@ -62,6 +62,7 @@ class PlumeNamelist(object):
                      'ifdep' : 0.0,
                      'wcdep' : 1000.0,
                      'plume_min_thickness' : 10.0,
+                     'entr_time_const' : None,
                      'bsmoothit' : 0,   #iterations of smoothing
                      'salttop' : None,
                      'saltbot' : None,
@@ -323,12 +324,12 @@ class GCConfig(object):
                                   'plume_output_dir' : './',     # where to write the output files
                                   'plume_write_all_states' : False,   # option to write out all states (all timesteps)
                                                                       # NB it is very storage hungry
-
+                                  'plume_write_every_n' : 1,
                                   'plume_min_spinup_time' : 5.0,    # minimum time to spinup the plume, in days
                                   'plume_max_spinup_time' : 100.0,   # maximum time to spinup, in days
                                   'plume_min_subcycle_time' : 0.5,   # minimum subcycle time, in days
-                                  'plume_steadiness_tol' : 1.0e-6,  # plume steadiness tolerance 
-                                                                    # (max relative change in bmelt and speed)
+                                  'plume_steadiness_tol' : 1.0e-6,  # plume steadiness tolerance
+                                  'plume_speed_steadiness_tol' : 1.0e-6,  # max relative change in speed
                                   'plume_imax' : None,
                                   'plume_kmin' : None,
                                   'plume_kmax' : None,
@@ -457,6 +458,8 @@ class _BaseJob(_HasJobDir):
         self.plume_landw = 2
         self.ice_zero_thk_buf = 1
         self.total_side_buf = self.ice_zero_thk_buf
+        self.total_side_buf_east = self.total_side_buf
+        self.total_side_buf_west = self.total_side_buf
 
 
     def assertCanStage(self):
@@ -664,11 +667,8 @@ class _GenInputJob(_AtomicJob):
                                            'nsn' : self.n,
                                            'upn' : self.nlevel
                                            })
-        self._gcconfig.vals['plume'].update({'plume_imax' : self.m +
-                                             2*(self.plume_landw) -
-                                             self.total_side_buf,
-                                             'plume_imin' : 1+
-                                             self.total_side_buf,
+        self._gcconfig.vals['plume'].update({'plume_imax' : self.m + 2*(self.plume_landw) - self.total_side_buf_east,
+                                             'plume_imin' : 1+                              self.total_side_buf_west,
                                              'plume_kmin' : self.ifpos,
                                              'plume_kmax' : self.n + self.plume_landw,
                                              'plume_nl_file' : self.plume_nl_file,
