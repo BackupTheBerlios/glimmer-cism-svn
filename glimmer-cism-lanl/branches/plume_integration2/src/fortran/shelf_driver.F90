@@ -42,6 +42,7 @@ program shelf_driver
   logical :: plume_reached_steady
 
   logical :: check_for_steady = .false.
+  logical :: hide_shelf_inflow_row = .true.
   real(kind=dp) :: thk_steady_tol = 1.0e-5
 
   real(kind=rk),dimension(:),allocatable :: upstream_thck
@@ -140,6 +141,10 @@ program shelf_driver
 	no_plume(model%general%ewn-(thk_zero_margin-1):model%general%ewn,:) = .true.
      end if
 
+     if (hide_shelf_inflow_row) then
+        no_plume(:,model%general%nsn) = .true. 
+     end if
+
      call write_logical_plume_array( no_plume,  &
              plume_land_mask, .true.,&
              model%general%ewn, model%general%nsn, fake_landw)
@@ -147,19 +152,23 @@ program shelf_driver
      call write_logical_plume_array(no_plume, &
           plume_land_mask, .true., &
           model%general%ewn, model%general%nsn, fake_landw)
+
      call write_real_plume_array(model%geometry%lsrf *thk0, plume_lsrf_ext, 0.0, &
-          model%general%ewn, model%general%nsn, fake_landw)
+          model%general%ewn, model%general%nsn - 1, fake_landw)
+
      call write_real_plume_array( model%temper%temp(model%general%upn-1,:,:), &
           plume_t_interior, 0.0, &
-          model%general%ewn, model%general%nsn, fake_landw)
+          model%general%ewn, model%general%nsn-1, fake_landw)
+
      call write_real_plume_array((model%numerics%sigma(model%general%upn) - &
           model%numerics%sigma(model%general%upn -1)) * &
           model%geometry%thck * thk0, &
           plume_ice_dz, 0.0, &
-          model%general%ewn, model%general%nsn, fake_landw)   
+          model%general%ewn, model%general%nsn-1, fake_landw)   
 
      call plume_logging_initialize(trim(plume_ascii_output_dir), &
           trim(plume_output_prefix), &
+
           plume_suppress_logging)
 
      call plume_initialise(trim(plume_nl), &
@@ -276,9 +285,14 @@ program shelf_driver
         	no_plume(model%general%ewn-(thk_zero_margin-1):model%general%ewn,:) = .true.
         end if
 
+	if (hide_shelf_inflow_row) then
+	       no_plume(:, model%general%nsn) = .true.
+	end if
+
         call write_logical_plume_array(   no_plume,  &
              plume_land_mask, .true.,&
              model%general%ewn, model%general%nsn, fake_landw)
+
 
         call write_real_plume_array(model%geometry%lsrf *thk0, &
              plume_lsrf_ext, 0.0, &                              

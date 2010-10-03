@@ -275,6 +275,7 @@ contains
 
     where( landmask )
         jcs = 0
+        bpos = gldep+wcdep
     elsewhere
          jcs = 1
     end where
@@ -1338,6 +1339,7 @@ contains
        do k = kcalcan,kcalcen
           if (depinf(i,k).gt.0.d0) then
 
+             stop 1
              ! reset inflow depth
 
              ipos(i,k) = bpos(i,k) - depinf(i,k)         
@@ -1628,7 +1630,10 @@ contains
           ! update interface position (NB - this will change when ice surface moves
           ! in the future coupled model)
    iold = ipos
-   ipos = ipos - delta
+
+   where (jcw == 1)
+      ipos = ipos - delta
+   end where
 
    ! check for negative predicted depth of ambient fluid 
    jcd_negdep = 0
@@ -1665,7 +1670,7 @@ contains
     real(kind=kdp) :: pdepv,zv,zvm,tv,salv,rhon,rhov
     real(kind=kdp) :: delta,ctotu,ctotv,dragu,dragv
 
-    logical :: skip_u_calc
+    logical :: skip_u_calc,skip_v_calc
     logical :: olddrag,norotation,variableekman,draginmelt 
     logical :: newudrag(m_grid,n_grid)
     real(kind=kdp) :: av,ekthick,kq,costang,sintang,thickratio
@@ -1701,9 +1706,7 @@ contains
           !end if
 
           skip_u_calc = .false.
-
-          ! skip cell if dry land
-          if (jcs(i,k).lt.1) cycle
+          skip_v_calc = .false.
 
           !*******************************************************************
           !*** u-component  (eastern - cross-slope) **************************
@@ -1717,32 +1720,39 @@ contains
           islope = 0.d0
           redgu = 0.d0  
 
-          ! plume thickness on the u-grid
-          pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k))
+
+          ! skip cell if dry land
+!          if (any(jcs(i:i+1,k) ~= 1)) skip_u_calc = .true.
 
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           ! skip u-component if eastern cell is dry land
           ! NB: this is a no normal flow condition 
-          if (jcs(i+1,k).ne.1) then
+          if (any(jcs(i:i+1,k) == 0)) then
              skip_u_calc = .true.
           end if
 
-          islope = ipos(i+1,k) - ipos(i,k)
+          ! plume thickness on the u-grid
+          pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k))
+          islope =      ipos(i+1,k) - ipos(i,k)
 
           ! final wet/dry logic
-          if ((jcw(i,k).le.0).and.(jcw(i+1,k).le.0)) then
+          if ((jcw(i,k) == 0).and.(jcw(i+1,k) == 0)) then
              ! current cell and eastern neighbour are dry
              skip_u_calc = .true.
           else if ((jcw(i,k).le.0).and.(islope.gt.0.d0)) then
              ! current cell is dry and interface slopes up to east
              skip_u_calc = .true.
+             print *,'slope'
           else if ((jcw(i+1,k).le.0).and.(islope.le.0.d0)) then
              ! eastern neighbour is dry and interface slopes up to the west
              skip_u_calc = .true.
           endif
 
-          if (.not.(skip_u_calc)) then
+          if (skip_u_calc) then
+             !print *, 'skipped u ', i,k
+          else
              ! control of negative depth effects by enhanced friction
+
              jcvfac = 0
              arfac = 1.d0
              jcvfac = max0(jcd_negdep(i,k),jcd_negdep(i+1,k))
@@ -1929,8 +1939,21 @@ contains
 
                 tlate = ahdxu(i+1)*(su(i+1,k) - su(i,k))
                 tlatw = ahdxu(i)*(su(i,k) - su(i-1,k))
-                tlats = ahdy(k-1)*(su(i,k) - su(i,k-1))
-                tlatn = ahdy(k)*(su(i,k+1) - su(i,k))
+                
+                if (any(jcs(i:i+1,k+1) == 0)) then
+                   ! boundary to the north
+                   tlatn = 0.d0
+                else
+                   tlatn = ahdy(k)*(su(i,k+1) - su(i,k))
+                end if
+
+                if (any(jcs(i:i+1,k-1) == 0)) then
+                   ! boundary to the south
+                   tlats = 0.d0
+                else
+                   tlats = ahdy(k-1)*(su(i,k) - su(i,k-1))
+                end if
+
 
                 hordif = pdepu*((tlate-tlatw)*rdx(i) + (tlatn-tlats)*rdyv(k))
 
@@ -1952,27 +1975,29 @@ contains
           islope = 0.d0
           redgv = 0.d0
 
-          ! plume thickness on the v-grid
-          pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1))
-
+ 
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           ! skip v-component if northern cell is dry land
-          if (jcs(i,k+1).le.0) cycle
+          if (any(jcs(i,k:k+1) == 0)) skip_v_calc = .true.
 
           islope = ipos(i,k+1) - ipos(i,k)
+         ! plume thickness on the v-grid
+          pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1))
 
           ! final wet/dry logic
           if ((jcw(i,k).le.0).and.(jcw(i,k+1).le.0)) then
              ! current cell and northern neighbour are dry
-             cycle
+             skip_v_calc = .true.
           else if ((jcw(i,k).le.0).and.(islope.gt.0.d0)) then
 	     ! current cell is dry and interface is rising to the north
-             cycle
+             skip_v_calc = .true.
           else if ((jcw(i,k+1).le.0).and.(islope.le.0.d0)) then
              ! northern neighbour is dry and interface is rising to the south
-             cycle
+             skip_v_calc = .true.
           endif
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+          if (skip_v_calc) cycle
 
           ! control of negative depth effects by enhanced friction
           jcvfac = 0
@@ -2142,8 +2167,20 @@ contains
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           if (horturb) then
 
-             tlate = ahdx(i)*(sv(i+1,k) - sv(i,k))
-             tlatw = ahdx(i-1)*(sv(i,k) - sv(i-1,k))
+             if (any(jcs(i-1,k:k+1) == 0)) then
+                ! boundary to the west
+                tlatw = 0.d0
+             else
+                tlatw = ahdx(i-1)*(sv(i,k) - sv(i-1,k))
+             end if
+
+             if (any(jcs(i+1,k:k+1) == 0)) then
+                ! boundary to the east
+                tlate = 0.d0
+             else
+                tlate = ahdx(i)*(sv(i+1,k) - sv(i,k))
+             end if
+
              tlats = ahdyv(k)*(sv(i,k) - sv(i,k-1))
              tlatn = ahdyv(k+1)*(sv(i,k+1) - sv(i,k))
 
@@ -2281,27 +2318,28 @@ contains
        do i = domain_imin,domain_imax
 
           !Paul's new version
+          if (jcs(i,domain_kmin) == 1) then
           jcw(i,domain_kmin) = jcw(i,domain_kmin + 1)
           jcd_fl(i,domain_kmin) = jcd_fl(i,domain_kmin + 1)
           pdep(i,domain_kmin) = 2.d0*pdep(i,domain_kmin + 1) - pdep(i,domain_kmin+2)
           ipos(i,domain_kmin) = 2.d0*(bpos(i,domain_kmin + 1) - pdep(i,domain_kmin + 1)) - & 
                                      (bpos(i,domain_kmin + 2) - pdep(i,domain_kmin + 2))
-
+          end if
        end do
     end if
 
     ! northern boundary
-    if(kcalcen.ge.(domain_kmax-1)) then
-       do i = domain_imin,domain_imax
+   ! if(kcalcen.ge.(domain_kmax-1)) then
+   !    do i = domain_imin,domain_imax
 
-          !Paul's version
-          jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
-          jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
-          pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
-          ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)       
+   !       !Paul's version
+   !       jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
+   !       jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
+   !       pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
+   !       ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)       
 
-       end do
-    end if
+   !    end do
+   ! end if
 
     ! western boundary
     if (icalcan.le.(domain_imin+1)) then
@@ -2507,7 +2545,7 @@ contains
 
           ! interface position corrected for negative depths at new timestep
           iconti = ipos(i,k)
-          ipos(i,k) = dmin1(bpos(i,k),ipos(i,k))
+          !ipos(i,k) = dmin1(bpos(i,k),ipos(i,k))
 
           ! report any errors
           error = abs(iconti - ipos(i,k))
@@ -2519,8 +2557,8 @@ contains
                   i,' k=',k
           end if
 
-          sv(i,k) = 0.d0
-          su(i,k) = 0.d0
+!          sv(i,k) = 0.d0
+!          su(i,k) = 0.d0
 
           ! plume thickness and wetted area (main update of pdep)
           jcd_fl(i,k) = 0      
@@ -2568,14 +2606,14 @@ contains
           pdepe = bpos(i+1,k) - ipos(i+1,k)
           dunew = 5.0d-1*(pdepe + pdepc)
           if (dunew.gt.small) then
-             su(i,k) = utrans(i,k)/dunew
+!             su(i,k) = utrans(i,k)/dunew
              jcd_u(i,k) = 1
           endif
           ! v-component
           pdepn = bpos(i,k+1) - ipos(i,k+1)
           dvnew = 5.0d-1*(pdepn + pdepc)
           if (dvnew.gt.small) then
-             sv(i,k) = vtrans(i,k)/dvnew
+ !            sv(i,k) = vtrans(i,k)/dvnew
              jcd_v(i,k) = 1
           endif
        end do
