@@ -812,7 +812,7 @@ contains
     dcr    = edepth  ! critical min plume depth
     septol = 1.0d-2  ! smallest plume-ambient density anomaly tolerated before
     ! plume separation is flagged
-    small = 1.0d-15  ! smallest number
+    small = epsilon(1.d0) !1.0d-15  ! smallest number
 
     ! +++++++++++++++++++++
     ! read values from file
@@ -968,6 +968,8 @@ contains
     tempinf = 0.d0
     saltinf = 0.d0
     depinf = 0.d0
+
+    debug = 0.d0
 
     if (intrace) then
        intrin = 0
@@ -1339,6 +1341,7 @@ contains
        do k = kcalcan,kcalcen
           if (depinf(i,k).gt.0.d0) then
 
+             print *, 'unexpected use of inflow'
              stop 1
              ! reset inflow depth
 
@@ -1444,6 +1447,7 @@ contains
           bspeed(i,k) = sqrt(speed(i,k))
        end do
     end do
+ 
 
     ! 1. entrainment
     ! --------------
@@ -1663,7 +1667,8 @@ contains
 
     real(kind=kdp) :: one,termnl,termnl2,corx
     real(kind=kdp) :: redgu,slorho,islope
-    real(kind=kdp) :: pdepu,zu,zum,arfac,tt,uu,umid,vmid
+    real(kind=kdp) :: pdepu,zu,zum,arfac,tt,uu
+    real(kind=kdp) :: vmid,umid
     real(kind=kdp) :: speed,tbotm,rhoa,tu,salu
     real(kind=kdp) :: rhoc,rhoe,rhou,rhoq,dxx,dyy,sx,sy,sxy,r1,r2
     real(kind=kdp) :: tlate,tlatw,tlats,tlatn,hordif,cory,redgv
@@ -1697,6 +1702,8 @@ contains
     end if
 
     ! start main loop
+
+    debug = 0.d0
 
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
@@ -1742,7 +1749,6 @@ contains
           else if ((jcw(i,k).le.0).and.(islope.gt.0.d0)) then
              ! current cell is dry and interface slopes up to east
              skip_u_calc = .true.
-             print *,'slope'
           else if ((jcw(i+1,k).le.0).and.(islope.le.0.d0)) then
              ! eastern neighbour is dry and interface slopes up to the west
              skip_u_calc = .true.
@@ -1762,9 +1768,9 @@ contains
              tt = 5.0d-1 
              uu = 5.0d-1*dy(k)*rdyv(k)
              vmid = tt*uu       *(sv(i,k-1) + sv(i+1,k-1)) +  &
-                  tt*(1.d0-uu)*(sv(i,k)   + sv(i+1,k))
+                    tt*(1.d0-uu)*(sv(i,k)   + sv(i+1,k))
              umid = su(i,k)
-
+           
              speed = umid**2+vmid**2 + small
 
              ! drag coefficient on the u-grid
@@ -1921,15 +1927,15 @@ contains
                 r1 = (sign(one,sxy) + 1.d0)*5.0d-1
                 r2 = one - r1
                 termnl=(r1*sy + r2*sx)*(utransa(ihilf,khilf)*dble(jcd_u(ihilf,khilf)) &
-                     + dble(1 - jcd_u(ihilf,khilf))*utransa(i,k)) &
-                     + r1*sxy*(utransa(ihilf,k)*dble(jcd_u(ihilf,k)) &
-                     + dble(1 - jcd_u(ihilf,k))*utransa(i,k)) &
-                     - r2*sxy*(utransa(i,khilf)*dble(jcd_u(i,khilf)) &
-                     + dble(1 - jcd_u(i,khilf))*utransa(i,k)) &
-                     - (r2*sy + r1*sx)*utransa(i,k)
+                     +                  utransa(i,k)        *dble(1 - jcd_u(ihilf,khilf))) &
+                     + r1*sxy*(         utransa(ihilf,k)*dble(jcd_u(ihilf,k)) &
+                     +                  utransa(i,k)        *dble(1 - jcd_u(ihilf,k))) &
+                     - r2*sxy*(         utransa(i,khilf)*dble(jcd_u(i,khilf)) &
+                     +                  utransa(i,k)*dble(1 - jcd_u(i,khilf))) &
+                     - (r2*sy + r1*sx)* utransa(i,k)
 
                 termnl2 = - utransa(i,k)*dt*((su(ihilf,k) - su(i,k))*idel/dxx  &
-                     + (sv(iidx,k) - sv(iidx,k-1))*rdyv(k))
+                                           + (sv(iidx,k) - sv(iidx,k-1))*rdyv(k))
 
              end if
              !          
@@ -1964,6 +1970,8 @@ contains
              utrans(i,k) = (utransa(i,k)+corx+islope+slorho+termnl+termnl2+hordif)*tbotm
 
           end if
+
+         
           !*******************************************************************
           !*** v-component  (northern - up-slope) ****************************
           !*******************************************************************
@@ -2746,6 +2754,7 @@ contains
           tfreeze(i,k) = freezing_temp_func(salta(i,k),depth(i,k))
        end do
     end do
+
 
     if (frazil) then
        do i = icalcan,icalcen

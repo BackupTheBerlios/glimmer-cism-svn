@@ -70,6 +70,8 @@ module plume_io
   integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
 
+  integer :: debug_varid
+
 contains
 
   subroutine plume_logging_initialize(output_dir_in,&
@@ -708,6 +710,10 @@ contains
     call check( nf90_put_att(nc_id, artf_entr_frac_varid, 'long_name', 'fraction of artificial entr') )
     call check( nf90_put_att(nc_id, artf_entr_frac_varid, 'standard_name', 'fraction of artificial entr') )
 
+    call io_append_output('Creating variable debug')
+    call check( nf90_def_var(nc_id,'debug',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),debug_varid))
+   
+
     !call io_append_output('Creating variable jcd_negdep')
     !call check( nf90_def_var(nc_id,'jcd_negdep',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_negdep_varid) )
     !call check( nf90_put_att(nc_id, jcd_negdep_varid, 'long_name', 'negative depth mask') )
@@ -756,6 +762,8 @@ contains
     call check(nf90_put_var(nc_id, jcd_u_varid, jcd_u, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcd_v_varid, jcd_v, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, artf_entr_frac_varid, artf_entr_frac, (/1,1,time_counter/)))
+   
+    call check(nf90_put_var(nc_id, debug_varid, debug, (/1,1,time_counter/)))
 
     !call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
     !call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))
