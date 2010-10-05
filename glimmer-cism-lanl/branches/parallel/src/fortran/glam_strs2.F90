@@ -1150,8 +1150,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! horiz grid, even though it does not). 
 
             ! Below, p2=(1-n)/2n. The 1/2 is from taking the sqr root of the squared eff. strain rate
-!            efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
-            efvs(:,ew,ns) = flwafact(:,ew,ns) * effstr**p2
+            efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
+!            efvs(:,ew,ns) = flwafact(:,ew,ns) * effstr**p2
 
         else
            efvs(:,ew,ns) = effstrminsq ! if the point is associated w/ no ice, set to min value
