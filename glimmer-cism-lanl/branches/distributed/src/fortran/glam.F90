@@ -38,11 +38,6 @@ module glam
           ntrace_ir       ,&! number of tracers to be remapped
           nghost_ir         ! number of ghost cells used in remapping scheme
 
-        ! This argument is not already included in the model derived type, so add it here
-        ! (needs to be added at some point in the future)
-        real (kind=dp), dimension(model%general%ewn-1,model%general%nsn-1) :: minTauf
-        minTauf = 0.0d0
-
         ! Compute the new geometry derivatives for this time step
         call geometry_derivs(model)
         call geometry_derivs_unstag(model)
@@ -61,13 +56,12 @@ module glam
                                   ntrace_ir,               nghost_ir,                             &
                                   model%numerics%dew,      model%numerics%dns,                    &
                                   model%velocity_hom%uflx, model%velocity_hom%vflx,               &
-                                  model%geomderv%stagthck, model%numerics%thklim,                 &
-                                  model%options%periodic_ew,             model%options%periodic_ns)
+                                  model%geomderv%stagthck, model%numerics%thklim )
 
         ! call inc. remapping code for thickness advection (i.e. dH/dt calcualtion)
         ! (this subroutine lives in "remap_advection.F90")
         call horizontal_remap( model%remap_wk%dt_ir,                                         &
-                               model%remap_wk%ewn_ir,      model%remap_wk%nsn_ir,            &
+                               model%general%ewn-1,        model%general%nsn-1,              &
                                ntrace_ir,   nghost_ir,                                       &
                                model%remap_wk%ubar_ir,     model%remap_wk%vbar_ir,           &
                                model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
@@ -78,9 +72,8 @@ module glam
 
         ! put output from inc. remapping code back into format that model wants
         ! (this subroutine lives in "remap_glamutils.F90")
-        call horizontal_remap_out (model%remap_wk, model%geometry%thck,                 &
-                                   model%climate%acab, model%numerics%dt,               &
-                                   model%options%periodic_ew, model%options%periodic_ns)
+        call horizontal_remap_out(model%remap_wk, model%geometry%thck,                 &
+                                   model%climate%acab, model%numerics%dt )
 
 
     end subroutine inc_remap_driver

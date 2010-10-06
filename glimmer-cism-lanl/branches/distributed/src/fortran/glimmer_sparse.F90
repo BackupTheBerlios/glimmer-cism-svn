@@ -9,6 +9,7 @@ module glimmer_sparse
     use glimmer_sparse_slap
     use glimmer_sparse_umfpack
     use glimmer_sparse_trilinos
+
     implicit none
 
     type sparse_solver_options
@@ -17,13 +18,14 @@ module glimmer_sparse
         type(umf_solver_options)  :: umf
         type(trilinos_solver_options)  :: trilinos
     end type
-
     type sparse_solver_workspace
         type(slap_solver_workspace), pointer :: slap => null()
         type(umf_solver_workspace),  pointer :: umf  => null()
         type(trilinos_solver_workspace),  pointer :: trilinos  => null()
     end type
 
+    integer, parameter :: HO_NONLIN_PICARD = 0
+    integer, parameter :: HO_NONLIN_JFNK = 1
 
     integer, parameter :: SPARSE_SOLVER_BICG = 0
     integer, parameter :: SPARSE_SOLVER_GMRES = 1
@@ -35,20 +37,22 @@ module glimmer_sparse
     integer, parameter :: STANDALONE_TRILINOS_SOLVER = 4
 
 contains
-    subroutine sparse_solver_default_options(method, opt)
+    subroutine sparse_solver_default_options(method, opt, nonlinear)
+
         use parallel
-        use solver_flags
         integer, intent(in) :: method
+        integer, optional, intent(in) :: nonlinear    !*sfp* Picard vs. JFNK flag 
         type(sparse_solver_options) :: opt
 
         opt%base%method = method
-!        opt%base%maxiters = 200
+        opt%base%maxiters = 100
 
-        if (NL_solver .eq. 1) opt%base%tolerance  = 1e-12 ! Picard
-        if (NL_solver .eq. 2) opt%base%tolerance  = 1e-03 ! JFNK
-
-!        opt%base%tolerance  = 1e-12
-        opt%base%maxiters = 2000
+        if ( present(nonlinear) )then
+            if (nonlinear .eq. HO_NONLIN_PICARD) opt%base%tolerance  = 1e-11 ! Picard
+            if (nonlinear .eq. HO_NONLIN_JFNK) opt%base%tolerance  = 1e-03 ! JFNK
+        else
+            opt%base%tolerance  = 1e-11 ! Picard
+        end if
 
         !Solver specific options
         if (method == SPARSE_SOLVER_BICG) then
@@ -274,7 +278,8 @@ contains
         endif
     end subroutine sparse_interpret_error
 
-    subroutine sparse_easy_solve(matrix, rhs, answer, err, iter, method_arg, calling_file, calling_line)
+    subroutine sparse_easy_solve(matrix, rhs, answer, err, iter, method_arg, &
+                                 calling_file, calling_line, nonlinear_solver )
         !This subroutine wraps the basic (though probably the most inefficient)
         !workflow to solve a sparse matrix using the sparse matrix solver
         !framework.  It handles errors gracefully, and reports back the
@@ -292,6 +297,7 @@ contains
         integer, intent(out) :: iter
         
         integer, optional, intent(in) :: method_arg
+        integer, optional, intent(in) :: nonlinear_solver 
 
         character(*), optional :: calling_file
         integer, optional :: calling_line
@@ -301,6 +307,7 @@ contains
 
         integer :: ierr
         integer :: method
+        integer :: nonlinear
 
         if (present(method_arg)) then
             method = method_arg
@@ -308,7 +315,13 @@ contains
             method = SPARSE_SOLVER_BICG
         endif
 
-        call sparse_solver_default_options(method, opt)
+        if (present(nonlinear_solver)) then
+            nonlinear = nonlinear_solver
+        else
+            nonlinear = HO_NONLIN_PICARD  
+        endif
+
+        call sparse_solver_default_options(method, opt, nonlinear)
         call sparse_allocate_workspace(matrix, opt, wk)
         call sparse_solver_preprocess(matrix, opt, wk)
 

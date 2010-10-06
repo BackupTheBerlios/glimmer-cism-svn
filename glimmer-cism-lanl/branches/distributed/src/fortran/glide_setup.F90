@@ -446,6 +446,7 @@ contains
     !*sfp* added options for type of dissipation and bmelt calc. in temperature calc.
     call GetValue(section, 'which_disp',         model%options%which_disp)
     call GetValue(section, 'which_bmelt',        model%options%which_bmelt)
+    call GetValue(section, 'which_ho_nonlinear', model%options%which_ho_nonlinear)
     call GetValue(section, 'which_ho_sparse',    model%options%which_ho_sparse)
     call GetValue(section, 'which_ho_sparse_fallback', model%options%which_ho_sparse_fallback)
   end subroutine handle_ho_options
@@ -460,31 +461,31 @@ contains
     ! local variables
     character(len=*), dimension(0:2), parameter :: temperature = (/ &
          'isothermal', &
-         'full',       &
-         'steady'      /)
+         'full      ', &
+         'steady    ' /)
     character(len=*), dimension(0:2), parameter :: flow_law = (/ &
-         'Paterson and Budd               ', &
-         'Paterson and Budd (temp=-10degC)', &
+         'Paterson and Budd                ', &
+         'Paterson and Budd (temp=-10degC) ', &
          'const 1e-16a^-1Pa^-n             '/)
   !*mb* added options for basal processes model       
     character(len=*), dimension(0:2), parameter :: which_bmod = (/ &
          'Basal proc mod disabled '  , &
-         'Basal proc, high res. '   , &
-         'Basal proc, fast calc.' /)
+         'Basal proc, high res.   '   , &
+         'Basal proc, fast calc.  ' /)
     character(len=*), dimension(0:4), parameter :: basal_water = (/ &
-         'local water balance', &
-         'local + const flux ', &
-         'none               ', &
-         'From basal proc model  ', &
-         'Constant value (=10m)'/)
+         'local water balance   ', &
+         'local + const flux    ', &
+         'none                  ', &
+         'From basal proc model ', &
+         'Constant value (=10m) '/)
     character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
-         'ignore            ', &
-         'no ice shelf      ', &
-         'threshold         ', &
-         'const calving rate', &
-         'edge threshold    ', &
-         'van der Veen      ', &
-         'Pattyn Grnd Line  ', &
+         'ignore              ', &
+         'no ice shelf        ', &
+         'threshold           ', &
+         'const calving rate  ', &
+         'edge threshold      ', &
+         'van der Veen        ', &
+         'Pattyn Grnd Line    ', &
          'Huybrechts Greenland'/)
     character(len=*), dimension(0:5), parameter :: slip_coeff = (/ &
          'zero        ', &
@@ -529,7 +530,7 @@ contains
          'no slip (using large B^2)              ', &
          'B^2 passed from CISM                   ', &
          'no slip (Dirichlet implementation)     ', &
-         'till yield stress (Newton) ' /)
+         'till yield stress (Newton)             ' /)
     character(len=*), dimension(0:1), parameter :: ho_whichefvs = (/ &
          'from eff strain rate    ', &
          'constant value          ' /)
@@ -543,19 +544,22 @@ contains
          'shelf front disabled    '/)
     !*sfp* added the next two for HO temperature calcs
     character(len=*), dimension(0:2), parameter :: dispwhich = (/ &
-         '0-order SIA               ', &
+         '0-order SIA                       ', &
          '1-st order model (Blatter-Pattyn) ', &
-         '1-st order depth-integrated (SSA)' /)
+         '1-st order depth-integrated (SSA) ' /)
     character(len=*), dimension(0:2), parameter :: bmeltwhich = (/ &
-         '0-order SIA               ', &
+         '0-order SIA                       ', &
          '1-st order model (Blatter-Pattyn) ', &
-         '1-st order depth-integrated (SSA)' /)
+         '1-st order depth-integrated (SSA) ' /)
+    character(len=*), dimension(0:1), parameter :: which_ho_nonlinear = (/ &
+         'use standard Picard iteration  ', &
+         'use JFNK                       '/)
     character(len=*), dimension(0:4), parameter :: ho_whichsparse = (/ &
-         'BiCG with LU precondition  ', &
-         'GMRES with LU precondition ', &
-         'Unsymmetric Multifrontal   ', &
-         'Compatible Trilinos interface ', &
-         'Standalone Trilinos interface '/)
+         'BiCG with LU precondition      ', &
+         'GMRES with LU precondition     ', &
+         'Unsymmetric Multifrontal       ', &
+         'Compatible Trilinos interface  ', &
+         'Standalone Trilinos interface  '/)
 
     call write_log('GLIDE options')
     call write_log('-------------')
@@ -683,6 +687,12 @@ contains
     call write_log(message)
     if (model%options%which_bmelt < 0 .or. model%options%which_bmelt >= size(bmeltwhich)) then
         call write_log('Error, which bmelt input out of range', GM_FATAL)
+    end if
+    write(message,*) 'which_ho_nonlinear       :',model%options%which_ho_nonlinear,  &
+                      which_ho_nonlinear(model%options%which_ho_nonlinear)
+    call write_log(message)
+    if (model%options%which_ho_nonlinear < 0 .or. model%options%which_ho_nonlinear >= size(which_ho_nonlinear)) then
+        call write_log('Error, HO nonlinear solution input out of range', GM_FATAL)
     end if
     write(message,*) 'ho_whichsparse          :',model%options%which_ho_sparse,  &
                       ho_whichsparse(model%options%which_ho_sparse)

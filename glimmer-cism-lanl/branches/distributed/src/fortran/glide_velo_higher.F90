@@ -1,6 +1,7 @@
-#ifdef HAVE_CONFIG_H #include "config.inc"
-#endif
 
+#ifdef HAVE_CONFIG_H 
+#include "config.inc" 
+#endif
 #include "glide_nan.inc"
 #include "glide_mask.inc"
 
@@ -71,7 +72,6 @@ contains
       use parallel
         use glide_thckmask
         use glide_mask
-        use solver_flags
         
         type(glide_global_type),intent(inout) :: model
         !For HO masking
@@ -86,11 +86,8 @@ contains
         real(dp), dimension(model%general%ewn-1, model%general%nsn-1) :: latbc_norms_stag
 
         tstep = tstep + 1 ! JFL to be removed
-        NL_solver = 1 ! input by user, 1: Picard, 2: JFNK
-
-!        print *, 'time step=', tstep 
-!        if (tstep .ge. 20) NL_solver = 2
-!        if (tstep .eq. 22) stop 
+        ! NOTE that choice of non-linear solver, "NL_solver" flag (1 = Picard; 2 = JFNK),  
+        ! is now input as run time option (model%options%which_ho_nonlinear)        
 
         !Beta field computations that change in time
         !TREY "hump.config" sets this to 0, so the "if"s are skipped
@@ -191,7 +188,7 @@ contains
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
            !TREY
-           if (NL_solver .eq. 1) then ! Picard (standard solver)
+           if ( model%options%which_ho_nonlinear == HO_NONLIN_PICARD ) then ! Picard (standard solver)
 
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
@@ -216,6 +213,7 @@ contains
                                         model%options%which_ho_babc,                                &
                                         model%options%which_ho_efvs,                                &
                                         model%options%which_ho_resid,                               &
+                                        model%options%which_ho_nonlinear,                           &
                                         model%options%which_ho_sparse,                              &
                                         model%options%periodic_ew,                                  &
                                         model%options%periodic_ns,                                  &
@@ -224,7 +222,7 @@ contains
                                         model%velocity_hom%uflx, model%velocity_hom%vflx,           &
                                         model%velocity_hom%efvs, tstep)
 
-          elseif (NL_solver .eq. 2) then ! JFNK (solver in development...)
+          elseif ( model%options%which_ho_nonlinear == HO_NONLIN_JFNK ) then ! JFNK (solver in development...)
 
 ! noxsolve could eventually go here 
             call JFNK                  (model, geom_mask_stag, tstep) 
