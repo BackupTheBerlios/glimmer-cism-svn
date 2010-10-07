@@ -594,8 +594,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     end if
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-    counter = counter + 1   ! advance the iteration counter
-
 !    ! output the iteration status: iteration number, max residual, and location of max residual
 !    ! (send output to the screen or to the log file, per whichever line is commented out) 
 !    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
@@ -603,6 +601,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    !call write_log (message)
 
     print '(i4,3g20.6)', counter, L2norm, NL_target    ! Output when using L2norm for convergence
+
+    counter = counter + 1   ! advance the iteration counter
 
   end do
 
