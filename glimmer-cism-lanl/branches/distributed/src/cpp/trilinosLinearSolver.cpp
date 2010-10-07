@@ -114,7 +114,7 @@ extern "C" {
     Teuchos::Time linearTime("LinearTime");
     linearTime.start();
 
-    int ierr;
+    // int ierr;
     // Lock in sparsity pattern
     if (!interface->isSparsitySet()) interface->finalizeSparsity();
 
@@ -210,6 +210,10 @@ extern "C" {
       savedMatrix_A = Teuchos::rcp(new Epetra_CrsMatrix(*(interface->getOperator())));
     else if (*i==1)
       savedMatrix_C = Teuchos::rcp(new Epetra_CrsMatrix(*(interface->getOperator())));
+    else if (*i==2) {
+      savedMatrix_A = Teuchos::rcp(new Epetra_CrsMatrix(*(interface->getOperator())));
+      savedMatrix_C = Teuchos::rcp(new Epetra_CrsMatrix(*(interface->getOperator())));
+  }
     else
       assert(false);
   }

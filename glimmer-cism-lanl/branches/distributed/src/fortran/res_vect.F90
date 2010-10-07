@@ -61,7 +61,10 @@ real (kind = dp) :: scale_ghosts = 0.0d0
 
 end subroutine res_vect
 
-subroutine res_vect_jfnk ( matrixA, matrixC, uvec, bvec, nu, counter, g_flag, L2square, whatsparse)
+subroutine res_vect_jfnk ( matrixA, matrixC, uvec, bvec, nu1, nu2, counter, g_flag, L2square, whatsparse)
+
+! similar to res_vect, but state vector uvec and rhs vector bvec are now both velocities (kje 101005)
+! intermediate step, right now A and C matrices are separate, but eventually they will be combined
 
 use glimmer_paramets, only : dp
 use glimmer_sparse_type
@@ -70,20 +73,20 @@ use glide_mask
 
 implicit none
 
-integer :: i, j, counter, nu, nele, whatsparse ! nu: size of uvec and bvec
-integer, dimension(nu), intent(in) :: g_flag ! 0 :reg cell
+integer :: i, j, counter, nu1, nu2, nele, whatsparse ! nu2: size of uvec and bvec, size of u, v within
+integer, dimension(nu2), intent(in) :: g_flag ! 0 :reg cell
                                              ! 1 :top ghost, 2 :base ghost
 
 type(sparse_matrix_type),  intent(in) :: matrixA, matrixC
 
-real (kind = dp), dimension(nu), intent(in) :: bvec
-real (kind = dp), dimension(nu), intent(inout) :: uvec
-real (kind = dp), dimension(nu) :: Au_b_wig
+real (kind = dp), dimension(nu2), intent(in) :: bvec
+real (kind = dp), dimension(nu2), intent(inout) :: uvec
+real (kind = dp), dimension(nu1) :: Au_b_wig, Cv_d_wig
 real (kind = dp), intent(out) :: L2square
 ! 
 real (kind = dp) :: scale_ghosts = 0.0d0
 
-! calculate residual vector of the u OR v component
+! calculate residual vector of the u and v component
 
       Au_b_wig = 0d0 ! regular+ghost cells
 
@@ -97,33 +100,53 @@ real (kind = dp) :: scale_ghosts = 0.0d0
 
         enddo
 
-        do nele = 1, matrixC%nonzeros
+        do nele = 1, matrixC%nonzeros 
 
            i = matrixC%row(nele)
            j = matrixC%col(nele)
-! need to get this numbering right
-           Au_b_wig(i+matrixA%row(matrixA%nonzeros)) = Au_b_wig(i+matrixA%row(matrixA%nonzeros)) + matrixC%val(nele) * uvec(j+matrixA%col(matrixA%nonzeros))
+           Cv_d_wig(i) = Cv_d_wig(i) + matrixC%val(nele) * uvec(nu1+j)
 
         enddo
 
       else 
-        call matvecwithtrilinos(uvec, Au_b_wig);
+        call matvecwithtrilinos(uvec(1:nu1), Au_b_wig);
+        call matvecwithtrilinos(uvec(nu1+1:nu2), Cv_d_wig);
       endif 
       
-      do i = 1, nu
+      do i = 1, nu1
+
          Au_b_wig(i) = Au_b_wig(i) - bvec(i)
+         Cv_d_wig(i) = Cv_d_wig(i) - bvec(nu1+i)
+
       enddo
 
-      uvec = Au_b_wig
+! to do: combine above
+
+      do i = 1, nu1
+
+         uvec(i)    = Au_b_wig(i)
+         uvec(nu1+i) = Cv_d_wig(i)
+
+      enddo
 
 ! AGS: Residual norm includes scaling to decrease importance of ghost values
 ! By calling it a redefinition of an inner product, it is kosher.
       L2square = 0.0
-      do i = 1, nu
+      do i = 1, nu1
          if (g_flag(i) .eq. 0) then
             L2square = L2square + Au_b_wig(i) * Au_b_wig(i)
          else
             L2square = L2square + scale_ghosts * Au_b_wig(i) * Au_b_wig(i)
+         endif
+      end do
+
+! to do: combine above
+      L2square = 0.0
+      do i = 1, nu1
+         if (g_flag(nu1+i) .eq. 0) then
+            L2square = L2square + Cv_d_wig(i) * Cv_d_wig(i)
+         else
+            L2square = L2square + scale_ghosts * Cv_d_wig(i) * Cv_d_wig(i)
          endif
       end do
 

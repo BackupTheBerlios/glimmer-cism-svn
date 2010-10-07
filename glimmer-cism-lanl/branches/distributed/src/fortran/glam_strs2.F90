@@ -704,8 +704,8 @@ subroutine JFNK                 (model,umask,tstep)
 
 !*sfp* needed to incorporate generic wrapper to solver
   type(sparse_matrix_type) :: matrixA, matrixC, matrixtp, matrixAuv, matrixAvu
-  real (kind = dp), dimension(:), allocatable :: answer, uk_1, vk_1
-  real (kind = dp), dimension(:), allocatable :: vectp, uk_1_plus, vk_1_plus
+  real (kind = dp), dimension(:), allocatable :: answer, vectp
+!  real (kind = dp), dimension(:), allocatable :: uk_1, vk_1, uk_1_plus, vk_1_plus
   real (kind = dp), dimension(:), allocatable :: vectx, xk_1, xk_1_plus
   real (kind = dp), dimension(:), allocatable :: dx, F, F_plus
   real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
@@ -713,7 +713,8 @@ subroutine JFNK                 (model,umask,tstep)
   real (kind = dp) :: L2norm, L2norm_wig, tol, gamma_l, epsilon,NL_target
   real (kind = dp) :: crap
   integer :: tot_its, itenb, maxiteGMRES, iout, icode
-  integer , dimension(:), allocatable :: g_flag, gx_flag ! jfl flag for ghost cells
+!  integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
+  integer , dimension(:), allocatable :: gx_flag ! jfl flag for ghost cells
 
   ! AGS: partition information for distributed solves
   integer, allocatable, dimension(:) :: myIndices
@@ -853,10 +854,10 @@ subroutine JFNK                 (model,umask,tstep)
   allocate(matrixAuv%row(pcgsize(2)),matrixAuv%col(pcgsize(2)),matrixAuv%val(pcgsize(2)))
   allocate(matrixAvu%row(pcgsize(2)),matrixAvu%col(pcgsize(2)),matrixAvu%val(pcgsize(2)))
 
-  allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)) )
-  allocate( g_flag(pcgsize(1)), gx_flag(2*pcgsize(1)) )
+!  allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)), g_flag(pcgsize(1)) )
+  allocate( gx_flag(2*pcgsize(1)) )
   allocate( vectx(2*pcgsize(1)), xk_1(2*pcgsize(1)), xk_1_plus(2*pcgsize(1)) )
-  allocate( vectp(pcgsize(1)), uk_1_plus(pcgsize(1)), vk_1_plus(pcgsize(1)))
+!  allocate( vectp(pcgsize(1)), uk_1_plus(pcgsize(1)), vk_1_plus(pcgsize(1)))
   allocate( F(2*pcgsize(1)), F_plus(2*pcgsize(1)), dx(2*pcgsize(1)))
   allocate( wk1(2*pcgsize(1)), wk2(2*pcgsize(1)), rhs(2*pcgsize(1)))
   allocate( vv(2*pcgsize(1),img1), wk(2*pcgsize(1), img))
@@ -864,7 +865,7 @@ subroutine JFNK                 (model,umask,tstep)
   !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
 
   call ghost_preprocess_jfnk( ewn, nsn, upn, uindx, ughost, vghost, &
-                         uk_1, vk_1, xk_1, uvel, vvel, g_flag, gx_flag, pcgsize(1)) ! jfl_20100430
+                         xk_1, uvel, vvel, gx_flag, pcgsize(1)) ! jfl_20100430
 
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
@@ -889,8 +890,9 @@ subroutine JFNK                 (model,umask,tstep)
                  stagthck, whichbabc,            &
                  uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
-                 vk_1, uk_1, xk_1, pcgsize(1), 2*pcgsize(1), &
-                 g_flag, gx_flag,   &
+!                 vk_1, uk_1, xk_1, pcgsize(1), 2*pcgsize(1), &
+!                 g_flag, gx_flag,   &
+                 xk_1, pcgsize(1), 2*pcgsize(1), gx_flag,   &
                  F, L2norm, matrixA, matrixC)
 
     L2norm_wig = sqrt(DOT_PRODUCT(F,F)) ! with ghost
@@ -947,25 +949,21 @@ subroutine JFNK                 (model,umask,tstep)
          
 ! form  v^k-1_plus = v^k-1 + epsilon*wk1v. We use solver_postprocess to 
 ! transform vk_1_plus from a vector to a 3D field. (same idea for u^k-1_plus)
-
-         vectp(:) = wk1(1:pcgsize(1)) ! for v
-         vk_1_plus = vk_1 + epsilon*vectp
-
-         call solver_postprocess( ewn, nsn, upn, 2, uindx, &
-                                  vk_1_plus, vvel, ghostbvel )
-
-         vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! for u
-         uk_1_plus = uk_1 + epsilon*vectp
-
-         call solver_postprocess( ewn, nsn, upn, 1, uindx, &
-                                  uk_1_plus, uvel, ghostbvel )
+!         vectp(:) = wk1(1:pcgsize(1)) ! for v
+!         vk_1_plus = vk_1 + epsilon*vectp
+!         call solver_postprocess( ewn, nsn, upn, 2, uindx, &
+!                                  vk_1_plus, vvel, ghostbvel )
+!         vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! for u
+!         uk_1_plus = uk_1 + epsilon*vectp
+!         call solver_postprocess( ewn, nsn, upn, 1, uindx, &
+!                                  uk_1_plus, uvel, ghostbvel )
 
 ! KJE newer combined vector, shd work because wk1 was not split to begin with
-         vectx(:) = wk1(1:2*pcgsize(1)) ! for v and u
+         vectx = wk1 ! for v,u = x
          xk_1_plus = xk_1 + epsilon*vectx
 
          call solver_postprocess_jfnk( ewn, nsn, upn, uindx, &
-                                  xk_1_plus, vvel, uvel, ghostbvel )
+                                  xk_1_plus, vvel, uvel, ghostbvel, pcgsize(1) )
 
 ! form F(x + epsilon*wk1) = F(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
 
@@ -978,8 +976,9 @@ subroutine JFNK                 (model,umask,tstep)
                  stagthck, whichbabc,            &
                  uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
-                 vk_1_plus, uk_1_plus, xk_1_plus, pcgsize(1),    &
-                 2*pcgsize(1), g_flag, gx_flag, &
+!                 vk_1_plus, uk_1_plus, xk_1_plus, pcgsize(1),    &
+!                 2*pcgsize(1), g_flag, gx_flag, &
+                 xk_1_plus, pcgsize(1), 2*pcgsize(1), gx_flag, &
                  F_plus, crap, matrixtp, matrixtp)
 
 ! put approximation of J*wk1 in wk2
@@ -1004,20 +1003,20 @@ subroutine JFNK                 (model,umask,tstep)
 ! Update solution vectors (x^k = x^k-1 + dx) and 3D fields 
 !------------------------------------------------------------------------
 
-      vk_1 = vk_1 + dx(1:pcgsize(1)) 
-      uk_1 = uk_1 + dx(pcgsize(1)+1:2*pcgsize(1))
+!      vk_1 = vk_1 + dx(1:pcgsize(1)) 
+!      uk_1 = uk_1 + dx(pcgsize(1)+1:2*pcgsize(1))
       xk_1 = xk_1 + dx(1:2*pcgsize(1))
       ! in fact xk but we use xk_1 to save memory
 
-      call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1, vvel, ghostbvel )
-      call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1, uvel, ghostbvel )
-      call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel )
+!      call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1, vvel, ghostbvel )
+!      call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1, uvel, ghostbvel )
+      call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel, pcgsize(1) )
 
 ! WATCHOUT FOR PERIODIC BC      
 
   end do
 
-  call ghost_postprocess_jfnk( ewn, nsn, upn, uindx, uk_1, vk_1, xk_1, &
+  call ghost_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, &
                           ughost, vghost, pcgsize(1) )
 
   do ns = 1,nsn-1
@@ -1041,8 +1040,10 @@ subroutine JFNK                 (model,umask,tstep)
   deallocate(matrixAvu%row, matrixAvu%col, matrixAvu%val)
   deallocate(matrixC%row, matrixC%col, matrixC%val)
   deallocate(matrixtp%row, matrixtp%col, matrixtp%val)
-  deallocate(uk_1, vk_1, xk_1, g_flag)
-  deallocate(answer, dx, vectp, vectx, uk_1_plus, vk_1_plus, xk_1_plus )
+!  deallocate(uk_1, vk_1, xk_1, g_flag, gx_flag)
+  deallocate(xk_1, gx_flag)
+!  deallocate(answer, dx, vectp, vectx, uk_1_plus, vk_1_plus, xk_1_plus )
+  deallocate(answer, dx, vectx, xk_1_plus )
   deallocate(F, F_plus)
   deallocate(wk1, wk2)
   deallocate(vv, wk)
@@ -1513,13 +1514,13 @@ subroutine solver_postprocess( ewn, nsn, upn, pt, uindx, answrapped, ansunwrappe
 end subroutine solver_postprocess
 
 subroutine solver_postprocess_jfnk( ewn, nsn, upn, uindx, answrapped, ansunwrappedv, &
-  ansunwrappedu, ghostbvel )
+  ansunwrappedu, ghostbvel, pcg1 )
 
   ! Unwrap the vels from the solution vector and place into a 3d array.
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn
+  integer, intent(in) :: ewn, nsn, upn, pcg1
   integer, dimension(:,:), intent(in) :: uindx
   real (kind = dp), dimension(:), intent(in) :: answrapped
   real (kind = dp), dimension(upn,ewn-1,nsn-1), intent(out) :: ansunwrappedv, ansunwrappedu
@@ -1534,10 +1535,10 @@ subroutine solver_postprocess_jfnk( ewn, nsn, upn, uindx, answrapped, ansunwrapp
             loc = getlocrange(upn, uindx(ew,ns))
 ! check if logic to put v part of answrapped into v and u vectors. Shd match ghost_pre but is it right?
             ansunwrappedv(:,ew,ns) = answrapped(loc(1):loc(2))
-            ansunwrappedu(:,ew,ns) = answrapped(loc(2)+1:2*loc(2))
+            ansunwrappedu(:,ew,ns) = answrapped(pcg1+loc(1):pcg1+loc(2))
             !! save the fictitious basal velocities for basal traction calculation !!
             ghostbvel(2,:,ew,ns) = answrapped( loc(2)-1:loc(2)+1 )  
-            ghostbvel(1,:,ew,ns) = answrapped( 2*loc(2)-1:2*loc(2)+1 )  
+            ghostbvel(1,:,ew,ns) = answrapped( pcg1+loc(2)-1:pcg1+loc(2)+1 )  
           else
             ansunwrappedv(:,ew,ns) = 0.0d0
             ansunwrappedu(:,ew,ns) = 0.0d0
@@ -1668,7 +1669,8 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
                  stagthck, whichbabc,            &
                  uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
-                 vtp, utp, xtp, nu1, nu2, g_flag, gx_flag,       &
+!                 vtp, utp, xtp, nu1, nu2, g_flag, gx_flag,       &
+                 xtp, nu1, nu2, gx_flag,       &
                  F, L2norm, matrixA, matrixC)
 
 
@@ -1681,8 +1683,8 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
 
   integer, intent(in) :: ewn, nsn, upn, counter, whichbabc, whichefvs
   integer, intent(in) :: nu1, nu2
-  integer, dimension(nu1), intent(in) :: g_flag ! 0 :reg cell
-                                                ! 1 :top ghost, 2 :base ghost
+!  integer, dimension(nu1), intent(in) :: g_flag ! 0 :reg cell
+!                                                ! 1 :top ghost, 2 :base ghost
   integer, dimension(nu2), intent(in) :: gx_flag ! 0 :reg cell
                                                 ! 1 :top ghost, 2 :base ghost
   integer, dimension(:,:), intent(in) :: uindx, umask
@@ -1691,10 +1693,11 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
 
   real (kind = dp) :: L2square
   real (kind = dp), intent(out):: L2norm
-  real (kind = dp), dimension(nu1) :: vectp
-  real (kind = dp), dimension(nu1) :: vectx
-  real (kind = dp), dimension(nu1), intent(in) :: vtp, utp
-  real (kind = dp), dimension(nu2), intent(out) :: F, xtp
+!  real (kind = dp), dimension(nu1) :: vectp
+  real (kind = dp), dimension(nu2) :: vectx
+!  real (kind = dp), dimension(nu1), intent(in) :: vtp, utp
+  real (kind = dp), dimension(nu2), intent(in) :: xtp
+  real (kind = dp), dimension(nu2), intent(out) :: F
   real (kind = dp), intent(in) :: dew, dns    
   real (kind = dp), dimension(:), intent(in) :: sigma, stagsigma
 
@@ -1774,30 +1777,24 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
       call form_matrix ( matrixA ) ! to get A(utp,vtp)
       call form_matrix ( matrixC ) ! to get C(utp,vtp)
     else
-!      call savetrilinosmatrix(0); ! for A
-!      call savetrilinosmatrix(1); ! for C
       call savetrilinosmatrix(2); ! for A and C
     end if
     
-! KJE set to vectx = (utp,vtp) ? I think this is done but its untested
-!      vectx = xtp
-!    call res_vect_jfnk(matrixA, matrixC, vectx, rhsx, nu2, counter, gx_flag, L2square, &
-!           whatsparse) !rhsd = b,d
-!    L2norm = L2square
-
-      vectp = vtp
-
-    call res_vect(matrixA, vectp, rhsd, nu1, counter, g_flag, L2square, whatsparse)!rhsd = b
+      vectx = xtp
+    call res_vect_jfnk(matrixA, matrixC, vectx, rhsx, nu1, nu2, counter, gx_flag, L2square, &
+           whatsparse) !rhsx = b,d
     L2norm = L2square
 
-    F(1:nu1) = vectp ! Fv
+!    vectp = vtp
+!    call res_vect(matrixA, vectp, rhsd, nu1, counter, g_flag, L2square, whatsparse)!rhsd = b
+!    L2norm = L2square
+!    F(1:nu1) = vectp ! Fv
+!    vectp = utp
+!    call res_vect(matrixC, vectp, rhsd, nu1, counter, g_flag, L2square, whatsparse)!rhsd = d
+!    L2norm = sqrt(L2norm + L2square)
+!    F(nu1+1:nu2) = vectp ! Fu
 
-      vectp = utp
-
-    call res_vect(matrixC, vectp, rhsd, nu1, counter, g_flag, L2square, whatsparse)!rhsd = d
-    L2norm = sqrt(L2norm + L2square)
-
-    F(nu1+1:nu2) = vectp ! Fu
+    F = vectx ! Fx
 
 end subroutine calc_F
 
@@ -1844,8 +1841,10 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
 
 end subroutine ghost_preprocess
 
+!subroutine ghost_preprocess_jfnk( ewn, nsn, upn, uindx, ughost, vghost, & 
+!                             uk_1, vk_1, xk_1, uvel, vvel, g_flag, gx_flag, pcg1)
 subroutine ghost_preprocess_jfnk( ewn, nsn, upn, uindx, ughost, vghost, & 
-                             uk_1, vk_1, xk_1, uvel, vvel, g_flag, gx_flag, pcg1)
+                             xk_1, uvel, vvel, gx_flag, pcg1)
 
 ! puts vel values in  xk_1 (including ghost values) and creates the
 ! ghost flag vector. xk_1 and the ghost flag vector are used for 
@@ -1855,15 +1854,17 @@ subroutine ghost_preprocess_jfnk( ewn, nsn, upn, uindx, ughost, vghost, &
 
   integer, intent(in) :: ewn, nsn, upn
   integer, dimension(:,:), intent(in) :: uindx
-  integer, dimension(:), intent(out) :: g_flag, gx_flag
+!  integer, dimension(:), intent(out) :: g_flag, gx_flag
+  integer, dimension(:), intent(out) :: gx_flag
   real (kind = dp), dimension(2,ewn-1,nsn-1), intent(in) ::ughost,vghost 
   real (kind = dp), dimension(:,:,:), intent(in) :: uvel, vvel
-  real (kind = dp), dimension(:), intent(out) :: uk_1, vk_1 , xk_1
+!  real (kind = dp), dimension(:), intent(out) :: uk_1, vk_1 , xk_1
+  real (kind = dp), dimension(:), intent(out) :: xk_1
 
   integer :: ew, ns, pcg1
   integer, dimension(2) :: loc
 
-  g_flag = 0
+!  g_flag = 0
   gx_flag = 0
 
   do ns = 1,nsn-1
@@ -1871,22 +1872,22 @@ subroutine ghost_preprocess_jfnk( ewn, nsn, upn, uindx, ughost, vghost, &
         if (uindx(ew,ns) /= 0) then
 
             loc = getlocrange(upn, uindx(ew,ns))
-            uk_1(loc(1):loc(2)) = uvel(:,ew,ns)
-            uk_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at top
-            uk_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at base
+!            uk_1(loc(1):loc(2)) = uvel(:,ew,ns)
+!            uk_1(loc(1)-1)      = ughost(1,ew,ns) ! ghost at top
+!            uk_1(loc(2)+1)      = ughost(2,ew,ns) ! ghost at base
             xk_1(pcg1+loc(1):loc(2)) = uvel(:,ew,ns)
             xk_1(pcg1+loc(1)-1)      = ughost(1,ew,ns) ! ghost at top
             xk_1(pcg1+loc(2)+1)      = ughost(2,ew,ns) ! ghost at base
 
-            vk_1(loc(1):loc(2)) = vvel(:,ew,ns)
-            vk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at top
-            vk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at base
+!            vk_1(loc(1):loc(2)) = vvel(:,ew,ns)
+!            vk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at top
+!            vk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at base
             xk_1(loc(1):loc(2)) = vvel(:,ew,ns)
             xk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at top
             xk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at base
 
-            g_flag(loc(1)-1) = 1 ! ghost at top
-            g_flag(loc(2)+1) = 2 ! ghost at base
+!            g_flag(loc(1)-1) = 1 ! ghost at top
+!            g_flag(loc(2)+1) = 2 ! ghost at base
             gx_flag(loc(1)-1) = 1 ! v ghost at top
             gx_flag(loc(2)+1) = 2 ! v ghost at base
             gx_flag(pcg1+loc(1)-1) = 1 ! u ghost at top
@@ -1934,7 +1935,9 @@ subroutine ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
 
 end subroutine ghost_postprocess
 
-subroutine ghost_postprocess_jfnk( ewn, nsn, upn, uindx, uk_1, vk_1, xk_1, &
+!subroutine ghost_postprocess_jfnk( ewn, nsn, upn, uindx, uk_1, vk_1, xk_1, &
+!                              ughost, vghost, pcg1 )
+subroutine ghost_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, &
                               ughost, vghost, pcg1 )
 
 ! puts ghost values (which are now in  uk_1 and vk_1) into ughost and 
@@ -1943,24 +1946,25 @@ subroutine ghost_postprocess_jfnk( ewn, nsn, upn, uindx, uk_1, vk_1, xk_1, &
 
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn
+  integer, intent(in) :: ewn, nsn, upn, pcg1
   integer, dimension(:,:), intent(in) :: uindx
-  real (kind = dp), dimension(:), intent(in) :: uk_1, vk_1, xk_1
+!  real (kind = dp), dimension(:), intent(in) :: uk_1, vk_1, xk_1
+  real (kind = dp), dimension(:), intent(in) :: xk_1
   real (kind = dp), dimension(2,ewn-1,nsn-1), intent(out) :: ughost,vghost
 
-  integer :: ew, ns, pcg1
+  integer :: ew, ns
   integer, dimension(2) :: loc
 
   do ns = 1,nsn-1
       do ew = 1,ewn-1
           if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
-            ughost(1,ew,ns) = uk_1(pcg1+loc(1)-1) ! ghost at top
-            ughost(2,ew,ns) = uk_1(pcg1+loc(2)+1) ! ghost at base
-            vghost(1,ew,ns) = vk_1(loc(1)-1) ! ghost at top
-            vghost(2,ew,ns) = vk_1(loc(2)+1) ! ghost at base
-            ughost(1,ew,ns) = xk_1(pcg1+loc(2)+loc(1)) ! ghost at top
-            ughost(2,ew,ns) = xk_1(pcg1+2*loc(2)+2) ! ghost at base
+!            ughost(1,ew,ns) = uk_1(loc(1)-1) ! ghost at top
+!            ughost(2,ew,ns) = uk_1(loc(2)+1) ! ghost at base
+!            vghost(1,ew,ns) = vk_1(loc(1)-1) ! ghost at top
+!            vghost(2,ew,ns) = vk_1(loc(2)+1) ! ghost at base
+            ughost(1,ew,ns) = xk_1(pcg1+loc(1)-1) ! ghost at top
+            ughost(2,ew,ns) = xk_1(pcg1+loc(2)+1) ! ghost at base
             vghost(1,ew,ns) = xk_1(loc(1)-1) ! ghost at top
             vghost(2,ew,ns) = xk_1(loc(2)+1) ! ghost at base
           else 
