@@ -94,7 +94,7 @@ implicit none
   ! additional storage needed for off diagonal blocks when using JFNK for nonlinear iteration 
   real (kind = dp), dimension(:), allocatable :: pcgvaluv, pcgvalvu
   integer, dimension(:), allocatable :: pcgcoluv, pcgrowuv, pcgcolvu, pcgrowvu
-  integer :: ct
+  integer :: ct, ct2
 
 !RN_20100125: The following are for Trilinos:
   ! This flag switches between: 
@@ -107,6 +107,7 @@ implicit none
   integer :: whatsparse ! needed for putpgcg()
   integer :: nonlinear  ! flag for indicating type of nonlinar iteration (Picard vs. JFNK)
   logical, save :: storeoffdiag = .false. ! true only if using JFNK solver and block, off diag coeffs needed
+  logical, save :: calcoffdiag = .false. 
 
   real (kind = dp) :: linearSolveTime = 0
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
@@ -270,7 +271,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
   integer, parameter :: cmax = 100                  ! max no. of iterations
-  integer :: counter, linit                                ! iteation counter 
+  integer :: counter, linit               ! iteation counter 
   character(len=100) :: message                     ! error message
 
   ! variables used for incorporating generic wrapper to sparse solver
@@ -839,6 +840,8 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
 ! calculate F(u^k-1,v^k-1)
 !==============================================================================
 
+    calcoffdiag = .true.    ! save off diag matrix components
+
     call calc_F (ewn, nsn, upn, stagsigma, k,                    &
                  whichefvs, efvs, uvel, vvel,                    &
                  dew, dns, sigma, thck,                          &
@@ -849,7 +852,9 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                  uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
                  vk_1, uk_1, pcgsize(1), 2*pcgsize(1), g_flag,   &
-                 F, L2norm, matrixA, matrixC)
+                 F, L2norm, matrixA, matrixC )
+
+    calcoffdiag = .false.    ! next time calling calc_F, DO NOT save off diag matrix components
 
     L2norm_wig = sqrt(DOT_PRODUCT(F,F)) ! with ghost
 
@@ -929,7 +934,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
                  uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
                  vk_1_plus, uk_1_plus, pcgsize(1), 2*pcgsize(1), g_flag, &
-                 F_plus, crap, matrixtp, matrixtp)
+                 F_plus, crap, matrixtp, matrixtp )
 
 ! put approximation of J*wk1 in wk2
 
@@ -1562,7 +1567,7 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
                  uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
                  vtp, utp, nu1, nu2, g_flag,                     &
-                 F, L2norm, matrixA, matrixC)
+                 F, L2norm, matrixA, matrixC )
 
 
   ! Calculates either F(x) or F(x+epsilon*vect) for the JFNK method
@@ -2088,6 +2093,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer :: ew, ns, up, up_start
 
   ct = 1        ! index to count the number of non-zero entries in the sparse matrix
+  ct2 = 1
 
   if( assembly == 1 )then   ! for normal assembly (assembly=0), start vert index at sfc and go to bed
       up_start = upn        ! for boundary traction calc (assembly=1), do matrix assembly on for equations at bed
@@ -2399,7 +2405,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                                    normal,fwdorbwd)              &
                                                  * local_othervel ) / scalebabc
 
-        if( nonlinear == HO_NONLIN_JFNK )then
+        if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
             storeoffdiag = .true.
             h = croshorizmainbc_lat(dew,           dns,           & 
                                 slopex,        slopey,        &
@@ -2438,8 +2444,8 @@ subroutine bodyset(ew,  ns,  up,           &
     ! That is achieved in the following if construct ...
 
 !    if( cc < 10 )then   ! use this to "pre-condition" the shelf BC w/ the simple, 1d version
-!    if( cc >= 0 )then   ! use this to use only the 1d version
-    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
+    if( cc >= 0 )then   ! use this to use only the 1d version
+!    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
 
     ! --------------------------------------------------------------------------------------
     ! (1) source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
@@ -2502,7 +2508,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                                normal,        fwdorbwd)       &
                                               * local_othervel ) + source
 
-     if( nonlinear == HO_NONLIN_JFNK )then
+     if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
          storeoffdiag = .true.
          h = croshorizmainbc_lat(dew,           dns,            &
                                  slopex,        slopey,         &
@@ -2531,7 +2537,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
      rhsd(locplusup) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
 
-     if( nonlinear == HO_NONLIN_JFNK )then
+     if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
          storeoffdiag = .true.
          h = croshorizmain(pt,up,local_efvs)   
          call fillsprsemain(h,locplusup,loc,up,pt)
@@ -2604,7 +2610,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                              oneortwo, twoorone, g_cros )  &
                                               * local_othervel ) / scalebabc
 
-         if( nonlinear == HO_NONLIN_JFNK )then
+         if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
              storeoffdiag = .true.
              h = croshorizmainbc(dew,           dns,            &
                                  slopex,        slopey,         &
@@ -2632,7 +2638,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                              + plastic_rhs(pt,ew,ns) / (sum(local_efvs(2,:,:))/4.0d0) &
                                              *(len0/thk0)
 
-         if( nonlinear == HO_NONLIN_JFNK )then
+         if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
              storeoffdiag = .true.
              h = croshorizmainbc(dew,           dns,            &
                                  slopex,        slopey,         &
@@ -3937,7 +3943,11 @@ subroutine calcbetasquared (whichbabc,               &
     case(2)     ! take input value for till yield stress and force betasquared to be implemented such
                 ! that plastic-till sliding behavior is enforced (see additional notes in documentation).
 
-      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+!      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+      betasquared = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
+                    (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
+
+      betasquared(ewn-8:ewn-1,:) = 10.0d0
 
     case(3)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
 
@@ -4419,8 +4429,9 @@ subroutine putpcgc(value,col,row,pt)
           pcgval(ct) = value
           pcgcol(ct) = col
           pcgrow(ct) = row
+!          print *, 'count = ', ct
           ct = ct + 1
-        end if	
+        end if
     else
         ! Option to load entry directly into Trilinos sparse matrix 
         if (value /= 0.0d0) then
@@ -4440,21 +4451,24 @@ subroutine putpcgc(value,col,row,pt)
           pcgval(ct) = value
           pcgcol(ct) = col
           pcgrow(ct) = row
+!          print *, 'count = ', ct
           ct = ct + 1
         end if
     else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
         ! load entry into Triad sparse matrix format
         if( pt == 1 )then ! store uv coeffs 
             if (value /= 0.0d0) then
-              pcgvaluv(ct) = value
-              pcgcoluv(ct) = col
-              pcgrowuv(ct) = row
+              pcgvaluv(ct2) = value
+              pcgcoluv(ct2) = col
+              pcgrowuv(ct2) = row
+              ct2 = ct2 + 1
             end if
         else if( pt == 2 )then ! store vu coeffs
             if (value /= 0.0d0) then
-              pcgvalvu(ct) = value
-              pcgcolvu(ct) = col
-              pcgrowvu(ct) = row
+              pcgvalvu(ct2) = value
+              pcgcolvu(ct2) = col
+              pcgrowvu(ct2) = row
+              ct2 = ct2 + 1
             end if
         end if
     end if
