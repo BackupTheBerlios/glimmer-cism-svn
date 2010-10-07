@@ -740,10 +740,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   call geom2derscros(dew, dns, thck, stagthck, d2thckdewdns)
   call geom2derscros(dew, dns, usrf, stagthck, d2usrfdewdns)
 
-  ! *sfp* These are passed a number of times below, but I don't think they are used anymore - remove?
-!  valubbc = 0.0_dp
-!  typebbc = 0.0_dp
-
   ! *sfp** make a 2d array identifying if the associated point has zero thickness,
   !      has non-zero thickness and is interior, or has non-zero thickness
   !      and is along a boundary
@@ -1120,8 +1116,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
             ! "effstr" = eff. strain rate squared
             effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
                          0.25_dp * (vgradew + ugradns)**2 + &
-                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
-!                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
+!                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
+                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
 
     ! -----------------------------------------------------------------------------------
     ! NOTES on capping vs. non-capping version of eff. strain rate calc.
@@ -1138,9 +1134,9 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! available as a config file option or possibly removed altogether.   
 
     ! Old "capping" scheme       ! these lines must be active to use the "capping" scheme for the efvs calc
-            where (effstr < effstrminsq)
-                   effstr = effstrminsq
-            end where
+!            where (effstr < effstrminsq)
+!                   effstr = effstrminsq
+!            end where
 
     ! Note that the vert dims are explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
@@ -1270,106 +1266,6 @@ function getlocationarray(ewn, nsn, upn,  &
 end function getlocationarray
 
 !***********************************************************************
-
-function slapsolvstr(ewn, nsn, upn, &
-                     vel, uindx, its, answer )
-
-! *sp* routine to solve Ax=b sparse matrix problem 
-
-  implicit none
-
-  integer, intent(in) :: ewn, nsn, upn
-  real (kind = dp), dimension(:,:,:), intent(in) :: vel
-  integer, dimension(:,:), intent(in) :: uindx
-
-  real (kind = dp), dimension(:), intent(out) :: answer
-
-  real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: slapsolvstr
-  integer, intent(inout) :: its
-
-  integer :: ew, ns
-
-  real (kind = dp), dimension(:), allocatable :: rwork
-  integer, dimension(:), allocatable :: iwork
-
-  real (kind = dp), parameter :: tol = 1.0e-12_dp
-  real (kind = dp) :: err
-
-  integer, parameter :: isym = 0, itol = 2, itmax = 100
-  integer, dimension(2) :: loc
-  integer :: iter, ierr, mxnelt
-
-! ** move to values subr   
-
-  pcgsize(2) = ct - 1
-
-  call ds2y(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym)
-
-!** plot the matrix to check that it has the correct form
-!call dcpplt(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym,ulog)      
-
-  mxnelt = 60 * pcgsize(1); allocate(rwork(mxnelt),iwork(mxnelt))
-
-!**     solve the problem using the SLAP package routines     
-!**     -------------------------------------------------
-!**     n ... order of matrix a (in)
-!**     b ... right hand side vector (in)                        
-!**     x ... initial quess/final solution vector (in/out)                        
-!**     nelt ... number of non-zeroes in A (in)
-!**     ia, ja ... sparse matrix format of A (in)
-!**     a ... matrix held in SLAT column format (in)
-!**     isym ... storage method (0 is complete) (in)
-!**     itol ... convergence criteria (2 recommended) (in)                     
-!**     tol ... criteria for convergence (in)
-!**     itmax ... maximum number of iterations (in)
-!**     iter ... returned number of iterations (out)
-!**     err ... error estimate of solution (out)
-!**     ierr ... returned error message (0 is ok) (out)
-!**     iunit ... unit for error writes during iteration (0 no write) (in)
-!**     rwork ... workspace for SLAP routines (in)
-!**     mxnelt ... maximum array and vector sizes (in)
-!**     iwork ... workspace for SLAP routines (in)
-
-! *sp* initial estimate for vel. field?
-  do ns = 1,nsn-1
-  do ew = 1,ewn-1
-   if (uindx(ew,ns) /= 0) then
-    loc = getlocrange(upn, uindx(ew,ns))
-    answer(loc(1):loc(2)) = vel(:,ew,ns)
-    answer(loc(1)-1) = vel(1,ew,ns)
-    answer(loc(2)+1) = vel(upn,ew,ns)
-   end if
-  end do
-  end do
-
-  call dslucs(pcgsize(1),rhsd,answer,pcgsize(2),pcgrow,pcgcol,pcgval, &
-              isym,itol,tol,itmax,iter,err,ierr,0,rwork,mxnelt,iwork,mxnelt)
-
-  if (ierr .ne. 0) then
-    print *, 'pcg error ', ierr, itmax, iter, tol, err
-    ! stop
-  end if
-
-  deallocate(rwork,iwork)
-
-  do ns = 1,nsn-1
-  do ew = 1,ewn-1
-     if (uindx(ew,ns) /= 0) then
-       loc = getlocrange(upn, uindx(ew,ns))
-       slapsolvstr(:,ew,ns) = answer(loc(1):loc(2))
-     else
-       slapsolvstr(:,ew,ns) = 0.0d0
-     end if
-  end do
-  end do
-
-  its = its + iter
-
-  return
-
-end function slapsolvstr
-
-! *****************************************************************************
 
 subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
 
@@ -1830,10 +1726,10 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   end if
 
   !*sfp* Old version
-  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if  
+  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if  
 
   !*sfp* correction from Carl Gladdish
-  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if   
+  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if   
 
   select case (whichresid)
 
@@ -2599,31 +2495,8 @@ subroutine bodyset(ew,  ns,  up,           &
      ! which results from moving them from the LHS over to the RHS, has been moved
      ! inside of "croshorizmainbc".
 
-     if( bcflag(2) /= 2 )then
+     if( bcflag(2) == 2 )then
 
-          rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
-                                             slopex,        slopey,         &
-                                             dsigmadew(up), dsigmadns(up),  &
-                                             pt,            bcflag,         &
-                                             dup(up),       local_othervel, &
-                                             local_efvs,                    &
-                                             oneortwo, twoorone, g_cros )  &
-                                              * local_othervel ) / scalebabc
-
-         if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
-             storeoffdiag = .true.
-             h = croshorizmainbc(dew,           dns,            &
-                                 slopex,        slopey,         &
-                                 dsigmadew(up), dsigmadns(up),  &
-                                 pt,            bcflag,         &
-                                 dup(up),       local_othervel, &
-                                 local_efvs,                    &
-                                 oneortwo, twoorone, g_cros )   
-             call fillsprsemain(h,locplusup,loc,up,pt)
-             storeoffdiag = .false.
-         end if     
-
-     else
           rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
                                              slopex,        slopey,         &
                                              dsigmadew(up), dsigmadns(up),  &
@@ -2646,10 +2519,34 @@ subroutine bodyset(ew,  ns,  up,           &
                                  pt,            bcflag,         &
                                  dup(up),       local_othervel, &
                                  local_efvs,                    &
-                                 oneortwo, twoorone, g_cros )   
+                                 oneortwo, twoorone, g_cros )
              call fillsprsemain(h,locplusup,loc,up,pt)
              storeoffdiag = .false.
-         end if     
+         end if
+
+     else if( bcflag(2) /= 2 )then
+
+          rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
+                                             slopex,        slopey,         &
+                                             dsigmadew(up), dsigmadns(up),  &
+                                             pt,            bcflag,         &
+                                             dup(up),       local_othervel, &
+                                             local_efvs,                    &
+                                             oneortwo, twoorone, g_cros )  &
+                                              * local_othervel ) / scalebabc
+
+         if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag)then
+             storeoffdiag = .true.
+             h = croshorizmainbc(dew,           dns,            &
+                                 slopex,        slopey,         &
+                                 dsigmadew(up), dsigmadns(up),  &
+                                 pt,            bcflag,         &
+                                 dup(up),       local_othervel, &
+                                 local_efvs,                    &
+                                 oneortwo, twoorone, g_cros )
+             call fillsprsemain(h,locplusup,loc,up,pt)
+             storeoffdiag = .false.
+         end if
 
       end if
 
@@ -3261,8 +3158,8 @@ function normhorizmainbc_lat(dew,       dns,   &
     if( normal(1) .eq. 0.0_dp )then     ! centered in x ...
 
            c = fourorone(which) * dusrfdew / (2*dew)
-           g(2,3,2) = c
-           g(2,1,2) = -c
+           g(2,3,2) = c * whichbc(what)
+           g(2,1,2) = -c * whichbc(what)
 
     elseif( normal(1) .ne. 0.0_dp )then     ! forward/backward in x ...
 
@@ -4429,7 +4326,6 @@ subroutine putpcgc(value,col,row,pt)
           pcgval(ct) = value
           pcgcol(ct) = col
           pcgrow(ct) = row
-!          print *, 'count = ', ct
           ct = ct + 1
         end if
     else
@@ -4451,7 +4347,6 @@ subroutine putpcgc(value,col,row,pt)
           pcgval(ct) = value
           pcgcol(ct) = col
           pcgrow(ct) = row
-!          print *, 'count = ', ct
           ct = ct + 1
         end if
     else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
