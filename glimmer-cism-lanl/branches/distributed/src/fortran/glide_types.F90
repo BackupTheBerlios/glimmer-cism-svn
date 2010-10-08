@@ -929,6 +929,29 @@ module glide_types
 
 end type glide_global_type
 
+! for JFNK, NOX in Trilinos
+  type ,public :: pass_through
+    type(glide_global_type)  :: model
+    real(kind = dp) ,dimension(:,:) ,pointer :: d2thckdew2 => null()
+    real(kind = dp) ,dimension(:,:) ,pointer :: d2usrfdew2 => null()
+    real(kind = dp) ,dimension(:,:) ,pointer :: d2thckdns2 => null()
+    real(kind = dp) ,dimension(:,:) ,pointer :: d2usrfdns2 => null()
+    real(kind = dp) ,dimension(:,:) ,pointer :: d2thckdewdns => null()
+    real(kind = dp) ,dimension(:,:) ,pointer :: d2usrfdewdns => null()
+    integer :: k
+    integer ,dimension(:,:) ,pointer :: uindx => null()
+    integer ,dimension(:,:) ,pointer :: umask => null()
+    integer ,dimension(2) :: pcgsize
+    integer ,dimension(:) ,pointer :: gx_flag => null()
+    type(sparse_matrix_type)  :: matrixA
+    type(sparse_matrix_type)  :: matrixC
+    real(kind = dp)  :: L2norm
+    real(kind = dp) ,dimension(:,:,:) ,pointer :: efvs => null()
+    real(kind = dp) ,dimension(:,:,:) ,pointer :: uvel => null()
+    real(kind = dp) ,dimension(:,:,:) ,pointer :: vvel => null()
+
+  end type pass_through
+
   !MAKE_RESTART
 #ifdef RESTARTS
 #define RST_GLIDE_TYPES

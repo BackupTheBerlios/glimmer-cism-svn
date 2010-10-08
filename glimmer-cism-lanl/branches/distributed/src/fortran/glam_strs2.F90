@@ -110,7 +110,6 @@ implicit none
   real (kind = dp) :: linearSolveTime = 0
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
 
-
 !***********************************************************************
 
 contains
@@ -335,7 +334,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
 !==============================================================================
 
-! KJE this has an assertion problem so we set sparse=3, regular trilinos, right now
+! KJE this has an assertion problem so set sparse=3, regular trilinos, right now
   if (whatsparse == STANDALONE_TRILINOS_SOLVER) then
      ! AGS: Get partition -- later this will be known by distributed glimmer
      call dopartition(pcgsize(1), mySize)
@@ -644,7 +643,7 @@ subroutine JFNK                 (model,umask,tstep)
   use parallel
 
   use ,intrinsic :: iso_c_binding 
-  use glide_types, only : glide_global_type
+  use glide_types, only : glide_global_type, pass_through
 
   implicit none
 
@@ -656,9 +655,9 @@ subroutine JFNK                 (model,umask,tstep)
                                                       ! associate all/any boundaries as a unique mask value.
   integer, intent(in) :: tstep
 
-! new glide_global_type variables for everything needed to pass thru trilinos as a pointer. For now, model_object=model
-  type(glide_global_type) ,target  :: model_object
-  type(glide_global_type) ,pointer :: fptr=>NULL()
+! new glide_global_type variables for everything needed to pass thru trilinos NOX to calc_F as a pointer. 
+  type(pass_through) ,target  :: resid_object
+  type(pass_through) ,pointer :: fptr=>NULL()
   type(c_ptr)                      :: c_ptr_to_object
 
 ! split off of derived types
@@ -666,14 +665,10 @@ subroutine JFNK                 (model,umask,tstep)
   integer :: ewn, nsn, upn
   real (kind = dp) :: dew, dns
 
-  real (kind = dp), dimension(:)     ,pointer :: sigma, stagsigma
-  real (kind = dp), dimension(:,:)   ,pointer :: thck, usrf, lsrf, topg
-  real (kind = dp), dimension(:,:)   ,pointer :: dthckdew, dthckdns
-  real (kind = dp), dimension(:,:)   ,pointer :: dusrfdew, dusrfdns
-  real (kind = dp), dimension(:,:)   ,pointer :: dlsrfdew, dlsrfdns
+  real (kind = dp), dimension(:)     ,pointer :: sigma
+  real (kind = dp), dimension(:,:)   ,pointer :: thck, usrf
   real (kind = dp), dimension(:,:)   ,pointer :: stagthck
   real (kind = dp), dimension(:,:,:) ,pointer :: flwa
-  real (kind = dp), dimension(:,:)   ,pointer :: minTauf
   real (kind = dp), dimension(:,:,:) ,pointer :: btraction            ! consistent basal traction array
   
   !*sfp* This is the betasquared field from CISM (externally specified), and should eventually
@@ -683,12 +678,9 @@ subroutine JFNK                 (model,umask,tstep)
 
 
 !whl - to do - Merge whichbabc with whichbtrc?
-  integer :: whichbabc
-  integer :: whichefvs
   integer :: whichresid
   integer :: whichnonlinear
   integer :: whichsparse
-  logical :: periodic_ew, periodic_ns
 
 ! intent(out)
   real (kind = dp), dimension(:,:,:) ,pointer :: uvel, vvel
@@ -702,10 +694,13 @@ subroutine JFNK                 (model,umask,tstep)
   integer, parameter :: kmax = 100, img = 20, img1 = img+1
   character(len=100) :: message
 
+!KJE for NOX
+  real (c_double), dimension(:), allocatable :: xk_state
+  integer(c_int) :: xk_size
+
 !*sfp* needed to incorporate generic wrapper to solver
   type(sparse_matrix_type) :: matrixA, matrixC, matrixtp, matrixAuv, matrixAvu
   real (kind = dp), dimension(:), allocatable :: answer, vectp
-!  real (kind = dp), dimension(:), allocatable :: uk_1, vk_1, uk_1_plus, vk_1_plus
   real (kind = dp), dimension(:), allocatable :: vectx, xk_1, xk_1_plus
   real (kind = dp), dimension(:), allocatable :: dx, F, F_plus
   real (kind = dp), dimension(:), allocatable :: wk1, wk2, rhs
@@ -713,43 +708,28 @@ subroutine JFNK                 (model,umask,tstep)
   real (kind = dp) :: L2norm, L2norm_wig, tol, gamma_l, epsilon,NL_target
   real (kind = dp) :: crap
   integer :: tot_its, itenb, maxiteGMRES, iout, icode
-!  integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
   integer , dimension(:), allocatable :: gx_flag ! jfl flag for ghost cells
 
   ! AGS: partition information for distributed solves
   integer, allocatable, dimension(:) :: myIndices
   integer :: mySize = -1
 
-! KJE pushed down derived type 'model' a level 
+! KJE pushed down derived type 'model' a level. 
   ewn = model%general%ewn
   nsn = model%general%nsn
   upn = model%general%upn
   dew = model%numerics%dew
   dns = model%numerics%dns
   sigma => model%numerics%sigma(:)
-  stagsigma => model%numerics%stagsigma(:)
   thck => model%geometry%thck(:,:)
   usrf => model%geometry%usrf(:,:)
-  lsrf => model%geometry%lsrf(:,:)
-  topg => model%geometry%topg(:,:)
-  dthckdew => model%geomderv%dthckdew(:,:)
-  dthckdns => model%geomderv%dthckdns(:,:)
-  dusrfdew => model%geomderv%dusrfdew(:,:)
-  dusrfdns => model%geomderv%dusrfdns(:,:)
-  dlsrfdew => model%geomderv%dlsrfdew(:,:)
-  dlsrfdns => model%geomderv%dlsrfdns(:,:)
   stagthck => model%geomderv%stagthck(:,:)
   flwa => model%temper%flwa(:,:,:)
-  mintauf => model%basalproc%minTauf(:,:)
   btraction = model%velocity_hom%btraction(:,:,:)
-  whichbabc = model%options%which_ho_babc
-  whichefvs = model%options%which_ho_efvs
   whichresid = model%options%which_ho_resid
   whichnonlinear = model%options%which_ho_nonlinear
   whichsparse = model%options%which_ho_sparse
-  periodic_ew = model%options%periodic_ew
-  periodic_ns = model%options%periodic_ns
-  beta => model%velocity_hom%beta(:,:)
+!  beta => model%velocity_hom%beta(:,:)
 
 ! KJE keep these as separate velocity components to mesh well with the rest of the code
 ! below, will use nomenclature x to represent both u and v, and combine into x={u,v}
@@ -854,15 +834,36 @@ subroutine JFNK                 (model,umask,tstep)
   allocate(matrixAuv%row(pcgsize(2)),matrixAuv%col(pcgsize(2)),matrixAuv%val(pcgsize(2)))
   allocate(matrixAvu%row(pcgsize(2)),matrixAvu%col(pcgsize(2)),matrixAvu%val(pcgsize(2)))
 
-!  allocate( uk_1(pcgsize(1)), vk_1(pcgsize(1)), g_flag(pcgsize(1)) )
   allocate( gx_flag(2*pcgsize(1)) )
   allocate( vectx(2*pcgsize(1)), xk_1(2*pcgsize(1)), xk_1_plus(2*pcgsize(1)) )
-!  allocate( vectp(pcgsize(1)), uk_1_plus(pcgsize(1)), vk_1_plus(pcgsize(1)))
   allocate( F(2*pcgsize(1)), F_plus(2*pcgsize(1)), dx(2*pcgsize(1)))
   allocate( wk1(2*pcgsize(1)), wk2(2*pcgsize(1)), rhs(2*pcgsize(1)))
   allocate( vv(2*pcgsize(1),img1), wk(2*pcgsize(1), img))
 
   !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
+
+!KJE for NOX
+!interface
+! subroutine noxsolve(vectorSize,vector,v_container) bind(C,name='noxsolve')
+!  use ,intrinsic :: iso_c_binding
+!      integer(c_int)                :: vectorSize
+!      real(c_double)  ,dimension(*) :: vector
+!      type(c_ptr)                   :: v_container
+!
+! end subroutine noxsolve
+
+! subroutine noxinit(vectorSize,vector,comm,v_container) bind(C,name='noxinit')
+!  use ,intrinsic :: iso_c_binding
+!      integer(c_int)                :: vectorSize,comm
+!      real(c_double)  ,dimension(*) :: vector
+!      type(c_ptr)                   :: v_container
+!
+! end subroutine noxinit
+
+! subroutine noxfinish() bind(C,name='noxfinish')
+!  use ,intrinsic :: iso_c_binding
+! end subroutine noxfinish
+!end interface
 
   call ghost_preprocess_jfnk( ewn, nsn, upn, uindx, ughost, vghost, &
                          xk_1, uvel, vvel, gx_flag, pcgsize(1)) ! jfl_20100430
@@ -875,25 +876,38 @@ subroutine JFNK                 (model,umask,tstep)
 !                                                       F = [Fv(u,v), Fu(u,v)] 
 !==============================================================================
 
+  call init_resid_type(resid_object, model, k, uindx, umask, pcgsize, gx_flag, &
+                               matrixA, matrixC, L2norm, efvs, uvel, vvel)
+    fptr => resid_object
+    c_ptr_to_object =  c_loc(fptr)
+ 
+! Structure to become NOX implementation for JFNK solve
+   xk_size=2*pcgsize(1)
+
+!  call noxinit(xk_size, xk_state, 1, c_ptr_to_object)
+!  call noxsolve(xk_size, xk_state, c_ptr_to_object)
+!  call noxfinish()
+
   do k = 1, kmax
 
 !==============================================================================
 ! calculate F(u^k-1,v^k-1)
 !==============================================================================
 
-    call calc_F (ewn, nsn, upn, stagsigma, k,                    &
-                 whichefvs, efvs, uvel, vvel,                    &
-                 dew, dns, sigma, thck,                          &
-                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
-                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
-                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
-                 stagthck, whichbabc,            &
-                 uindx, umask,                                   &
-                 lsrf, topg, minTauf, flwa, beta, btraction,     &
-!                 vk_1, uk_1, xk_1, pcgsize(1), 2*pcgsize(1), &
-!                 g_flag, gx_flag,   &
-                 xk_1, pcgsize(1), 2*pcgsize(1), gx_flag,   &
-                 F, L2norm, matrixA, matrixC)
+    call calc_F (xk_1, F, xk_size, c_ptr_to_object)
+! can get rid of some model variable expansions once NOX is working
+
+!    call calc_F (xk_1, F, xk_size, ewn, nsn, upn, stagsigma, k,                    &
+!                 whichefvs, efvs, uvel, vvel,                    &
+!                 dew, dns, sigma, thck,                          &
+!                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
+!                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
+!                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
+!                 stagthck, whichbabc,            &
+!                 uindx, umask,                                   &
+!                 lsrf, topg, minTauf, flwa, beta, btraction,     &
+!                 pcgsize(1), 2*pcgsize(1), gx_flag,   &
+!                 L2norm, matrixA, matrixC)
 
     L2norm_wig = sqrt(DOT_PRODUCT(F,F)) ! with ghost
 
@@ -947,17 +961,8 @@ subroutine JFNK                 (model,umask,tstep)
       ELSEIF ( icode >= 2 ) THEN  ! matvec step: Jacobian free approach
                                   ! J*wk1 ~ wk2 = (F_plus - F)/epsilon
          
-! form  v^k-1_plus = v^k-1 + epsilon*wk1v. We use solver_postprocess to 
-! transform vk_1_plus from a vector to a 3D field. (same idea for u^k-1_plus)
-!         vectp(:) = wk1(1:pcgsize(1)) ! for v
-!         vk_1_plus = vk_1 + epsilon*vectp
-!         call solver_postprocess( ewn, nsn, upn, 2, uindx, &
-!                                  vk_1_plus, vvel, ghostbvel )
-!         vectp(:) = wk1(pcgsize(1)+1:2*pcgsize(1)) ! for u
-!         uk_1_plus = uk_1 + epsilon*vectp
-!         call solver_postprocess( ewn, nsn, upn, 1, uindx, &
-!                                  uk_1_plus, uvel, ghostbvel )
-
+! form  x^k-1_plus = x^k-1 + epsilon*wk1v. We use solver_postprocess to 
+! transform xk_1_plus from a vector to a 3D field. 
 ! KJE newer combined vector, shd work because wk1 was not split to begin with
          vectx = wk1 ! for v,u = x
          xk_1_plus = xk_1 + epsilon*vectx
@@ -967,19 +972,19 @@ subroutine JFNK                 (model,umask,tstep)
 
 ! form F(x + epsilon*wk1) = F(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
 
-    call calc_F (ewn, nsn, upn, stagsigma, k,                    &
-                 whichefvs, efvs, uvel, vvel,                    &
-                 dew, dns, sigma, thck,                          &
-                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
-                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
-                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
-                 stagthck, whichbabc,            &
-                 uindx, umask,                                   &
-                 lsrf, topg, minTauf, flwa, beta, btraction,     &
-!                 vk_1_plus, uk_1_plus, xk_1_plus, pcgsize(1),    &
-!                 2*pcgsize(1), g_flag, gx_flag, &
-                 xk_1_plus, pcgsize(1), 2*pcgsize(1), gx_flag, &
-                 F_plus, crap, matrixtp, matrixtp)
+    call calc_F (xk_1_plus, F_plus, xk_size, c_ptr_to_object)
+
+!    call calc_F (xk_1_plus, F_plus, xk_size, ewn, nsn, upn, stagsigma, k,                    &
+!                 whichefvs, efvs, uvel, vvel,                    &
+!                 dew, dns, sigma, thck,                          &
+!                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
+!                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
+!                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
+!                 stagthck, whichbabc,            &
+!                 uindx, umask,                                   &
+!                 lsrf, topg, minTauf, flwa, beta, btraction,     &
+!                 pcgsize(1), 2*pcgsize(1), gx_flag, &
+!                 crap, matrixtp, matrixtp)
 
 ! put approximation of J*wk1 in wk2
 
@@ -1003,13 +1008,9 @@ subroutine JFNK                 (model,umask,tstep)
 ! Update solution vectors (x^k = x^k-1 + dx) and 3D fields 
 !------------------------------------------------------------------------
 
-!      vk_1 = vk_1 + dx(1:pcgsize(1)) 
-!      uk_1 = uk_1 + dx(pcgsize(1)+1:2*pcgsize(1))
       xk_1 = xk_1 + dx(1:2*pcgsize(1))
       ! in fact xk but we use xk_1 to save memory
 
-!      call solver_postprocess( ewn, nsn, upn, 2, uindx, vk_1, vvel, ghostbvel )
-!      call solver_postprocess( ewn, nsn, upn, 1, uindx, uk_1, uvel, ghostbvel )
       call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel, pcgsize(1) )
 
 ! WATCHOUT FOR PERIODIC BC      
@@ -1040,9 +1041,7 @@ subroutine JFNK                 (model,umask,tstep)
   deallocate(matrixAvu%row, matrixAvu%col, matrixAvu%val)
   deallocate(matrixC%row, matrixC%col, matrixC%val)
   deallocate(matrixtp%row, matrixtp%col, matrixtp%val)
-!  deallocate(uk_1, vk_1, xk_1, g_flag, gx_flag)
   deallocate(xk_1, gx_flag)
-!  deallocate(answer, dx, vectp, vectx, uk_1_plus, vk_1_plus, xk_1_plus )
   deallocate(answer, dx, vectx, xk_1_plus )
   deallocate(F, F_plus)
   deallocate(wk1, wk2)
@@ -1660,61 +1659,130 @@ end subroutine apply_precond
 
 !***********************************************************************
 
-subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
-                 whichefvs, efvs, uvel, vvel,                    &
-                 dew, dns, sigma, thck,                          &
-                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
-                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
-                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
-                 stagthck, whichbabc,            &
-                 uindx, umask,                                   &
-                 lsrf, topg, minTauf, flwa, beta, btraction,     &
-!                 vtp, utp, xtp, nu1, nu2, g_flag, gx_flag,       &
-                 xtp, nu1, nu2, gx_flag,       &
-                 F, L2norm, matrixA, matrixC)
-
+ subroutine calc_F (xtp, F, xk_size, c_ptr_to_object) bind(C, name='calc_F')
+!subroutine calc_F (xtp, F, xk_size, ewn, nsn, upn, stagsigma, counter,            &
+!                 whichefvs, efvs, uvel, vvel,                    &
+!                 dew, dns, sigma, thck,                          &
+!                 dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
+!                 dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
+!                 d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
+!                 stagthck, whichbabc,            &
+!                 uindx, umask,                                   &
+!                 lsrf, topg, minTauf, flwa, beta, btraction,     &
+!                 nu1, nu2, gx_flag,       &
+!                 L2norm, matrixA, matrixC)
 
   ! Calculates either F(x) or F(x+epsilon*vect) for the JFNK method
   ! Recall that x=[v,u]
   ! vtp is either v^k-1 or v^k-1+epsilon*vect_v (same idea for utp)
   ! xtp is both v^k-1 and u^k-1 and with + epsilon*vect_v 
 
+  use ,intrinsic :: iso_c_binding 
+  use glide_types, only : glide_global_type, pass_through
+
   implicit none
 
-  integer, intent(in) :: ewn, nsn, upn, counter, whichbabc, whichefvs
-  integer, intent(in) :: nu1, nu2
-!  integer, dimension(nu1), intent(in) :: g_flag ! 0 :reg cell
-!                                                ! 1 :top ghost, 2 :base ghost
-  integer, dimension(nu2), intent(in) :: gx_flag ! 0 :reg cell
+   integer(c_int) ,intent(in) ,value  :: xk_size
+   real(c_double) ,dimension(xk_size) ,intent(in)  :: xtp
+   real (c_double) ,intent(out)       :: F(xk_size)
+    type(pass_through) ,pointer        :: fptr=>NULL()
+    type(c_ptr)                        :: c_ptr_to_object
+
+!  integer, intent(in) :: ewn, nsn, upn, counter, whichbabc, whichefvs
+!  integer, intent(in) :: nu1, nu2, xk_size
+!  integer, dimension(nu2), intent(in) :: gx_flag ! 0 :reg cell
                                                 ! 1 :top ghost, 2 :base ghost
-  integer, dimension(:,:), intent(in) :: uindx, umask
+!  integer, dimension(:,:), intent(in) :: uindx, umask
 
-  type(sparse_matrix_type), intent(inout) :: matrixA, matrixC
+!  type(sparse_matrix_type), intent(inout) :: matrixA, matrixC
 
+  integer :: nu1, nu2
   real (kind = dp) :: L2square
-  real (kind = dp), intent(out):: L2norm
-!  real (kind = dp), dimension(nu1) :: vectp
+!  real (kind = dp), intent(out):: L2norm
   real (kind = dp), dimension(nu2) :: vectx
-!  real (kind = dp), dimension(nu1), intent(in) :: vtp, utp
-  real (kind = dp), dimension(nu2), intent(in) :: xtp
-  real (kind = dp), dimension(nu2), intent(out) :: F
-  real (kind = dp), intent(in) :: dew, dns    
-  real (kind = dp), dimension(:), intent(in) :: sigma, stagsigma
+!  real (kind = dp), dimension(nu2), intent(in) :: xtp
+!  real (kind = dp), dimension(nu2), intent(out) :: F
+!  real (kind = dp), intent(in) :: dew, dns    
+!  real (kind = dp), dimension(:), intent(in) :: sigma, stagsigma
 
-  real (kind = dp), dimension(:,:), intent(in) :: thck,               &
-                                                  dusrfdew, dthckdew, & 
-                                                  d2usrfdew2, d2thckdew2, &
-                                                  dusrfdns, dthckdns, &
-                                                  d2usrfdns2, d2thckdns2, &
-                                                  d2usrfdewdns, d2thckdewdns,&
-                                                  dlsrfdew, dlsrfdns, &
-                                                  stagthck, lsrf, topg, &
-                                                  minTauf, beta
+!  real (kind = dp), dimension(:,:), intent(in) :: thck,               &
+!                                                  dusrfdew, dthckdew, & 
+!                                                  d2usrfdew2, d2thckdew2, &
+!                                                  dusrfdns, dthckdns, &
+!                                                  d2usrfdns2, d2thckdns2, &
+!                                                  d2usrfdewdns, d2thckdewdns,&
+!                                                  dlsrfdew, dlsrfdns, &
+!                                                  stagthck, lsrf, topg, &
+!                                                  minTauf, beta
 
-  real (kind = dp), dimension(:,:,:), intent(inout) :: efvs, btraction
-  real (kind = dp), dimension(:,:,:), intent(in) :: uvel, vvel, flwa
+!  real (kind = dp), dimension(:,:,:), intent(inout) :: efvs, btraction
+!  real (kind = dp), dimension(:,:,:), intent(in) :: uvel, vvel, flwa
            
+  integer, dimension(:,:) :: uindx, umask
+  integer :: ewn, nsn, upn, counter, whichbabc, whichefvs
+  real (kind = dp) :: L2norm
+  type(sparse_matrix_type) :: matrixA, matrixC
+  integer, dimension(2)    :: pcgsize
+  integer, dimension(:)    :: gx_flag ! 0 :reg cell
+  real (kind = dp) :: dew, dns    
+  real (kind = dp), dimension(:)   :: sigma, stagsigma
+  real (kind = dp), dimension(:,:) :: thck, dusrfdew, dthckdew, d2usrfdew2, d2thckdew2, &
+                                         dusrfdns, dthckdns, d2usrfdns2, d2thckdns2, &
+                                         d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
+                                         stagthck, lsrf, topg, minTauf, beta
+  real (kind = dp), dimension(:,:,:) :: efvs, btraction
+  real (kind = dp), dimension(:,:,:) :: uvel, vvel, flwa
+
+!  real (kind = dp), dimension(:,:)  :: d2thckdew2, d2usrfdew2
+!  real (kind = dp), dimension(:,:)  :: d2thckdns2, d2usrfdns2
+!  real (kind = dp), dimension(:,:)  :: d2thckdewdns, d2usrfdewdns
+
+   call c_f_pointer(c_ptr_to_object,fptr) ! convert C ptr to F ptr= resid_object
+
+  ewn = fptr%model%general%ewn
+  nsn = fptr%model%general%nsn 
+  upn = fptr%model%general%upn 
+  dew = fptr%model%numerics%dew 
+  dns = fptr%model%numerics%dns 
+  sigma = fptr%model%numerics%sigma 
+  stagsigma = fptr%model%numerics%stagsigma
+  thck = fptr%model%geometry%thck 
+  lsrf = fptr%model%geometry%lsrf
+  topg = fptr%model%geometry%topg 
+  dthckdew = fptr%model%geomderv%dthckdew 
+  dthckdns = fptr%model%geomderv%dthckdns 
+  dusrfdew = fptr%model%geomderv%dusrfdew 
+  dusrfdns = fptr%model%geomderv%dusrfdns 
+  dlsrfdew = fptr%model%geomderv%dlsrfdew 
+  dlsrfdns = fptr%model%geomderv%dlsrfdns 
+  stagthck = fptr%model%geomderv%stagthck 
+  flwa = fptr%model%temper%flwa 
+  minTauf = fptr%model%basalproc%minTauf 
+  btraction = fptr%model%velocity_hom%btraction
+  whichbabc = fptr%model%options%which_ho_babc 
+  whichefvs = fptr%model%options%which_ho_efvs
+  beta = fptr%model%velocity_hom%beta 
+  d2thckdew2 = fptr%d2thckdew2 
+  d2usrfdew2 = fptr%d2usrfdew2 
+  d2thckdns2 = fptr%d2thckdns2 
+  d2usrfdns2 = fptr%d2usrfdns2 
+  d2thckdewdns = fptr%d2thckdewdns
+  d2usrfdewdns = fptr%d2usrfdewdns 
+  counter = fptr%k 
+  uindx = fptr%uindx
+  umask = fptr%umask  
+  pcgsize = fptr%pcgsize 
+  gx_flag = fptr%gx_flag 
+  matrixA = fptr%matrixA
+  matrixC = fptr%matrixC
+  L2norm = fptr%L2norm 
+  efvs = fptr%efvs
+  uvel = fptr%uvel
+  vvel = fptr%vvel
                                          
+  nu1 = pcgsize(1)
+  nu2 = 2*pcgsize(1)
+
     call findefvsstr(ewn,  nsn,  upn,       &
                      stagsigma,  counter,  &
                      whichefvs,  efvs,     &
@@ -4728,6 +4796,74 @@ function scalebasalbc( coeffblock, bcflag, lateralboundry, beta, efvs )
   return
 
 end function scalebasalbc   
+
+subroutine init_resid_type(resid_object, model, k, uindx, umask, &
+     pcgsize, gx_flag, matrixA, matrixC, L2norm, efvs, uvel, vvel)
+
+  use ,intrinsic :: iso_c_binding 
+  use glide_types, only : glide_global_type, pass_through
+
+  implicit none
+
+  type(glide_global_type)  ,intent(in) :: model
+  type(sparse_matrix_type) ,intent(in) :: matrixA, matrixC
+
+  integer :: k
+  integer, dimension(2)     ,intent(in) :: pcgsize
+  integer, dimension(:)     ,intent(in) :: gx_flag ! 0 :reg cell
+  integer, dimension(:,:)   ,intent(in) :: uindx, umask
+  real (kind = dp)          ,intent(in) :: L2norm
+
+  real (kind = dp), dimension(:,:)  :: d2thckdew2, d2usrfdew2
+  real (kind = dp), dimension(:,:)  :: d2thckdns2, d2usrfdns2
+  real (kind = dp), dimension(:,:)  :: d2thckdewdns, d2usrfdewdns
+
+  real (kind = dp), dimension(:,:,:), intent(in) :: efvs, uvel, vvel
+
+  type(pass_through)     ,intent(out) :: resid_object
+
+  resid_object%model%general%ewn = model%general%ewn
+  resid_object%model%general%nsn = model%general%nsn
+  resid_object%model%general%upn = model%general%upn
+  resid_object%model%numerics%dew = model%numerics%dew
+  resid_object%model%numerics%dns = model%numerics%dns
+  resid_object%model%numerics%sigma => model%numerics%sigma(:)
+  resid_object%model%numerics%stagsigma => model%numerics%stagsigma(:)
+  resid_object%model%geometry%thck => model%geometry%thck(:,:)
+  resid_object%model%geometry%lsrf => model%geometry%lsrf(:,:)
+  resid_object%model%geometry%topg => model%geometry%topg(:,:)
+  resid_object%model%geomderv%dthckdew => model%geomderv%dthckdew(:,:)
+  resid_object%model%geomderv%dthckdns => model%geomderv%dthckdns(:,:)
+  resid_object%model%geomderv%dusrfdew => model%geomderv%dusrfdew(:,:)
+  resid_object%model%geomderv%dusrfdns => model%geomderv%dusrfdns(:,:)
+  resid_object%model%geomderv%dlsrfdew => model%geomderv%dlsrfdew(:,:)
+  resid_object%model%geomderv%dlsrfdns => model%geomderv%dlsrfdns(:,:)
+  resid_object%model%geomderv%stagthck => model%geomderv%stagthck(:,:)
+  resid_object%model%temper%flwa => model%temper%flwa(:,:,:)
+  resid_object%model%basalproc%minTauf => model%basalproc%minTauf(:,:)
+  resid_object%model%velocity_hom%btraction = model%velocity_hom%btraction(:,:,:)
+  resid_object%model%options%which_ho_babc = model%options%which_ho_babc
+  resid_object%model%options%which_ho_efvs = model%options%which_ho_efvs
+  resid_object%model%velocity_hom%beta => model%velocity_hom%beta(:,:)
+  resid_object%d2thckdew2 = d2thckdew2
+  resid_object%d2usrfdew2 = d2usrfdew2
+  resid_object%d2thckdns2 = d2thckdns2
+  resid_object%d2usrfdns2 = d2usrfdns2
+  resid_object%d2thckdewdns = d2thckdewdns
+  resid_object%d2usrfdewdns = d2usrfdewdns
+  resid_object%k = k
+  resid_object%uindx   = uindx
+  resid_object%umask   = umask
+  resid_object%pcgsize = pcgsize
+  resid_object%gx_flag = gx_flag
+  resid_object%matrixA = matrixA
+  resid_object%matrixC = matrixC
+  resid_object%efvs  = efvs
+  resid_object%uvel  = uvel
+  resid_object%vvel  = vvel
+
+end subroutine init_resid_type
+
 
 !***********************************************************************
 
