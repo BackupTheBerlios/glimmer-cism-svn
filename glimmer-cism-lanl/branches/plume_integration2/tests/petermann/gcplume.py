@@ -49,6 +49,10 @@ class PlumeNamelist(object):
                      'tangle' : False, 
                      'negfrz' : False,
                      'use_min_plume_thickness' : True,
+                     'plume_southern_bc' : 0,       # 0 means d/dy = 0
+                                                    # 1 means quadratic extrapolation
+                                                    # 2 means quadratic extrapolation
+                                                    # 3 means advective bc
                      'tottim'  : 0.0,
                      'labtim'  : 1.0,
                      'snottim' : 24.0*3600.0,  #once per day

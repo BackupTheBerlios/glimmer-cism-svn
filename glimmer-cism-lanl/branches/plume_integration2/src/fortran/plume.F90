@@ -238,7 +238,7 @@ contains
     logical,                      intent(in) :: write_all_states
 
     integer,                      intent(in) :: write_every_n
-
+    
     ! Steadiness tolerance.  Relative change in meltrate needed
     ! to continue plume time-stepping
     real(kind=kdp),               intent(in) :: plume_stopping_tol,plume_speed_stopping_tol
@@ -259,6 +259,7 @@ contains
 
     real(kind=kdp) :: subcycling_time,ice_dt_in_sec
     real(kind=kdp),dimension(m_grid,n_grid) :: bmelt_old !in meters per year
+    real(kind=kdp),dimension(m_grid,n_grid) :: rel_speed_change_array
     real(kind=kdp),dimension(m_grid,n_grid) :: speed_old,speed
     real(kind=kdp) :: max_rel_bmelt_change,max_rel_speed_change
     real(kind=kdp) :: prev_rel_change,prev_rel_speed_change
@@ -294,6 +295,7 @@ contains
     plume_reached_steady = .false.
     prev_rel_change = 1.d0
     prev_rel_speed_change = 1.d0
+    rel_speed_change_array = 0.d0
 
     ! while not steady
 
@@ -308,21 +310,27 @@ contains
        bmelt(:,domain_kmin) = bmelt(:,domain_kmin + 1) !South edge
        bmelt(domain_imin,:) = bmelt(domain_imin + 1,:) !West edge
        bmelt(domain_imax,:) = bmelt(domain_imax - 1,:) !East edge	
-
-
-       if (write_all_states .and. (mod(time_step_count,write_every_n) == 0)) then
-          call plume_netcdf_write_vars(time*3600.0d0*24.0d0*365.25d0 + subcycling_time)
-       end if
-       time_step_count = time_step_count + 1
-
+      
        ! calculate max error
        max_rel_bmelt_change = maxval(abs(bmelt_old - bmelt)/ &
             (abs(bmelt)+1.d-30))
 
-       speed = sqrt(su*su + sv*sv)
+       ! speed is an (m-2)*(n-2) array
+       speed(2:(m_grid-1),2:(n_grid-1)) = sqrt(  (5.d-1*(su(1:m_grid-2,2:n_grid-1)+su(2:m_grid-1,2:n_grid-1))) ** 2.d0 + &
+                                                 (5.d-1*(sv(2:m_grid-1,1:n_grid-2)+sv(2:m_grid-1,2:n_grid-1))) ** 2.d0 )
 
-       max_rel_speed_change = maxval(abs(speed_old - speed)/ &
-            (abs(speed)+1.d-30))
+       if (time_step_count > 0) then                                                 
+            rel_speed_change_array = abs(speed- speed_old)/(abs(speed_old)+epsilon(1.d0))
+       end if
+       
+       max_rel_speed_change = maxval(rel_speed_change_array)
+
+       where (rel_speed_change_array > plume_speed_stopping_tol)
+           debug = log(rel_speed_change_array / plume_speed_stopping_tol)
+       elsewhere
+           debug = 0.d0
+       end where
+       
 
        if (subcycling_time >= min_run_time_sec .and. (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
           prev_rel_change = max_rel_bmelt_change
@@ -341,6 +349,11 @@ contains
           end if
        end if
 
+       if (write_all_states .and. (mod(time_step_count,write_every_n) == 0)) then
+          call plume_netcdf_write_vars(time*3600.0d0*24.0d0*365.25d0 + subcycling_time)
+       end if
+
+       time_step_count = time_step_count + 1
        subcycling_time = subcycling_time + dt
        bmelt_old = bmelt
        speed_old = speed
@@ -361,11 +374,7 @@ contains
     write(log_message, '(a,f6.1)') 'subcycling time in days', subcycling_time/(3600.0*24.0)
     call io_append_output(trim(log_message))
 
-!    call io_write_long_step_output(icalcan,icalcen,kcalcan,kcalcen,&
-!                                  varoutrat,negdep)
-
     call io_write_surface_output(runtim,labtim)    
-
 
   end subroutine plume_iterate
 
@@ -426,7 +435,9 @@ contains
     ! ---------------------------------------------------
     ! evaluate continuity equation for interface position
     ! ---------------------------------------------------
-    call continuity(icalcan,kcalcan,icalcen,kcalcen)   
+    call continuity(icalcan,kcalcan,icalcen,kcalcen)
+ 
+    call bound_bmelt_entr(icalcan,icalcen,kcalcan,kcalcen)
 
     ! interface and scalars passed forward on open boundary
     call inflow_calc(icalcan,kcalcan,icalcen,kcalcen)
@@ -541,6 +552,7 @@ contains
          ,  tangle &
          ,  negfrz &
          ,  use_min_plume_thickness &
+         ,  plume_southern_bc &
          ,  use_periodic_forcing &
          ,  forcing_period &
          ,  periodic_forcing_amp &
@@ -940,8 +952,13 @@ contains
     bpos = 0.d0
     jcs = 0
     jcw = 0
-    jcd_u = 0
-    jcd_v = 0
+    if (use_min_plume_thickness) then
+       jcd_u = 1
+       jcd_v = 1
+    else
+        jcd_u = 0
+        jcd_v = 0
+    end if
     jcd_fl = 0       
     jcd_negdep = 0
     jcd_fseed = 0
@@ -1106,7 +1123,7 @@ contains
        do i=domain_imin,domain_imax
           do k=domain_kmin,domain_kmax
              if (jcs(i,k) .eq. 1) then
-                pdep(i,k) = plume_min_thickness
+                pdep(i,k) = plume_min_thickness                
                 ipos(i,k) = bpos(i,k) - pdep(i,k)	                
              end if
           end do
@@ -1114,7 +1131,7 @@ contains
     else
        pdep = bpos - ipos
     end if
-
+    
     ! set field for wet/dry points (jcw)
     where (pdep >= dcr) jcw = 1
 
@@ -1426,6 +1443,8 @@ contains
     real(kind=kdp) :: deltam(m_grid,n_grid),delta(m_grid,n_grid),iold(m_grid,n_grid)
     real(kind=kdp) :: fppntot,ucrit,ucl
 
+    real(kind=kdp),parameter :: bspeed_min = 1.d-2
+
     ! 0. preliminaries
     ! ----------------
     prden = 12.5d0*pr**(2.d0/3.d0) - 9.d0
@@ -1486,12 +1505,12 @@ contains
 
                 ! half pedersen entrainment
                 if (entype.eq.3) then
-                   entr(i,k) = 3.6d-2*bspeed(i,k)*drag(i,k)/rich
+                   entr(i,k) = 3.6d-2*(bspeed(i,k)+bspeed_min)*drag(i,k)/rich
                 end if
 
                 ! half modified pedersen entrainment
                 if (entype.eq.4) then
-                   entr(i,k) = 3.6d-2*bspeed(i,k)*dsin(1.0d-3)
+                   entr(i,k) = 3.6d-2*(bspeed(i,k)+bspeed_min)*dsin(1.0d-3)
                 end if
 
              end if
@@ -1517,9 +1536,9 @@ contains
 
                 ! find turbulent exchange coefficients
                 gambt = (dragrt*bspeed(i,k))/ &
-                     & (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + prden)
+                      (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + prden)
                 gambs = (dragrt*bspeed(i,k))/ &
-                     & (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + scden)
+                      (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + scden)
 
                 ! calculate freezing point of plume at shelf base,
                 ! decide if melt (mflag = 1) 
@@ -1603,9 +1622,10 @@ contains
             if (thk_def(i,k) > 0.d0) then
                 ! make up for thickness deficiency by increasing entrainment
                 ! articicially
-                entr(i,k)  = entr(i,k)  +  thk_def(i,k) / entr_time_const               
-                delta(i,k) = delta(i,k) + (thk_def(i,k) / entr_time_const) * dt
-                
+
+                entr(i,k)  = entr(i,k)  +  thk_def(i,k) / entr_time_const  
+	        delta(i,k) = delta(i,k) +  thk_def(i,k) / entr_time_const * dt
+	                
             end if
 
              !this is for output purposes so we can see what percentage of the thicknes
@@ -1928,10 +1948,10 @@ contains
                 r2 = one - r1
                 termnl=(r1*sy + r2*sx)*(utransa(ihilf,khilf)*dble(jcd_u(ihilf,khilf)) &
                      +                  utransa(i,k)        *dble(1 - jcd_u(ihilf,khilf))) &
-                     + r1*sxy*(         utransa(ihilf,k)*dble(jcd_u(ihilf,k)) &
+                     + r1*sxy*(         utransa(ihilf,k)    *dble(jcd_u(ihilf,k)) &
                      +                  utransa(i,k)        *dble(1 - jcd_u(ihilf,k))) &
-                     - r2*sxy*(         utransa(i,khilf)*dble(jcd_u(i,khilf)) &
-                     +                  utransa(i,k)*dble(1 - jcd_u(i,khilf))) &
+                     - r2*sxy*(         utransa(i,khilf)    *dble(jcd_u(i,khilf)) &
+                     +                  utransa(i,k)        *dble(1 - jcd_u(i,khilf))) &
                      - (r2*sy + r1*sx)* utransa(i,k)
 
                 termnl2 = - utransa(i,k)*dt*((su(ihilf,k) - su(i,k))*idel/dxx  &
@@ -2168,7 +2188,7 @@ contains
                   - (r2*sy + r1*sx)*vtransa(i,k)
 
              termnl2 = - vtransa(i,k)*dt*((sv(i,khilf) - sv(i,k))*kdel/dyy  &
-                  + (su(i,kkdy) - su(i-1,kkdy))*rdxu(i))
+                                        + (su(i,kkdy) - su(i-1,kkdy))*rdxu(i))
           end if
           !          
           ! 7)lateral shear stress terms (north component)
@@ -2265,14 +2285,65 @@ contains
 
     ! southern boundary
     if (kcalcan.le.(domain_kmin+1)) then
-       do i = domain_imin,domain_imax - 1
-          su(i,domain_kmin) = 2.d0*su(i,domain_kmin+1)-su(i,domain_kmin+2)
-          utrans(i,domain_kmin) = 2.d0 * (su(i,domain_kmin+1)*5.0d-1*(pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))) &
-                                       - (su(i,domain_kmin+2)*5.0d-1*(pdep(i,domain_kmin+2) + pdep(i+1,domain_kmin+2)))
-          sv(i,domain_kmin) = 2.d0*sv(i,domain_kmin+1)-sv(i,domain_kmin+2)
-          vtrans(i,domain_kmin) = 2.d0*sv(i,domain_kmin+1)*pdep(i,domain_kmin+1) - &
-                                       sv(i,domain_kmin+2)*pdep(i,domain_kmin+2)
-       end do
+
+       select case (plume_southern_bc)
+
+       case (0)
+
+           ! old d/dy = 0 scheme
+           su(:,domain_kmin) = su(:,domain_kmin+1)
+           sv(:,domain_kmin) = sv(:,domain_kmin+1)
+           utrans(:,domain_kmin) = utrans(:,domain_kmin+1)
+           vtrans(:,domain_kmin) = vtrans(:,domain_kmin+1)
+
+       case (1)
+
+           do i = domain_imin+1,domain_imax - 1
+              su(i,domain_kmin) = 2.d0*su(i,domain_kmin+1)-su(i,domain_kmin+2)
+              utrans(i,domain_kmin) = 2.d0 * (su(i,domain_kmin+1)*5.0d-1*(pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))) &
+                                           - (su(i,domain_kmin+2)*5.0d-1*(pdep(i,domain_kmin+2) + pdep(i+1,domain_kmin+2)))          
+              !utrans(i,domain_kmin) = 2.d0 * utrans(i,domain_kmin+1) - utrans(i,domain_kmin+2)
+              sv(i,domain_kmin) = 2.d0*sv(i,domain_kmin+1)-sv(i,domain_kmin+2)
+              vtrans(i,domain_kmin) = 2.d0*vtrans(i,domain_kmin+1) - vtrans(i,domain_kmin+2)
+
+            end do
+
+       case (2)
+
+           su(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                            su(domain_imin:domain_imax-1, domain_kmin+3), &
+                            su(domain_imin:domain_imax-1, domain_kmin+2), &
+                            su(domain_imin:domain_imax-1, domain_kmin+1) )
+
+
+           sv(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                            sv(domain_imin:domain_imax-1, domain_kmin+3), &
+                            sv(domain_imin:domain_imax-1, domain_kmin+2), &
+                            sv(domain_imin:domain_imax-1, domain_kmin+1) )
+
+            utrans(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                        utrans(domain_imin:domain_imax-1, domain_kmin+3), &
+                        utrans(domain_imin:domain_imax-1, domain_kmin+2), &
+                        utrans(domain_imin:domain_imax-1, domain_kmin+1) )
+
+            vtrans(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                        vtrans(domain_imin:domain_imax-1, domain_kmin+3), &
+                        vtrans(domain_imin:domain_imax-1, domain_kmin+2), &
+                        vtrans(domain_imin:domain_imax-1, domain_kmin+1) )
+
+
+       case (3)
+
+           call absorbing_south_boundary_u(su)
+           call absorbing_south_boundary_v(sv)
+           call absorbing_south_boundary_u(utrans)
+           
+           call absorbing_south_boundary_v(vtrans)
+
+       end select
+
+
+
     end if
 
     ! northern boundary
@@ -2323,6 +2394,18 @@ contains
 
     ! southern boundary
     if(kcalcan.le.(domain_kmin+1)) then
+
+       select case(plume_southern_bc)
+
+       case (0)
+
+          jcw(domain_imin:domain_imax,domain_kmin) = jcw(domain_imin:domain_imax,domain_kmin+1)
+          jcd_fl(domain_imin:domain_imax,domain_kmin) = jcd_fl(domain_imin:domain_imax,domain_kmin+1)
+          pdep(domain_imin:domain_imax,domain_kmin) = pdep(domain_imin:domain_imax,domain_kmin+1)
+          ipos(domain_imin:domain_imax,domain_kmin) = ipos(domain_imin:domain_imax,domain_kmin+1)
+
+       case (1)
+
        do i = domain_imin,domain_imax
 
           !Paul's new version
@@ -2333,7 +2416,32 @@ contains
           ipos(i,domain_kmin) = 2.d0*(bpos(i,domain_kmin + 1) - pdep(i,domain_kmin + 1)) - & 
                                      (bpos(i,domain_kmin + 2) - pdep(i,domain_kmin + 2))
           end if
+
        end do
+
+       case (2)
+
+       pdep(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                        pdep(domain_imin:domain_imax-1, domain_kmin+3), &
+                        pdep(domain_imin:domain_imax-1, domain_kmin+2), &
+                        pdep(domain_imin:domain_imax-1, domain_kmin+1) )
+
+       ipos(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                        ipos(domain_imin:domain_imax-1, domain_kmin+3), &
+                        ipos(domain_imin:domain_imax-1, domain_kmin+2), &
+                        ipos(domain_imin:domain_imax-1, domain_kmin+1) )
+
+
+       case (3)
+
+            call absorbing_south_boundary_scalar(pdep)
+
+            ipos(domain_imin:domain_imax, domain_kmin) = bpos(domain_imin:domain_imax, domain_kmin) - &
+                                                         pdep(domain_imin:domain_imax, domain_kmin)
+
+       end select
+       
+
     end if
 
     ! northern boundary
@@ -2371,6 +2479,58 @@ contains
 
   end subroutine bound_interface
 
+  subroutine bound_bmelt_entr(icalcan, icalcen, kcalcan, kcalcen)
+
+     implicit none
+
+     integer, intent(in) :: icalcan, icalcen, kcalcan , kcalcen
+
+     integer :: i,k,l
+
+    ! southern boundary
+
+    if(kcalcan.le.(domain_kmin+1)) then
+
+       select case(plume_southern_bc)
+
+       case (0)
+
+           bmelt(:,domain_kmin) = bmelt(:,domain_kmin+1)
+           entr(:,domain_kmin) = entr(:,domain_kmin+1)
+        
+       case (1)
+
+           do i = domain_imin,domain_imax
+               ! using a first-order extrapolation as the 'absorbing boundary condition'
+               bmelt(i,domain_kmin) = 2.d0 * bmelt(i,domain_kmin+1) - 1.d0*bmelt(i,domain_kmin + 2)
+               entr(i,domain_kmin) = 2.d0 * entr(i,domain_kmin+1) - 1.d0*entr(i,domain_kmin + 2)
+           end do   
+
+       case (2)
+
+       bmelt(domain_imin:domain_imax,domain_kmin) = extrap3( &
+                            bmelt(domain_imin:domain_imax,domain_kmin +3), &
+                            bmelt(domain_imin:domain_imax,domain_kmin +2), &
+                            bmelt(domain_imin:domain_imax,domain_kmin +1))
+
+
+       entr(domain_imin:domain_imax,domain_kmin) = extrap3( &
+                            entr(domain_imin:domain_imax,domain_kmin +3), &
+                            entr(domain_imin:domain_imax,domain_kmin +2), &
+                            entr(domain_imin:domain_imax,domain_kmin +1))
+ 
+       case (3)
+
+           call absorbing_south_boundary_scalar(bmelt)
+           call absorbing_south_boundary_scalar(entr)
+   
+       end select
+
+    end if
+
+
+  end subroutine bound_bmelt_entr
+
   subroutine bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
 
     ! calculates boundary values for temperature, salinity, frazil,
@@ -2389,15 +2549,71 @@ contains
 
     if(kcalcan.le.(domain_kmin+1)) then
 
+      select case(plume_southern_bc)
+
+      case (0)
+
+         temp(:,domain_kmin) = temp(:,domain_kmin+1)
+         tempa(:,domain_kmin) = tempa(:,domain_kmin+1)
+         salt(:,domain_kmin) = salt(:,domain_kmin+1)
+         salta(:,domain_kmin) = salta(:,domain_kmin+1)
+         rhop(:,domain_kmin) = rhop(:,domain_kmin+1)
+         tfreeze(:,domain_kmin) = tfreeze(:,domain_kmin+1)
+
+      case (1)
+
        do i = domain_imin,domain_imax
           ! using a first-order extrapolation as the 'absorbing boundary condition'
-          temp(i,domain_kmin) = 2.d0*temp(i,domain_kmin+1) - temp(i,domain_kmin+2)                          
+          temp(i,domain_kmin) = 2.d0*  temp(i,domain_kmin+1) -    temp(i,domain_kmin+2)                          
           tempa(i,domain_kmin) = 2.d0*tempa(i,domain_kmin+1) - tempa(i,domain_kmin+2)
-          salt(i,domain_kmin) = 2.d0*salt(i,domain_kmin+1) - salt(i,domain_kmin+2)                          
+          salt(i,domain_kmin) = 2.d0*  salt(i,domain_kmin+1) -    salt(i,domain_kmin+2)                          
           salta(i,domain_kmin) = 2.d0*salta(i,domain_kmin+1) - salta(i,domain_kmin+2)    
-          rhop(i,domain_kmin) = 2.d0*rhop(i,domain_kmin+1) - rhop(i,domain_kmin+2)
+          rhop(i,domain_kmin) = 2.d0* rhop(i,domain_kmin+1) -    rhop(i,domain_kmin+2)
           tfreeze(i,domain_kmin) = 2.d0*tfreeze(i,domain_kmin+1)-tfreeze(i,domain_kmin+2)                          
        end do
+
+       case (2)
+
+         temp(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                            temp(domain_imin:domain_imax-1, domain_kmin+3), &
+                            temp(domain_imin:domain_imax-1, domain_kmin+2), &
+                            temp(domain_imin:domain_imax-1, domain_kmin+1) )
+         tempa(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                            tempa(domain_imin:domain_imax-1, domain_kmin+3), &
+                            tempa(domain_imin:domain_imax-1, domain_kmin+2), &
+                            tempa(domain_imin:domain_imax-1, domain_kmin+1) )
+
+         salt(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                            salt(domain_imin:domain_imax-1, domain_kmin+3), &
+                            salt(domain_imin:domain_imax-1, domain_kmin+2), &
+                            salt(domain_imin:domain_imax-1, domain_kmin+1) )
+
+         salta(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                            salta(domain_imin:domain_imax-1, domain_kmin+3), &
+                            salta(domain_imin:domain_imax-1, domain_kmin+2), &
+                            salta(domain_imin:domain_imax-1, domain_kmin+1) )
+
+         rhop(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                            rhop(domain_imin:domain_imax-1, domain_kmin+3), &
+                            rhop(domain_imin:domain_imax-1, domain_kmin+2), &
+                            rhop(domain_imin:domain_imax-1, domain_kmin+1) )
+
+         tfreeze(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
+                            tfreeze(domain_imin:domain_imax-1, domain_kmin+3), &
+                            tfreeze(domain_imin:domain_imax-1, domain_kmin+2), &
+                            tfreeze(domain_imin:domain_imax-1, domain_kmin+1) )
+
+      
+       case (3)
+        
+           call absorbing_south_boundary_scalar(temp)
+           call absorbing_south_boundary_scalar(tempa)
+           call absorbing_south_boundary_scalar(salt)
+           call absorbing_south_boundary_scalar(salta)
+           call absorbing_south_boundary_scalar(rhop) 
+           call absorbing_south_boundary_scalar(tfreeze)
+
+       end select
 
        if (frazil) then
           do i = domain_imin,domain_imax
@@ -2525,6 +2741,82 @@ contains
   end subroutine bound_tsdc
 
 
+  subroutine absorbing_south_boundary_scalar(data_array)
+
+    implicit none
+  
+    real(kind=kdp),intent(inout),dimension(:,:) :: data_array
+    integer :: m1,m2,n1,n2
+    real(kind=kdp) :: hx,hy
+    
+    m1 = domain_imin
+    m2 = domain_imax
+    n1 = domain_kmin
+    hx = dx(n1+1)
+    hy = dy(n1)
+
+    data_array(m1+1:m2-1, n1) = &
+            (data_array(m1+1:m2-1,n1)*hx*hy + &
+                  abs(min(sv(m1+1:m2-1,n1+1),0.d0)) * &
+                  data_array(m1+1:m2-1,n1+1)*dt*hx - &
+                  5.d-1*(su(m1:m2-2,n1+1)+su(m1+1:m2-1,n1+1))* &
+                     (data_array(m1+2:m2,n1+1) - &
+                      data_array(m1:m2-2,n1+1))*dt*hy) / &
+             (hx*hy + dt*hx*abs(min(sv(m1+1:m2-1,n1+1),0.d0)))
+
+  end subroutine absorbing_south_boundary_scalar
+
+  subroutine absorbing_south_boundary_u(data_array)
+  
+    real(kind=kdp),intent(inout),dimension(:,:) :: data_array
+    integer :: m1,m2,n1,n2
+
+    real(kind=kdp) :: hx,hy
+    
+    hx = dx(n1+1)
+    hy = dy(n1)
+
+    m1 = domain_imin
+    m2 = domain_imax
+    n1 = domain_kmin
+
+    data_array(m1+1:m2-1, n1) = &
+            (data_array(m1+1:m2-1,n1)*hx*hy + &
+                  abs(min( 5.d-1*(sv(m1+2:m2,n1+1)+sv(m1+1:m2-1,n1+1)),0.d0)) * &
+                  data_array(m1+1:m2-1,n1+1)*dt*hx - &
+                  su(m1+1:m2-1,n1+1)* &
+                     (data_array(m1+2:m2,n1+1) - &
+                      data_array(m1:m2-2,n1+1))*dt*hy) / &
+             (hx*hy + dt*hx*abs(min( 5.d-1*(sv(m1+2:m2,n1+1)+sv(m1+1:m2-1,n1+1)),0.d0)))
+
+  end subroutine absorbing_south_boundary_u
+
+  subroutine absorbing_south_boundary_v(data_array)
+  
+    real(kind=kdp),intent(inout),dimension(:,:) :: data_array
+    integer :: m1,m2,n1,n2
+
+    real(kind=kdp) :: hx,hy
+    
+    hx = dx(n1+1)
+    hy = dy(n1)
+    
+    m1 = domain_imin
+    m2 = domain_imax
+    n1 = domain_kmin
+
+    data_array(m1+1:m2-1, n1) = &
+   (data_array(m1+1:m2-1, n1)*hx*hy + &
+             abs(min(sv(m1+1:m2-1,n1+1),0.d0)) * &     !require a south flowing velocity                
+             data_array(m1+1:m2-1,n1+1)*dt*hx - &
+        5.d-1*(su(m1:m2-2,n1+1)+su(m1+1:m2-1,n1+1))* &
+             (data_array(m1+2:m2,n1+1) - &
+              data_array(m1:m2-2,n1+1)) * dt*hy) / &
+             (hx*hy + dt*hx*abs(min(sv(m1+1:m2-1,n1+1),0.d0)))
+
+  end subroutine absorbing_south_boundary_v
+
+
   subroutine update(iwetmin,iwetmax,kwetmin,kwetmax, &
        icalcan,icalcen,kcalcan,kcalcen,negdep)
 
@@ -2544,7 +2836,6 @@ contains
     real(kind=kdp) :: dunew,pdepn,dvnew,zd,negdep
 
     ! update interface position
-
 
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
@@ -2607,8 +2898,10 @@ contains
 
           if (jcs(i,k).ne.1) cycle
 
-          jcd_u(i,k) = 0
-          jcd_v(i,k) = 0
+          if (.not. use_min_plume_thickness) then
+            jcd_u(i,k) = 0
+            jcd_v(i,k) = 0
+          end if
           pdepc = bpos(i,k) - ipos(i,k)
           ! u-component
           pdepe = bpos(i+1,k) - ipos(i+1,k)
@@ -2806,9 +3099,9 @@ contains
                 end if
 
                 deltat(i,k) = deltat(i,k)  &
-                     + dt*entr(i,k)*(atemp(i,k) - tempa(i,k))/pdepcp(i,k)
-                deltas(i,k) = deltas(i,k)  &
-                     + dt*entr(i,k)*(asalt(i,k) - salta(i,k))/pdepcp(i,k)
+                   + dt*entr(i,k)*(atemp(i,k) - tempa(i,k))/pdepcp(i,k)
+                deltas(i,k) =  deltas(i,k) &
+	           + dt*entr(i,k)*(asalt(i,k)-salta(i,k))/pdepcp(i,k)
 
              endif
           end do
@@ -2820,8 +3113,9 @@ contains
                 if (jcs(i,k) .ne. 1) cycle
                 if (pdepc(i,k).gt.edepth) then         
                    do l=1,nice
-                      deltac(i,k,l) = deltac(i,k,l)  &
-                           + dt*entr(i,k)*(-ca_ice(i,k,l))/pdepcp(i,k)
+                      print *, 'unexpected use of frazil code'
+                      stop 1
+                      deltac(i,k,l) = deltac(i,k,l)+ dt*entr(i,k)*(-ca_ice(i,k,l))/pdepcp(i,k)
                    end do
                 end if
              end do
@@ -2862,23 +3156,23 @@ contains
                 write(11,*) 'error: tsc courant exceeded at i=',i,' k=',k
              end if
 
-             deltat(i,k) = deltat(i,k)  &
-                  + (r1*sy+r2*sx)*(tempa(ihilf,khilf)*jcw(ihilf,khilf) &
-                  + (1 - jcw(ihilf,khilf))*tempa(i,k))  &
-                  + r1*sxy*(tempa(ihilf,k)*jcw(ihilf,k) &
-                  + (1-jcw(ihilf,k))*tempa(i,k)) &
-                  - r2*sxy*(tempa(i,khilf)*jcw(i,khilf) &
-                  + (1-jcw(i,khilf))*tempa(i,k)) &
-                  - (r2*sy+r1*sx)*tempa(i,k)                         
-
-             deltas(i,k) = deltas(i,k)  &
-                  + (r1*sy+r2*sx)*(salta(ihilf,khilf)*jcw(ihilf,khilf) &
-                  + (1 - jcw(ihilf,khilf))*salta(i,k))  &
-                  + r1*sxy*(salta(ihilf,k)*jcw(ihilf,k) &
-                  + (1-jcw(ihilf,k))*salta(i,k)) &
-                  - r2*sxy*(salta(i,khilf)*jcw(i,khilf) &
-                  + (1-jcw(i,khilf))*salta(i,k)) &
-                  - (r2*sy+r1*sx)*salta(i,k)                         
+	deltat(i,k) = deltat(i,k)  &
+                 + (r1*sy+r2*sx)*(tempa(ihilf,khilf)*jcw(ihilf,khilf) &
+                 + (1 - jcw(ihilf,khilf))*tempa(i,k))  &
+                 + r1*sxy*(tempa(ihilf,k)*jcw(ihilf,k) &
+                 + (1-jcw(ihilf,k))*tempa(i,k)) &
+                 - r2*sxy*(tempa(i,khilf)*jcw(i,khilf) &
+                 + (1-jcw(i,khilf))*tempa(i,k)) &
+                 - (r2*sy+r1*sx)*tempa(i,k)                         
+       
+	deltas(i,k) = deltas(i,k)  &
+                + (r1*sy+r2*sx)*(salta(ihilf,khilf)*jcw(ihilf,khilf) &
+                + (1 - jcw(ihilf,khilf))*salta(i,k))  &
+                + r1*sxy*(salta(ihilf,k)*jcw(ihilf,k) &
+                + (1-jcw(ihilf,k))*salta(i,k)) &
+                - r2*sxy*(salta(i,khilf)*jcw(i,khilf) &
+                + (1-jcw(i,khilf))*salta(i,k)) &
+                - (r2*sy+r1*sx)*salta(i,k)      
 
              if (frazil) then
                 do l = 1,nice
@@ -2926,14 +3220,17 @@ contains
              difw = (tempa(i,k) - tempa(i-1,k))*jcw(i-1,k)*kh*rdx(i-1)
              difn = (tempa(i,k+1) - tempa(i,k))*jcw(i,k+1)*kh*rdy(k)
              difs = (tempa(i,k) - tempa(i,k-1))*jcw(i,k-1)*kh*rdy(k-1)
+
+
              deltat(i,k) = deltat(i,k) &
                   + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt 
-
+ 
              dife = (salta(i+1,k) - salta(i,k))*jcw(i+1,k)*kh*rdx(i)
              difw = (salta(i,k) - salta(i-1,k))*jcw(i-1,k)*kh*rdx(i-1)
              difn = (salta(i,k+1) - salta(i,k))*jcw(i,k+1)*kh*rdy(k)
              difs = (salta(i,k) - salta(i,k-1))*jcw(i,k-1)*kh*rdy(k-1)
-             deltas(i,k) = deltas(i,k)  &
+
+             deltas(i,k) = deltas(i,k) &
                   + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt
 
           end do
@@ -2945,6 +3242,8 @@ contains
 
                 if (jcs(i,k) .ne. 1) cycle
 
+                print *, 'unexpected use of frazil code'
+                stop 1
                 do l = 1,nice
                    dife = (ca_ice(i+1,k,l) - ca_ice(i,k,l))*jcw(i+1,k)*kh*rdx(i)
                    difw = (ca_ice(i,k,l) - ca_ice(i-1,k,l))*jcw(i-1,k)*kh*rdx(i-1)
@@ -2996,7 +3295,7 @@ contains
 
                 ! find turbulent exchange coefficients
                 gambt = (dragrt*bspeed(i,k))/ &
-                     (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + prden)
+                     (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + prden)             
                 gambs = (dragrt*bspeed(i,k))/ &
                      (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + scden)
 
@@ -3007,19 +3306,19 @@ contains
 
                 tfreezeb = fta*salta(i,k) + ftb + ftc*(gldep+wcdep-bpos(i,k))
                 mflag = (1 + int(sign(1.d0,tempa(i,k) - tfreezeb)))/2
-                !depthflag = (1 + int(sign(1.d0, gldep + wcdep - bpos(i,k) - min_melt_depth)))/2
+                depthflag = (1 + int(sign(1.d0, gldep + wcdep - bpos(i,k) - min_melt_depth)))/2
 
-                !tfreezei = (1 - mflag)*fta*si  &
-                !     + ftb + ftc*(gldep + wcdep - bpos(i,k))
+                tfreezei = (1 - mflag)*fta*si  &
+                     + ftb + ftc*(gldep + wcdep - bpos(i,k))
 
                 ! calculate coefficients in quadratic to be solved
-                !c1 = lat/c0 + mflag*(ci/c0)*(tfreezei-tint(i,k))
-                !c2 = gambs*(lat/c0 + mflag*(ci/c0)*(tfreezeb-tint(i,k)))  &
-                !     + gambt*(tfreezei-tempa(i,k))
-                !c3 = gambs*gambt*(tfreezeb - tempa(i,k))
+                c1 = lat/c0 + mflag*(ci/c0)*(tfreezei-tint(i,k))
+                c2 = gambs*(lat/c0 + mflag*(ci/c0)*(tfreezeb-tint(i,k)))  &
+                     + gambt*(tfreezei-tempa(i,k))
+                c3 = gambs*gambt*(tfreezeb - tempa(i,k))
 
                 ! calculate melt rate
-                !bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
+                bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
 
                 !! multiply by 10 if freezing
                 !              if (mflag.eq.0) then
@@ -3030,20 +3329,23 @@ contains
                 btemp(i,k) = (gambt*tempa(i,k)+mflag*(ci/c0)*bmelt(i,k)*tint(i,k) &
                      - (lat/c0)*bmelt(i,k) )/  &
                      (gambt + mflag*(ci/c0)*bmelt(i,k))
+                
                 bsalt(i,k) = (btemp(i,k) - ftb  &
                      - ftc*(gldep + wcdep - bpos(i,k)))/fta
 
                 ! calculate change of heat, salt, and frazil due
                 ! to meltwater/freezewater flux
                 ! (ice shelf has zero salinity and no frazil)
+
                 deltat(i,k) = deltat(i,k)  &
                      + dt*bmelt(i,k)*(btemp(i,k) - tempa(i,k))/pdepcp(i,k)
                 deltas(i,k) = deltas(i,k)  &
                      - dt*bmelt(i,k)*salta(i,k)/pdepcp(i,k)
-
+              
                 ! add diffusive flux of latent heat release/uptake
-                deltat(i,k) = deltat(i,k)  &
-                     - dt*(lat/c0)*bmelt(i,k)/pdepcp(i,k)
+	        deltat(i,k) = deltat(i,k)  &
+                     - dt*bmelt(i,k)*((lat/c0) &
+                                   +  (ci/c0)*(btemp(i,k)-tint(i,k)))/pdepcp(i,k)
 
              end if
           end do
@@ -3224,8 +3526,8 @@ contains
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
           if (jcs(i,k) .ne. 1) cycle
-          temp(i,k) = tempa(i,k) + deltat(i,k)
-          salt(i,k) = salta(i,k) + deltas(i,k)
+	     temp(i,k) = tempa(i,k) + deltat(i,k)
+             salt(i,k) = salta(i,k) + deltas(i,k)
        end do
     end do
 
@@ -3507,6 +3809,14 @@ contains
 
   end function get_samb_z
 
+  elemental real(kind=kdp) function extrap3(y1,y2,y3)
+  
+    implicit none
+    real(kind=kdp),intent(in) :: y1,y2,y3
+
+    extrap3 = y1 - 3.d0*y2 + 3.d0*y3
+    
+  end function extrap3
 
 end module plume
 

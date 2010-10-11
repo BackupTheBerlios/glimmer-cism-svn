@@ -84,6 +84,7 @@ module plume_global
   logical :: rholinear,thermobar,intrace,vardrag,topedit,tangle,negfrz
   logical :: use_min_plume_thickness, use_periodic_forcing
   integer :: entype
+  integer :: plume_southern_bc
 
   ! restart data filename
   character(len=256) :: restart_data_filename
