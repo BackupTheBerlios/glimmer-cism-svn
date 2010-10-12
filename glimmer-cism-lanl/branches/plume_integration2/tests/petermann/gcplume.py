@@ -66,6 +66,10 @@ class PlumeNamelist(object):
                      'ifdep' : 0.0,
                      'wcdep' : 1000.0,
                      'plume_min_thickness' : 10.0,
+                     'infloain' : 0.0,
+                     'infloein' : 0.0,
+                     'knfloain' : 0.0,
+                     'knfloein' : 0.0,
                      'entr_time_const' : None,
                      'bsmoothit' : 0,   #iterations of smoothing
                      'salttop' : None,
@@ -81,6 +85,7 @@ class PlumeNamelist(object):
                      'cl' : 1.775e-2, # entrainment coeff
                      'ef' : 5.0e-1,   # entrainment factor
                      'context' : '""',  #NB: don't remove this
+                     'bathtype' : 13,
                      }
 
     def produce_namelist_contents(self):

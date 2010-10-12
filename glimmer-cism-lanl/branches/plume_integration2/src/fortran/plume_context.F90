@@ -428,8 +428,8 @@ contains
        ! basal position increases from wcdep to wcdep + (gldep-ifdep)) 
        ! with sinusoidal undulations superimposed
 
-       c0 = wcdep
-       c1 = ampdep / toty
+       c0 = wcdep + gldep - ifdep
+       c1 = - ampdep / toty
 
        runtoty = 0.d0
 
@@ -554,7 +554,7 @@ contains
     if (bathtype.eq.13) then
        ! set land on east, south and west walls
        bpos(1:2,:) = 0.0
-       bpos(:,1:2) = 0.0
+       !bpos(:,1:2) = 0.0
        bpos((m_grid-1):m_grid,:) = 0.0
     end if
 

@@ -558,7 +558,7 @@ contains
 
     ! local variables
     integer :: l
-    real(kind=kdp) :: infloain,infloein,cseedfix,cinffix	
+    real(kind=kdp) :: infloain,infloein,knfloain,knfloein,cseedfix,cinffix	
 
     namelist /plume_nml/ &
          mixlayer &
@@ -612,6 +612,8 @@ contains
          ,  salttop &
          ,  infloain &
          ,  infloein &
+         ,  knfloain &
+         ,  knfloein &
          ,  saltbot &
          ,  temptop &
          ,  tempbot &
@@ -895,6 +897,8 @@ contains
 
     infloa = int(infloain*1000.d0/hx)! western boundary (cells)
     infloe = int(infloein*1000.d0/hx)! eastern boundary (cells)
+    knfloa = int(knfloain*1000.d0/hy)
+    knfloe = int(knfloein*1000.d0/hy)
 
     ! set case-specific inflow flags if using realistic bathymetry
 
@@ -1035,6 +1039,9 @@ contains
           stop 1
        end if
        bpos = bpos_ext
+       if (.not. use_min_plume_thickness) then
+           call topog_depth_inflow_set(.not. use_min_plume_thickness .and. .not. mixlayer)
+       end if
 
     else	
 
@@ -1381,8 +1388,6 @@ contains
        do k = kcalcan,kcalcen
           if (depinf(i,k).gt.0.d0) then
 
-             print *, 'unexpected use of inflow'
-             stop 1
              ! reset inflow depth
 
              ipos(i,k) = bpos(i,k) - depinf(i,k)         
@@ -1754,8 +1759,8 @@ contains
 
     !$omp parallel default(private) &
     !$omp shared( pdep, ipos, jcw, jcd_negdep, su,sv,drag,ugriddrag,newudrag, &
-                  u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, &
-                  jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs ) &
+    !$omp              u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, &
+    !$omp              jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs ) &
     !$omp copyin ( sintang, kq, olddrag, norotation, variableekman, draginmelt, one)
     !$omp do
     do i = icalcan,icalcen
