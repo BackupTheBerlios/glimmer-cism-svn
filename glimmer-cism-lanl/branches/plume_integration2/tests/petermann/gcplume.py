@@ -56,7 +56,7 @@ class PlumeNamelist(object):
                      'tottim'  : 0.0,
                      'labtim'  : 1.0,
                      'snottim' : 24.0*3600.0,  #once per day
-                     'lnottim' : 5.0*86400.0, #once per five days
+                     'lnottim' : 100.0*365.25*86400.0, #once per 100 years
                      'dt1'     : None,
                      'm_grid' : None,
                      'n_grid' : None,          

@@ -150,10 +150,10 @@ contains
     ikcplus = 2  ! set additional area in which to check wetness
 
     if (.not.use_min_plume_thickness) then
-       icalcan = max0(2,iwetmin-ikcplus)
-       kcalcan = max0(2,kwetmin-ikcplus)
-       icalcen = min0(m_grid-1,iwetmax+ikcplus)
-       kcalcen = min0(n_grid-1,kwetmax+ikcplus)
+       icalcan = max0(domain_imin+1,iwetmin-ikcplus)
+       kcalcan = max0(domain_kmin+1,kwetmin-ikcplus)
+       icalcen = min0(domain_imax-1,iwetmax+ikcplus)
+       kcalcen = min0(domain_kmax-1,kwetmax+ikcplus)
     else
        icalcan = domain_imin + 1
        kcalcan = domain_kmin + 1
@@ -299,8 +299,10 @@ contains
 
     ! while not steady
 
-    do while (((subcycling_time .le. ice_dt_in_sec) .and. .not. run_plume_to_steady) .or. &
-                (run_plume_to_steady .and. (subcycling_time .le. max_run_time_sec)))
+    do while (((subcycling_time .le. ice_dt_in_sec) .and. &
+                               .not. run_plume_to_steady) .or. &
+                (run_plume_to_steady .and. &
+                 (subcycling_time .le. max_run_time_sec)))
 
        call plume_runstep()
 
@@ -316,11 +318,17 @@ contains
             (abs(bmelt)+1.d-30))
 
        ! speed is an (m-2)*(n-2) array
-       speed(2:(m_grid-1),2:(n_grid-1)) = sqrt(  (5.d-1*(su(1:m_grid-2,2:n_grid-1)+su(2:m_grid-1,2:n_grid-1))) ** 2.d0 + &
-                                                 (5.d-1*(sv(2:m_grid-1,1:n_grid-2)+sv(2:m_grid-1,2:n_grid-1))) ** 2.d0 )
+       speed(2:(m_grid-1),2:(n_grid-1)) = sqrt(  &
+             (5.d-1*(su(1:m_grid-2,2:n_grid-1)+ &
+                     su(2:m_grid-1,2:n_grid-1))) ** 2.d0 + &
+             (5.d-1*(sv(2:m_grid-1,1:n_grid-2)+ &
+                     sv(2:m_grid-1,2:n_grid-1))) ** 2.d0 )
 
-       if (time_step_count > 0) then                                                 
-            rel_speed_change_array = abs(speed- speed_old)/(abs(speed_old)+epsilon(1.d0))
+       if (time_step_count > 0) then                              
+                   
+            rel_speed_change_array = abs(speed- speed_old) / &
+                                    (abs(speed_old)+epsilon(1.d0))
+
        end if
        
        max_rel_speed_change = maxval(rel_speed_change_array)
@@ -332,25 +340,43 @@ contains
        end where
        
 
-       if (subcycling_time >= min_run_time_sec .and. (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
+       if (subcycling_time >= min_run_time_sec .and. &
+          (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
           prev_rel_change = max_rel_bmelt_change
-          write(*,*) 'max_rel_bmelt_change',max_rel_bmelt_change, '   stopping tol',plume_stopping_tol
+          print '(a,e8.2,a,e8.2)', &
+                'max_rel_bmelt_change  ',max_rel_bmelt_change, &
+                '  stopping tol  ',plume_stopping_tol
        end if
 
-       if((subcycling_time >= min_run_time_sec) .and. (max_rel_speed_change/prev_rel_speed_change < 1.d-1)) then
+       if((subcycling_time >= min_run_time_sec) .and. &
+          (max_rel_speed_change/prev_rel_speed_change < 1.d-1)) then
           prev_rel_speed_change = max_rel_speed_change
-          write(*,*) 'max_rel_speed_change',max_rel_speed_change, '   stopping tol', plume_speed_stopping_tol
+          print '(a,e8.2,a,e8.2)', &
+		'max_rel_speed_change  ', max_rel_speed_change, &
+	        '  stopping tol  ', plume_speed_stopping_tol
        end if
 
-       if ((max_rel_bmelt_change < plume_stopping_tol) .and. (max_rel_speed_change < plume_speed_stopping_tol)) then
+       if ((max_rel_bmelt_change < plume_stopping_tol) .and. &
+           (max_rel_speed_change < plume_speed_stopping_tol)) then
           if (subcycling_time .ge. (min_run_time_sec)) then
              plume_reached_steady = .true.
              exit
           end if
        end if
 
-       if (write_all_states .and. (mod(time_step_count,write_every_n) == 0)) then
-          call plume_netcdf_write_vars(time*3600.0d0*24.0d0*365.25d0 + subcycling_time)
+       ! adjust the order of the open boundary condition
+!       if ((max_rel_bmelt_change < plume_stopping_tol * 1.d4) .and. &
+!           (max_rel_speed_change < plume_speed_stopping_tol * 1.d4)) then
+!          if (plume_southern_bc == 1) then
+!             print *, 'switching to plume_southern_bc == 2'
+!             plume_southern_bc = 2
+!          end if
+!       end if
+
+       if (write_all_states .and. &
+           (mod(time_step_count,write_every_n) == 0)) then
+          call plume_netcdf_write_vars(time*3600.0d0*24.0d0*365.25d0 + &
+                                       subcycling_time)
        end if
 
        time_step_count = time_step_count + 1
@@ -371,7 +397,8 @@ contains
     ! with respect to which the plume was steady
     runtim = time*3600.0d0*24.0d0*365.25d0 
 
-    write(log_message, '(a,f6.1)') 'subcycling time in days', subcycling_time/(3600.0*24.0)
+    write(log_message, '(a,f6.1)') 'subcycling time in days', &
+                                   subcycling_time/(3600.0*24.0)
     call io_append_output(trim(log_message))
 
     call io_write_surface_output(runtim,labtim)    
@@ -1005,16 +1032,12 @@ contains
     if (in_glimmer) then
        if (.not. present(bpos_ext)) then
           call io_append_output('Need to provide bpos_ext')
-          stop
+          stop 1
        end if
        bpos = bpos_ext
-       !if (.not. present(tint_ext)) then
-       !   call io_append_output('Need to provide tint_ext')
-       !   stop
-       !end if
-       !int = tint_ext
 
     else	
+
        if (bathtype.gt.0) then
           call topog_depth_inflow_set(.not. use_min_plume_thickness .and. .not. mixlayer)
        else
@@ -1678,11 +1701,15 @@ contains
     ! (wilchinsky, feltham and holland, submitted to j. phys. oceanogr.)
     ! it is probably wise to check or reprogram this before use
 
+    use omp_lib
+
     implicit none
+
+    integer, intent(in) :: icalcan,kcalcan,icalcen,kcalcen
 
     ! local variables
 
-    integer :: i,k,icalcan,kcalcan,icalcen,kcalcen,jcvfac
+    integer :: i,k,jcvfac
     integer(kind=kdp) :: idel,kdel,iidx,kkdy,ihilf,khilf
 
     real(kind=kdp) :: one,termnl,termnl2,corx
@@ -1725,12 +1752,14 @@ contains
 
     debug = 0.d0
 
+    !$omp parallel default(private) &
+    !$omp shared( pdep, ipos, jcw, jcd_negdep, su,sv,drag,ugriddrag,newudrag, &
+                  u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, &
+                  jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs ) &
+    !$omp copyin ( sintang, kq, olddrag, norotation, variableekman, draginmelt, one)
+    !$omp do
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
-
-          !if (k == kcalcen) then
-          !   !!write(*,*) 'North edge'
-          !end if
 
           skip_u_calc = .false.
           skip_v_calc = .false.
@@ -1747,9 +1776,6 @@ contains
           islope = 0.d0
           redgu = 0.d0  
 
-
-          ! skip cell if dry land
-!          if (any(jcs(i:i+1,k) ~= 1)) skip_u_calc = .true.
 
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           ! skip u-component if eastern cell is dry land
@@ -2222,6 +2248,10 @@ contains
 
        end do
     end do
+   
+    !$omp end do
+    !$omp end parallel
+
     !     
     ! write new drag on scalar grid if necessary 
     !     
@@ -3765,49 +3795,76 @@ contains
   elemental real(kind=kdp) function get_rhoamb_z(z)
 
     implicit none
+    real(kind=kdp),intent(in) :: z ! depth at which rhoamb is sought
 
-    real(kind=kdp),intent(in) :: z !depth at which rhoamb is sought
-
-    integer :: izo,izu
-    real(kind=kdp) :: difu,difo
-
-    izo = int(z/dzincr) + 1
-    izu = izo + 1
-    difu = dble(izo)*dzincr - z
-    difo = dzincr - difu
-    get_rhoamb_z = (difu*rhovf(izo) + difo*rhovf(izu))/dzincr
-
+    get_rhoamb_z = rhovf(1)
+    
   end function get_rhoamb_z
 
+!  elemental real(kind=kdp) function get_rhoamb_z(z)
+
+!    implicit none
+
+!    real(kind=kdp),intent(in) :: z !depth at which rhoamb is sought
+
+!    integer :: izo,izu
+!    real(kind=kdp) :: difu,difo
+
+!    izo = int(z/dzincr) + 1
+!    izu = izo + 1
+!    difu = dble(izo)*dzincr - z
+!    difo = dzincr - difu
+!    get_rhoamb_z = (difu*rhovf(izo) + difo*rhovf(izu))/dzincr
+
+!  end function get_rhoamb_z
+
   elemental real(kind=kdp) function get_tamb_z(z)
+
     implicit none
     real(kind=kdp),intent(in) :: z ! depth at which tamb is sought
 
-    integer :: izo,izu
-    real(kind=kdp) :: difu,difo
-
-    izo = int(z/dzincr) + 1
-    izu = izo + 1
-    difu = dble(izo)*dzincr - z
-    difo = dzincr - difu
-    get_tamb_z = (difu*tamb(izo) + difo*tamb(izu))/dzincr
-
+    get_tamb_z = tamb(1)
+    
   end function get_tamb_z
 
+!  elemental real(kind=kdp) function get_tamb_z(z)
+!    implicit none
+!    real(kind=kdp),intent(in) :: z ! depth at which tamb is sought
+
+!    integer :: izo,izu
+!    real(kind=kdp) :: difu,difo
+
+!    izo = int(z/dzincr) + 1
+!    izu = izo + 1
+!    difu = dble(izo)*dzincr - z
+!    difo = dzincr - difu
+!    get_tamb_z = (difu*tamb(izo) + difo*tamb(izu))/dzincr
+
+!  end function get_tamb_z
+
   elemental real(kind=kdp) function get_samb_z(z)
+
     implicit none
-    real(kind=kdp),intent(in) :: z
+    real(kind=kdp),intent(in) :: z ! depth at which samb is sought
 
-    integer :: izo,izu
-    real(kind=kdp) :: difu,difo
-
-    izo = int(z/dzincr) + 1
-    izu = izo + 1
-    difu = dble(izo)*dzincr - z
-    difo = dzincr - difu
-    get_samb_z = (difu*samb(izo) + difo*samb(izu))/dzincr	    
-
+    get_samb_z = samb(1)
+    
   end function get_samb_z
+
+!  elemental real(kind=kdp) function get_samb_z(z)
+!    implicit none
+!    real(kind=kdp),intent(in) :: z
+
+!    integer :: izo,izu
+!    real(kind=kdp) :: difu,difo
+
+!    izo = int(z/dzincr) + 1
+!    izu = izo + 1
+!    difu = dble(izo)*dzincr - z
+!    difo = dzincr - difu
+!    get_samb_z = (difu*samb(izo) + difo*samb(izu))/dzincr	    
+
+!  end function get_samb_z
 
   elemental real(kind=kdp) function extrap3(y1,y2,y3)
   

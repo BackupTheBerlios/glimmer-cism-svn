@@ -44,6 +44,7 @@ program shelf_driver
   logical :: check_for_steady = .false.
   logical :: hide_shelf_inflow_row = .true.
   real(kind=dp) :: thk_steady_tol = 1.0e-5
+  integer :: ice_ntimestep = 0	
 
   real(kind=rk),dimension(:),allocatable :: upstream_thck
   logical,      dimension(:,:),allocatable :: plume_land_mask,no_plume
@@ -261,6 +262,10 @@ program shelf_driver
      prev_ice_thk = model%geometry%thck
 
      time = time + model%numerics%tinc
+     ice_ntimestep = ice_ntimestep + 1
+     print '(a,e8.2,a,i,a)', &
+           'Completed ice timestep at t == ',time, &
+	   '(step ', ice_ntimestep ,' )'
 
      if ((model%options%use_plume == USE_PLUME) .and.  (.not. plume_const_bmlt)) then	
 
