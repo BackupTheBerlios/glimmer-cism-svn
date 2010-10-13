@@ -270,7 +270,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 100                  ! max no. of iterations
+  integer, parameter :: cmax = 50                  ! max no. of iterations
   integer :: counter, linit               ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -376,8 +376,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics solver'
   print *, ' '
-!  print *, 'iter #     uvel resid         vvel resid       target resid'
-  print *, 'iter #     resid (L2 norm)       target resid'
+  print *, 'iter #     uvel resid         vvel resid       target resid'
+!  print *, 'iter #     resid (L2 norm)       target resid'
   print *, ' '
 
   ! ****************************************************************************************
@@ -390,8 +390,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
 
-  do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
-  !do while ( maxval(resid) > minres .and. counter < cmax)   ! standard residual calculation
+  !do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
+  do while ( maxval(resid) > minres .and. counter < cmax)   ! standard residual calculation
   !do while ( resid(1) > minres .and. counter < cmax)        ! standard residual (for 1d solutions where d*/dy=0) 
 
     ! calc effective viscosity using previously calc vel. field
@@ -596,11 +596,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !    ! output the iteration status: iteration number, max residual, and location of max residual
 !    ! (send output to the screen or to the log file, per whichever line is commented out) 
-!    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
+    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
 !    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
 !    !call write_log (message)
 
-    print '(i4,3g20.6)', counter, L2norm, NL_target    ! Output when using L2norm for convergence
+!    print '(i4,3g20.6)', counter, L2norm, NL_target    ! Output when using L2norm for convergence
 
     counter = counter + 1   ! advance the iteration counter
 
@@ -2310,7 +2310,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                 dup(up),       local_othervel,& 
                                 oneortwo,      twoorone,      & 
                                 onesideddiff,                 &
-                                 normal,fwdorbwd) 
+                                 normal,fwdorbwd) / scalebabc 
             call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt ) 
             storeoffdiag = .false.
         end if     
@@ -2509,7 +2509,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                              plastic_coeff=plastic_coeff_rhs(pt,ew,ns) ) &
                                               * local_othervel )            &
                                              + plastic_rhs(pt,ew,ns) / (sum(local_efvs(2,:,:))/4.0d0) &
-                                             *(len0/thk0)
+                                             *(len0/thk0) / scalebabc
 
          if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
              storeoffdiag = .true.
@@ -2519,7 +2519,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                  pt,            bcflag,         &
                                  dup(up),       local_othervel, &
                                  local_efvs,                    &
-                                 oneortwo, twoorone, g_cros )
+                                 oneortwo, twoorone, g_cros ) / scalebabc
              call fillsprsemain(h,locplusup,loc,up,pt)
              storeoffdiag = .false.
          end if
@@ -2533,7 +2533,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                              dup(up),       local_othervel, &
                                              local_efvs,                    &
                                              oneortwo, twoorone, g_cros )  &
-                                              * local_othervel ) / scalebabc
+                                              * local_othervel ) / scalebabc 
 
          if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag)then
              storeoffdiag = .true.
@@ -2543,7 +2543,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                  pt,            bcflag,         &
                                  dup(up),       local_othervel, &
                                  local_efvs,                    &
-                                 oneortwo, twoorone, g_cros )
+                                 oneortwo, twoorone, g_cros ) / scalebabc
              call fillsprsemain(h,locplusup,loc,up,pt)
              storeoffdiag = .false.
          end if
@@ -3840,11 +3840,10 @@ subroutine calcbetasquared (whichbabc,               &
     case(2)     ! take input value for till yield stress and force betasquared to be implemented such
                 ! that plastic-till sliding behavior is enforced (see additional notes in documentation).
 
-!      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
-      betasquared = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
-                    (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
-
-      betasquared(ewn-8:ewn-1,:) = 10.0d0
+      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+!      betasquared = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
+!                    (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
+!      betasquared(ewn-8:ewn-1,:) = 10.0d0
 
     case(3)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
 
