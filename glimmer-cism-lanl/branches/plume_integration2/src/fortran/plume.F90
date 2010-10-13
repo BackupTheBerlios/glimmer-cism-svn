@@ -694,6 +694,7 @@ contains
     plume_min_thickness = 00.01d0 ! artificially determined minimum plume thickness
     entr_time_const = dt1         ! relaxation time (in seconds) for plume thickness to attain minimum
 
+    plume_southern_bc = 0    !use the d/dy = 0 version of southern outflow boundary by default
     ! set topography properties
     ! -------------------------
     context = "isomip" ! topography choices to use if bathtype = 0
@@ -763,7 +764,7 @@ contains
     ! inflow extent if using single inflow on simple bathymetry
     infloain = 290.d0   ! western boundary (km)
     infloein = 310.d0   ! eastern boundary (km)
-    knfloa = 1          ! southern boundary (cells)
+    knfloa = 0          ! southern boundary (cells)
     knfloe = 3          ! northern boundary (cells)
 
     ! set ambient fluid properties
@@ -1477,6 +1478,8 @@ contains
     ! ----------------
     prden = 12.5d0*pr**(2.d0/3.d0) - 9.d0
     scden = 12.5d0*sc**(2.d0/3.d0) - 9.d0
+    delta = 0.d0
+    deltam = 0.d0
 
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
@@ -1683,9 +1686,9 @@ contains
           ! in the future coupled model)
    iold = ipos
 
-   where (jcw == 1)
+!   where (jcw == 1)
       ipos = ipos - delta
-   end where
+!   end where
 
    ! check for negative predicted depth of ambient fluid 
    jcd_negdep = 0
@@ -2479,18 +2482,18 @@ contains
 
     end if
 
-    ! northern boundary
-   ! if(kcalcen.ge.(domain_kmax-1)) then
-   !    do i = domain_imin,domain_imax
+   ! northern boundary
+    if(kcalcen.ge.(domain_kmax-1)) then
+       do i = domain_imin,domain_imax
 
    !       !Paul's version
-   !       jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
-   !       jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
-   !       pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
-   !       ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)       
+          jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
+          jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
+          pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
+          ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)       
 
-   !    end do
-   ! end if
+       end do
+    end if
 
     ! western boundary
     if (icalcan.le.(domain_imin+1)) then

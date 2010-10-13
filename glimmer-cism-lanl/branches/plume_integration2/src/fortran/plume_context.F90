@@ -552,9 +552,8 @@ contains
     end if
 
     if (bathtype.eq.13) then
-       ! set land on east, south and west walls
+       ! set land on east and west walls
        bpos(1:2,:) = 0.0
-       !bpos(:,1:2) = 0.0
        bpos((m_grid-1):m_grid,:) = 0.0
     end if
 

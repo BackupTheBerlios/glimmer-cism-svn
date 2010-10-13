@@ -50,7 +50,7 @@ class PlumeNamelist(object):
                      'negfrz' : False,
                      'use_min_plume_thickness' : True,
                      'plume_southern_bc' : 0,       # 0 means d/dy = 0
-                                                    # 1 means quadratic extrapolation
+                                                    # 1 means linear extrapolation
                                                     # 2 means quadratic extrapolation
                                                     # 3 means advective bc
                      'tottim'  : 0.0,
