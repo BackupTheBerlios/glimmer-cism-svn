@@ -244,6 +244,13 @@ contains
 
     enddo
 
+      ! Negative flux results from negative melt rates and causes 
+      ! NaN's for bwat. Fix flux so it is never < 0
+    where (flux < 0.0)
+       flux=0.0
+    end where
+
+
     ! Tidy up -------------------------------------------------
 
     deallocate(sorted,flats)
