@@ -51,7 +51,8 @@ module glam
 
         ! put relevant model variables into a format that inc. remapping code wants
         ! (this subroutine lives in "remap_glamutils.F90")
-        call horizontal_remap_in(model%remap_wk, model%numerics%dt, model%geometry%thck,  &
+        call horizontal_remap_in(model%remap_wk, model%numerics%dt,                               &
+                                  model%geometry%thck(1:model%general%ewn-1,1:model%general%nsn-1),    &
                                   ntrace_ir,               nghost_ir,                             &
                                   model%numerics%dew,      model%numerics%dns,                    &
                                   model%velocity_hom%uflx, model%velocity_hom%vflx,               &

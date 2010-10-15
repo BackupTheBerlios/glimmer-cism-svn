@@ -190,8 +190,7 @@ contains
                                         model%geometry%lsrf,     model%geometry%topg,               &
                                         model%geomderv%dthckdew, model%geomderv%dthckdns,           &
                                         model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
-                                        model%geomderv%dlsrfdew,            &
-                                        model%geomderv%dlsrfdns,            & 
+                                        model%geomderv%dlsrfdew, model%geomderv%dlsrfdns,           & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
                                         model%basalproc%minTauf,                                    & 
                                         model%velocity_hom%btraction,                               & 
@@ -218,8 +217,7 @@ contains
                                         model%geometry%lsrf,     model%geometry%topg,               &
                                         model%geomderv%dthckdew, model%geomderv%dthckdns,           &
                                         model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
-                                        model%geomderv%dlsrfdew,            &
-                                        model%geomderv%dlsrfdns,            & 
+                                        model%geomderv%dlsrfdew, model%geomderv%dlsrfdns,           & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
                                         model%basalproc%minTauf,                                    & 
                                         model%velocity_hom%btraction,                               & 
