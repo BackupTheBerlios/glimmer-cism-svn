@@ -320,6 +320,14 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     end do; end do
  end if
 
+!! hack for basal processes submodel test case, to avoid floatation at downstream
+!! end yet still allow for application of a floating ice bc there
+!  do ns=1,nsn-1; do ew=1,ewn-1
+!      if( umask(ew,ns) == 37 )then
+!          umask(ew,ns) = 41
+!      endif
+!  end do; end do
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -3841,6 +3849,9 @@ subroutine calcbetasquared (whichbabc,               &
                 ! that plastic-till sliding behavior is enforced (see additional notes in documentation).
 
       betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+
+!! *sfp* This hack for use w/ the basal processes test case, although as of Oct. 2010, it is working well
+!! enough to just apply the yield stress basal bc everywhere in the domain.
 !      betasquared = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
 !                    (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
 !      betasquared(ewn-8:ewn-1,:) = 10.0d0
