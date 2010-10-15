@@ -30,16 +30,12 @@ end
 
 l = 11;     % no of vert levels
 
-
 thck = H0 * ones( r, c );
 artm = T0 * ones( r, c );
 bheatflx = q0 * ones( r, c );
 acab = b0 * ones( r, c );
 
-topg = repmat( linspace( -9e2, -9e2-(slope*(c-1)*dew), c), r, 1 );      %% for debugging
-
-% temp = repmat( linspace( (-H0*(rho_i/rho_w)-50)/1.25, -H0*(rho_i/rho_w)-50, c-3), r, 1 ) + 0;        %% force to be near floatationg at ds end
-% topg = [ temp, repmat(temp(:,end-3), 1, 3 ) ];
+topg = repmat( linspace( -0.1e2, -0.1e2-(slope*(c-1)*dew), c), r, 1 );      %% for debugging
 
 usrf = topg + thck;
 
@@ -58,14 +54,14 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 
 %% load in old till map
 %  load ~/Home/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl           % Marion's path
-load ~/work/modeling/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
+load ~/work/modeling/glam/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
 
 minTauf = Tillggl;
 
 % %% hacks of minTauf field to make it easier for the model to converge
 % ind = find( minTauf > 5e3 & minTauf <= 27500 ); minTauf(ind) = 7.5e3;
 % ind = find( minTauf > 27500 ); minTauf(ind) = 1e4;
-% ind = find( minTauf < 2.5e3 ); minTauf(ind) = 1e3;
+ind = find( minTauf < 2.5e3 ); minTauf(ind) = 1e3;
 
 % minTauf = 10e3 * ones( r-1, c-1 );       % for debugging
 % minTauf = 1e7 * ones( r-1, c-1 );       
@@ -115,6 +111,6 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'acab (m/a)' )
 tauf = minTauf;
 
 %  cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
-cd /Users/sprice/work/modeling/cism-parallel/tests/basalproc            % Steve's path
+cd /Users/sprice/work/modeling/cism/cism-parallel/tests/basalproc            % Steve's path
 
 save bproc.mat artm acab bheatflx usrf topg thck beta tauf kinbcmask uvelhom vvelhom
