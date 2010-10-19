@@ -116,6 +116,7 @@ module plume_global
   character(len=6) :: context
   logical :: smflag(lsm)
   integer :: bathtype,kcorn,rad,bsmoothit,smoothit(lsm)
+  integer :: slope_direction
   real(kind=kdp) :: cweight,nweight
   real(kind=kdp) :: channel_amplitude,cross_slope_wavenumber,along_slope_deepening_exp
   real(kind=kdp) :: random_amplitude

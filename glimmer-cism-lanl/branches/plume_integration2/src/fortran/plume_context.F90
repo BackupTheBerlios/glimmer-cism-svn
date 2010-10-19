@@ -410,46 +410,67 @@ contains
 
     if (bathtype.eq.13) then
 
-
        ! Peterman glacier style longitudinal channels
 
        ! find total domain size
-       toty = 0.d0
-       do k = 1,n_grid
-          toty = toty + dy(k)
-       end do
+!       toty = 0.d0
+!       do k = 1,n_grid
+!          toty = toty + dy(k)
+!       end do
 
-       totx = 0.d0
-       do i = 1,m_grid
-          totx = totx + dx(i)
-       end do
+!       totx = 0.d0
+!       do i = 1,m_grid
+!          totx = totx + dx(i)
+!       end do
+
+	toty = (n_grid - 1)*hy
+	totx = (m_grid - 1)*hx
 
        ! (depth decreases from gldep to ifdep, 
        ! basal position increases from wcdep to wcdep + (gldep-ifdep)) 
        ! with sinusoidal undulations superimposed
 
-       c0 = wcdep + gldep - ifdep
-       c1 = - ampdep / toty
+       if (slope_direction == 0 .or. slope_direction == 1) then 
+           !north inflow edge or east inflow edge
+	   c0 = wcdep+ampdep
+	   c1 = -ampdep / toty 
+       else
+	   c0 = wcdep
+	   c1 = ampdep / toty
+       end if
 
-       runtoty = 0.d0
-
-       do k = 1,n_grid
-
-          runtoty = runtoty + dy(k)
-          runtotx = 0.d0
-
-          do i = 1,m_grid
-
-             runtotx = runtotx + dx(i)
-             call random_number(rand)
-             bpos(i,k) = c0 + c1*runtoty + &
-                  (0.5)*channel_amplitude *(1-(runtoty/toty))** along_slope_deepening_exp &
-                  *(1-cos(2*pi*cross_slope_wavenumber * (runtotx/totx))) &
-                  + (0.5d0 - rand)*2.d0 *random_amplitude
-
+       if (slope_direction == 0 .or. slope_direction == 2) then
+       	  !north-south oriented ice shelf
+	  
+	  runtoty = 0.d0
+	  do k = 1,n_grid
+             runtotx = 0.d0
+             do i = 1,m_grid
+            	   runtotx = runtotx + dx(i)
+             	   call random_number(rand)
+             	   bpos(i,k) = c0 + c1*runtoty + &
+                    (0.5)*channel_amplitude *(1-(runtoty/toty))** along_slope_deepening_exp &
+                    *(1-cos(2*pi*cross_slope_wavenumber * (runtotx/totx))) &
+                    + (0.5d0 - rand)*2.d0 *random_amplitude
+             end do
+	     runtoty = runtoty + dy(k)
           end do
-       end do
-
+    else 
+          !east-west oriented ice shelf
+	  runtotx = 0.d0
+	  do i = 1,m_grid
+             runtoty = 0.d0
+             do k = 1,n_grid
+            	   call random_number(rand)
+             	   bpos(i,k) = c0 + c1*runtotx + &
+                    (0.5)*channel_amplitude *(1-(runtotx/totx))** along_slope_deepening_exp &
+                    *(1-cos(2*pi*cross_slope_wavenumber * (runtoty/toty))) &
+                    + (0.5d0 - rand)*2.d0 *random_amplitude
+        	   runtoty = runtoty + dy(k)
+               end do
+	     runtotx = runtotx + dx(i)
+          end do
+       end if
     end if
 
     ! -------------------
@@ -465,16 +486,29 @@ contains
 
 
           ! set automated single inflow cells topography
-          do k = knfloa + 1,knfloe - 1
-             do i = 1,infloa  
-                bpos(i,k) = 0.d0
+	    if (slope_direction == 0 .or. slope_direction == 2) then
+	     do k = knfloa + 1,knfloe - 1
+               do i = 1,infloa  
+                  bpos(i,k) = 0.d0
+	       end do
+               do i = infloe,m_grid
+                  bpos(i,k) = 0.d0
+               end do
              end do
-             do i = infloe,m_grid
-                bpos(i,k) = 0.d0
+           else
+	      do i = infloa + 1,infloe - 1
+                 do k = 1,knfloa  
+                   bpos(i,k) = 0.d0
+                end do
+                do k = knfloe,n_grid
+                   bpos(i,k) = 0.d0
+                end do
              end do
-          end do
+	   end if
 
        else
+          print *, 'unexpected use of this code, which may be broken'
+	  stop 1
 
           ! set topography around multiple inflows (by hand)
           do k = knfloa + 1,knfloe - 1
@@ -552,9 +586,14 @@ contains
     end if
 
     if (bathtype.eq.13) then
-       ! set land on east and west walls
-       bpos(1:2,:) = 0.0
-       bpos((m_grid-1):m_grid,:) = 0.0
+       ! set land on two side walls
+       if (slope_direction == 0 .or. slope_direction == 2) then
+              bpos(1:2,:) = 0.0
+	      bpos((m_grid-1):m_grid,:) = 0.0
+       else
+	      bpos(:,1:2) = 0.d0
+	      bpos(:,n_grid-1:n_grid) = 0.d0
+       end if
     end if
 
   end subroutine topog_depth_inflow_set

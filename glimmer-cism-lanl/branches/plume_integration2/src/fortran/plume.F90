@@ -601,6 +601,7 @@ contains
          ,  entr_time_const &
          ,  context &
          ,  bathtype &
+	 ,  slope_direction &
          ,  cross_slope_wavenumber &
          ,  along_slope_deepening_exp &
          ,  channel_amplitude &
@@ -764,8 +765,10 @@ contains
     ! inflow extent if using single inflow on simple bathymetry
     infloain = 290.d0   ! western boundary (km)
     infloein = 310.d0   ! eastern boundary (km)
-    knfloa = 0          ! southern boundary (cells)
-    knfloe = 3          ! northern boundary (cells)
+    knfloain = 0.d0    ! southern boundary (km)
+    knfloein = 3.d0    ! northern boundary (km)
+
+    slope_direction = 0   ! 0 = north, 1 = east, 2 = west, 3 = south
 
     ! set ambient fluid properties
     ! ----------------------------
@@ -898,8 +901,8 @@ contains
 
     infloa = int(infloain*1000.d0/hx)! western boundary (cells)
     infloe = int(infloein*1000.d0/hx)! eastern boundary (cells)
-    knfloa = int(knfloain*1000.d0/hy)
-    knfloe = int(knfloein*1000.d0/hy)
+    knfloa = int(knfloain*1000.d0/hy)! southern boundary (cells)
+    knfloe = int(knfloein*1000.d0/hy)! northern boundary (cells)
 
     ! set case-specific inflow flags if using realistic bathymetry
 
@@ -1490,9 +1493,9 @@ contains
           pdepc(i,k) = bpos(i,k) - ipos(i,k)
           ! find flow speed on scalar grid
           tt = 5.0d-1*dy(k)*rdyv(k)
-          vmid = tt*sv(i,k-1) + (1.-tt)*sv(i,k) 
+          vmid = tt*sv(i,k-1) + (1.d0-tt)*sv(i,k) 
           tt = 5.0d-1*dx(i-1)*rdxu(i)
-          umid = tt*su(i,k) + (1.-tt)*su(i-1,k)
+          umid = tt*su(i,k) + (1.d0-tt)*su(i-1,k)
           speed(i,k) = umid**2 + vmid**2 + small
           bspeed(i,k) = sqrt(speed(i,k))
        end do
@@ -1709,7 +1712,7 @@ contains
     ! (wilchinsky, feltham and holland, submitted to j. phys. oceanogr.)
     ! it is probably wise to check or reprogram this before use
 
-    use omp_lib
+!    use omp_lib
 
     implicit none
 
@@ -1792,13 +1795,18 @@ contains
              skip_u_calc = .true.
           end if
 
+	  if (i == icalcen ) then
+	      ! the last column of u grid is not part of the problem
+	      skip_u_calc = .true.
+          end if
+
           ! plume thickness on the u-grid
           pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k))
           islope =      ipos(i+1,k) - ipos(i,k)
 
           ! final wet/dry logic
           if ((jcw(i,k) == 0).and.(jcw(i+1,k) == 0)) then
-             ! current cell and eastern neighbour are dry
+             ! western cell and eastern neighbour are dry
              skip_u_calc = .true.
           else if ((jcw(i,k).le.0).and.(islope.gt.0.d0)) then
              ! current cell is dry and interface slopes up to east
@@ -2039,8 +2047,15 @@ contains
 
  
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          ! skip v-component if northern cell is dry land
-          if (any(jcs(i,k:k+1) == 0)) skip_v_calc = .true.
+          ! skip v-component if southern or northern cell is dry land
+          if (any(jcs(i,k:k+1) == 0)) then
+	      skip_v_calc = .true.
+	  end if
+
+	  if (k == kcalcen) then
+	       ! last row of v is not part of the problem domain
+	      skip_v_calc = .true.
+          end if
 
           islope = ipos(i,k+1) - ipos(i,k)
          ! plume thickness on the v-grid
@@ -2048,7 +2063,7 @@ contains
 
           ! final wet/dry logic
           if ((jcw(i,k).le.0).and.(jcw(i,k+1).le.0)) then
-             ! current cell and northern neighbour are dry
+             ! southern cell and northern neighbour are dry
              skip_v_calc = .true.
           else if ((jcw(i,k).le.0).and.(islope.gt.0.d0)) then
 	     ! current cell is dry and interface is rising to the north
@@ -2285,22 +2300,24 @@ contains
           if (jcs(i,k).ne.1) cycle
           pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k)) + small
           pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1)) + small
-          su(i,k) = utrans(i,k)/pdepu
-          sv(i,k) = vtrans(i,k)/pdepv
-          ! test for negative depths and set flow to zero if so
-          delta = dt*(rdxu(i)*(utrans(i-1,k)-utrans(i,k)) &
-               + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) 
 
-          if (bpos(i,k) < (ipos(i,k) - delta)) then
-             utrans(i,k) = 0.d0
-             su(i,k) = 0.d0
-             utrans(i-1,k) = 0.d0
-             su(i-1,k) = 0.d0
-             vtrans(i,k) = 0.d0
-             sv(i,k) = 0.d0
-             vtrans(i,k-1) = 0.d0
-             sv(i,k-1) = 0.d0
-          endif
+	  if (i .ne. icalcen)  su(i,k) = utrans(i,k)/pdepu
+	  if (k .ne. kcalcen)  sv(i,k) = vtrans(i,k)/pdepv
+
+          ! test for negative depths and set flow to zero if so
+!          delta = dt*(rdxu(i)*(utrans(i-1,k)-utrans(i,k)) &
+!               + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) 
+
+!          if (bpos(i,k) < (ipos(i,k) - delta)) then
+!             utrans(i,k) = 0.d0
+!             su(i,k) = 0.d0
+!             utrans(i-1,k) = 0.d0
+!             su(i-1,k) = 0.d0
+!             vtrans(i,k) = 0.d0
+!             sv(i,k) = 0.d0
+!             vtrans(i,k-1) = 0.d0
+!             sv(i,k-1) = 0.d0
+!          endif
           utransa(i,k) = utrans(i,k)
           vtransa(i,k) = vtrans(i,k)
           u0a(i,k) = u0(i,k)
@@ -2329,22 +2346,29 @@ contains
        case (0)
 
            ! old d/dy = 0 scheme
-           su(:,domain_kmin) = su(:,domain_kmin+1)
-           sv(:,domain_kmin) = sv(:,domain_kmin+1)
-           utrans(:,domain_kmin) = utrans(:,domain_kmin+1)
-           vtrans(:,domain_kmin) = vtrans(:,domain_kmin+1)
+	   do i = domain_imin,domain_imax - 1
+              su(i,domain_kmin) = su(i,domain_kmin+1)
+              utrans( i,domain_kmin) = su(i,domain_kmin+1)*5.0d-1*&
+                                      (pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))
+           end do
+           do i = domain_imin+1,domain_imax-1
+              sv(i,domain_kmin) = sv(i,domain_kmin+1)
+              vtrans(i,domain_kmin) = sv(i,domain_kmin+1)*pdep(i,domain_kmin+1)
+           end do
 
        case (1)
 
-           do i = domain_imin+1,domain_imax - 1
+           do i = domain_imin,domain_imax - 1
               su(i,domain_kmin) = 2.d0*su(i,domain_kmin+1)-su(i,domain_kmin+2)
-              utrans(i,domain_kmin) = 2.d0 * (su(i,domain_kmin+1)*5.0d-1*(pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))) &
-                                           - (su(i,domain_kmin+2)*5.0d-1*(pdep(i,domain_kmin+2) + pdep(i+1,domain_kmin+2)))          
-              !utrans(i,domain_kmin) = 2.d0 * utrans(i,domain_kmin+1) - utrans(i,domain_kmin+2)
+              utrans(i,domain_kmin) = 2.d0 * (su(i,domain_kmin+1)*5.0d-1*&
+                                        (pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))) &
+                                           - (su(i,domain_kmin+2)*5.0d-1*&
+                                        (pdep(i,domain_kmin+2) + pdep(i+1,domain_kmin+2)))
+	   end do
+	   do i = domain_imin+1,domain_imax-1
               sv(i,domain_kmin) = 2.d0*sv(i,domain_kmin+1)-sv(i,domain_kmin+2)
               vtrans(i,domain_kmin) = 2.d0*vtrans(i,domain_kmin+1) - vtrans(i,domain_kmin+2)
-
-            end do
+           end do
 
        case (2)
 
@@ -2375,12 +2399,9 @@ contains
            call absorbing_south_boundary_u(su)
            call absorbing_south_boundary_v(sv)
            call absorbing_south_boundary_u(utrans)
-           
            call absorbing_south_boundary_v(vtrans)
 
        end select
-
-
 
     end if
 
@@ -2388,30 +2409,39 @@ contains
     if (kcalcen.ge.(domain_kmax - 1)) then
        do i = domain_imin,domain_imax - 1
           su(i,domain_kmax) = su(i,domain_kmax-1)
-          utrans(i,domain_kmax) = su(i,domain_kmax-1)*5.0d-1*(pdep(i,domain_kmax-1) + pdep(i+1,domain_kmax-1))
-          sv(i,domain_kmax) = sv(i,domain_kmax-1)
-          vtrans(i,domain_kmax) = sv(i,domain_kmax-1)*pdep(i,domain_kmax-1)
+          utrans(i,domain_kmax) = su(i,domain_kmax-1)*5.0d-1*&
+                             (pdep(i,domain_kmax-1) + pdep(i+1,domain_kmax-1))
+       end do
+       do i = domain_imin+1,domain_imax-1
+          sv(i,domain_kmax-1) = sv(i,domain_kmax-2)
+           vtrans(i,domain_kmax-1) = sv(i,domain_kmax-2)*pdep(i,domain_kmax-1) 
+	                         !note -1/-2 since north edge of v is -1
        end do
     end if
 
     ! western boundary
     if (icalcan.le.(domain_imin+1)) then
-       do k = domain_kmin,domain_kmax-1
+       do k = domain_kmin+1,domain_kmax-1
           su(domain_imin,k) = su(domain_imin+1,k)
-          utrans(domain_imin,k) = su(domain_imin+1,k)*pdep(domain_imin+1,k)
+           utrans(domain_imin,k) = su(domain_imin+1,k)*pdep(domain_imin+1,k)
+       end do
+       do k = domain_kmin,domain_kmax-1
           sv(domain_imin,k) = sv(domain_imin+1,k)
-          vtrans(domain_imin,k) = sv(domain_imin+1,k)*5.0d-1*(pdep(domain_imin+1,k)+pdep(domain_imin+1,k+1))
+           vtrans(domain_imin,k) = sv(domain_imin+1,k)*5.0d-1*&
+                              (pdep(domain_imin+1,k)+pdep(domain_imin+1,k+1))
        end do
     end if
 
     ! eastern boundary
     if (icalcen.ge.(domain_imax - 1)) then
-       do k = domain_kmin, domain_kmax - 1
-          su(domain_imax,k) = su(domain_imax-1,k)
-          utrans(domain_imax,k) = su(domain_imax-1,k)*pdep(domain_imax-1,k)
+       do k = domain_kmin+1, domain_kmax - 1
+          su(domain_imax-1,k) = su(domain_imax-2,k)
+           utrans(domain_imax-1,k) = su(domain_imax-2,k)*pdep(domain_imax-1,k)
+       end do
+       do k = domain_kmin,domain_kmax-1
           sv(domain_imax,k) = sv(domain_imax-1,k)
-          vtrans(domain_imax,k) = sv(domain_imax-1,k)*5.0d-1*(pdep(domain_imax-1,k)+ &
-               pdep(domain_imax-1,k+1))
+          vtrans(domain_imax,k) = sv(domain_imax-1,k)*5.0d-1*&
+                             (pdep(domain_imax-1,k)+pdep(domain_imax-1,k+1))
        end do
     end if
 
@@ -2436,17 +2466,22 @@ contains
        select case(plume_southern_bc)
 
        case (0)
-
-          jcw(domain_imin:domain_imax,domain_kmin) = jcw(domain_imin:domain_imax,domain_kmin+1)
-          jcd_fl(domain_imin:domain_imax,domain_kmin) = jcd_fl(domain_imin:domain_imax,domain_kmin+1)
-          pdep(domain_imin:domain_imax,domain_kmin) = pdep(domain_imin:domain_imax,domain_kmin+1)
-          ipos(domain_imin:domain_imax,domain_kmin) = ipos(domain_imin:domain_imax,domain_kmin+1)
+          ! old d/dy = 0 version
+          jcw(domain_imin:domain_imax,domain_kmin) = &
+	            jcw(domain_imin:domain_imax,domain_kmin+1)
+          jcd_fl(domain_imin:domain_imax,domain_kmin) = &
+                    jcd_fl(domain_imin:domain_imax,domain_kmin+1)
+          pdep(domain_imin:domain_imax,domain_kmin) = &
+                    pdep(domain_imin:domain_imax,domain_kmin+1)
+          ipos(domain_imin:domain_imax,domain_kmin) = &
+	            bpos(domain_imin:domain_imax,domain_kmin+1) - &
+		    pdep(domain_imin:domain_imax,domain_kmin)
 
        case (1)
 
        do i = domain_imin,domain_imax
 
-          !Paul's new version
+          !First-order extrapolation version
           if (jcs(i,domain_kmin) == 1) then
           jcw(i,domain_kmin) = jcw(i,domain_kmin + 1)
           jcd_fl(i,domain_kmin) = jcd_fl(i,domain_kmin + 1)
@@ -2934,27 +2969,36 @@ contains
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
 
-          if (jcs(i,k).ne.1) cycle
+!          if (jcs(i,k).ne.1) cycle
+         pdepc = bpos(i,k) - ipos(i,k)
 
-          if (.not. use_min_plume_thickness) then
-            jcd_u(i,k) = 0
-            jcd_v(i,k) = 0
-          end if
-          pdepc = bpos(i,k) - ipos(i,k)
-          ! u-component
-          pdepe = bpos(i+1,k) - ipos(i+1,k)
-          dunew = 5.0d-1*(pdepe + pdepc)
-          if (dunew.gt.small) then
-!             su(i,k) = utrans(i,k)/dunew
+	 if (i .ne. icalcen) then
+           ! u-component
+           if (.not. use_min_plume_thickness) then
+               jcd_u(i,k) = 0
+           end if
+           pdepe = bpos(i+1,k) - ipos(i+1,k)
+           dunew = 5.0d-1*(pdepe + pdepc)
+           if (dunew.gt.small) then
+             su(i,k) = utrans(i,k)/dunew
              jcd_u(i,k) = 1
           endif
+
+        end if
+
+	if (k .ne. kcalcen) then 
           ! v-component
+	  if (.not. use_min_plume_thickness) then
+            jcd_v(i,k) = 0
+          end if
           pdepn = bpos(i,k+1) - ipos(i,k+1)
           dvnew = 5.0d-1*(pdepn + pdepc)
           if (dvnew.gt.small) then
- !            sv(i,k) = vtrans(i,k)/dvnew
+             sv(i,k) = vtrans(i,k)/dvnew
              jcd_v(i,k) = 1
           endif
+	end if
+
        end do
     end do
 
