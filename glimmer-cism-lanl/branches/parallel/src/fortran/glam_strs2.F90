@@ -270,7 +270,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 50                  ! max no. of iterations
+  integer, parameter :: cmax = 100                  ! max no. of iterations
   integer :: counter, linit               ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -322,11 +322,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !! hack for basal processes submodel test case, to avoid floatation at downstream
 !! end yet still allow for application of a floating ice bc there
-!  do ns=1,nsn-1; do ew=1,ewn-1
-!      if( umask(ew,ns) == 37 )then
-!          umask(ew,ns) = 41
-!      endif
-!  end do; end do
+  do ns=1,nsn-1; do ew=1,ewn-1
+      if( umask(ew,ns) == 37 )then
+          umask(ew,ns) = 41
+      endif
+  end do; end do
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -583,8 +583,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 1 )
 
-    call plasticbediteration( ewn, nsn, uvel(upn,:,:), tvel(upn,:,:), btraction, velbcvect, &
-                   minTauf, plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
+    call plasticbediteration( ewn, nsn, uvel(upn,:,:), tvel(upn,:,:), btraction, minTauf, &
+                              plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
 
     ! apply unstable manifold correction to converged velocities
     uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
@@ -3848,13 +3848,22 @@ subroutine calcbetasquared (whichbabc,               &
     case(2)     ! take input value for till yield stress and force betasquared to be implemented such
                 ! that plastic-till sliding behavior is enforced (see additional notes in documentation).
 
-      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+!      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
 
 !! *sfp* This hack for use w/ the basal processes test case, although as of Oct. 2010, it is working well
 !! enough to just apply the yield stress basal bc everywhere in the domain.
 !      betasquared = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
 !                    (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
-!      betasquared(ewn-8:ewn-1,:) = 10.0d0
+!      betasquared(ewn-8:ewn-1,:) = 5.0d0
+
+!! *sfp* similar version to above, but holds a constant yield stress for the downstream portion of the domain 
+!! rather than holding/applying a constant B^2. This necessary so that till module dynamics do not control the sliding 
+!! at the downstream end of the domain, which we want to remain constant (we want it to remain slipper, as if it were
+!! an active ice plain, regardless of the till dynamics in the ice stream proper)
+      betasquared = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
+                    (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
+      betasquared = 1.0d3 / dsqrt( (thisvel(ewn-8:ewn-1,:)*vel0*scyr)**2 + &
+                    (othervel(ewn-8:ewn-1,:)*vel0*scyr)**2 + (smallnum)**2 )
 
     case(3)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
 
@@ -3885,7 +3894,7 @@ end subroutine calcbetasquared
 
 !***********************************************************************
 
-subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, tau, &
+subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, minTauf, &
                             plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
 
     implicit none
@@ -3896,8 +3905,7 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
 
     real (kind = dp), intent(in), dimension(:,:,:) :: btraction
 
-    real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: velbcvect
-    real (kind = dp), intent(in), dimension(ewn-1,nsn-1) :: tau
+    real (kind = dp), intent(in), dimension(ewn-1,nsn-1) :: minTauf      
 
     real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: plastic_coeff_lhs
     real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: plastic_coeff_rhs
@@ -3905,7 +3913,7 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
     real (kind = dp), intent(inout), dimension(1,ewn-1,nsn-1) :: plastic_resid
 
 
-    real (kind = dp), dimension(ewn-1,nsn-1) :: gamma, beta
+    real (kind = dp), dimension(ewn-1,nsn-1) :: gamma, beta, tau
 
     real (kind = dp) :: c, big_C, relax
     real (kind = dp) :: F11, F12, F21, F22, M11, M12, M21, M22, h1, h2, IM11, IM12, IM21, IM22, &
@@ -3915,6 +3923,12 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
     integer :: ew, ns, countstuck, countslip
 
     countstuck = 0; countslip = 0; sigma_x0 = 0; sigma_y0 = 0
+
+    tau = minTauf
+
+    !! *sfp* the following is a hack to allow the new plastic bed implementation to be used with 
+    !! the basal processes test case
+    tau(ewn-8:ewn-1,:) = 1.0d3 / tau0_glam 
 
 !    print *, 'inside plastic bed iteration subroutine (near top)'
 
