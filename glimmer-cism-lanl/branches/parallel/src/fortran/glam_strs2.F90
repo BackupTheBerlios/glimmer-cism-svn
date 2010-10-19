@@ -322,11 +322,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !! hack for basal processes submodel test case, to avoid floatation at downstream
 !! end yet still allow for application of a floating ice bc there
-  do ns=1,nsn-1; do ew=1,ewn-1
-      if( umask(ew,ns) == 37 )then
-          umask(ew,ns) = 41
-      endif
-  end do; end do
+!  do ns=1,nsn-1; do ew=1,ewn-1
+!      if( umask(ew,ns) == 37 )then
+!          umask(ew,ns) = 41
+!      endif
+!  end do; end do
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -3928,7 +3928,7 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, minTauf, &
 
     !! *sfp* the following is a hack to allow the new plastic bed implementation to be used with 
     !! the basal processes test case
-    tau(ewn-8:ewn-1,:) = 1.0d3 / tau0_glam 
+    !tau(ewn-8:ewn-1,:) = 1.0d3 / tau0_glam 
 
 !    print *, 'inside plastic bed iteration subroutine (near top)'
 
