@@ -7,7 +7,8 @@ test case have changed, and are recorded here.
 
 First, note that it is no longer necessary to spin up the temperature while holding the thickness
 constant. This simplifies things a bit in that one no longer needs to hach the thickness evoltuion
-files (e.g. glam.F90, remap_glamutils.F90) at all.
+files (e.g. glam.F90, remap_glamutils.F90) at all (notes on hacks needed to do the T spinup first, w/o 
+thickness evolution, are included at the bottom of this doc).
 
 It is still necessary to hack simple_glide.F90 a bit, and those hacks are as follows:
 
@@ -28,9 +29,8 @@ in from the .nc file (and we ignore the isostacy calc.)
 Again, to avoid updating the SMB and temperature fields and overwriting the values form the .nc file 
 that we want to hold constant.
 
-NOTE that prev. we were also commenting out the call to 'glide_stepp3' (line 143). It is important that
+NOTE that prev. we were also commenting out the call to 'glide_step3' (line 143). It is important that
 this no longer happens and that this line remains active.
-
 
 In glam_strs2.F90, there is a hack that much be made so that the ice shelf boundary conditions are correctly
 applied. On or around line 310, there is a "hacks" section. Make sure that the following lines are active:
@@ -68,6 +68,48 @@ Currently, the config file has 'which_ho_babc = 7', which tells the code to use 
 based iteration for enforcing the till yield stress boundary condition. This has worked well for a number of test
 cases, but may still have problems in some cases. If the code seems to be behaving funny, set 'which_ho_babc = 2'.
 This will force the code to go back to the older (possibly slower) version of enforcing this same boundary 
-condition.
+condition. 
+
+NOTE that if one wants to enforce a constant B^2 bc for the ice plain portion of the domain, as opposed to 
+a constant yield stress, then which_ho_babc = 2 must be set in the config file (i.e. the new iteration cannot be used to
+enforce both a yield stress and B^2 bc over diff portions of the domain). 
 
 SFP 10-15-2010
+
+
+If for some reason, we still want to do the spinup in two parts (T equil first, then T and H equil), the following
+hacks are necessary to "glam.F90" and "remap_glamutils.F90":
+
+For T equil only (that is, hold H const while letting T spinup to ss):
+
+glam.F90
+
+On or around line 63, make sure the follow ing lines are commented out:
+
+        call horizontal_remap( model%remap_wk%dt_ir,                                         &
+                               model%general%ewn-1,        model%general%nsn-1,              &
+                               ntrace_ir,   nghost_ir,                                       &
+                               model%remap_wk%ubar_ir,     model%remap_wk%vbar_ir,           &
+                               model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
+                               model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
+                               model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
+                               model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
+                               model%remap_wk%hm_ir,       model%remap_wk%tarea_ir)
+
+remap_glamutils.F90
+
+On or around line 180, make sure the following lines are commented OUT:
+
+    !Map from IR thickness field back to Glide thickness field
+    thck = wk%thck_ir(:,:,1) / thk0
+
+    !Apply accumulation
+    thck = thck + acab*dt
+
+    !Remove thickness from previously masked out locations
+    thck = thck * wk%mask_ir
+
+Later, if one wants to evolve with both T and H evolution on, then these same lines must be made 
+active and the executable file must be rebuilt.
+
+SFP 10-21-2010
