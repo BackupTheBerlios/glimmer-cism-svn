@@ -141,7 +141,7 @@ module plume_global
   real(kind=kdp),private :: systim
 
 
-  real(kind=kdp),allocatable,dimension(:,:) :: debug
+  real(kind=kdp),allocatable,dimension(:,:) :: debug,debug2
 
 contains
 
@@ -180,7 +180,7 @@ contains
 
     allocate (tint(m,n))
 
-    allocate (debug(m,n))
+    allocate (debug(m,n),debug2(m,n))
 
   end subroutine allocate_arrays
 
@@ -200,7 +200,7 @@ contains
     deallocate(utrans,utransa,vtrans,vtransa,su,sv,u0,v0,u0a,v0a,tang)
     deallocate(tint)
 
-    deallocate(debug)
+    deallocate(debug,debug2)
 
   end subroutine deallocate_arrays
 

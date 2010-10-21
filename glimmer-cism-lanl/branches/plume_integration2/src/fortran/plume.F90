@@ -428,6 +428,8 @@ contains
 
     implicit none
 
+    real(kind=kdp),dimension(m_grid,n_grid) :: long_waves,short_waves, as, bs
+
     if (runtim.eq.dtswtim) then
        dt = dt2
        gdt = g*dt2
@@ -500,6 +502,9 @@ contains
 
     call bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
 
+    call filter_waves(pdep, jcs, short_waves, long_waves, as, bs)
+    debug = long_waves
+    debug2 = short_waves
 
     ! write short step output and reset separation warning flag
 
@@ -2368,6 +2373,8 @@ contains
 	   do i = domain_imin+1,domain_imax-1
               sv(i,domain_kmin) = 2.d0*sv(i,domain_kmin+1)-sv(i,domain_kmin+2)
               vtrans(i,domain_kmin) = 2.d0*vtrans(i,domain_kmin+1) - vtrans(i,domain_kmin+2)
+	      sv(i,domain_kmin) = sv(i,domain_kmin+1)
+              vtrans(i,domain_kmin) = sv(i,domain_kmin+1)*pdep(i,domain_kmin+1)
            end do
 
        case (2)
@@ -3926,6 +3933,155 @@ contains
     extrap3 = y1 - 3.d0*y2 + 3.d0*y3
     
   end function extrap3
+
+  subroutine filter_waves(raw_data,ocean_mask,short_waves, long_waves, as, bs)
+
+    implicit none
+
+    real(kind=kdp),dimension(:,:),intent(in)  :: raw_data
+    integer,dimension(:,:),intent(in)         :: ocean_mask
+    real(kind=kdp),dimension(:,:),intent(out) ::short_waves, long_waves, as, bs
+
+    ! raw_data is the field to be filtered
+    ! ocean_mask is equal to 1 where the raw_data is valid, 0 otherwise
+
+    integer :: m,n,i,k
+    integer :: lower_ilim,lower_klim, upper_ilim,upper_klim
+    integer :: win_imin,win_kmin,win_imax,win_kmax
+    integer,parameter :: window_width = 3
+
+    real(kind=kdp),dimension(window_width,window_width) :: data_window
+    integer(kind=kdp),dimension(window_width,window_width) :: ocean_mask_window
+
+    real(kind=kdp),dimension(window_width,window_width) :: xmat,ymat
+    real(kind=kdp),dimension(3,3) :: matrix
+    real(kind=kdp),dimension(3)   :: rhs
+    real(kind=kdp)                :: multiplier, x0, y0
+
+    as = 0.d0
+    bs = 0.d0
+    long_waves = 0.d0
+    short_waves = 0.d0
+
+    m = size(raw_data,1)
+    n = size(raw_data,2)
+
+    x0 = floor( (window_width-1) /2.d0 )
+    y0 = floor( (window_width-1) /2.d0 )
+
+    do i= 1,window_width
+       xmat(i,:) = real(i) - (x0+1.d0)
+       ymat(:,i) = real(i) - (y0+1.d0)
+    end do
+
+    do i=1,m
+       do k=1,n
+         
+          lower_ilim = max(1,i-int(floor(  (window_width-1)/2.d0)))
+          upper_ilim = min(m,i+int(ceiling((window_width-1)/2.d0)))
+          lower_klim = max(1,k-int(floor(  (window_width-1)/2.d0)))
+          upper_klim = min(n,k+int(ceiling((window_width-1)/2.d0)))
+
+          data_window = 0.d0
+          win_imin = int((lower_ilim-i)+(x0+1.d0))
+          win_imax = win_imin + (upper_ilim-lower_ilim)
+          win_kmin = int((lower_klim-k)+(y0+1.d0))
+          win_kmax = win_kmin + (upper_klim-lower_klim)
+
+          data_window( win_imin:win_imax, &
+                       win_kmin:win_kmax ) = &
+               raw_data(lower_ilim:upper_ilim,lower_klim:upper_klim)
+
+          ocean_mask_window = 0
+          ocean_mask_window(win_imin:win_imax, &
+                       win_kmin:win_kmax ) = &
+               ocean_mask(lower_ilim:upper_ilim,lower_klim:upper_klim)
+
+          ! try determining the value at (i,k) determined by a local
+          ! linear approximation in the data_window
+
+          if (ocean_mask(i,k) == 1) then
+
+             matrix(1,1) = sum( xmat * xmat, mask=(ocean_mask_window==1))
+             matrix(1,2) = sum( xmat * ymat, mask=(ocean_mask_window==1))
+             matrix(1,3) = sum( xmat       , mask=(ocean_mask_window==1))
+             matrix(2,2) = sum( ymat * ymat, mask=(ocean_mask_window==1))
+             matrix(2,3) = sum( ymat       , mask=(ocean_mask_window==1))
+             matrix(3,3) = sum(ocean_mask_window)
+             matrix(2,1) = matrix(1,2)
+             matrix(3,1) = matrix(1,3)
+             matrix(3,2) = matrix(2,3)
+
+             rhs(1) = sum( xmat * data_window, mask=(ocean_mask_window==1))
+             rhs(2) = sum( ymat * data_window, mask=(ocean_mask_window==1))
+             rhs(3) = sum( data_window       , mask=(ocean_mask_window==1))
+
+             ! do Gaussian elim on matrix
+             if (matrix(1,1) == 0.d0) then
+                print *, i,k
+                print *, xmat(:,3)
+                print *, xmat(:,2)
+                print *, xmat(:,1)
+                print *, 'zero entry in 1,1'
+                stop 1
+             end if
+             multiplier = matrix(2,1)/matrix(1,1)
+             matrix(2,:) = matrix(2,:) - multiplier*matrix(1,:)
+             rhs(2)      = rhs(2) -      multiplier*rhs(1)
+
+             if (matrix(1,1) == 0.d0) then
+                print *, i,k
+                print *, matrix(1,:)
+                print *, matrix(2,:)
+                print *, matrix(3,:)
+                print *, 'zero entry in 1,1'
+                stop 1
+             end if
+             multiplier = matrix(3,1)/matrix(1,1)
+             matrix(3,:) = matrix(3,:) - multiplier*matrix(1,:)
+             rhs(3)      = rhs(3) -      multiplier*rhs(1)
+
+             if (matrix(2,2) == 0.d0) then
+                print *, i,k
+                print *, matrix(1,:)
+                print *, matrix(2,:)
+                print *, matrix(3,:)
+                print *, 'zero entry in 2,2'
+                stop 1
+             end if
+             multiplier = matrix(3,2)/matrix(2,2)
+             matrix(3,:) = matrix(3,:) - multiplier*matrix(2,:)
+             rhs(3)      = rhs(3)      - multiplier*rhs(2)
+
+             if (matrix(3,3) == 0.d0) then
+                print *, i,k
+                print *, matrix(1,:)
+                print *, matrix(2,:)
+                print *, matrix(3,:)
+                print *, 'zero entry in 3,3'
+                stop 1
+             end if
+
+
+             long_waves(i,k) = rhs(3) / matrix(3,3)
+             bs(i,k) = (rhs(2) - long_waves(i,k)*matrix(2,3)) / matrix(2,2)
+             as(i,k) = (rhs(1) - long_waves(i,k)*matrix(1,3) - bs(i,k)*matrix(2,1)) / matrix(1,1)
+
+          else
+
+             long_waves(i,k) = 0.d0
+
+          end if
+
+       end do
+    end do
+
+    short_waves = 0.d0
+    where(ocean_mask == 1)
+       short_waves = raw_data - long_waves
+    end where
+
+  end subroutine filter_waves
 
 end module plume
 

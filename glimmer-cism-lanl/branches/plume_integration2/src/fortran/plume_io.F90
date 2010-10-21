@@ -70,7 +70,7 @@ module plume_io
   integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
 
-  integer :: debug_varid
+  integer :: debug_varid,debug2_varid
 
 contains
 
@@ -712,6 +712,8 @@ contains
 
     call io_append_output('Creating variable debug')
     call check( nf90_def_var(nc_id,'debug',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),debug_varid))
+    call io_append_output('Creating variable debug2')
+    call check( nf90_def_var(nc_id,'debug2',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),debug2_varid))
    
 
     !call io_append_output('Creating variable jcd_negdep')
@@ -764,6 +766,7 @@ contains
     call check(nf90_put_var(nc_id, artf_entr_frac_varid, artf_entr_frac, (/1,1,time_counter/)))
    
     call check(nf90_put_var(nc_id, debug_varid, debug, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, debug2_varid, debug2, (/1,1,time_counter/)))
 
     !call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
     !call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))
