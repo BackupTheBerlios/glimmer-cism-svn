@@ -110,6 +110,13 @@ module remap_glamutils
     real (kind = dp), intent(in) :: dew, dns, dt, thklim
     real (kind = dp) :: dt_cfl
 
+    integer :: i, j         ! indices
+    integer :: ewn, nsn     ! grid dimensions
+
+!whl - ewn and nsn used below to fill the mask array
+    ewn = size(thck,1)
+    nsn = size(thck,2)
+
 !whl - Hardwire ntrace and nghost for now
 !      Initially, no tracers are actually remapped, but the remapping routine
 !       requires ntrace >= 1
@@ -146,12 +153,26 @@ module remap_glamutils
     endwhere
 
 !whl - to do - Fill the tracer array with ice temperature and other tracers
-    wk%trace_ir(:,:,:,1) = 1.0_dp;
+    wk%trace_ir(:,:,:,1) = 1.0_dp
     wk%dt_ir = dt * tim0
 
-    where( thck > 0.0_dp )
-        wk%mask_ir  = 1.0_dp
-    end where
+!whl - bug fix - Commented out next 3 lines because they lead to out-of-bounds error.
+!      Note: thck has dims (ewn-1,nsn-1), but mask has dims (ewn,nsn)
+
+!    where( thck > 0.0_dp )
+!        wk%mask_ir  = 1.0_dp
+!    end where
+
+!whl - This fix works, but it would be better for all horizontal arrays
+!      to have the same dimensions.  Work on this later.
+    wk%mask_ir(:,:)  = 0.0_dp
+    do j = 1, nsn-1
+    do i = 1, ewn-1
+       if (thck(i,j) > 0.0_dp) then
+          wk%mask_ir(i,j) = 1.0_dp
+       endif
+    enddo
+    enddo
 
     !*tjb** Checks for IR's CFL-like condition.  These only print a warning for now.
     !Use the conservative, "highly divergent" criterion for now.
@@ -178,9 +199,27 @@ module remap_glamutils
 
 !    integer :: ewn, nsn, ngew, ngns
 
+!whl - bug fix
+    integer :: i, j            ! indices
+    integer :: ewn_ir, nsn_ir  ! dimensions of IR work arrays
+    
+    ewn_ir = size(wk%thck_ir,1)
+    nsn_ir = size(wk%thck_ir,2)
+
+!whl - debug
+    write (50,*) 'ewn_ir, nsn_ir =', ewn_ir, nsn_ir
+
+!whl - bug fix - Changed this because thck_ir has different dimensions from thck.
+!      Later, would like for these two fields to have the same dimensions.
+
     !Map from IR thickness field back to Glide thickness field
-    thck = wk%thck_ir(:,:,1) / thk0
- 
+!!    thck = wk%thck_ir(:,:,1) / thk0
+    do j = 1, nsn_ir
+    do i = 1, ewn_ir
+       thck(i,j) = wk%thck_ir(i,j,1) / thk0
+    enddo
+    enddo
+
     !Apply accumulation
     thck = thck + acab*dt
  
