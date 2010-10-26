@@ -4,7 +4,7 @@
 
 clear all
 
-cd /Users/sprice/work/modeling/cism-parallel/tests/stream/
+cd /Users/sprice/work/modeling/cism/cism-parallel/tests/stream/
 
 rho = 910;
 g = -9.81;
