@@ -71,6 +71,7 @@ module plume_io
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
 
   integer :: debug_varid,debug2_varid
+  integer :: gwave_speed_varid, gwave_crit_factor_varid
 
 contains
 
@@ -714,6 +715,11 @@ contains
     call check( nf90_def_var(nc_id,'debug',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),debug_varid))
     call io_append_output('Creating variable debug2')
     call check( nf90_def_var(nc_id,'debug2',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),debug2_varid))
+
+    call io_append_output('Creating variable gwave_speed')
+    call check( nf90_def_var(nc_id,'gwave_speed', NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),gwave_speed_varid))
+    call io_append_output('Creating variable gwave_crit_factor')
+    call check( nf90_def_var(nc_id,'gwave_crit_factor',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),gwave_crit_factor_varid))
    
 
     !call io_append_output('Creating variable jcd_negdep')
@@ -768,6 +774,9 @@ contains
     call check(nf90_put_var(nc_id, debug_varid, debug, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, debug2_varid, debug2, (/1,1,time_counter/)))
 
+    call check(nf90_put_var(nc_id, gwave_speed_varid, gwave_speed, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, gwave_crit_factor_varid, gwave_crit_factor, (/1,1,time_counter/)))
+    
     !call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
     !call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))
     

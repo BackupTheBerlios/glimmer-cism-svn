@@ -49,6 +49,7 @@ class PlumeNamelist(object):
                      'tangle' : False, 
                      'negfrz' : False,
                      'use_min_plume_thickness' : True,
+                     'depinffix' : 0.0,
                      'plume_southern_bc' : 0,       # 0 means d/dy = 0
                                                     # 1 means linear extrapolation
                                                     # 2 means quadratic extrapolation
@@ -570,7 +571,7 @@ class _AtomicJob(_BaseJob,_IO):
         # self._pnl and self._gcconfig with values
         # derived from the job definition
         self._resolveJob()
-
+        
         #update the config dictionaries
 
         for (section_name,section_data) in self.gc.items():
@@ -610,6 +611,7 @@ class _AtomicJob(_BaseJob,_IO):
             cmd = self._genInputCmd()
             # and then do it
             _check_call(cmd)
+
 
 class _GenInputJob(_AtomicJob):
 
@@ -716,7 +718,6 @@ class SteadyShelfJob(_GenInputJob):
                     float(self.kx), float(self.chan_amp),float(self.chan_init_length)])
         cmd = [_fortran_style('nc_gen_input', c) for c in cmd]
         return cmd
-
 
 ssj = SteadyShelfJob()
 ssj.name = 'test'

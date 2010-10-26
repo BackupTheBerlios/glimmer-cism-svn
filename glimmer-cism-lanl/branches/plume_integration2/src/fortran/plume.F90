@@ -105,13 +105,14 @@ contains
     ! using a sidereal day
 
     dt = dt1
-    gdt = g*dt1
+    gdt = grav*dt1
     fdt = f*dt1
 
     domain_imin = 1
     domain_imax = m_grid
     domain_kmin = 1
     domain_kmax = n_grid
+
 
     ! set up frazil parameters
     if (frazil) call frazil_calc()
@@ -432,7 +433,7 @@ contains
 
     if (runtim.eq.dtswtim) then
        dt = dt2
-       gdt = g*dt2
+       gdt = grav*dt2
        fdt = f*dt2
     end if
 
@@ -443,10 +444,10 @@ contains
     ! find indices of current wetted area
 
     if (.not.use_min_plume_thickness) then
-       icalcan = max0(2,iwetmin-ikcplus)
-       kcalcan = max0(2,kwetmin-ikcplus)
-       icalcen = min0(m_grid-1,iwetmax+ikcplus)
-       kcalcen = min0(n_grid-1,kwetmax+ikcplus)
+       icalcan = max0(domain_imin+1,iwetmin-ikcplus)
+       kcalcan = max0(domain_kmin+1,kwetmin-ikcplus)
+       icalcen = min0(domain_imax-1,iwetmax+ikcplus)
+       kcalcen = min0(domain_kmax-1,kwetmax+ikcplus)
     end if
 
     ! --------------------
@@ -503,8 +504,12 @@ contains
     call bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
 
     call filter_waves(pdep, jcs, short_waves, long_waves, as, bs)
-    debug = long_waves
-    debug2 = short_waves
+!    debug = long_waves
+    debug2(domain_imin:domain_imax,domain_kmin:domain_kmax) = &
+      short_waves(domain_imin:domain_imax,domain_kmin:domain_kmax)
+      debug2 = short_waves
+
+    call gwaves(icalcan, icalcen, kcalcan, kcalcen)
 
     ! write short step output and reset separation warning flag
 
@@ -563,7 +568,8 @@ contains
 
     ! local variables
     integer :: l
-    real(kind=kdp) :: infloain,infloein,knfloain,knfloein,cseedfix,cinffix	
+    integer :: infloain,infloein,knfloain,knfloein
+    real(kind=kdp) :: cseedfix,cinffix	
 
     namelist /plume_nml/ &
          mixlayer &
@@ -787,7 +793,7 @@ contains
 
     ! set physical and geographical parameters
     ! ----------------------------------------
-    g = 9.81d0       ! gravitational constant
+    grav = 9.81d0       ! gravitational constant
     phi = +00.d0     ! latitude (in degrees, negative => s. hemisphere)
     ! (set to zero to remove rotation)
     ah = 0000.d0     ! horizontal eddy viscosity
@@ -909,6 +915,12 @@ contains
     knfloa = int(knfloain*1000.d0/hy)! southern boundary (cells)
     knfloe = int(knfloein*1000.d0/hy)! northern boundary (cells)
 
+    infloa = int(infloain)
+    infloe = int(infloein)
+    knfloa = int(knfloain)
+    knfloe = int(knfloein)
+
+    
     ! set case-specific inflow flags if using realistic bathymetry
 
     if (context.eq."fris") then
@@ -980,6 +992,8 @@ contains
     vtrans = 0.d0
     utransa = 0.d0
     vtransa = 0.d0
+    gwave_speed = 0.d0
+    gwave_crit_factor = 0.d0
     su = 0.d0
     sv = 0.d0
     u0 = 0.d0
@@ -1027,6 +1041,7 @@ contains
     depinf = 0.d0
 
     debug = 0.d0
+    debug2 = 0.d0
 
     if (intrace) then
        intrin = 0
@@ -1111,10 +1126,10 @@ contains
 
     if (mixlayer) then
 
-       iwetmin = 1
-       iwetmax = m_grid
-       kwetmin = 1
-       kwetmax = n_grid
+       iwetmin = domain_imin
+       iwetmax = domain_imax
+       kwetmin = domain_kmin
+       kwetmax = domain_kmax
 
        where (bpos > 0.d0 .and. bpos < (wcdep+gldep))
           pdep = depinit
@@ -1128,13 +1143,13 @@ contains
     else
 
        ! not using minimum thickess or mixlayer
-       iwetmin = m_grid
-       iwetmax = 1
-       kwetmin = n_grid
-       kwetmax = 1
+       iwetmin = domain_imax
+       iwetmax = domain_imin
+       kwetmin = domain_kmax
+       kwetmax = domain_kmin
 
-       do k = 1,n_grid
-          do i = 1,m_grid
+       do k = domain_kmin,domain_kmax
+          do i = domain_imin,domain_imax
              if (depinf(i,k).gt.0.d0) then
                 iwetmin = min(iwetmin,i)
                 iwetmax = max(iwetmax,i)
@@ -1325,13 +1340,13 @@ contains
 
        cdc = 10.d0
        wi(l) = 0.d0
-       winew = dsqrt((4.d0*g*ar*r(l)*(rho0-rhoi))/(rho0*cdc))
+       winew = dsqrt((4.d0*grav*ar*r(l)*(rho0-rhoi))/(rho0*cdc))
        do while (abs(wi(l)-winew).gt.small) 
           wi(l) = winew
           rey = 2.d0*winew*r(l)/nu0
           cdc = 10**(1.386d0 - 0.892d0*dlog10(rey) &
                + 0.111d0*(dlog10(rey))**2)
-          winew = dsqrt((4.d0*g*ar*r(l)*(rho0-rhoi))/(rho0*cdc))
+          winew = dsqrt((4.d0*grav*ar*r(l)*(rho0-rhoi))/(rho0*cdc))
        end do
        wi(l) = winew
 
@@ -1523,14 +1538,14 @@ contains
                 delrho = rhoa - rhopac
                 rhoq = 5.0d-1*(rhopac+rhoa)
                 redg = delrho/rhoq
-                rich = g*redg*pdepc(i,k)/speed(i,k)
+                rich = grav*redg*pdepc(i,k)/speed(i,k)
                 rich = dmax1(5.0d-2,rich)    
 
                 ! full kochergin entrainment
                 if (entype.eq.1) then
                    sm = rich/(7.25d-1*(rich + 1.86d-1 - dsqrt(rich*rich- &
                         &             3.16d-1*rich + 3.46d-2)))
-                   arg = dmax1(small,speed(i,k) + g*redg*pdepc(i,k)/sm)
+                   arg = dmax1(small,speed(i,k) + grav*redg*pdepc(i,k)/sm)
                    entr(i,k) = cl**2*dsqrt(arg)/sm                
                 end if
 
@@ -1538,7 +1553,7 @@ contains
                 if (entype.eq.2) then
                    sm = rich/(7.25d-1*(rich + 1.86d-1 - dsqrt(rich*rich- &
                         &             3.16d-1*rich + 3.46d-2)))
-                   arg = dmax1(small,speed(i,k) + g*redg*pdepc(i,k)/sm)
+                   arg = dmax1(small,speed(i,k) + grav*redg*pdepc(i,k)/sm)
                    entr(i,k) = ef*cl**2*(drag(i,k)/3.0d-3)*dsqrt(arg)/sm    
                 end if
 
@@ -1627,7 +1642,7 @@ contains
 
                       ! calculate precipitation of frazil
                       ucl = &
-                           dsqrt((1.0d-1*g*re(l)*(rho0-rhoi))/(rho0*drag(i,k)))
+                           dsqrt((1.0d-1*grav*re(l)*(rho0-rhoi))/(rho0*drag(i,k)))
                       ucrit = (1.d0 - bspeed(i,k)*bspeed(i,k)/(ucl*ucl))
                       fppn(i,k,l) = &
                            dmin1(-(rhoi/rho0)*c_ice(i,k,l)*wi(l)*ucrit,0.d0)
@@ -1767,6 +1782,7 @@ contains
     ! start main loop
 
     debug = 0.d0
+    debug2 = 0.d0
 
     !$omp parallel default(private) &
     !$omp shared( pdep, ipos, jcw, jcd_negdep, su,sv,drag,ugriddrag,newudrag, &
@@ -1851,6 +1867,11 @@ contains
              ! turning angle theory
 
              if (tangle) then 
+	     
+		if (f == 0.d0) then
+		   print *, "Can not use tangle code when f = 0"
+		   stop 1
+		end if
 
                 ! set up stuff for rewriting drag if necessary
 
@@ -2332,6 +2353,44 @@ contains
 
   end subroutine momentum
 
+  subroutine gwaves(icalcan,icalcen,kcalcan,kcalcen)
+
+     implicit none
+
+     ! calculate local gravity wave speed and the ratio of
+     ! advection speed to gravity wave speed
+
+    integer,intent(in) :: icalcan,icalcen,kcalcan,kcalcen
+    integer :: i,k
+
+    real(kind=kdp) :: umid, vmid,speed
+
+    do i=icalcan,icalcen
+       do k=kcalcan,kcalcen
+          
+          !gravity wave speed is sqrt(g'*D) 
+          if (jcs(i,k) == 0) cycle   !no water 
+
+
+          gwave_speed(i,k) = abs(sqrt( grav*(rhoamb(i,k)-rhop(i,k))/rhoamb(i,k) * pdep(i,k) ))
+          
+          umid = 5.d-1 * (su(i-1,k) + su(i,k))
+          vmid = 5.d-1 * (sv(i,k-1) + sv(i,k))
+          speed = sqrt(umid*umid + vmid*vmid)
+          
+          if ((gwave_speed(i,k) > 0.d0) .and. (speed > 0.d0)) then
+             gwave_crit_factor(i,k) = log(speed/gwave_speed(i,k))
+          else
+             gwave_crit_factor(i,k) = 0.d0
+          end if
+          
+          
+       end do
+    end do
+
+
+  end subroutine gwaves
+
   subroutine bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
 
     implicit none
@@ -2341,7 +2400,8 @@ contains
 
     ! local variables
 
-    integer :: i,k,icalcan,icalcen,kcalcan,kcalcen
+    integer,intent(in) :: icalcan,icalcen,kcalcan,kcalcen
+    integer :: i,k
 
     ! southern boundary
     if (kcalcan.le.(domain_kmin+1)) then
@@ -2358,7 +2418,8 @@ contains
            end do
            do i = domain_imin+1,domain_imax-1
               sv(i,domain_kmin) = sv(i,domain_kmin+1)
-              vtrans(i,domain_kmin) = sv(i,domain_kmin+1)*pdep(i,domain_kmin+1)
+              vtrans(i,domain_kmin) =  sv(i,domain_kmin+1)* &
+	                            5.d-1*(pdep(i,domain_kmin)+pdep(i,domain_kmin+1))
            end do
 
        case (1)
@@ -2372,9 +2433,8 @@ contains
 	   end do
 	   do i = domain_imin+1,domain_imax-1
               sv(i,domain_kmin) = 2.d0*sv(i,domain_kmin+1)-sv(i,domain_kmin+2)
-              vtrans(i,domain_kmin) = 2.d0*vtrans(i,domain_kmin+1) - vtrans(i,domain_kmin+2)
-	      sv(i,domain_kmin) = sv(i,domain_kmin+1)
-              vtrans(i,domain_kmin) = sv(i,domain_kmin+1)*pdep(i,domain_kmin+1)
+              vtrans(i,domain_kmin) = sv(i,domain_kmin)* &
+	                               5.d-1*(pdep(i,domain_kmin)+pdep(i,domain_kmin+1))
            end do
 
        case (2)
@@ -2420,7 +2480,7 @@ contains
                              (pdep(i,domain_kmax-1) + pdep(i+1,domain_kmax-1))
        end do
        do i = domain_imin+1,domain_imax-1
-          sv(i,domain_kmax-1) = sv(i,domain_kmax-2)
+           sv(i,domain_kmax-1) = sv(i,domain_kmax-2)
            vtrans(i,domain_kmax-1) = sv(i,domain_kmax-2)*pdep(i,domain_kmax-1) 
 	                         !note -1/-2 since north edge of v is -1
        end do
@@ -3008,7 +3068,8 @@ contains
 
        end do
     end do
-
+    
+    
     ! interpolate ambient density field experienced
 
     !    rhoamb = get_rhoamb_z(gldep + wcdep - ipos)
@@ -3489,7 +3550,7 @@ contains
 
                       ! b) calculate precipitation of frazil
                       ucl =  &
-                           dsqrt((1.0d-1*g*re(1)*(rho0-rhoi))/(rho0*drag(i,k)))
+                           dsqrt((1.0d-1*grav*re(1)*(rho0-rhoi))/(rho0*drag(i,k)))
                       ucrit = (1.d0 - bspeed(i,k)*bspeed(i,k)/(ucl*ucl))
                       fppn(i,k,1) =  &
                            dmin1(-(rhoi/rho0)*ca_ice(i,k,1)*wi(1)*ucrit,0.d0)
@@ -3569,7 +3630,7 @@ contains
                       ! c) calculate precipitation of frazil
                       do l=1,nice
                          ucl =  &
-                              dsqrt((1.0d-1*g*re(l)*(rho0-rhoi))/(rho0*drag(i,k)))
+                              dsqrt((1.0d-1*grav*re(l)*(rho0-rhoi))/(rho0*drag(i,k)))
                          ucrit = (1.d0-bspeed(i,k)*bspeed(i,k)/(ucl*ucl))
                          fppn(i,k,l) =  &
                               dmin1(-(rhoi/rho0)*ca_ice(i,k,l)*wi(l)*ucrit,0.d0)
@@ -3974,13 +4035,13 @@ contains
        ymat(:,i) = real(i) - (y0+1.d0)
     end do
 
-    do i=1,m
-       do k=1,n
+    do i=domain_imin,domain_imax
+       do k=domain_kmin,domain_kmax
          
-          lower_ilim = max(1,i-int(floor(  (window_width-1)/2.d0)))
-          upper_ilim = min(m,i+int(ceiling((window_width-1)/2.d0)))
-          lower_klim = max(1,k-int(floor(  (window_width-1)/2.d0)))
-          upper_klim = min(n,k+int(ceiling((window_width-1)/2.d0)))
+          lower_ilim = max(domain_imin,i-int(floor(  (window_width-1)/2.d0)))
+          upper_ilim = min(domain_imax,i+int(ceiling((window_width-1)/2.d0)))
+          lower_klim = max(domain_kmin,k-int(floor(  (window_width-1)/2.d0)))
+          upper_klim = min(domain_kmax,k+int(ceiling((window_width-1)/2.d0)))
 
           data_window = 0.d0
           win_imin = int((lower_ilim-i)+(x0+1.d0))

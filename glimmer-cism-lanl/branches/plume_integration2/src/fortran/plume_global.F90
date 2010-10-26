@@ -90,7 +90,7 @@ module plume_global
   character(len=256) :: restart_data_filename
 
   !general parameters
-  real(kind=kdp) :: pi,dcr,g,dt,gdt,fdt,small,edepth,mdepth,fdepth,septol
+  real(kind=kdp) :: pi,dcr,grav,dt,gdt,fdt,small,edepth,mdepth,fdepth,septol
   real(kind=kdp) :: ah,kh,dzincr,temptop,tempbot,saltbot,salttop
   real(kind=kdp) :: tgrad,sgrad,wcdep,gldep,ifdep,rho0,rhoi
   real(kind=kdp) :: plume_min_thickness, entr_time_const
@@ -123,6 +123,9 @@ module plume_global
 
   !eddy viscosities
   real(kind=kdp),allocatable,dimension(:) :: ahdx,ahdxu,ahdy,ahdyv
+
+  ! gravity wave speeds (from shallow water formula)
+  real(kind=kdp),allocatable,dimension(:,:) :: gwave_speed, gwave_crit_factor
 
   ! transports (depth integrated velocities)
   real(kind=kdp),allocatable,dimension(:,:) :: utrans,vtrans
@@ -173,6 +176,7 @@ contains
 
     allocate (ahdx(m),ahdxu(m),ahdy(n),ahdyv(n))
 
+    allocate (gwave_speed(m,n), gwave_crit_factor(m,n))
     allocate (utrans(m,n),utransa(m,n),vtrans(m,n),vtransa(m,n))
     allocate (su(m,n),sv(m,n))
     allocate (u0(m,n),v0(m,n),u0a(m,n),v0a(m,n))
@@ -198,6 +202,7 @@ contains
     deallocate(rhop,temp,tempa,tins,salt,salta,rhoamb,entr,atemp,asalt,drag)
     deallocate(thk_def,artf_entr_frac)
     deallocate(utrans,utransa,vtrans,vtransa,su,sv,u0,v0,u0a,v0a,tang)
+    deallocate(gwave_speed,gwave_crit_factor)
     deallocate(tint)
 
     deallocate(debug,debug2)

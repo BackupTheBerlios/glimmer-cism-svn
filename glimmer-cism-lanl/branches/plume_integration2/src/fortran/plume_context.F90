@@ -488,19 +488,19 @@ contains
           ! set automated single inflow cells topography
 	    if (slope_direction == 0 .or. slope_direction == 2) then
 	     do k = knfloa + 1,knfloe - 1
-               do i = 1,infloa  
+               do i = domain_imin,infloa  
                   bpos(i,k) = 0.d0
 	       end do
-               do i = infloe,m_grid
+               do i = infloe,domain_imax
                   bpos(i,k) = 0.d0
                end do
              end do
            else
 	      do i = infloa + 1,infloe - 1
-                 do k = 1,knfloa  
+                 do k = domain_kmin,knfloa  
                    bpos(i,k) = 0.d0
                 end do
-                do k = knfloe,n_grid
+                do k = knfloe,domain_kmax
                    bpos(i,k) = 0.d0
                 end do
              end do
