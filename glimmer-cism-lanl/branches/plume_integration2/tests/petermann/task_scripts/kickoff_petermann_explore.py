@@ -12,9 +12,15 @@ def kickoff( email, walltime, unique_str, queue_mode ):
     upvels = [-900.0, -1000.0, -1100.0]
     phis = [0.0,81.0]
     min_melt_depths = [0.0, 100.0, 200.0]
-    
-    for t in oceantemps:
-        for upvel in upvels:
+    cdbs = [1,2,4,5,10]
+    taus = [0,10,25,50]
+
+    upvel = -1000.0
+    t = 0.0
+    #for t in oceantemps:
+    for tau in taus:
+        #for upvel in upvels:
+        for cdb in cdbs:
             for phi in phis:
                 for min_melt_depth in min_melt_depths:
                     j = LinearShelfJob()
@@ -23,12 +29,12 @@ def kickoff( email, walltime, unique_str, queue_mode ):
 
                     j.uniform_acab = -1.2  #going into nc_gen_input only
 
-                    j.n = 100
-                    j.m = 40
+                    j.n = 50
+                    j.m = 20
                     j.nlevel = 3
                 
-                    j.hx = 500.0
-                    j.hy = 500.0
+                    j.hx = 1000.0
+                    j.hy = 1000.0
                 
                     j.tend = 300.0
                     j.tstart = 0.0
@@ -44,8 +50,8 @@ def kickoff( email, walltime, unique_str, queue_mode ):
 
                     j.upvel = upvel
 
-                    j.plume = { 'plume_min_thickness' : 20.0,
-                                'cdb' : 1.5e-3 * 0.25,  #drag constant
+                    j.plume = { 'plume_min_thickness' : 1.0,
+                                'cdb' : 1.5e-3 * (1.0/cdb),  #drag constant
                                 'temptop' : t,
                                 'tempbot' : t,
                                 'salttop' : 34.765,
@@ -57,7 +63,7 @@ def kickoff( email, walltime, unique_str, queue_mode ):
                     j.gc = {'options' : {'flow_law' : 0,
                                          'temperature' : 0,
                                          },
-                            'boundary condition params' : {'tau_xy_0' : 25.0e+3,
+                            'boundary condition params' : {'tau_xy_0' : tau*1000.0,
                                                            'x_invariant' : False,
                                                            'use_lateral_stress_bc' : True,
                                                            },
@@ -76,7 +82,7 @@ def kickoff( email, walltime, unique_str, queue_mode ):
                             }
 
                 
-                    j.name = 'pn_%.1fC_%.1fma_%.0fd_%.0fm_plastic_%s' % (t,upvel,phi,min_melt_depth,unique_str)
+                    j.name = 'pn_%.0fd_%.0fm_%s_cdb_%s_kPa_%s' % (phi,min_melt_depth,cdb,tau,unique_str)
                     jdir = os.path.join(os.path.expandvars('$GC_JOBS'),
                                         j.name)
                     
@@ -85,12 +91,8 @@ def kickoff( email, walltime, unique_str, queue_mode ):
         
                     j.jobDir = jdir
             
-
-                
-
                     j.assertCanStage()
                     j.serialize()
-
                     submit_job(j,email, walltime,queue_mode)
                     
 
