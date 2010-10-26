@@ -1483,7 +1483,7 @@ contains
 
     implicit none
 
-    integer :: icalcan,kcalcan,icalcen,kcalcen
+    integer,intent(in) :: icalcan,kcalcan,icalcen,kcalcen
 
     ! local variables
     integer :: i,k,l,mflag,depthflag
@@ -2100,7 +2100,7 @@ contains
           endif
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-          if (skip_v_calc) cycle
+          if (.not. skip_v_calc) then
 
           ! control of negative depth effects by enhanced friction
           jcvfac = 0
@@ -2295,6 +2295,7 @@ contains
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           vtrans(i,k) = (vtransa(i,k)+cory+islope+slorho+termnl+termnl2+hordif)*tbotm
 
+	  end if
        end do
     end do
    
