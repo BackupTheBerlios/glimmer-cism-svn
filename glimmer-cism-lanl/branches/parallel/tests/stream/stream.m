@@ -10,7 +10,7 @@ rho = 910;
 g = -9.81;
 
 flag = 0;       %% USE RAYMOND PROFILE
-flag = 1;       %% USE SCHOOF PROFILE
+flag = 1;       %% USE SCHOOF PROFILE 
 
 kinflag = 1;    %% apply kinematic bc (analytic soln) at up/downstream ends
 kinflag = 0;    %% apply 0 vel bc at up/downstream ends
@@ -19,14 +19,15 @@ n = 3;
 m = 1.55;
 
 % r = 20;         % !! r needs to be even # divisible by 2 !!
-% % c = 20;
-% c = 200;
+% c = 20;
+% % c = 200;
 
 r = 40;
-c = 400;
+c = 40;
+% c = 400;
 
-% levels = 5;
-levels = 11;
+levels = 5;
+% levels  = 11;
 
 L = 1.4e4;
 A = 1e-16;
@@ -95,18 +96,41 @@ usrf = topg + thck;
 
 if( flag == 0 )         % assign Raymond profile
     tauf_profile = tau0r*ones(r-7,1);        
-    tauf = 1e5 * ones( r-1, c-1 );
-    tauf(4:end-3,3:end-2) = repmat( tauf_profile, 1, c-5 );     %% no slip at/near up/downstream ends
-%     tauf(4:end-3,:) = repmat( tauf_profile, 1, c-1 );     %% use periodic bcs for cont. along flow
+    tauf = 0.7e5 * ones( r-1, c-1 );
+    if( kinflag ~= 1 )
+        tauf(4:end-3,3:end-2) = repmat( tauf_profile, 1, c-5 );     %% no slip at/near up/downstream ends
+    else
+        tauf(4:end-3,:) = repmat( tauf_profile, 1, c-1 );     %% use periodic bcs for cont. along flow
+    end
     u_profile = repmat( [ 0 0 fliplr(ur) ur(2:end) 0 0 ], levels, 1 );     
 else                    % assign Schoof
     
     tauf_profile = [ fliplr(tau0s(2:end)), tau0s ]';        
-    tauf = 1e5 * ones( r-1, c-1 );
-    tauf(3:end-2,3:end-2) = repmat( tauf_profile, 1, c-5 );     %% no slip at/near up/downstream ends
-%     tauf(3:end-2,:) = repmat( tauf_profile, 1, c-1 );     %% use periodic bcs for cont. along flow
+    tauf = 0.7e5 * ones( r-1, c-1 );
+    if( kinflag ~= 1 )
+        tauf(3:end-2,3:end-2) = repmat( tauf_profile, 1, c-5 );     %% no slip at/near up/downstream ends
+    else
+        tauf(3:end-2,:) = repmat( tauf_profile, 1, c-1 );     %% use periodic bcs for cont. along flow
+    end
     u_profile = repmat( [ 0 0 fliplr(us) us(2:end) 0 0 ], levels, 1 );
 end
+
+
+%% use shear strain rate at up/downstream ends to calculate across-flow velocity profile
+%% necessary to balance the shear
+x = [0:dx:dx*length(u_profile)-1];
+dudy = gradient( u_profile(1,:), dy );
+v_profile = -dudy*dy;
+
+figure(999), clf
+subplot( 2,1,1 ),hold on
+plot( x, dudy, 'bo-' ), box on
+xlabel( 'dist (m)' ), ylabel( 'shear strain rate (1/a)' )
+subplot( 2,1,2 ),hold on
+plot( x, v_profile, 'bo-' ), box on
+xlabel( 'dist (m)' ), ylabel( 'across-flow component of vel (m/a)' )
+
+v_profile = repmat( v_profile, levels, 1 );
 
 
 % figure(200),clf
@@ -120,14 +144,20 @@ end
 % imagesc( tauf/1e3 ), axis xy, axis equal, axis tight, colorbar, title( 'yield stress (kPa)' )
 
 
-
 %% optional: add analytic solution at up/downstream ends as kin vel bc
 kinbcmask = zeros(size(tauf));
 uvelhom = zeros( levels, r-1, c-1 );
 vvelhom = zeros( levels, r-1, c-1 );
 
+% %% HACKS
+% tauf(3:end-2,end-1) = 2.19e4; tauf(3:end-2,2) = 2.19e4;
+% ind = find( tauf == max( max( tauf ) ) ); tauf(ind) = 4e4;
+% kinbcmask(:,1:2) = 1; kinbcmask(:,end-1:end) = 1;
+% kinbcmask(1,:) = 1; kinbcmask(end,:) = 1;
+
 if( kinflag == 1)
     uvelhom( :, :, end ) = u_profile; uvelhom( :, :, 1 ) = u_profile; 
+    vvelhom( :, :, end ) = v_profile; vvelhom( :, :, 1 ) = -v_profile; 
     kinbcmask(:,1) = 1; kinbcmask(:,end) = 1;
     ind = find( tauf <= 0 ); tauf(ind) = 1e-10;
 end
@@ -147,7 +177,7 @@ else
     filename = 'stream.schoof.nc'; 
 end
 
-%filename = 'stream.out.nc'; 
+filename = 'stream.out.nc'; 
 
     
 ncid = netcdf.open( filename, 'nowrite' );
