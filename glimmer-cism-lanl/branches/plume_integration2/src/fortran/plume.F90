@@ -416,7 +416,7 @@ contains
     ! momentum
     ! bound_u_v
     ! continuity
-    ! bmlt boundary condition
+    ! bound_bmlt_entr
     ! inflow_calc
     ! update
     ! bound_interface
@@ -1921,7 +1921,7 @@ contains
                 ! calculate turning angle          
                 !           
                 tang(i,k) = atan2( u0(i,k)-v0(i,k) , -u0(i,k)-v0(i,k) ) &
-                          - atan2( u0(i,k)+v0(i,k) , thickratio+u0(i,k)-v0(i,k) )
+                       - atan2( u0(i,k)+v0(i,k) , thickratio+u0(i,k)-v0(i,k) )
                 !      
                 if (norotation) tang(i,k) = 0.0 
                 !         
@@ -1982,7 +1982,8 @@ contains
              ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
              corx = pdepu*vmid*fdt
 
-             ! if turning angle add other part of drag here because uses v not u
+             ! if turning angle add other part of drag here 
+             ! because uses v not u
 
              if (tangle) then
                 corx = corx + arfac*kq*sintang*dt*vmid
@@ -2014,16 +2015,20 @@ contains
                 sxy = sx -sy
                 r1 = (sign(one,sxy) + 1.d0)*5.0d-1
                 r2 = one - r1
-                termnl=(r1*sy + r2*sx)*(utransa(ihilf,khilf)*dble(jcd_u(ihilf,khilf)) &
-                     +                  utransa(i,k)        *dble(1 - jcd_u(ihilf,khilf))) &
-                     + r1*sxy*(         utransa(ihilf,k)    *dble(jcd_u(ihilf,k)) &
-                     +                  utransa(i,k)        *dble(1 - jcd_u(ihilf,k))) &
-                     - r2*sxy*(         utransa(i,khilf)    *dble(jcd_u(i,khilf)) &
-                     +                  utransa(i,k)        *dble(1 - jcd_u(i,khilf))) &
+                termnl=(r1*sy + r2*sx) &
+                      *(utransa(ihilf,khilf)*dble(jcd_u(ihilf,khilf)) &
+                     +  utransa(i,k)        *dble(1 - jcd_u(ihilf,khilf))) &
+                     + r1*sxy &
+                      *(utransa(ihilf,k)    *dble(jcd_u(ihilf,k)) &
+                     +  utransa(i,k)        *dble(1 - jcd_u(ihilf,k))) &
+                     - r2*sxy &
+                      *(utransa(i,khilf)    *dble(jcd_u(i,khilf)) &
+                     +  utransa(i,k)        *dble(1 - jcd_u(i,khilf))) &
                      - (r2*sy + r1*sx)* utransa(i,k)
 
-                termnl2 = - utransa(i,k)*dt*((su(ihilf,k) - su(i,k))*idel/dxx  &
-                                           + (sv(iidx,k) - sv(iidx,k-1))*rdyv(k))
+                termnl2 = - utransa(i,k)*dt &
+                         *((su(ihilf,k) - su(i,k))*idel/dxx  &
+                         + (sv(iidx,k) - sv(iidx,k-1))*rdyv(k))
 
              end if
              !          
@@ -2371,9 +2376,11 @@ contains
           
           !gravity wave speed is sqrt(g'*D) 
           if (jcs(i,k) == 0) cycle   !no water 
+!          if (k == kcalcen) cycle
 
-
-          gwave_speed(i,k) = abs(sqrt( grav*(rhoamb(i,k)-rhop(i,k))/rhoamb(i,k) * pdep(i,k) ))
+          gwave_speed(i,k) = abs(sqrt( grav*(rhoamb(i,k)& 
+                                            -rhop(i,k))/rhoamb(i,k) &
+                                     * pdep(i,k) ))
           
           umid = 5.d-1 * (su(i-1,k) + su(i,k))
           vmid = 5.d-1 * (sv(i,k-1) + sv(i,k))
@@ -2642,9 +2649,12 @@ contains
        case (1)
 
            do i = domain_imin,domain_imax
-               ! using a first-order extrapolation as the 'absorbing boundary condition'
-               bmelt(i,domain_kmin) = 2.d0 * bmelt(i,domain_kmin+1) - 1.d0*bmelt(i,domain_kmin + 2)
-               entr(i,domain_kmin) = 2.d0 * entr(i,domain_kmin+1) - 1.d0*entr(i,domain_kmin + 2)
+               ! using a first-order extrapolation as the 
+               ! 'absorbing boundary condition'
+               bmelt(i,domain_kmin) = 2.d0 * bmelt(i,domain_kmin+1) &
+                                    - 1.d0*bmelt(i,domain_kmin + 2)
+               entr(i,domain_kmin) = 2.d0 * entr(i,domain_kmin+1) &
+                                     - 1.d0*entr(i,domain_kmin + 2)
            end do   
 
        case (2)
@@ -2704,13 +2714,21 @@ contains
       case (1)
 
        do i = domain_imin,domain_imax
-          ! using a first-order extrapolation as the 'absorbing boundary condition'
-          temp(i,domain_kmin) = 2.d0*  temp(i,domain_kmin+1) -    temp(i,domain_kmin+2)                          
-          tempa(i,domain_kmin) = 2.d0*tempa(i,domain_kmin+1) - tempa(i,domain_kmin+2)
-          salt(i,domain_kmin) = 2.d0*  salt(i,domain_kmin+1) -    salt(i,domain_kmin+2)                          
-          salta(i,domain_kmin) = 2.d0*salta(i,domain_kmin+1) - salta(i,domain_kmin+2)    
-          rhop(i,domain_kmin) = 2.d0* rhop(i,domain_kmin+1) -    rhop(i,domain_kmin+2)
-          tfreeze(i,domain_kmin) = 2.d0*tfreeze(i,domain_kmin+1)-tfreeze(i,domain_kmin+2)                          
+          ! using a first-order extrapolation as the 
+          ! 'absorbing boundary condition'
+          temp(i,domain_kmin) = 2.d0*  temp(i,domain_kmin+1) &
+                                     - temp(i,domain_kmin+2)      
+          tempa(i,domain_kmin) = 2.d0*tempa(i,domain_kmin+1) &
+                                    - tempa(i,domain_kmin+2)
+          salt(i,domain_kmin) = 2.d0*  salt(i,domain_kmin+1) &
+                                  -    salt(i,domain_kmin+2)
+          salta(i,domain_kmin) = 2.d0*salta(i,domain_kmin+1) &
+                                    - salta(i,domain_kmin+2)    
+          rhop(i,domain_kmin) = 2.d0* rhop(i,domain_kmin+1) &
+                                    - rhop(i,domain_kmin+2)
+          tfreeze(i,domain_kmin) = 2.d0*tfreeze(i,domain_kmin+1) &
+                                       -tfreeze(i,domain_kmin+2) 
+
        end do
 
        case (2)
@@ -2740,10 +2758,9 @@ contains
                             rhop(domain_imin:domain_imax-1, domain_kmin+1) )
 
          tfreeze(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
-                            tfreeze(domain_imin:domain_imax-1, domain_kmin+3), &
-                            tfreeze(domain_imin:domain_imax-1, domain_kmin+2), &
+                            tfreeze(domain_imin:domain_imax-1, domain_kmin+3),&
+                            tfreeze(domain_imin:domain_imax-1, domain_kmin+2),&
                             tfreeze(domain_imin:domain_imax-1, domain_kmin+1) )
-
       
        case (3)
         
@@ -2782,12 +2799,12 @@ contains
     if(kcalcen.ge.domain_kmax-1) then
 
        do i = domain_imin,domain_imax
-          temp(i,domain_kmax) = temp(i,domain_kmax-1)                          
-          tempa(i,domain_kmax) = tempa(i,domain_kmax-1)                          
-          salt(i,domain_kmax) = salt(i,domain_kmax-1)                          
-          salta(i,domain_kmax) = salta(i,domain_kmax-1)                          
+          temp(i,domain_kmax) = temp(i,domain_kmax-1)
+          tempa(i,domain_kmax) = tempa(i,domain_kmax-1)        
+          salt(i,domain_kmax) = salt(i,domain_kmax-1) 
+          salta(i,domain_kmax) = salta(i,domain_kmax-1) 
           rhop(i,domain_kmax) = rhop(i,domain_kmax-1)                          
-          tfreeze(i,domain_kmax) = tfreeze(i,domain_kmax-1)                          
+          tfreeze(i,domain_kmax) = tfreeze(i,domain_kmax-1)          
        end do
 
        if (frazil) then
