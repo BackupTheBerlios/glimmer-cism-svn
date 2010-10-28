@@ -3860,9 +3860,9 @@ subroutine calcbetasquared (whichbabc,               &
 !! rather than holding/applying a constant B^2. This necessary so that till module dynamics do not control the sliding 
 !! at the downstream end of the domain, which we want to remain constant (we want it to remain slipper, as if it were
 !! an active ice plain, regardless of the till dynamics in the ice stream proper)
-      betasquared = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
+      betasquared(1:ewn-9,:) = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
                     (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
-      betasquared = 1.0d3 / dsqrt( (thisvel(ewn-8:ewn-1,:)*vel0*scyr)**2 + &
+      betasquared(ewn-8:ewn-1,:) = 1.0d3 / dsqrt( (thisvel(ewn-8:ewn-1,:)*vel0*scyr)**2 + &
                     (othervel(ewn-8:ewn-1,:)*vel0*scyr)**2 + (smallnum)**2 )
 
     case(3)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
