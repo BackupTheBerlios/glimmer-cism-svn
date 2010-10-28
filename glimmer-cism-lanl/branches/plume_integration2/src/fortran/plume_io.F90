@@ -722,15 +722,15 @@ contains
     call check( nf90_def_var(nc_id,'gwave_crit_factor',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),gwave_crit_factor_varid))
    
 
-    !call io_append_output('Creating variable jcd_negdep')
-    !call check( nf90_def_var(nc_id,'jcd_negdep',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_negdep_varid) )
-    !call check( nf90_put_att(nc_id, jcd_negdep_varid, 'long_name', 'negative depth mask') )
-    !call check( nf90_put_att(nc_id, jcd_negdep_varid, 'standard_name', 'negative depth mask') )
+    call io_append_output('Creating variable jcd_negdep')
+    call check( nf90_def_var(nc_id,'jcd_negdep',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_negdep_varid) )
+    call check( nf90_put_att(nc_id, jcd_negdep_varid, 'long_name', 'negative depth mask') )
+    call check( nf90_put_att(nc_id, jcd_negdep_varid, 'standard_name', 'negative depth mask') )
 
-    !call io_append_output('Creating variable jcd_fl')
-    !call check( nf90_def_var(nc_id,'jcd_fl',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_fl_varid) )
-    !call check( nf90_put_att(nc_id, jcd_fl_varid, 'long_name', 'flooded mask') )
-    !call check( nf90_put_att(nc_id, jcd_fl_varid, 'standard_name', 'flooded mask') )
+    call io_append_output('Creating variable jcd_fl')
+    call check( nf90_def_var(nc_id,'jcd_fl',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_fl_varid) )
+    call check( nf90_put_att(nc_id, jcd_fl_varid, 'long_name', 'flooded mask') )
+    call check( nf90_put_att(nc_id, jcd_fl_varid, 'standard_name', 'flooded mask') )
 
     call check( nf90_enddef(nc_id) )
 
