@@ -307,12 +307,6 @@ contains
 
        call plume_runstep()
 
-       !we need to set the bmelt along the domain boundaries 
-       !because the plume doesn't calculate the rates there
-       bmelt(:,domain_kmax) = bmelt(:,domain_kmax - 1) !North edge
-       bmelt(:,domain_kmin) = bmelt(:,domain_kmin + 1) !South edge
-       bmelt(domain_imin,:) = bmelt(domain_imin + 1,:) !West edge
-       bmelt(domain_imax,:) = bmelt(domain_imax - 1,:) !East edge	
       
        ! calculate max error
        max_rel_bmelt_change = maxval(abs(bmelt_old - bmelt)/ &
@@ -414,16 +408,16 @@ contains
 
     !The order in which helper routines are called is:
     ! momentum
-    ! bound_u_v
+    ! outflow_bound_u_v
     ! continuity
-    ! bound_bmlt_entr
+    ! outflow_bound_bmlt_entr
     ! inflow_calc
     ! update
-    ! bound_interface
-    ! bound_u_v
+    ! outflow_bound_interface
+    ! outflow_bound_u_v
     ! scalar
     ! rho_calc
-    ! bound_tsdc
+    ! outflow_bound_tsdc
 
     ! change timestep and recalculate basic quantities if necessary
 
@@ -460,14 +454,14 @@ contains
     ! set velocity components on the open boundaries if the plume 
     ! has reached that far
 
-    call bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
+    call outflow_bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
 
     ! ---------------------------------------------------
     ! evaluate continuity equation for interface position
     ! ---------------------------------------------------
     call continuity(icalcan,kcalcan,icalcen,kcalcen)
  
-    call bound_bmelt_entr(icalcan,icalcen,kcalcan,kcalcen)
+    call outflow_bound_bmelt_entr(icalcan,icalcen,kcalcan,kcalcen)
 
     ! interface and scalars passed forward on open boundary
     call inflow_calc(icalcan,kcalcan,icalcen,kcalcen)
@@ -482,10 +476,10 @@ contains
 
     ! update interface position and flow on open boundaries
 
-    call bound_interface(icalcan,icalcen,kcalcan,kcalcen)
+    call outflow_bound_interface(icalcan,icalcen,kcalcan,kcalcen)
 
 
-    call bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
+    call outflow_bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
 
 
     ! ---------------------------------------------------------------
@@ -501,7 +495,7 @@ contains
     call rho_calc(icalcan,icalcen,kcalcan,kcalcen,sepflag)
 
 
-    call bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
+    call outflow_bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
 
     call filter_waves(pdep, jcs, short_waves, long_waves, as, bs)
 !    debug = long_waves
@@ -1006,13 +1000,8 @@ contains
     bpos = 0.d0
     jcs = 0
     jcw = 0
-    if (use_min_plume_thickness) then
-       jcd_u = 1
-       jcd_v = 1
-    else
-        jcd_u = 0
-        jcd_v = 0
-    end if
+    jcd_u = 0
+    jcd_v = 0
     jcd_fl = 0       
     jcd_negdep = 0
     jcd_fseed = 0
@@ -1816,6 +1805,13 @@ contains
              skip_u_calc = .true.
           end if
 
+          ! skip u calculation if northern cells are dry land
+          ! This would be a no-slip condition
+
+!          if (any(jcs(i:i+1,k+1) == 0)) then
+!             skip_u_calc = .true.
+!          end if
+
 	  if (i == icalcen ) then
 	      ! the last column of u grid is not part of the problem
 	      skip_u_calc = .true.
@@ -2111,7 +2107,11 @@ contains
           jcvfac = 0
           arfac = 1.d0
           jcvfac = max0(jcd_negdep(i,k),jcd_negdep(i,k+1))
-          if (jcvfac .ge. 1) arfac = 75.d0*jcvfac  
+          if (jcvfac .ge. 1) then
+             arfac = 75.d0*jcvfac  
+!             print *, 'negdep 2'
+!             stop 1
+          end if
 
           ! velocity components on the v-grid 
           uu = 5.0d-1*dx(i)*rdxu(i)
@@ -2329,13 +2329,15 @@ contains
 
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
+
           if (jcs(i,k).ne.1) cycle
           pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k)) + small
           pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1)) + small
 
-	  if (i .ne. icalcen)  su(i,k) = utrans(i,k)/pdepu
-	  if (k .ne. kcalcen)  sv(i,k) = vtrans(i,k)/pdepv
-
+!	  if (i .ne. icalcen)  su(i,k) = utrans(i,k)/pdepu
+!	  if (k .ne. kcalcen)  sv(i,k) = vtrans(i,k)/pdepv
+          su(i,k) = utrans(i,k)/pdepu
+      	  sv(i,k) = vtrans(i,k)/pdepv
           ! test for negative depths and set flow to zero if so
 !          delta = dt*(rdxu(i)*(utrans(i-1,k)-utrans(i,k)) &
 !               + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) 
@@ -2399,7 +2401,7 @@ contains
 
   end subroutine gwaves
 
-  subroutine bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
+  subroutine outflow_bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
 
     implicit none
 
@@ -2485,12 +2487,16 @@ contains
        do i = domain_imin,domain_imax - 1
           su(i,domain_kmax) = su(i,domain_kmax-1)
           utrans(i,domain_kmax) = su(i,domain_kmax-1)*5.0d-1*&
-                             (pdep(i,domain_kmax-1) + pdep(i+1,domain_kmax-1))
+               (pdep(i,domain_kmax-1) + pdep(i+1,domain_kmax-1))
+
+          jcd_u(i,domain_kmax) = jcd_u(i,domain_kmax -1)
+
        end do
        do i = domain_imin+1,domain_imax-1
+          jcd_v(i,domain_kmax) = jcd_v(i,domain_kmax -1)
            sv(i,domain_kmax-1) = sv(i,domain_kmax-2)
            vtrans(i,domain_kmax-1) = sv(i,domain_kmax-2)*pdep(i,domain_kmax-1) 
-	                         !note -1/-2 since north edge of v is -1
+           !note -1/-2 since north edge of v is -1
        end do
     end if
 
@@ -2520,9 +2526,9 @@ contains
        end do
     end if
 
-  end subroutine bound_u_v
+  end subroutine outflow_bound_u_v
 
-  subroutine bound_interface(icalcan,icalcen,kcalcan,kcalcen)
+  subroutine outflow_bound_interface(icalcan,icalcen,kcalcan,kcalcen)
 
     ! calculates boundary values for interface depth
     ! from neumann conditions. 
@@ -2535,10 +2541,16 @@ contains
     integer :: i,k
     real(kind=kdp):: pdepold
 
+    if (plume_southern_bc > 0) then
+       print *, "plume_southern_bc > 0 is not fully implemented"
+       stop 1
+    end if
+
     ! southern boundary
     if(kcalcan.le.(domain_kmin+1)) then
 
        select case(plume_southern_bc)
+
 
        case (0)
           ! old d/dy = 0 version
@@ -2596,11 +2608,10 @@ contains
     if(kcalcen.ge.(domain_kmax-1)) then
        do i = domain_imin,domain_imax
 
-   !       !Paul's version
-          jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
-          jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
-          pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
-          ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)       
+            jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
+           jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
+           pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
+           ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)       
 
        end do
     end if
@@ -2625,15 +2636,24 @@ contains
        end do
     end if
 
-  end subroutine bound_interface
+  end subroutine outflow_bound_interface
 
-  subroutine bound_bmelt_entr(icalcan, icalcen, kcalcan, kcalcen)
+  subroutine outflow_bound_bmelt_entr(icalcan, icalcen, kcalcan, kcalcen)
 
      implicit none
 
      integer, intent(in) :: icalcan, icalcen, kcalcan , kcalcen
 
      integer :: i,k,l
+
+    ! northern boudnary
+
+    if (kcalcen .ge. (domain_kmax-1)) then
+
+        bmelt(:,domain_kmax) = bmelt(:,domain_kmax-1)
+        entr(:,domain_kmax) = entr(:, domain_kmax-1)
+
+    end if
 
     ! southern boundary
 
@@ -2680,9 +2700,9 @@ contains
     end if
 
 
-  end subroutine bound_bmelt_entr
+  end subroutine outflow_bound_bmelt_entr
 
-  subroutine bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
+  subroutine outflow_bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
 
     ! calculates boundary values for temperature, salinity, frazil,
     ! density, and
@@ -2803,7 +2823,7 @@ contains
           tempa(i,domain_kmax) = tempa(i,domain_kmax-1)        
           salt(i,domain_kmax) = salt(i,domain_kmax-1) 
           salta(i,domain_kmax) = salta(i,domain_kmax-1) 
-          rhop(i,domain_kmax) = rhop(i,domain_kmax-1)                          
+          rhop(i,domain_kmax) = rhop(i,domain_kmax-1)    
           tfreeze(i,domain_kmax) = tfreeze(i,domain_kmax-1)          
        end do
 
@@ -2896,7 +2916,7 @@ contains
 
     end if
 
-  end subroutine bound_tsdc
+  end subroutine outflow_bound_tsdc
 
 
   subroutine absorbing_south_boundary_scalar(data_array)
@@ -3059,9 +3079,8 @@ contains
 
 	 if (i .ne. icalcen) then
            ! u-component
-           if (.not. use_min_plume_thickness) then
-               jcd_u(i,k) = 0
-           end if
+           ! skip icalcen because u(icalcen) is past the edge of the valid region
+           jcd_u(i,k) = 0
            pdepe = bpos(i+1,k) - ipos(i+1,k)
            dunew = 5.0d-1*(pdepe + pdepc)
            if (dunew.gt.small) then
@@ -3073,9 +3092,8 @@ contains
 
 	if (k .ne. kcalcen) then 
           ! v-component
-	  if (.not. use_min_plume_thickness) then
-            jcd_v(i,k) = 0
-          end if
+          ! skip kcalcen, because v(kcalcen) is past the edge of the valid region
+          jcd_v(i,k) = 0
           pdepn = bpos(i,k+1) - ipos(i,k+1)
           dvnew = 5.0d-1*(pdepn + pdepc)
           if (dvnew.gt.small) then
