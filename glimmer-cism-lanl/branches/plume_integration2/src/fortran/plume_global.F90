@@ -21,7 +21,6 @@ module plume_global
   real(kind=kdp) :: hx,hy
 
 
-
   real(kind=kdp),allocatable,dimension(:) :: dx,dxu,rdx,rdxu
   real(kind=kdp),allocatable,dimension(:) :: dy,dyv,rdy,rdyv
 
@@ -100,8 +99,8 @@ module plume_global
   real(kind=kdp) :: periodic_forcing_amp, forcing_period
 
   real(kind=kdp) :: dt1,dt2,dtswtim ! first timestep size
-                                    ! second timestep size
-                                    ! time at which to switch to second stepsize	
+  ! second timestep size
+  ! time at which to switch to second stepsize	
 
   !scalar fields
   real(kind=kdp),allocatable,dimension(:,:) :: rhop,temp,tempa,tins

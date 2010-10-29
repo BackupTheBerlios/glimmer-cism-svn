@@ -69,7 +69,6 @@ module plume_io
   integer :: bmelt_varid,btemp_varid,bsalt_varid
   integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
-
   integer :: debug_varid,debug2_varid
   integer :: gwave_speed_varid, gwave_crit_factor_varid
 
@@ -102,11 +101,11 @@ contains
   subroutine plume_io_initialize(suppress_ascii_output_in, &
        plume_output_nc_file)
 
-!!!! NB: this should be called AFTER plume_initialise so that certain global
+    ! NB: this should be called AFTER plume_initialise so that certain global
     !        constants are sure to have been set.
 
     character(len=*),intent(in) :: plume_output_nc_file !should be an absolute path
-                                                        !or relative to execution directory
+    !or relative to execution directory
     logical,intent(in) :: suppress_ascii_output_in
 
     suppress_ascii_output = suppress_ascii_output_in
@@ -720,7 +719,6 @@ contains
     call check( nf90_def_var(nc_id,'gwave_speed', NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),gwave_speed_varid))
     call io_append_output('Creating variable gwave_crit_factor')
     call check( nf90_def_var(nc_id,'gwave_crit_factor',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),gwave_crit_factor_varid))
-   
 
     call io_append_output('Creating variable jcd_negdep')
     call check( nf90_def_var(nc_id,'jcd_negdep',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_negdep_varid) )
@@ -738,7 +736,7 @@ contains
 
     call check( nf90_put_var(nc_id,x_varid,(/ (i*hx, i=1,m_grid) /)) )
     call check( nf90_put_var(nc_id,y_varid,(/ (j*hy, j=1,n_grid) /)) )
-   
+
     call check( nf90_sync(nc_id) )
 
   end subroutine plume_netcdf_init
@@ -770,16 +768,16 @@ contains
     call check(nf90_put_var(nc_id, jcd_u_varid, jcd_u, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcd_v_varid, jcd_v, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, artf_entr_frac_varid, artf_entr_frac, (/1,1,time_counter/)))
-   
+
     call check(nf90_put_var(nc_id, debug_varid, debug, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, debug2_varid, debug2, (/1,1,time_counter/)))
 
     call check(nf90_put_var(nc_id, gwave_speed_varid, gwave_speed, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, gwave_crit_factor_varid, gwave_crit_factor, (/1,1,time_counter/)))
-    
-    !call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
-    !call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))
-    
+
+    call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))
+
     call check(nf90_sync(nc_id))
 
     time_counter = time_counter + 1
@@ -799,7 +797,7 @@ contains
     if (status_code .ne. 0) then
        call io_append_output(NF90_STRERROR(status_code))
        call io_append_output('fatal netcdf error')
-       stop
+       stop 1
     end if
 
   end subroutine check

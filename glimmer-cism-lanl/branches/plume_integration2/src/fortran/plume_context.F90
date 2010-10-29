@@ -5,6 +5,7 @@ module plume_context
 
   use plume_global
 
+  implicit none
 
 contains
 
@@ -14,7 +15,7 @@ contains
 
     implicit none
 
-    logical :: set_inflow ! if true, set the inflow region
+    logical,intent(in) :: set_inflow ! if true, set the inflow region
 
     ! local variables
 
@@ -412,62 +413,51 @@ contains
 
        ! Peterman glacier style longitudinal channels
 
-       ! find total domain size
-!       toty = 0.d0
-!       do k = 1,n_grid
-!          toty = toty + dy(k)
-!       end do
-
-!       totx = 0.d0
-!       do i = 1,m_grid
-!          totx = totx + dx(i)
-!       end do
-
-	toty = (n_grid - 1)*hy
-	totx = (m_grid - 1)*hx
+       toty = (n_grid - 1)*hy
+       totx = (m_grid - 1)*hx
 
        ! (depth decreases from gldep to ifdep, 
        ! basal position increases from wcdep to wcdep + (gldep-ifdep)) 
        ! with sinusoidal undulations superimposed
 
        if (slope_direction == 0 .or. slope_direction == 1) then 
-           !north inflow edge or east inflow edge
-	   c0 = wcdep+ampdep
-	   c1 = -ampdep / toty 
+          !north inflow edge or east inflow edge
+          c0 = wcdep+ampdep
+          c1 = -ampdep / toty 
        else
-	   c0 = wcdep
-	   c1 = ampdep / toty
+          c0 = wcdep
+          c1 = ampdep / toty
        end if
 
        if (slope_direction == 0 .or. slope_direction == 2) then
        	  !north-south oriented ice shelf
-	  
+
 	  runtoty = 0.d0
 	  do k = 1,n_grid
              runtotx = 0.d0
              do i = 1,m_grid
-            	   runtotx = runtotx + dx(i)
-             	   call random_number(rand)
-             	   bpos(i,k) = c0 + c1*runtoty + &
-                    (0.5)*channel_amplitude *(1-(runtoty/toty))** along_slope_deepening_exp &
-                    *(1-cos(2*pi*cross_slope_wavenumber * (runtotx/totx))) &
-                    + (0.5d0 - rand)*2.d0 *random_amplitude
+                runtotx = runtotx + dx(i)
+                call random_number(rand)
+                bpos(i,k) = c0 + c1*runtoty + &
+                     (0.5)*channel_amplitude *(1-(runtoty/toty))** along_slope_deepening_exp &
+                     *(1-cos(2*pi*cross_slope_wavenumber * (runtotx/totx))) &
+                     + (0.5d0 - rand)*2.d0 *random_amplitude
              end do
 	     runtoty = runtoty + dy(k)
           end do
-    else 
+       else 
           !east-west oriented ice shelf
 	  runtotx = 0.d0
 	  do i = 1,m_grid
              runtoty = 0.d0
              do k = 1,n_grid
-            	   call random_number(rand)
-             	   bpos(i,k) = c0 + c1*runtotx + &
-                    (0.5)*channel_amplitude *(1-(runtotx/totx))** along_slope_deepening_exp &
-                    *(1-cos(2*pi*cross_slope_wavenumber * (runtoty/toty))) &
-                    + (0.5d0 - rand)*2.d0 *random_amplitude
-        	   runtoty = runtoty + dy(k)
-               end do
+                call random_number(rand)
+                bpos(i,k) = c0 + c1*runtotx + &
+                     (0.5)*channel_amplitude *(1-(runtotx/totx))** along_slope_deepening_exp &
+                     *(1-cos(2*pi*cross_slope_wavenumber * (runtoty/toty))) &
+                     + (0.5d0 - rand)*2.d0 *random_amplitude
+                runtoty = runtoty + dy(k)
+             end do
 	     runtotx = runtotx + dx(i)
           end do
        end if
@@ -486,25 +476,25 @@ contains
 
 
           ! set automated single inflow cells topography
-	    if (slope_direction == 0 .or. slope_direction == 2) then
+          if (slope_direction == 0 .or. slope_direction == 2) then
 	     do k = knfloa + 1,knfloe - 1
-               do i = domain_imin,infloa  
-                  bpos(i,k) = 0.d0
-	       end do
-               do i = infloe,domain_imax
-                  bpos(i,k) = 0.d0
-               end do
+                do i = domain_imin,infloa  
+                   bpos(i,k) = 0.d0
+                end do
+                do i = infloe,domain_imax
+                   bpos(i,k) = 0.d0
+                end do
              end do
-           else
-	      do i = infloa + 1,infloe - 1
-                 do k = domain_kmin,knfloa  
+          else
+             do i = infloa + 1,infloe - 1
+                do k = domain_kmin,knfloa  
                    bpos(i,k) = 0.d0
                 end do
                 do k = knfloe,domain_kmax
                    bpos(i,k) = 0.d0
                 end do
              end do
-	   end if
+          end if
 
        else
           print *, 'unexpected use of this code, which may be broken'
@@ -588,11 +578,11 @@ contains
     if (bathtype.eq.13) then
        ! set land on two side walls
        if (slope_direction == 0 .or. slope_direction == 2) then
-              bpos(1:2,:) = 0.0
-	      bpos((m_grid-1):m_grid,:) = 0.0
+          bpos(1:2,:) = 0.0
+          bpos((m_grid-1):m_grid,:) = 0.0
        else
-	      bpos(:,1:2) = 0.d0
-	      bpos(:,n_grid-1:n_grid) = 0.d0
+          bpos(:,1:2) = 0.d0
+          bpos(:,n_grid-1:n_grid) = 0.d0
        end if
     end if
 
@@ -604,6 +594,7 @@ contains
     ! hand-edit as required
 
     implicit none
+
 
     ! local variables
 
@@ -780,6 +771,7 @@ contains
 
     implicit none
 
+
     ! local variables
 
     integer :: i,k,l,imin,imax,kmin,kmax,icen,kcen
@@ -875,781 +867,58 @@ contains
           where((((ii.ge.imin).and.(ii.le.imax)).and. &
                ((kk.ge.kmin).and.(kk.le.kmax))).and. &
                (gmsk(i,k).eq.1.d0) )
-             vmsk = 1.d0
-          elsewhere
-             vmsk = 0.d0
-          end where
-
-
-          ! perform additional smoothing
-
-          do l = 1,smoothit(01) - bsmoothit
-
-             do i = 1,m_grid
-                do k = 1,n_grid
-                   tmp(i,k) = bpos(i,k)
-                end do
-             end do
-
-             do i = 1,m_grid
-                do k = 1,n_grid
-                   if (vmsk(i,k).eq.1.d0) then
-
-                      weightsum = cweight*vmsk(i,k) + nweight*( &
-                           vmsk(i-1,k-1) + vmsk(i-1,k) + vmsk(i-1,k+1) + &
-                           vmsk(i  ,k-1) + vmsk(i,k+1) + &
-                           vmsk(i+1,k-1) + vmsk(i+1,k) + vmsk(i+1,k+1) )
-
-                      valuesum = cweight*tmp(i,k)*vmsk(i,k) + nweight*( &
-                           tmp(i-1,k-1)*vmsk(i-1,k-1)+tmp(i-1,k  )*vmsk(i-1,k  ) + &
-                           tmp(i-1,k+1)*vmsk(i-1,k+1)+tmp(i  ,k-1)*vmsk(i  ,k-1) + &
-                           tmp(i  ,k+1)*vmsk(i  ,k+1)+tmp(i+1,k-1)*vmsk(i+1,k-1) + &
-                           tmp(i+1,k  )*vmsk(i+1,k  )+tmp(i+1,k+1)*vmsk(i+1,k+1) )
-
-                      bpos(i,k) = valuesum/weightsum
-
-                   end if
-                end do
-             end do
-
-          end do
-
-       end if
-
-       ! support force ice stream grounding line region
-
-       if ((smflag(02)).and.(smoothit(02).gt.bsmoothit)) then
-
-          ! set up mask defining area to be additionally smoothed
-
-          rotfac = +045.0d0*pi/180.d0
-          imin = int(0890.d0*1000.d0/hx)
-          imax = int(0950.d0*1000.d0/hx)
-          kmin = int(0435.d0*1000.d0/hy)
-          kmax = int(0505.d0*1000.d0/hy)
-
-          icen = imin + nint(dble(imax-imin)/2.d0)
-          kcen = kmin + nint(dble(kmax-kmin)/2.d0)
-
-          ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
-          kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
-
-          where ((((ii.ge.imin).and.(ii.le.imax)).and. &
-               ((kk.ge.kmin).and.(kk.le.kmax))).and. &
-               (gmsk.eq. 1.d0)              ) 
-             vmsk = 1.d0
-          elsewhere
-             vmsk = 0.d0
-          end where
-
-          ! perform additional smoothing
-
-          do l = 1,smoothit(02) - bsmoothit
-
-             do i = 1,m_grid
-                do k = 1,n_grid
-                   tmp(i,k) = bpos(i,k)
-                end do
-             end do
-
-             do i = 1,m_grid
-                do k = 1,n_grid
-                   if (vmsk(i,k).eq.1.d0) then
-
-                      weightsum = cweight*vmsk(i,k) + nweight*( &
-                           vmsk(i-1,k-1) + vmsk(i-1,k) + vmsk(i-1,k+1) + &
-                           vmsk(i  ,k-1) + vmsk(i,k+1) + &
-                           vmsk(i+1,k-1) + vmsk(i+1,k) + vmsk(i+1,k+1) )
-
-                      valuesum = cweight*tmp(i,k)*vmsk(i,k) + nweight*( &
-                           tmp(i-1,k-1)*vmsk(i-1,k-1)+tmp(i-1,k  )*vmsk(i-1,k  ) + &
-                           tmp(i-1,k+1)*vmsk(i-1,k+1)+tmp(i  ,k-1)*vmsk(i  ,k-1) + &
-                           tmp(i  ,k+1)*vmsk(i  ,k+1)+tmp(i+1,k-1)*vmsk(i+1,k-1) + &
-                           tmp(i+1,k  )*vmsk(i+1,k  )+tmp(i+1,k+1)*vmsk(i+1,k+1) )
-
-                      bpos(i,k) = valuesum/weightsum
-
-                   end if
-                end do
-             end do
-
-          end do
-
-       end if
-
-       ! spare slot
-
-       if (smflag(03)) then
-
-          write(*,*) 'error: smoothing zone not defined'
-
-       end if
-
-       ! end fris
-
-    end if
-
-    ! +++++++++
-    ! 2) isomip
-    ! +++++++++
-
-    if (context.eq."isomip") then
-
-       if ((smflag(01).or.smflag(02)).or.smflag(03)) then
-
-          write(*,*) 'error: smoothing zone not defined'
-
-       end if
-
-    end if
-
-    ! +++++++++
-    ! 3) larsen
-    ! +++++++++
-
-    if (context.eq."larsen") then
-
-       ! choyce point region
-
-       if ((smflag(01)).and.(smoothit(01).gt.bsmoothit)) then
-
-          ! set up mask defining area to be additionally smoothed
-
-          rotfac = +000.0d0*pi/180.d0
-          imin = int(0010.d0*1000.d0/hx)
-          imax = int(0022.d0*1000.d0/hx)
-          kmin = int(0110.d0*1000.d0/hy)
-          kmax = int(0126.d0*1000.d0/hy)
-
-          icen = imin + nint(dble(imax-imin)/2.d0)
-          kcen = kmin + nint(dble(kmax-kmin)/2.d0)
-
-          ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
-          kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
-
-          where ((((ii.ge.imin).and.(ii.le.imax)).and. &
-               ((kk.ge.kmin).and.(kk.le.kmax))).and. &
-               (gmsk.eq.1.d0)              ) 
-             vmsk = 1.d0
-          elsewhere
-             vmsk = 0.d0
-          end where
-
-          ! perform additional smoothing
-
-          do l = 1,smoothit(01) - bsmoothit
-
-             do i = 1,m_grid
-                do k = 1,n_grid
-                   tmp(i,k) = bpos(i,k)
-                end do
-             end do
-
-             do i = 1,m_grid
-                do k = 1,n_grid
-                   if (vmsk(i,k).eq.1.d0) then
-
-                      weightsum = cweight*vmsk(i,k) + nweight*( &
-                           vmsk(i-1,k-1) + vmsk(i-1,k) + vmsk(i-1,k+1) + &
-                           vmsk(i  ,k-1) + vmsk(i,k+1) + &
-                           vmsk(i+1,k-1) + vmsk(i+1,k) + vmsk(i+1,k+1) ) 
-
-                      valuesum = cweight*tmp(i,k)*vmsk(i,k) + nweight*( &
-                           tmp(i-1,k-1)*vmsk(i-1,k-1)+tmp(i-1,k  )*vmsk(i-1,k  ) + &
-                           tmp(i-1,k+1)*vmsk(i-1,k+1)+tmp(i  ,k-1)*vmsk(i  ,k-1) + &
-                           tmp(i  ,k+1)*vmsk(i  ,k+1)+tmp(i+1,k-1)*vmsk(i+1,k-1) + &
-                           tmp(i+1,k  )*vmsk(i+1,k  )+tmp(i+1,k+1)*vmsk(i+1,k+1) )
-
-                      bpos(i,k) = valuesum/weightsum
-
-                   end if
-                end do
-             end do
-
-          end do
-
-       end if
-
-       ! thuronyi bluff region
-
-       if ((smflag(02)).and.(smoothit(02).gt.bsmoothit)) then
-
-          ! set up mask defining area to be additionally smoothed
-
-          rotfac = +000.0d0*pi/180.d0
-          imin = int(0026.d0*1000.d0/hx)
-          imax = int(0050.d0*1000.d0/hx)
-          kmin = int(0213.d0*1000.d0/hy)
-          kmax = int(0236.d0*1000.d0/hy)
-
-          icen = imin + nint(dble(imax-imin)/2.d0)
-          kcen = kmin + nint(dble(kmax-kmin)/2.d0)
-
-          ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
-          kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
-
-          where ((((ii.ge.imin).and.(ii.le.imax)).and. &
-               ((kk.ge.kmin).and.(kk.le.kmax))).and. &
-               (gmsk.eq.1.d0)              ) 
-             vmsk = 1.d0
-          elsewhere
-             vmsk = 0.d0
-          end where
-
-          ! perform additional smoothing
-
-          do l = 1,smoothit(02) - bsmoothit
-
-             tmp = bpos
-
-             do i = 1,m_grid
-                do k = 1,n_grid
-                   if (vmsk(i,k).eq.1.d0) then
-
-                      weightsum = cweight*vmsk(i,k) + nweight*( &
-                           vmsk(i-1,k-1) + vmsk(i-1,k) + vmsk(i-1,k+1) + &
-                           vmsk(i  ,k-1) + vmsk(i,k+1) + &
-                           vmsk(i+1,k-1) + vmsk(i+1,k) + vmsk(i+1,k+1) )
-
-                      valuesum = cweight*tmp(i,k)*vmsk(i,k) + nweight*( &
-                           tmp(i-1,k-1)*vmsk(i-1,k-1)+tmp(i-1,k  )*vmsk(i-1,k  ) + &
-                           tmp(i-1,k+1)*vmsk(i-1,k+1)+tmp(i  ,k-1)*vmsk(i  ,k-1) + &
-                           tmp(i  ,k+1)*vmsk(i  ,k+1)+tmp(i+1,k-1)*vmsk(i+1,k-1) + &
-                           tmp(i+1,k  )*vmsk(i+1,k  )+tmp(i+1,k+1)*vmsk(i+1,k+1) )
-
-                      bpos(i,k) = valuesum/weightsum
-
-                   end if
-                end do
-             end do
-
-          end do
-
-       end if
-
-       ! spare slot
-
-       if (smflag(03)) then
-
-          write(*,*) 'error: smoothing zone not defined'
-
-       end if
-
-       ! end larsen
-
-    end if
-
-  end subroutine topog_smooth
-
-  subroutine inflow_set_isomip()
-
-    implicit none
-
-    ! set isomip inflow depths by hand if using real topography
-
-    ! local variables
-
-    integer i,k
-
-    ! -----------------------------
-    ! set up inflow regions by hand
-    ! -----------------------------
-    ! unless otherwise indicated the inflows are set up by defining a square
-    ! region and then setting all ocean domain within that region to inflow if it
-    ! is deeper than a given depth.
-
-    ! the inflows are:
-    !  01 - whole southern boundary
-
-    ! whole southern boundary
-    ! -----------------------
-
-    if (inflag(01)) then
-
-       do i = m_grid/2-5,m_grid/2+5
-          do k = n_grid/2-5,n_grid/2+5
-             intrin(i,k) = 1
-             depinf(i,k) = depinffix
-          end do
-       end do
-
-    end if
-
-    ! ----------------------------------------------
-    ! mask regions with grounding line and ice front
-    ! ----------------------------------------------
-
-    do i = 1,m_grid
-       do k = 1,n_grid
-          if ((bpos(i,k).le.0.d0).or.(bpos(i,k).ge.(gldep+wcdep))) then
-             intrin(i,k) = 0
-             depinf(i,k) = 0.d0
-          end if
-       end do
-    end do
-
-  end subroutine inflow_set_isomip
-
-  subroutine inflow_set_fris()
-
-    implicit none
-
-    ! set fris inflow depths by hand if using real topography
-
-    ! local variables
-
-    integer i,k,imin,imax,kmin,kmax
-
-    real(kind=kdp) cutdepth
-
-
-    ! -----------------------------
-    ! set up inflow regions by hand
-    ! -----------------------------
-    ! unless otherwise indicated the inflows are set up by defining a square
-    ! region and then setting all ocean domain within that region to inflow if it
-    ! is deeper than a given depth.
-
-    ! the inflows are:
-    !  01 - evans ice stream
-    !  02 - carlson inlet
-    !  03 - rutford ice stream
-    !  04 - institute ice stream
-    !  05 - mollereisstrom
-    !  06 - foundation ice stream
-    !  07 - support force glacier
-    !  08 - recovery glacier
-    !  09 - slessor glacier
-
-    ! evans ice stream
-    ! ----------------
-
-    if (inflag(01)) then
-
-       cutdepth = 0900.d0
-       imin = int(0050.d0*1000.d0/hx)
-       imax = int(0150.d0*1000.d0/hx) 
-       kmin = int(0200.d0*1000.d0/hy)
-       kmax = int(0300.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 1
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! carlson inlet
-    ! -------------
-
-    if (inflag(02)) then
-
-       cutdepth = 1400.d0
-       imin = int(0150.d0*1000.d0/hx)
-       imax = int(0210.d0*1000.d0/hx)
-       kmin = int(0050.d0*1000.d0/hy)
-       kmax = int(0150.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 2
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! rutford ice stream
-    ! ------------------
-
-    if (inflag(03)) then
-
-       cutdepth = 1500.d0
-       imin = int(0200.d0*1000.d0/hx)
-       imax = int(0300.d0*1000.d0/hx)
-       kmin = int(0000.d0*1000.d0/hy)
-       kmax = int(0070.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 3
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! institute ice stream
-    ! --------------------
-
-    if (inflag(04)) then
-
-       cutdepth = 1000.d0
-       imin = int(0450.d0*1000.d0/hx)
-       imax = int(0600.d0*1000.d0/hx)
-       kmin = int(0100.d0*1000.d0/hy)
-       kmax = int(0200.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 4
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! mollereisstrom
-    ! --------------
-
-    if (inflag(05)) then
-
-       cutdepth = 1050.d0
-       imin = int(0650.d0*1000.d0/hx)
-       imax = int(0750.d0*1000.d0/hx)
-       kmin = int(0200.d0*1000.d0/hy)
-       kmax = int(0300.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 5
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! foundation ice stream
-    ! ---------------------
-
-    if (inflag(06)) then
-
-       cutdepth = 1500.d0
-       imin = int(0800.d0*1000.d0/hx)
-       imax = int(0900.d0*1000.d0/hx)
-       kmin = int(0200.d0*1000.d0/hy)
-       kmax = int(0300.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 6
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! support force glacier
-    ! ---------------------
-
-    if (inflag(07)) then
-
-       cutdepth = 1300.d0
-       imin = int(0850.d0*1000.d0/hx)
-       imax = int(0950.d0*1000.d0/hx)
-       kmin = int(0450.d0*1000.d0/hy)
-       kmax = int(0550.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 7
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! recovery glacier
-    ! ----------------
-
-    if (inflag(08)) then
-
-       cutdepth = 1000.d0
-       imin = int(0850.d0*1000.d0/hx)
-       imax = int(0950.d0*1000.d0/hx)
-       kmin = int(0630.d0*1000.d0/hy)
-       kmax = int(0750.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 8
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! slessor glacier
-    ! ---------------
-
-    if (inflag(09)) then
-
-       cutdepth = 1200.d0
-       imin = int(0900.d0*1000.d0/hx)
-       imax = int(1000.d0*1000.d0/hx)
-       kmin = int(0800.d0*1000.d0/hy)
-       kmax = int(0900.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 9
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! ----------------------------------------------
-    ! mask regions with grounding line and ice front
-    ! ----------------------------------------------
-
-    do i = 1,m_grid
-       do k = 1,n_grid
-          if ((bpos(i,k).le.0.d0).or.(bpos(i,k).ge.(gldep+wcdep))) then
-             intrin(i,k) = 0
-             depinf(i,k) = 0.d0
-          end if
-       end do
-    end do
-
-  end subroutine inflow_set_fris
-
-  subroutine inflow_set_larsen()
-
-    implicit none
-
-    ! set larsen inflow depths by hand if using real topography
-
-    ! local variables
-
-    integer :: i,k,imin,imax,kmin,kmax
-
-    real(kind=kdp) :: cutdepth
-
-    ! -----------------------------
-    ! set up inflow regions by hand
-    ! -----------------------------
-    ! unless otherwise indicated the inflows are set up by defining a square
-    ! region and then setting all ocean domain within that region to inflow if it
-    ! is deeper than a given depth.
-
-    ! the inflows are:
-    !  01 - attlee glacier
-    !  02 - whole larsen b
-    !  03 - whole larsen c
-
-    ! attlee glacier
-    ! --------------
-
-    if (inflag(01)) then
-
-       cutdepth = 1000.d0
-       imin = int(0065.d0*1000.d0/hx)
-       imax = int(0080.d0*1000.d0/hx) 
-       kmin = int(0290.d0*1000.d0/hy)
-       kmax = int(0310.d0*1000.d0/hy)
-
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 1
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! whole larsen B
-    ! --------------
-
-    if (inflag(02)) then
-
-       cutdepth = 0400.d0
-
-       ! south
-       imin = int(0130.d0*1000.d0/hx)
-       imax = int(0160.d0*1000.d0/hx) 
-       kmin = int(0320.d0*1000.d0/hy)
-       kmax = int(0425.d0*1000.d0/hy)
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 2
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-       ! north
-       imin = int(0130.d0*1000.d0/hx)
-       imax = int(0200.d0*1000.d0/hx) 
-       kmin = int(0425.d0*1000.d0/hy)
-       kmax = int(0440.d0*1000.d0/hy)
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 2
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-    end if
-
-    ! whole larsen C (set all>cutdepth to inflow, then remove promontories)
-    ! ---------------------------------------------------------------------
-
-    if (inflag(03)) then
-
-       cutdepth = 1000.d0
-
-       ! set all to inflow west of jason peninsula
-       imin = int(0000.d0*1000.d0/hx)
-       imax = int(0150.d0*1000.d0/hx) 
-       kmin = int(0000.d0*1000.d0/hy)
-       kmax = int(0310.d0*1000.d0/hy)
-       do i = imin,imax
-          do k = kmin,kmax
-             if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
-                intrin(i,k) = 3
-                depinf(i,k) = depinffix
-             end if
-          end do
-       end do
-
-       ! unset cape alexander
-       imin = int(0120.d0*1000.d0/hx)
-       imax = int(0140.d0*1000.d0/hx) 
-       kmin = int(0240.d0*1000.d0/hy)
-       kmax = int(0270.d0*1000.d0/hy)
-       do i = imin,imax
-          do k = kmin,kmax
-             intrin(i,k) = 0
-             depinf(i,k) = 0.d0
-          end do
-       end do
-
-       ! unset cole peninsula
-       imin = int(0075.d0*1000.d0/hx)
-       imax = int(0090.d0*1000.d0/hx) 
-       kmin = int(0210.d0*1000.d0/hy)
-       kmax = int(0240.d0*1000.d0/hy)
-       do i = imin,imax
-          do k = kmin,kmax
-             intrin(i,k) = 0
-             depinf(i,k) = 0.d0
-          end do
-       end do
-
-       ! unset kenyon peninsula
-       imin = int(0070.d0*1000.d0/hx)
-       imax = int(0140.d0*1000.d0/hx) 
-       kmin = int(0020.d0*1000.d0/hy)
-       kmax = int(0060.d0*1000.d0/hy)
-       do i = imin,imax
-          do k = kmin,kmax
-             intrin(i,k) = 0
-             depinf(i,k) = 0.d0
-          end do
-       end do
-
-    end if
-
-    ! ----------------------------------------------
-    ! mask regions with grounding line and ice front
-    ! ----------------------------------------------
-
-    do i = 1,m_grid
-       do k = 1,n_grid
-          if ((bpos(i,k).le.0.d0).or.(bpos(i,k).ge.(gldep+wcdep))) then
-             intrin(i,k) = 0
-             depinf(i,k) = 0.d0
-          end if
-       end do
-    end do
-
-  end subroutine inflow_set_larsen
-
-
-  subroutine drag_set()
-
-    implicit none
-
-    ! set variable drag-coefficient areas by hand 
-
-    ! local variables
-    integer :: imin,imax,kmin,kmax,icen,kcen
-    integer, dimension(m_grid,n_grid) :: ii,kk
-    real(kind=kdp) :: rotfac
-
-    ! ---------------------------
-    ! set up drag regions by hand
-    ! ---------------------------
-    ! unless otherwise indicated the drag regions are defined such that 
-    ! all cells 
-    ! within a rotated box (defined by limits and then rotated about centre 
-    ! according to rotfac) have a different drag to the background value 
-
-    ! east of henry ice rise
-    ! ----------------------
-
-    if (drflag(01)) then
-
-       !rotfac = +055.0d0*pi/180.d0
-       !imin = int(0560.d0*1000.d0/hx)
-       !imax = int(0620.d0*1000.d0/hx)
-       !kmin = int(0370.d0*1000.d0/hy)
-       !kmax = int(0500.d0*1000.d0/hy)
-       rotfac = +000.0d0*pi/180.d0
-       imin = int(0225.d0*1000.d0/hx)
-       imax = int(0400.d0*1000.d0/hx)
-       kmin = int(0000.d0*1000.d0/hy)
-       kmax = int(0110.d0*1000.d0/hy)
-
-       icen = imin + nint(dble(imax-imin)/2.d0)
-       kcen = kmin + nint(dble(kmax-kmin)/2.d0)
-
-       ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
-       kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
-
-       where ( (ii.ge.imin).and.(ii.le.imax) &
-            .and.(kk.ge.kmin).and.(kk.le.kmax) )
-          drag = cdbvar
+          vmsk = 1.d0
+       elsewhere
+          vmsk = 0.d0
        end where
 
+
+       ! perform additional smoothing
+
+       do l = 1,smoothit(01) - bsmoothit
+
+          do i = 1,m_grid
+             do k = 1,n_grid
+                tmp(i,k) = bpos(i,k)
+             end do
+          end do
+
+          do i = 1,m_grid
+             do k = 1,n_grid
+                if (vmsk(i,k).eq.1.d0) then
+
+                   weightsum = cweight*vmsk(i,k) + nweight*( &
+                        vmsk(i-1,k-1) + vmsk(i-1,k) + vmsk(i-1,k+1) + &
+                        vmsk(i  ,k-1) + vmsk(i,k+1) + &
+                        vmsk(i+1,k-1) + vmsk(i+1,k) + vmsk(i+1,k+1) )
+
+                   valuesum = cweight*tmp(i,k)*vmsk(i,k) + nweight*( &
+                        tmp(i-1,k-1)*vmsk(i-1,k-1)+tmp(i-1,k  )*vmsk(i-1,k  ) + &
+                        tmp(i-1,k+1)*vmsk(i-1,k+1)+tmp(i  ,k-1)*vmsk(i  ,k-1) + &
+                        tmp(i  ,k+1)*vmsk(i  ,k+1)+tmp(i+1,k-1)*vmsk(i+1,k-1) + &
+                        tmp(i+1,k  )*vmsk(i+1,k  )+tmp(i+1,k+1)*vmsk(i+1,k+1) )
+
+                   bpos(i,k) = valuesum/weightsum
+
+                end if
+             end do
+          end do
+
+       end do
+
     end if
 
-    ! east of berkner island
-    ! ----------------------
+    ! support force ice stream grounding line region
 
-    if (drflag(02)) then
+    if ((smflag(02)).and.(smoothit(02).gt.bsmoothit)) then
+
+       ! set up mask defining area to be additionally smoothed
 
        rotfac = +045.0d0*pi/180.d0
-       imin = int(0600.d0*1000.d0/hx)
-       imax = int(0730.d0*1000.d0/hx)
-       kmin = int(0700.d0*1000.d0/hy)
-       kmax = int(0830.d0*1000.d0/hy)
+       imin = int(0890.d0*1000.d0/hx)
+       imax = int(0950.d0*1000.d0/hx)
+       kmin = int(0435.d0*1000.d0/hy)
+       kmax = int(0505.d0*1000.d0/hy)
 
        icen = imin + nint(dble(imax-imin)/2.d0)
        kcen = kmin + nint(dble(kmax-kmin)/2.d0)
@@ -1657,58 +926,783 @@ contains
        ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
        kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
 
-       where(((ii.ge.imin).and.(ii.le.imax)) &
-            .and.((kk.ge.kmin).and.(kk.le.kmax))) 
-          drag = cdbvar
-       end where
-
-    end if
-
-    ! spare slot
-    ! ----------
-
-    if (drflag(03)) then
-
-       write(*,*) 'error: drag area not set'
-
-    end if
-
-    ! mask regions with grounding line and ice front
-    ! ----------------------------------------------
-
-    where ((bpos <= 0.d0).or.(bpos >= (gldep+wcdep)))
-       drag = 0.d0
+       where ((((ii.ge.imin).and.(ii.le.imax)).and. &
+            ((kk.ge.kmin).and.(kk.le.kmax))).and. &
+            (gmsk.eq. 1.d0)              ) 
+       vmsk = 1.d0
+    elsewhere
+       vmsk = 0.d0
     end where
 
-  end subroutine drag_set
+    ! perform additional smoothing
 
-  function get_ii(m_grid,n_grid,icen,kcen,rotfac)
+    do l = 1,smoothit(02) - bsmoothit
 
-    real(kind=kdp) :: rotfac
-    integer :: m_grid,n_grid,icen,kcen
-    integer,dimension(m_grid,n_grid) :: get_ii
+       do i = 1,m_grid
+          do k = 1,n_grid
+             tmp(i,k) = bpos(i,k)
+          end do
+       end do
 
-    get_ii = reshape( &
-         (/ ((nint(dble(i-icen)*cos(rotfac)) &
-         + nint(dble(k-kcen)*sin(rotfac)) + icen, &
-         i=1,m_grid),k=1,n_grid) /), &
-         (/ m_grid,n_grid /) )
+       do i = 1,m_grid
+          do k = 1,n_grid
+             if (vmsk(i,k).eq.1.d0) then
 
-  end function get_ii
+                weightsum = cweight*vmsk(i,k) + nweight*( &
+                     vmsk(i-1,k-1) + vmsk(i-1,k) + vmsk(i-1,k+1) + &
+                     vmsk(i  ,k-1) + vmsk(i,k+1) + &
+                     vmsk(i+1,k-1) + vmsk(i+1,k) + vmsk(i+1,k+1) )
 
-  function get_kk(m_grid,n_grid,icen,kcen,rotfac)
+                valuesum = cweight*tmp(i,k)*vmsk(i,k) + nweight*( &
+                     tmp(i-1,k-1)*vmsk(i-1,k-1)+tmp(i-1,k  )*vmsk(i-1,k  ) + &
+                     tmp(i-1,k+1)*vmsk(i-1,k+1)+tmp(i  ,k-1)*vmsk(i  ,k-1) + &
+                     tmp(i  ,k+1)*vmsk(i  ,k+1)+tmp(i+1,k-1)*vmsk(i+1,k-1) + &
+                     tmp(i+1,k  )*vmsk(i+1,k  )+tmp(i+1,k+1)*vmsk(i+1,k+1) )
 
-    real(kind=kdp) :: rotfac
-    integer :: m_grid,n_grid,icen,kcen
-    integer,dimension(m_grid,n_grid) :: get_kk
+                bpos(i,k) = valuesum/weightsum
 
-    get_kk = reshape( &
-         (/ ((nint(dble(k-kcen)*cos(rotfac)) &
-         - nint(dble(i-icen)*sin(rotfac)) + kcen, &
-         i=1,m_grid),k=1,n_grid) /), &
-         (/ m_grid,n_grid /) )
+             end if
+          end do
+       end do
 
-  end function get_kk
+    end do
+
+ end if
+
+ ! spare slot
+
+ if (smflag(03)) then
+
+    write(*,*) 'error: smoothing zone not defined'
+
+ end if
+
+ ! end fris
+
+end if
+
+! +++++++++
+! 2) isomip
+! +++++++++
+
+if (context.eq."isomip") then
+
+ if ((smflag(01).or.smflag(02)).or.smflag(03)) then
+
+    write(*,*) 'error: smoothing zone not defined'
+
+ end if
+
+end if
+
+! +++++++++
+! 3) larsen
+! +++++++++
+
+if (context.eq."larsen") then
+
+   ! choyce point region
+
+ if ((smflag(01)).and.(smoothit(01).gt.bsmoothit)) then
+
+    ! set up mask defining area to be additionally smoothed
+
+    rotfac = +000.0d0*pi/180.d0
+    imin = int(0010.d0*1000.d0/hx)
+    imax = int(0022.d0*1000.d0/hx)
+    kmin = int(0110.d0*1000.d0/hy)
+    kmax = int(0126.d0*1000.d0/hy)
+
+    icen = imin + nint(dble(imax-imin)/2.d0)
+    kcen = kmin + nint(dble(kmax-kmin)/2.d0)
+
+    ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
+    kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
+
+    where ((((ii.ge.imin).and.(ii.le.imax)).and. &
+         ((kk.ge.kmin).and.(kk.le.kmax))).and. &
+         (gmsk.eq.1.d0)              ) 
+    vmsk = 1.d0
+ elsewhere
+    vmsk = 0.d0
+ end where
+
+ ! perform additional smoothing
+
+ do l = 1,smoothit(01) - bsmoothit
+
+    do i = 1,m_grid
+       do k = 1,n_grid
+          tmp(i,k) = bpos(i,k)
+       end do
+    end do
+
+    do i = 1,m_grid
+       do k = 1,n_grid
+          if (vmsk(i,k).eq.1.d0) then
+
+             weightsum = cweight*vmsk(i,k) + nweight*( &
+                  vmsk(i-1,k-1) + vmsk(i-1,k) + vmsk(i-1,k+1) + &
+                  vmsk(i  ,k-1) + vmsk(i,k+1) + &
+                  vmsk(i+1,k-1) + vmsk(i+1,k) + vmsk(i+1,k+1) ) 
+
+             valuesum = cweight*tmp(i,k)*vmsk(i,k) + nweight*( &
+                  tmp(i-1,k-1)*vmsk(i-1,k-1)+tmp(i-1,k  )*vmsk(i-1,k  ) + &
+                  tmp(i-1,k+1)*vmsk(i-1,k+1)+tmp(i  ,k-1)*vmsk(i  ,k-1) + &
+                  tmp(i  ,k+1)*vmsk(i  ,k+1)+tmp(i+1,k-1)*vmsk(i+1,k-1) + &
+                  tmp(i+1,k  )*vmsk(i+1,k  )+tmp(i+1,k+1)*vmsk(i+1,k+1) )
+
+             bpos(i,k) = valuesum/weightsum
+
+          end if
+       end do
+    end do
+
+ end do
+
+end if
+
+! thuronyi bluff region
+
+if ((smflag(02)).and.(smoothit(02).gt.bsmoothit)) then
+
+   ! set up mask defining area to be additionally smoothed
+
+ rotfac = +000.0d0*pi/180.d0
+ imin = int(0026.d0*1000.d0/hx)
+ imax = int(0050.d0*1000.d0/hx)
+ kmin = int(0213.d0*1000.d0/hy)
+ kmax = int(0236.d0*1000.d0/hy)
+
+ icen = imin + nint(dble(imax-imin)/2.d0)
+ kcen = kmin + nint(dble(kmax-kmin)/2.d0)
+
+ ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
+ kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
+
+ where ((((ii.ge.imin).and.(ii.le.imax)).and. &
+      ((kk.ge.kmin).and.(kk.le.kmax))).and. &
+      (gmsk.eq.1.d0)              ) 
+ vmsk = 1.d0
+elsewhere
+ vmsk = 0.d0
+end where
+
+! perform additional smoothing
+
+do l = 1,smoothit(02) - bsmoothit
+
+ tmp = bpos
+
+ do i = 1,m_grid
+    do k = 1,n_grid
+       if (vmsk(i,k).eq.1.d0) then
+
+          weightsum = cweight*vmsk(i,k) + nweight*( &
+               vmsk(i-1,k-1) + vmsk(i-1,k) + vmsk(i-1,k+1) + &
+               vmsk(i  ,k-1) + vmsk(i,k+1) + &
+               vmsk(i+1,k-1) + vmsk(i+1,k) + vmsk(i+1,k+1) )
+
+          valuesum = cweight*tmp(i,k)*vmsk(i,k) + nweight*( &
+               tmp(i-1,k-1)*vmsk(i-1,k-1)+tmp(i-1,k  )*vmsk(i-1,k  ) + &
+               tmp(i-1,k+1)*vmsk(i-1,k+1)+tmp(i  ,k-1)*vmsk(i  ,k-1) + &
+               tmp(i  ,k+1)*vmsk(i  ,k+1)+tmp(i+1,k-1)*vmsk(i+1,k-1) + &
+               tmp(i+1,k  )*vmsk(i+1,k  )+tmp(i+1,k+1)*vmsk(i+1,k+1) )
+
+          bpos(i,k) = valuesum/weightsum
+
+       end if
+    end do
+ end do
+
+end do
+
+end if
+
+! spare slot
+
+if (smflag(03)) then
+
+write(*,*) 'error: smoothing zone not defined'
+
+end if
+
+! end larsen
+
+end if
+
+end subroutine topog_smooth
+
+subroutine inflow_set_isomip()
+
+implicit none
+
+! set isomip inflow depths by hand if using real topography
+
+! local variables
+
+integer i,k
+
+! -----------------------------
+! set up inflow regions by hand
+! -----------------------------
+! unless otherwise indicated the inflows are set up by defining a square
+! region and then setting all ocean domain within that region to inflow if it
+! is deeper than a given depth.
+
+! the inflows are:
+!  01 - whole southern boundary
+
+! whole southern boundary
+! -----------------------
+
+if (inflag(01)) then
+
+do i = m_grid/2-5,m_grid/2+5
+do k = n_grid/2-5,n_grid/2+5
+ intrin(i,k) = 1
+ depinf(i,k) = depinffix
+end do
+end do
+
+end if
+
+! ----------------------------------------------
+! mask regions with grounding line and ice front
+! ----------------------------------------------
+
+do i = 1,m_grid
+do k = 1,n_grid
+if ((bpos(i,k).le.0.d0).or.(bpos(i,k).ge.(gldep+wcdep))) then
+ intrin(i,k) = 0
+ depinf(i,k) = 0.d0
+end if
+end do
+end do
+
+end subroutine inflow_set_isomip
+
+subroutine inflow_set_fris()
+
+implicit none
+
+! set fris inflow depths by hand if using real topography
+
+! local variables
+
+integer i,k,imin,imax,kmin,kmax
+
+real(kind=kdp) cutdepth
+
+
+! -----------------------------
+! set up inflow regions by hand
+! -----------------------------
+! unless otherwise indicated the inflows are set up by defining a square
+! region and then setting all ocean domain within that region to inflow if it
+! is deeper than a given depth.
+
+! the inflows are:
+!  01 - evans ice stream
+!  02 - carlson inlet
+!  03 - rutford ice stream
+!  04 - institute ice stream
+!  05 - mollereisstrom
+!  06 - foundation ice stream
+!  07 - support force glacier
+!  08 - recovery glacier
+!  09 - slessor glacier
+
+! evans ice stream
+! ----------------
+
+if (inflag(01)) then
+
+cutdepth = 0900.d0
+imin = int(0050.d0*1000.d0/hx)
+imax = int(0150.d0*1000.d0/hx) 
+kmin = int(0200.d0*1000.d0/hy)
+kmax = int(0300.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 1
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! carlson inlet
+! -------------
+
+if (inflag(02)) then
+
+cutdepth = 1400.d0
+imin = int(0150.d0*1000.d0/hx)
+imax = int(0210.d0*1000.d0/hx)
+kmin = int(0050.d0*1000.d0/hy)
+kmax = int(0150.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 2
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! rutford ice stream
+! ------------------
+
+if (inflag(03)) then
+
+cutdepth = 1500.d0
+imin = int(0200.d0*1000.d0/hx)
+imax = int(0300.d0*1000.d0/hx)
+kmin = int(0000.d0*1000.d0/hy)
+kmax = int(0070.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 3
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! institute ice stream
+! --------------------
+
+if (inflag(04)) then
+
+cutdepth = 1000.d0
+imin = int(0450.d0*1000.d0/hx)
+imax = int(0600.d0*1000.d0/hx)
+kmin = int(0100.d0*1000.d0/hy)
+kmax = int(0200.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 4
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! mollereisstrom
+! --------------
+
+if (inflag(05)) then
+
+cutdepth = 1050.d0
+imin = int(0650.d0*1000.d0/hx)
+imax = int(0750.d0*1000.d0/hx)
+kmin = int(0200.d0*1000.d0/hy)
+kmax = int(0300.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 5
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! foundation ice stream
+! ---------------------
+
+if (inflag(06)) then
+
+cutdepth = 1500.d0
+imin = int(0800.d0*1000.d0/hx)
+imax = int(0900.d0*1000.d0/hx)
+kmin = int(0200.d0*1000.d0/hy)
+kmax = int(0300.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 6
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! support force glacier
+! ---------------------
+
+if (inflag(07)) then
+
+cutdepth = 1300.d0
+imin = int(0850.d0*1000.d0/hx)
+imax = int(0950.d0*1000.d0/hx)
+kmin = int(0450.d0*1000.d0/hy)
+kmax = int(0550.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 7
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! recovery glacier
+! ----------------
+
+if (inflag(08)) then
+
+cutdepth = 1000.d0
+imin = int(0850.d0*1000.d0/hx)
+imax = int(0950.d0*1000.d0/hx)
+kmin = int(0630.d0*1000.d0/hy)
+kmax = int(0750.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 8
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! slessor glacier
+! ---------------
+
+if (inflag(09)) then
+
+cutdepth = 1200.d0
+imin = int(0900.d0*1000.d0/hx)
+imax = int(1000.d0*1000.d0/hx)
+kmin = int(0800.d0*1000.d0/hy)
+kmax = int(0900.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 9
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! ----------------------------------------------
+! mask regions with grounding line and ice front
+! ----------------------------------------------
+
+do i = 1,m_grid
+do k = 1,n_grid
+if ((bpos(i,k).le.0.d0).or.(bpos(i,k).ge.(gldep+wcdep))) then
+ intrin(i,k) = 0
+ depinf(i,k) = 0.d0
+end if
+end do
+end do
+
+end subroutine inflow_set_fris
+
+subroutine inflow_set_larsen()
+
+implicit none
+
+! set larsen inflow depths by hand if using real topography
+
+! local variables
+
+integer :: i,k,imin,imax,kmin,kmax
+
+real(kind=kdp) :: cutdepth
+
+! -----------------------------
+! set up inflow regions by hand
+! -----------------------------
+! unless otherwise indicated the inflows are set up by defining a square
+! region and then setting all ocean domain within that region to inflow if it
+! is deeper than a given depth.
+
+! the inflows are:
+!  01 - attlee glacier
+!  02 - whole larsen b
+!  03 - whole larsen c
+
+! attlee glacier
+! --------------
+
+if (inflag(01)) then
+
+cutdepth = 1000.d0
+imin = int(0065.d0*1000.d0/hx)
+imax = int(0080.d0*1000.d0/hx) 
+kmin = int(0290.d0*1000.d0/hy)
+kmax = int(0310.d0*1000.d0/hy)
+
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 1
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! whole larsen B
+! --------------
+
+if (inflag(02)) then
+
+cutdepth = 0400.d0
+
+! south
+imin = int(0130.d0*1000.d0/hx)
+imax = int(0160.d0*1000.d0/hx) 
+kmin = int(0320.d0*1000.d0/hy)
+kmax = int(0425.d0*1000.d0/hy)
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 2
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+! north
+imin = int(0130.d0*1000.d0/hx)
+imax = int(0200.d0*1000.d0/hx) 
+kmin = int(0425.d0*1000.d0/hy)
+kmax = int(0440.d0*1000.d0/hy)
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 2
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+end if
+
+! whole larsen C (set all>cutdepth to inflow, then remove promontories)
+! ---------------------------------------------------------------------
+
+if (inflag(03)) then
+
+cutdepth = 1000.d0
+
+! set all to inflow west of jason peninsula
+imin = int(0000.d0*1000.d0/hx)
+imax = int(0150.d0*1000.d0/hx) 
+kmin = int(0000.d0*1000.d0/hy)
+kmax = int(0310.d0*1000.d0/hy)
+do i = imin,imax
+do k = kmin,kmax
+ if (bpos(i,k).le.(gldep+wcdep-cutdepth)) then
+    intrin(i,k) = 3
+    depinf(i,k) = depinffix
+ end if
+end do
+end do
+
+! unset cape alexander
+imin = int(0120.d0*1000.d0/hx)
+imax = int(0140.d0*1000.d0/hx) 
+kmin = int(0240.d0*1000.d0/hy)
+kmax = int(0270.d0*1000.d0/hy)
+do i = imin,imax
+do k = kmin,kmax
+ intrin(i,k) = 0
+ depinf(i,k) = 0.d0
+end do
+end do
+
+! unset cole peninsula
+imin = int(0075.d0*1000.d0/hx)
+imax = int(0090.d0*1000.d0/hx) 
+kmin = int(0210.d0*1000.d0/hy)
+kmax = int(0240.d0*1000.d0/hy)
+do i = imin,imax
+do k = kmin,kmax
+ intrin(i,k) = 0
+ depinf(i,k) = 0.d0
+end do
+end do
+
+! unset kenyon peninsula
+imin = int(0070.d0*1000.d0/hx)
+imax = int(0140.d0*1000.d0/hx) 
+kmin = int(0020.d0*1000.d0/hy)
+kmax = int(0060.d0*1000.d0/hy)
+do i = imin,imax
+do k = kmin,kmax
+ intrin(i,k) = 0
+ depinf(i,k) = 0.d0
+end do
+end do
+
+end if
+
+! ----------------------------------------------
+! mask regions with grounding line and ice front
+! ----------------------------------------------
+
+do i = 1,m_grid
+do k = 1,n_grid
+if ((bpos(i,k).le.0.d0).or.(bpos(i,k).ge.(gldep+wcdep))) then
+ intrin(i,k) = 0
+ depinf(i,k) = 0.d0
+end if
+end do
+end do
+
+end subroutine inflow_set_larsen
+
+
+subroutine drag_set()
+
+implicit none
+
+! set variable drag-coefficient areas by hand 
+
+! local variables
+integer :: imin,imax,kmin,kmax,icen,kcen
+integer, dimension(m_grid,n_grid) :: ii,kk
+real(kind=kdp) :: rotfac
+
+! ---------------------------
+! set up drag regions by hand
+! ---------------------------
+! unless otherwise indicated the drag regions are defined such that 
+! all cells 
+! within a rotated box (defined by limits and then rotated about centre 
+! according to rotfac) have a different drag to the background value 
+
+! east of henry ice rise
+! ----------------------
+
+if (drflag(01)) then
+
+   !rotfac = +055.0d0*pi/180.d0
+   !imin = int(0560.d0*1000.d0/hx)
+   !imax = int(0620.d0*1000.d0/hx)
+   !kmin = int(0370.d0*1000.d0/hy)
+   !kmax = int(0500.d0*1000.d0/hy)
+rotfac = +000.0d0*pi/180.d0
+imin = int(0225.d0*1000.d0/hx)
+imax = int(0400.d0*1000.d0/hx)
+kmin = int(0000.d0*1000.d0/hy)
+kmax = int(0110.d0*1000.d0/hy)
+
+icen = imin + nint(dble(imax-imin)/2.d0)
+kcen = kmin + nint(dble(kmax-kmin)/2.d0)
+
+ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
+kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
+
+where ( (ii.ge.imin).and.(ii.le.imax) &
+.and.(kk.ge.kmin).and.(kk.le.kmax) )
+drag = cdbvar
+end where
+
+end if
+
+! east of berkner island
+! ----------------------
+
+if (drflag(02)) then
+
+rotfac = +045.0d0*pi/180.d0
+imin = int(0600.d0*1000.d0/hx)
+imax = int(0730.d0*1000.d0/hx)
+kmin = int(0700.d0*1000.d0/hy)
+kmax = int(0830.d0*1000.d0/hy)
+
+icen = imin + nint(dble(imax-imin)/2.d0)
+kcen = kmin + nint(dble(kmax-kmin)/2.d0)
+
+ii = get_ii(m_grid,n_grid,icen,kcen,rotfac)
+kk = get_kk(m_grid,n_grid,icen,kcen,rotfac)
+
+where(((ii.ge.imin).and.(ii.le.imax)) &
+.and.((kk.ge.kmin).and.(kk.le.kmax))) 
+drag = cdbvar
+end where
+
+end if
+
+! spare slot
+! ----------
+
+if (drflag(03)) then
+
+write(*,*) 'error: drag area not set'
+
+end if
+
+! mask regions with grounding line and ice front
+! ----------------------------------------------
+
+where ((bpos <= 0.d0).or.(bpos >= (gldep+wcdep)))
+drag = 0.d0
+end where
+
+end subroutine drag_set
+
+function get_ii(m_grid,n_grid,icen,kcen,rotfac)
+
+real(kind=kdp) :: rotfac
+integer :: m_grid,n_grid,icen,kcen
+integer,dimension(m_grid,n_grid) :: get_ii
+integer :: i,k
+
+get_ii = reshape( &
+(/ ((nint(dble(i-icen)*cos(rotfac)) &
++ nint(dble(k-kcen)*sin(rotfac)) + icen, &
+i=1,m_grid),k=1,n_grid) /), &
+(/ m_grid,n_grid /) )
+
+end function get_ii
+
+function get_kk(m_grid,n_grid,icen,kcen,rotfac)
+
+real(kind=kdp) :: rotfac
+integer :: m_grid,n_grid,icen,kcen
+integer,dimension(m_grid,n_grid) :: get_kk
+integer :: i,k
+
+get_kk = reshape( &
+(/ ((nint(dble(k-kcen)*cos(rotfac)) &
+- nint(dble(i-icen)*sin(rotfac)) + kcen, &
+i=1,m_grid),k=1,n_grid) /), &
+(/ m_grid,n_grid /) )
+
+end function get_kk
 
 
 end module plume_context
