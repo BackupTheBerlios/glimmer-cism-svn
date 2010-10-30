@@ -26,6 +26,9 @@ module plume
   use plume_context
   use plume_io
 
+
+  use omp_lib
+
   implicit none
 
   ! everything is private by default
@@ -269,7 +272,6 @@ contains
     
     integer :: time_step_count = 0
     
-
     ! convert lower surface depth into height of basal surface and interface
     ! surface, storing results in plume's global variable
     bpos = lsrf + gldep + wcdep
@@ -310,9 +312,10 @@ contains
       
        ! calculate max error
        max_rel_bmelt_change = maxval(abs(bmelt_old - bmelt)/ &
-            (abs(bmelt)+1.d-30))
+            (abs(bmelt)+epsilon(1.d0)))
 
        ! speed is an (m-2)*(n-2) array
+       ! this step is necessary because su and sv are on different grids
        speed(2:(m_grid-1),2:(n_grid-1)) = sqrt(  &
              (5.d-1*(su(1:m_grid-2,2:n_grid-1)+ &
                      su(2:m_grid-1,2:n_grid-1))) ** 2.d0 + &
@@ -321,7 +324,7 @@ contains
 
        if (time_step_count > 0) then                              
                    
-            rel_speed_change_array = abs(speed- speed_old) / &
+            rel_speed_change_array = abs(speed - speed_old) / &
                                     (abs(speed_old)+epsilon(1.d0))
 
        end if
@@ -333,7 +336,6 @@ contains
        elsewhere
            debug = 0.d0
        end where
-       
 
        if (subcycling_time >= min_run_time_sec .and. &
           (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
@@ -358,15 +360,6 @@ contains
              exit
           end if
        end if
-
-       ! adjust the order of the open boundary condition
-!       if ((max_rel_bmelt_change < plume_stopping_tol * 1.d4) .and. &
-!           (max_rel_speed_change < plume_speed_stopping_tol * 1.d4)) then
-!          if (plume_southern_bc == 1) then
-!             print *, 'switching to plume_southern_bc == 2'
-!             plume_southern_bc = 2
-!          end if
-!       end if
 
        if (write_all_states .and. &
            (mod(time_step_count,write_every_n) == 0)) then
@@ -418,6 +411,8 @@ contains
     ! scalar
     ! rho_calc
     ! outflow_bound_tsdc
+    ! filter_waves
+    ! gwaves
 
     ! change timestep and recalculate basic quantities if necessary
 
@@ -425,7 +420,7 @@ contains
 
     real(kind=kdp),dimension(m_grid,n_grid) :: long_waves,short_waves, as, bs
 
-    if (runtim.eq.dtswtim) then
+    if (runtim .ge. dtswtim) then
        dt = dt2
        gdt = grav*dt2
        fdt = f*dt2
@@ -447,7 +442,6 @@ contains
     ! --------------------
     ! calculate velocities
     ! --------------------
-
 
     call momentum(icalcan,kcalcan,icalcen,kcalcen)
 
@@ -487,7 +481,6 @@ contains
     ! ---------------------------------------------------------------
     call scalar(icalcan,kcalcan,icalcen,kcalcen)             
 
-
     ! -----------------------------------
     ! calculate density and update bounds
     ! -----------------------------------
@@ -498,10 +491,8 @@ contains
     call outflow_bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
 
     call filter_waves(pdep, jcs, short_waves, long_waves, as, bs)
-!    debug = long_waves
-    debug2(domain_imin:domain_imax,domain_kmin:domain_kmax) = &
-      short_waves(domain_imin:domain_imax,domain_kmin:domain_kmax)
-      debug2 = short_waves
+
+    debug2 = short_waves
 
     call gwaves(icalcan, icalcen, kcalcan, kcalcen)
 
@@ -558,7 +549,6 @@ contains
     character(len = *),intent(in) :: nl_filename
     integer,intent(out) :: varoutrat
     real(kind=kdp),intent(out) :: labtim,tottim,outtim,fouttim,louttim,snottim,lnottim
-
 
     ! local variables
     integer :: l
@@ -697,10 +687,10 @@ contains
     gldep = 1400.d0    ! thickness of ice shelf at grounding line
     ifdep = 285.d0     ! thickness of ice shelf at ice front (or plateau)
     wcdep = 1600.d0    ! depth of water column beneath grounding line 
-    plume_min_thickness = 00.01d0 ! artificially determined minimum plume thickness
-    entr_time_const = dt1         ! relaxation time (in seconds) for plume thickness to attain minimum
-
+    plume_min_thickness = 1.d0 ! artificially determined minimum plume thickness
+    entr_time_const = dt1      ! relaxation time (in seconds) for plume thickness to attain minimum
     plume_southern_bc = 0    !use the d/dy = 0 version of southern outflow boundary by default
+
     ! set topography properties
     ! -------------------------
     context = "isomip" ! topography choices to use if bathtype = 0
@@ -725,13 +715,13 @@ contains
 
     ! For bathtype 13, the number of sinusoidal undulations 
     ! going across the shelf.  
-    cross_slope_wavenumber = 0
-    along_slope_deepening_exp = 0
+    cross_slope_wavenumber = 0.d0
+    along_slope_deepening_exp = 0.d0
     channel_amplitude = 0.d0
     random_amplitude = 0.d0
 
     periodic_forcing_amp = 0.d0
-    forcing_period = 0.0
+    forcing_period = 0.d0
 
     kcorn = int(135.d0*1000.d0/hx) ! dist. of corner from inflow (km)
     rad = int(35.d0*1000.d0/hx)    ! radius of rounding on corner (km)
@@ -861,7 +851,7 @@ contains
     fdepth = edepth  ! critical min depth for frazil dynamics
     dcr    = edepth  ! critical min plume depth
     septol = 1.0d-2  ! smallest plume-ambient density anomaly tolerated before
-    ! plume separation is flagged
+                     ! plume separation is flagged
     small = epsilon(1.d0) !1.0d-15  ! smallest number
 
     ! +++++++++++++++++++++
@@ -877,7 +867,7 @@ contains
     if (use_min_plume_thickness .and. mixlayer) then
        call io_append_output('Can not run using useminthickness = .t. &
        	                     &and mixlayer = .t.')
-       stop
+       stop 1
     end if
 
     ! ++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -909,6 +899,7 @@ contains
     knfloa = int(knfloain*1000.d0/hy)! southern boundary (cells)
     knfloe = int(knfloein*1000.d0/hy)! northern boundary (cells)
 
+    ! infloain/infloein/knfloain/knfloein are now in units of cells
     infloa = int(infloain)
     infloe = int(infloein)
     knfloa = int(knfloain)
@@ -969,16 +960,17 @@ contains
     implicit none
 
     logical,intent(in) :: suppress_ascii_output
-    !intent(inout) means that if this subroutine doesn't change *wetmin/max 
-    ! then the calling subroutine will keep the original values
+
+    ! NB: intent(inout) means that if this subroutine doesn't change *wetmin/max 
+    !     then the calling subroutine will keep the original values
     integer,intent(inout) :: iwetmin,iwetmax,kwetmin,kwetmax
+
     real(kind=kdp),dimension(:,:),intent(in),optional :: bpos_ext
 
     ! local variables
     integer :: i,k	
     real(kind=kdp),dimension(m_grid,n_grid):: zd
-    real(kind=kdp),dimension(m_grid,n_grid):: depth,sambindep, &
-         tambindep,c1,c2,c3,rhoa
+    real(kind=kdp),dimension(m_grid,n_grid):: depth,sambindep,tambindep,c1,c2,c3,rhoa
 
     ! initialise all arrays (0 is assigned to all array locations)
 
@@ -1000,8 +992,8 @@ contains
     bpos = 0.d0
     jcs = 0
     jcw = 0
-    jcd_u = 0
-    jcd_v = 0
+    jcd_u = 1 !initial velocity of 0.d0 is valid
+    jcd_v = 1
     jcd_fl = 0       
     jcd_negdep = 0
     jcd_fseed = 0
@@ -1108,6 +1100,7 @@ contains
 
        saltinf = sambindep + meltinf*(saltinf - sambindep)
        tempinf = tambindep + meltinf*(tempinf - tambindep)
+
     end where
 
     ! initialise whole domain to wet and set plume initial thickness if mixed-layer
@@ -1129,6 +1122,7 @@ contains
        ! using minimum thickness, so we will never 
        ! look at iwetmin/iwetmax/kwetmin/kwetmax
        continue
+
     else
 
        ! not using minimum thickess or mixlayer
@@ -1311,6 +1305,9 @@ contains
     integer :: l
     real(kind=kdp) :: cdc,winew,rey,mstar
 
+    print *, 'frazil_calc() may require checking'
+    stop 1
+
     do l=1,nice
 
        ! calculate effective radii
@@ -1391,10 +1388,10 @@ contains
 
     implicit none
 
+    integer, intent(in) :: icalcan,kcalcan,icalcen,kcalcen
+
     ! local variables
-
-    integer :: i,k,l,icalcan,kcalcan,icalcen,kcalcen
-
+    integer :: i,k,l
     real(kind=kdp):: pressure,ttt
 
     do i = icalcan,icalcen
@@ -1484,7 +1481,9 @@ contains
     real(kind=kdp) :: deltam(m_grid,n_grid),delta(m_grid,n_grid),iold(m_grid,n_grid)
     real(kind=kdp) :: fppntot,ucrit,ucl
 
-    real(kind=kdp),parameter :: bspeed_min = 1.d-2
+    ! this may be used as a mechanism to generate a positive 
+    ! minimum entrainment rate.  Change to a number > 0.d0
+    real(kind=kdp),parameter :: bspeed_min = 0.d-2
 
     ! 0. preliminaries
     ! ----------------
@@ -1492,15 +1491,27 @@ contains
     scden = 12.5d0*sc**(2.d0/3.d0) - 9.d0
     delta = 0.d0
     deltam = 0.d0
+    bspeed = 0.d0
+    speed = 0.d0
+    pdepc = 0.d0
 
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
-	  if (jcs(i,k) .ne. 1) cycle ! don't calculate anything over grounded ice
+	  if (jcs(i,k) .ne. 1) cycle ! don't calculate anything over 
+                                     ! land or grounded ice
           deltam(i,k) = 0.d0
           delta(i,k) = 0.d0
           iold(i,k) = 0.d0
           pdepc(i,k) = bpos(i,k) - ipos(i,k)
+
           ! find flow speed on scalar grid
+          ! NB: we require that all speeds surrounding cells
+          !     with positive thickness should be physically valid speeds
+
+          if (any(jcd_u(i-1:i,k) == 0) .or. any(jcd_v(i,k-1:k) == 0)) then
+             print *, 'using invalid velocity at', i,k
+             stop 1
+          end if
           tt = 5.0d-1*dy(k)*rdyv(k)
           vmid = tt*sv(i,k-1) + (1.d0-tt)*sv(i,k) 
           tt = 5.0d-1*dx(i-1)*rdxu(i)
@@ -1518,7 +1529,7 @@ contains
        do i = icalcan,icalcen
           do k = kcalcan,kcalcen
 
-             if (jcs(i,k) .ne. 1) cycle ! don't calculate anything over land/grounded ice
+             if (jcs(i,k) .ne. 1) cycle ! don't calculate anything over land
 
              if(pdepc(i,k).gt.edepth) then          
 
@@ -1656,13 +1667,15 @@ contains
 	  if (jcs(i,k) .ne. 1) cycle
 
           delta(i,k) = dt*(rdxu(i)*(utrans(i-1,k)-utrans(i,k)) &
-               + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) + &
-               dt* deltam(i,k)
+                         + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) &
+                     + dt* deltam(i,k)
 
           if (use_min_plume_thickness) then
-             thk_def(i,k) = max(0.d0,plume_min_thickness - (pdepc(i,k)+delta(i,k)))
+
+            thk_def(i,k) = max(0.d0,plume_min_thickness - (pdepc(i,k)+delta(i,k)))
              
             if (thk_def(i,k) > 0.d0) then
+
                 ! make up for thickness deficiency by increasing entrainment
                 ! articicially
 
@@ -1673,6 +1686,7 @@ contains
 
              !this is for output purposes so we can see what percentage of the thicknes
              !change was due to the imposed minimum thickness
+
              artf_entr_frac(i,k) = (thk_def(i,k)/entr_time_const) / entr(i,k)
 
           end if
@@ -1680,13 +1694,15 @@ contains
           if (use_periodic_forcing .and. &
                (k .le. klast) .and. (k .ge. kfirst)) then
 
-            phase = 2*pi*runtim/forcing_period
+             print *, 'use_periodic_forcing ought to be checked'
+             stop 1
+            phase = 2.d0*pi*runtim/forcing_period
 
             !produce a rather sharp pulse of extra entrainment each cycle
-            extra_entr = periodic_forcing_amp * exp(-real((1.e0 - cos(phase))**0.25))
+            extra_entr = periodic_forcing_amp * exp(-real((1.d0 - cos(phase))**0.25d0))
 
             !a pulse that joins continuously with the surrounding values
-            entr(i,k) = entr(i,k) + extra_entr*cos(pi*(k-(kfirst+klast)/2.0)/(klast-kfirst))
+            entr(i,k) = entr(i,k) + extra_entr*cos(pi*(k-(kfirst+klast)/2.d0)/(klast-kfirst))
             delta(i,k) =  delta(i,k) +  extra_entr * dt
 
           end if
@@ -1694,13 +1710,10 @@ contains
        end do
    end do
 
-          ! update interface position (NB - this will change when ice surface moves
-          ! in the future coupled model)
-   iold = ipos
+   ! update interface position 
 
-!   where (jcw == 1)
-      ipos = ipos - delta
-!   end where
+   iold = ipos
+   ipos = ipos - delta
 
    ! check for negative predicted depth of ambient fluid 
    jcd_negdep = 0
@@ -1720,8 +1733,6 @@ contains
     ! all turning angle theory by alex wilchinsky
     ! (wilchinsky, feltham and holland, submitted to j. phys. oceanogr.)
     ! it is probably wise to check or reprogram this before use
-
-!    use omp_lib
 
     implicit none
 
@@ -1773,12 +1784,28 @@ contains
     debug = 0.d0
     debug2 = 0.d0
 
-    !$omp parallel default(private) &
-    !$omp shared( pdep, ipos, jcw, jcd_negdep, su,sv,drag,ugriddrag,newudrag, &
-    !$omp              u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, &
-    !$omp              jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs ) &
-    !$omp copyin ( sintang, kq, olddrag, norotation, variableekman, draginmelt, one)
+    !$omp parallel default(none) &
+    !$omp private(costang,thickratio, &
+    !$omp         skip_u_calc,skip_v_calc, &
+    !$omp         pdepv,zv,zvm,tv,salv,rhon,rhov, &
+    !$omp         delta,ctotu,ctotv,dragu,dragv, &
+    !$omp         termnl,termnl2,corx, &
+    !$omp         redgu,slorho,islope,pdepu,zu,zum,arfac,tt,uu, &
+    !$omp         vmid,umid,speed,tbotm,rhoa,tu,salu,&
+    !$omp         rhoc,rhoe,rhou,rhoq,dxx,dyy,sx,sy,sxy,r1,r2, &
+    !$omp         tlate,tlatw,tlats,tlatn,hordif,cory,redgv, &
+    !$omp         i,k,jcvfac,idel,kdel,iidx,kkdy,ihilf,khilf) &
+    !$omp shared( bpos, pdep, ipos, jcw, jcd_negdep, su,sv,drag,ugriddrag,newudrag, &
+    !$omp         u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, &
+    !$omp         jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs, &
+    !$omp 	  icalcen,icalcan,kcalcen,kcalcan , &
+    !$omp         dx,dxu,rdx,rdxu,dy,dyv,rdy,rdyv,ahdx,ahdxu,ahdy,ahdyv, &
+    !$omp         wcdep,gldep,f,cdb,tangle,dcr,dt,small) &
+    !$omp firstprivate ( sintang, kq, olddrag, norotation, &
+    !$omp          variableekman, draginmelt, one,nonlin,fdt,gdt, &
+    !$omp          av,ekthick,horturb,rhoi,frazil,thermobar,rholinear)
     !$omp do
+
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
 
@@ -1799,27 +1826,31 @@ contains
 
 
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          ! skip u-component if eastern cell is dry land
+          ! skip u-component if western or eastern cell is dry land
           ! NB: this is a no normal flow condition 
           if (any(jcs(i:i+1,k) == 0)) then
              skip_u_calc = .true.
           end if
 
-          ! skip u calculation if northern cells are dry land
-          ! This would be a no-slip condition
-
+          ! skipping u calculation if northern cells are dry land
+          ! would be a no-slip condition
 !          if (any(jcs(i:i+1,k+1) == 0)) then
 !             skip_u_calc = .true.
 !          end if
 
-	  if (i == icalcen ) then
-	      ! the last column of u grid is not part of the problem
+	  if (i == icalcen) then
+             ! the last column of u grid is not part of the problem
+             !NB: this is only relevant in the case of an open boundary
+             ! on the eastern side of the domain
 	      skip_u_calc = .true.
           end if
 
           ! plume thickness on the u-grid
           pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k))
-          islope =      ipos(i+1,k) - ipos(i,k)
+!          pdepu = 5.0d-1*(bpos(i,k)-ipos(i,k) + &
+!                          bpos(i+1,k)-ipos(i+1,k)) ! to get the new pdep?
+          
+          islope =  ipos(i+1,k) - ipos(i,k)  ! NB: this is the new ipos
 
           ! final wet/dry logic
           if ((jcw(i,k) == 0).and.(jcw(i+1,k) == 0)) then
@@ -1837,7 +1868,6 @@ contains
              !print *, 'skipped u ', i,k
           else
              ! control of negative depth effects by enhanced friction
-
              jcvfac = 0
              arfac = 1.d0
              jcvfac = max0(jcd_negdep(i,k),jcd_negdep(i+1,k))
@@ -1846,6 +1876,10 @@ contains
              ! velocity components on the u-grid
              tt = 5.0d-1 
              uu = 5.0d-1*dy(k)*rdyv(k)
+             if (any(jcd_v(i:i+1,k-1:k)==0)) then
+                print *, 'using invalid sv at i,k', i,k
+                stop 1
+             end if
              vmid = tt*uu       *(sv(i,k-1) + sv(i+1,k-1)) +  &
                     tt*(1.d0-uu)*(sv(i,k)   + sv(i+1,k))
              umid = su(i,k)
@@ -1896,7 +1930,7 @@ contains
 
                 kq = thickratio / dsqrt( &
                      (thickratio + u0(i,k) - v0(i,k))**2 &
-                     + (u0(i,k) + v0(i,k))**2  )  
+                                + (u0(i,k) + v0(i,k))**2  )  
 
                 ! calculate final drag magnitude (eq. 42)
 
@@ -1916,13 +1950,13 @@ contains
                 !           
                 ! calculate turning angle          
                 !           
-                tang(i,k) = atan2( u0(i,k)-v0(i,k) , -u0(i,k)-v0(i,k) ) &
-                       - atan2( u0(i,k)+v0(i,k) , thickratio+u0(i,k)-v0(i,k) )
+                tang(i,k) = atan2( u0(i,k)-v0(i,k) ,           -u0(i,k)-v0(i,k) ) &
+                          - atan2( u0(i,k)+v0(i,k) , thickratio+u0(i,k)-v0(i,k) )
                 !      
                 if (norotation) tang(i,k) = 0.0 
                 !         
-                costang = dcos(tang(i,k))
-                sintang = dsin(tang(i,k))
+                costang = cos(tang(i,k))
+                sintang = sin(tang(i,k))
                 tbotm = one / (one + arfac*kq*costang*dt / (pdepu+dcr))
 
              end if
@@ -1994,6 +2028,7 @@ contains
                 kdel = - int(sign(one,vmid))
                 ihilf = i + idel
                 khilf = k + kdel
+
                 !  choose the relevant upstream cell dimensions 
                 iidx = i + (idel+1)/2
                 kkdy = k + (kdel-1)/2
@@ -2011,6 +2046,15 @@ contains
                 sxy = sx -sy
                 r1 = (sign(one,sxy) + 1.d0)*5.0d-1
                 r2 = one - r1
+
+                ! NB: (but check this)
+                ! In cases where we are calculating u(i,k) in a cell that 
+                ! touches an east-west running wall, we will have ternml = 0.d0 
+                ! in cases where the flow is away from the wall in the first
+                ! non-zero row.
+
+                ! termnl is the advection term -(su*u_x + sv*u_y) treated 
+                ! using an upwind scheme
                 termnl=(r1*sy + r2*sx) &
                       *(utransa(ihilf,khilf)*dble(jcd_u(ihilf,khilf)) &
                      +  utransa(i,k)        *dble(1 - jcd_u(ihilf,khilf))) &
@@ -2022,6 +2066,7 @@ contains
                      +  utransa(i,k)        *dble(1 - jcd_u(i,khilf))) &
                      - (r2*sy + r1*sx)* utransa(i,k)
 
+                ! termnl2 is the divergence term -u(su_x + sv_y)
                 termnl2 = - utransa(i,k)*dt &
                          *((su(ihilf,k) - su(i,k))*idel/dxx  &
                          + (sv(iidx,k) - sv(iidx,k-1))*rdyv(k))
@@ -2080,20 +2125,23 @@ contains
 	  end if
 
 	  if (k == kcalcen) then
-	       ! last row of v is not part of the problem domain
-	      skip_v_calc = .true.
+             ! last row of v is not part of the problem domain
+             !NB: this is only relevant in the case of an open boundary
+             ! on the northern side of the domain
+             skip_v_calc = .true.
           end if
 
           islope = ipos(i,k+1) - ipos(i,k)
-         ! plume thickness on the v-grid
+          ! plume thickness on the v-grid
           pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1))
+!          pdepv = 5.0d-1*sum(bpos(i,k:k+1)-ipos(i,k:k+1)) ! to get the new pdep?
 
           ! final wet/dry logic
           if ((jcw(i,k).le.0).and.(jcw(i,k+1).le.0)) then
              ! southern cell and northern neighbour are dry
              skip_v_calc = .true.
           else if ((jcw(i,k).le.0).and.(islope.gt.0.d0)) then
-	     ! current cell is dry and interface is rising to the north
+	     ! southern cell is dry and interface is rising to the north
              skip_v_calc = .true.
           else if ((jcw(i,k+1).le.0).and.(islope.le.0.d0)) then
              ! northern neighbour is dry and interface is rising to the south
@@ -2107,17 +2155,13 @@ contains
           jcvfac = 0
           arfac = 1.d0
           jcvfac = max0(jcd_negdep(i,k),jcd_negdep(i,k+1))
-          if (jcvfac .ge. 1) then
-             arfac = 75.d0*jcvfac  
-!             print *, 'negdep 2'
-!             stop 1
-          end if
+          if (jcvfac .ge. 1) arfac = 75.d0*jcvfac  
 
           ! velocity components on the v-grid 
           uu = 5.0d-1*dx(i)*rdxu(i)
           tt = 5.0d-1
           umid = tt*uu       *(su(i-1,k) + su(i-1,k+1)) + &
-               tt*(1.d0-uu)*(su(i,k)   + su(i,k+1))
+                 tt*(1.d0-uu)*(su(i,k)   + su(i,k+1))
           vmid = sv(i,k)
 
           speed = umid**2+vmid**2 + small
@@ -2167,7 +2211,7 @@ contains
              ! calculate turning angle          
              !           
              tang(i,k) = atan2( u0(i,k)-v0(i,k) , -u0(i,k)-v0(i,k) ) &
-                  - atan2( u0(i,k)+v0(i,k) , thickratio+u0(i,k)-v0(i,k) )
+                       - atan2( u0(i,k)+v0(i,k) , thickratio+u0(i,k)-v0(i,k) )
 
              if (norotation) tang(i,k) = 0.0 
 
@@ -2304,7 +2348,7 @@ contains
        end do
     end do
    
-    !$omp end do
+    !$omp end do 
     !$omp end parallel
 
     !     
@@ -2314,7 +2358,6 @@ contains
        !     
        do i = icalcan+1,icalcen
           do k = kcalcan,kcalcen
-             if (jcs(i,k) .ne. 1) cycle
              if (newudrag(i-1,k).or.newudrag(i,k)) then
                 drag(i,k) = 0.5d0*(ugriddrag(i-1,k) + ugriddrag(i,k))
              end if
@@ -2330,17 +2373,15 @@ contains
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
 
-          if (jcs(i,k).ne.1) cycle
           pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k)) + small
           pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1)) + small
 
-!	  if (i .ne. icalcen)  su(i,k) = utrans(i,k)/pdepu
-!	  if (k .ne. kcalcen)  sv(i,k) = vtrans(i,k)/pdepv
-          su(i,k) = utrans(i,k)/pdepu
-      	  sv(i,k) = vtrans(i,k)/pdepv
-          ! test for negative depths and set flow to zero if so
+	  if (i .ne. icalcen)  su(i,k) = utrans(i,k)/pdepu
+	  if (k .ne. kcalcen)  sv(i,k) = vtrans(i,k)/pdepv
+ 
+         ! test for negative depths and set flow to zero if so
 !          delta = dt*(rdxu(i)*(utrans(i-1,k)-utrans(i,k)) &
-!               + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) 
+!                    + rdyv(k)*(vtrans(i,k-1)-vtrans(i,k))) 
 
 !          if (bpos(i,k) < (ipos(i,k) - delta)) then
 !             utrans(i,k) = 0.d0
@@ -2378,7 +2419,6 @@ contains
           
           !gravity wave speed is sqrt(g'*D) 
           if (jcs(i,k) == 0) cycle   !no water 
-!          if (k == kcalcen) cycle
 
           gwave_speed(i,k) = abs(sqrt( grav*(rhoamb(i,k)& 
                                             -rhop(i,k))/rhoamb(i,k) &
@@ -2394,10 +2434,8 @@ contains
              gwave_crit_factor(i,k) = 0.d0
           end if
           
-          
        end do
     end do
-
 
   end subroutine gwaves
 
@@ -2413,8 +2451,15 @@ contains
     integer,intent(in) :: icalcan,icalcen,kcalcan,kcalcen
     integer :: i,k
 
+    if (plume_southern_bc > 0) then
+       print *, 'plume_southern_bc > 0 not fully implemented'
+       stop 1
+    end if
+
     ! southern boundary
     if (kcalcan.le.(domain_kmin+1)) then
+
+       jcd_u(:,domain_kmin) = jcd_u(:,domain_kmin+1)
 
        select case (plume_southern_bc)
 
@@ -2424,12 +2469,12 @@ contains
 	   do i = domain_imin,domain_imax - 1
               su(i,domain_kmin) = su(i,domain_kmin+1)
               utrans( i,domain_kmin) = su(i,domain_kmin+1)*5.0d-1*&
-                                      (pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))
+                               (pdep(i,domain_kmin) + pdep(i+1,domain_kmin))
            end do
-           do i = domain_imin+1,domain_imax-1
+           do i = domain_imin,domain_imax
               sv(i,domain_kmin) = sv(i,domain_kmin+1)
               vtrans(i,domain_kmin) =  sv(i,domain_kmin+1)* &
-	                            5.d-1*(pdep(i,domain_kmin)+pdep(i,domain_kmin+1))
+                           5.d-1*(pdep(i,domain_kmin)+pdep(i,domain_kmin+1))
            end do
 
        case (1)
@@ -2437,14 +2482,15 @@ contains
            do i = domain_imin,domain_imax - 1
               su(i,domain_kmin) = 2.d0*su(i,domain_kmin+1)-su(i,domain_kmin+2)
               utrans(i,domain_kmin) = 2.d0 * (su(i,domain_kmin+1)*5.0d-1*&
-                                        (pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))) &
+                               (pdep(i,domain_kmin+1) + pdep(i+1,domain_kmin+1))) &
                                            - (su(i,domain_kmin+2)*5.0d-1*&
-                                        (pdep(i,domain_kmin+2) + pdep(i+1,domain_kmin+2)))
+                               (pdep(i,domain_kmin+2) + pdep(i+1,domain_kmin+2)))
 	   end do
-	   do i = domain_imin+1,domain_imax-1
+	   do i = domain_imin,domain_imax
               sv(i,domain_kmin) = 2.d0*sv(i,domain_kmin+1)-sv(i,domain_kmin+2)
-              vtrans(i,domain_kmin) = sv(i,domain_kmin)* &
-	                               5.d-1*(pdep(i,domain_kmin)+pdep(i,domain_kmin+1))
+              vtrans(i,domain_kmin) = sv(i,domain_kmin+1)* &
+                   5.d-1*(pdep(i,domain_kmin+1)+pdep(i,domain_kmin+2))
+              ! need to decide what to do here
            end do
 
        case (2)
@@ -2470,7 +2516,6 @@ contains
                         vtrans(domain_imin:domain_imax-1, domain_kmin+2), &
                         vtrans(domain_imin:domain_imax-1, domain_kmin+1) )
 
-
        case (3)
 
            call absorbing_south_boundary_u(su)
@@ -2484,45 +2529,52 @@ contains
 
     ! northern boundary
     if (kcalcen.ge.(domain_kmax - 1)) then
+
        do i = domain_imin,domain_imax - 1
+          jcd_u(:,domain_kmax) = jcd_u(:,domain_kmax -1)
           su(i,domain_kmax) = su(i,domain_kmax-1)
           utrans(i,domain_kmax) = su(i,domain_kmax-1)*5.0d-1*&
-               (pdep(i,domain_kmax-1) + pdep(i+1,domain_kmax-1))
-
-          jcd_u(i,domain_kmax) = jcd_u(i,domain_kmax -1)
+                    (pdep(i,domain_kmax) + pdep(i+1,domain_kmax))
 
        end do
-       do i = domain_imin+1,domain_imax-1
-          jcd_v(i,domain_kmax) = jcd_v(i,domain_kmax -1)
+       do i = domain_imin,domain_imax
+           jcd_v(i,domain_kmax-1) = jcd_v(i,domain_kmax-2)
            sv(i,domain_kmax-1) = sv(i,domain_kmax-2)
-           vtrans(i,domain_kmax-1) = sv(i,domain_kmax-2)*pdep(i,domain_kmax-1) 
-           !note -1/-2 since north edge of v is -1
+           vtrans(i,domain_kmax-1) = sv(i,domain_kmax-2)* &
+                    (pdep(i,domain_kmax-1) + pdep(i,domain_kmax-2))
+                                 !note -1/-2 since north edge of v is -1
        end do
     end if
 
     ! western boundary
     if (icalcan.le.(domain_imin+1)) then
-       do k = domain_kmin+1,domain_kmax-1
+       do k = domain_kmin,domain_kmax-1
+          jcd_u(domain_imin,k) = jcd_u(domain_imin+1,k)
           su(domain_imin,k) = su(domain_imin+1,k)
-           utrans(domain_imin,k) = su(domain_imin+1,k)*pdep(domain_imin+1,k)
+          utrans(domain_imin,k) = su(domain_imin+1,k)*&
+                   5.d-1*(pdep(domain_imin+1,k)+pdep(domain_imin,k))
        end do
        do k = domain_kmin,domain_kmax-1
+          jcd_v(domain_imin,k) = jcd_v(domain_imin+1,k)
           sv(domain_imin,k) = sv(domain_imin+1,k)
-           vtrans(domain_imin,k) = sv(domain_imin+1,k)*5.0d-1*&
-                              (pdep(domain_imin+1,k)+pdep(domain_imin+1,k+1))
+          vtrans(domain_imin,k) = sv(domain_imin,k) * &
+                 5.0d-1 *(pdep(domain_imin,k)+pdep(domain_imin,k+1))
        end do
     end if
 
     ! eastern boundary
     if (icalcen.ge.(domain_imax - 1)) then
-       do k = domain_kmin+1, domain_kmax - 1
+       do k = domain_kmin, domain_kmax - 1
+          jcd_u(domain_imax-1,k) = jcd_u(domain_imax-2,k)
           su(domain_imax-1,k) = su(domain_imax-2,k)
-           utrans(domain_imax-1,k) = su(domain_imax-2,k)*pdep(domain_imax-1,k)
+          utrans(domain_imax-1,k) = su(domain_imax-1,k)* &
+                         5.d-1*(pdep(domain_imax-2,k)+pdep(domain_imax-1,k))
        end do
        do k = domain_kmin,domain_kmax-1
+          jcd_v(domain_imax,k) = jcd_v(domain_imax-1,k)
           sv(domain_imax,k) = sv(domain_imax-1,k)
           vtrans(domain_imax,k) = sv(domain_imax-1,k)*5.0d-1*&
-                             (pdep(domain_imax-1,k)+pdep(domain_imax-1,k+1))
+                             (pdep(domain_imax,k)+pdep(domain_imax,k+1))
        end do
     end if
 
@@ -2551,18 +2603,17 @@ contains
 
        select case(plume_southern_bc)
 
-
        case (0)
           ! old d/dy = 0 version
           jcw(domain_imin:domain_imax,domain_kmin) = &
-	            jcw(domain_imin:domain_imax,domain_kmin+1)
+               jcw(domain_imin:domain_imax,domain_kmin+1)
           jcd_fl(domain_imin:domain_imax,domain_kmin) = &
-                    jcd_fl(domain_imin:domain_imax,domain_kmin+1)
+               jcd_fl(domain_imin:domain_imax,domain_kmin+1)
           pdep(domain_imin:domain_imax,domain_kmin) = &
-                    pdep(domain_imin:domain_imax,domain_kmin+1)
+               pdep(domain_imin:domain_imax,domain_kmin+1)
           ipos(domain_imin:domain_imax,domain_kmin) = &
-	            bpos(domain_imin:domain_imax,domain_kmin+1) - &
-		    pdep(domain_imin:domain_imax,domain_kmin)
+               bpos(domain_imin:domain_imax,domain_kmin+1) - &
+               pdep(domain_imin:domain_imax,domain_kmin)
 
        case (1)
 
@@ -2573,13 +2624,16 @@ contains
           jcw(i,domain_kmin) = jcw(i,domain_kmin + 1)
           jcd_fl(i,domain_kmin) = jcd_fl(i,domain_kmin + 1)
           pdep(i,domain_kmin) = 2.d0*pdep(i,domain_kmin + 1) - pdep(i,domain_kmin+2)
-          ipos(i,domain_kmin) = 2.d0*(bpos(i,domain_kmin + 1) - pdep(i,domain_kmin + 1)) - & 
-                                     (bpos(i,domain_kmin + 2) - pdep(i,domain_kmin + 2))
+          ipos(i,domain_kmin) = 2.d0*(bpos(i,domain_kmin + 1)-pdep(i,domain_kmin + 1))&
+                               -  (bpos(i,domain_kmin + 2) - pdep(i,domain_kmin + 2))
           end if
 
        end do
 
        case (2)
+
+       jcw(i,domain_kmin) = jcw(i,domain_kmin + 1)
+       jcd_fl(i,domain_kmin) = jcd_fl(i,domain_kmin + 1)
 
        pdep(domain_imin:domain_imax-1, domain_kmin) = extrap3( &
                         pdep(domain_imin:domain_imax-1, domain_kmin+3), &
@@ -2591,27 +2645,25 @@ contains
                         ipos(domain_imin:domain_imax-1, domain_kmin+2), &
                         ipos(domain_imin:domain_imax-1, domain_kmin+1) )
 
-
        case (3)
 
             call absorbing_south_boundary_scalar(pdep)
-
-            ipos(domain_imin:domain_imax, domain_kmin) = bpos(domain_imin:domain_imax, domain_kmin) - &
-                                                         pdep(domain_imin:domain_imax, domain_kmin)
+            ipos(domain_imin:domain_imax, domain_kmin) = &
+                       bpos(domain_imin:domain_imax, domain_kmin) - &
+                       pdep(domain_imin:domain_imax, domain_kmin)
 
        end select
        
-
     end if
 
    ! northern boundary
     if(kcalcen.ge.(domain_kmax-1)) then
        do i = domain_imin,domain_imax
 
-            jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
+           jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
            jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
            pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
-           ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)       
+           ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)    
 
        end do
     end if
@@ -2672,9 +2724,9 @@ contains
                ! using a first-order extrapolation as the 
                ! 'absorbing boundary condition'
                bmelt(i,domain_kmin) = 2.d0 * bmelt(i,domain_kmin+1) &
-                                    - 1.d0*bmelt(i,domain_kmin + 2)
+                                      - 1.d0*bmelt(i,domain_kmin+2)
                entr(i,domain_kmin) = 2.d0 * entr(i,domain_kmin+1) &
-                                     - 1.d0*entr(i,domain_kmin + 2)
+                                     - 1.d0*entr(i,domain_kmin+2)
            end do   
 
        case (2)
@@ -2699,7 +2751,6 @@ contains
 
     end if
 
-
   end subroutine outflow_bound_bmelt_entr
 
   subroutine outflow_bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
@@ -2711,10 +2762,9 @@ contains
     implicit none
 
     integer,intent(in) :: icalcan,icalcen,kcalcan,kcalcen
+
     ! local variables
-
     integer :: i,k,l
-
 
     ! southern boundary
 
@@ -2985,7 +3035,7 @@ contains
 
     data_array(m1+1:m2-1, n1) = &
    (data_array(m1+1:m2-1, n1)*hx*hy + &
-             abs(min(sv(m1+1:m2-1,n1+1),0.d0)) * &     !require a south flowing velocity                
+             abs(min(sv(m1+1:m2-1,n1+1),0.d0)) * & !require a south flowing velocity  
              data_array(m1+1:m2-1,n1+1)*dt*hx - &
         5.d-1*(su(m1:m2-2,n1+1)+su(m1+1:m2-1,n1+1))* &
              (data_array(m1+2:m2,n1+1) - &
@@ -2993,7 +3043,6 @@ contains
              (hx*hy + dt*hx*abs(min(sv(m1+1:m2-1,n1+1),0.d0)))
 
   end subroutine absorbing_south_boundary_v
-
 
   subroutine update(iwetmin,iwetmax,kwetmin,kwetmax, &
        icalcan,icalcen,kcalcan,kcalcen,negdep)
@@ -3005,13 +3054,13 @@ contains
 
     integer,intent(inout) :: iwetmin,iwetmax,kwetmin,kwetmax
     integer,intent(in) :: icalcan,icalcen,kcalcan,kcalcen   
+    real(kind=kdp),intent(inout) :: negdep
+
     ! local variables
 
     integer :: i,k
-
-
     real(kind=kdp) :: iconti,error,pdepold,pdepc,pdepe
-    real(kind=kdp) :: dunew,pdepn,dvnew,zd,negdep
+    real(kind=kdp) :: dunew,pdepn,dvnew,zd
 
     ! update interface position
 
@@ -3022,7 +3071,7 @@ contains
 
           ! interface position corrected for negative depths at new timestep
           iconti = ipos(i,k)
-          !ipos(i,k) = dmin1(bpos(i,k),ipos(i,k))
+          ipos(i,k) = min(bpos(i,k),ipos(i,k))
 
           ! report any errors
           error = abs(iconti - ipos(i,k))
@@ -3032,10 +3081,8 @@ contains
                   i,' k=',k
              write(11,*) 'error: negative depth ',error,' at i=', &
                   i,' k=',k
+             stop 1
           end if
-
-!          sv(i,k) = 0.d0
-!          su(i,k) = 0.d0
 
           ! plume thickness and wetted area (main update of pdep)
           jcd_fl(i,k) = 0      
@@ -3074,13 +3121,14 @@ contains
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
 
-!          if (jcs(i,k).ne.1) cycle
          pdepc = bpos(i,k) - ipos(i,k)
 
 	 if (i .ne. icalcen) then
            ! u-component
            ! skip icalcen because u(icalcen) is past the edge of the valid region
+           ! in the case of an open boundary on the east side
            jcd_u(i,k) = 0
+           su(i,k) = 0.d0
            pdepe = bpos(i+1,k) - ipos(i+1,k)
            dunew = 5.0d-1*(pdepe + pdepc)
            if (dunew.gt.small) then
@@ -3094,6 +3142,7 @@ contains
           ! v-component
           ! skip kcalcen, because v(kcalcen) is past the edge of the valid region
           jcd_v(i,k) = 0
+          sv(i,k) = 0.d0
           pdepn = bpos(i,k+1) - ipos(i,k+1)
           dvnew = 5.0d-1*(pdepn + pdepc)
           if (dvnew.gt.small) then
@@ -3128,9 +3177,11 @@ contains
 
     implicit none
 
+    integer,intent(in) :: icalcan,kcalcan,icalcen,kcalcen
+
     ! local variables
 
-    integer :: i,k,l,icalcan,kcalcan,icalcen,kcalcen
+    integer :: i,k,l
     integer :: idel,kdel,idx,kdy,ihilf,khilf,mflag,depthflag,seedindex
 
     real(kind=kdp),dimension(m_grid,n_grid) :: deltat,deltas
@@ -3157,6 +3208,11 @@ contains
     do i = icalcan,icalcen
        do k = kcalcan,kcalcen
           if (jcd_fl(i,k) .eq. 1) then
+             ! newly-wet cell
+             if (use_min_plume_thickness) then
+                print *, 'should not execute this'
+                stop 1
+             end if
              slon = dmax1(0.d0,ipos(i,k)-ipos(i,k+1))*jcw(i,k+1)
              sloe = dmax1(0.d0,ipos(i,k)-ipos(i+1,k))*jcw(i+1,k)
              slos = dmax1(0.d0,ipos(i,k)-ipos(i,k-1))*jcw(i,k-1)
@@ -3275,7 +3331,8 @@ contains
 		atemp(i,k) = get_tamb_z(amb_depth)
 		asalt(i,k) = get_samb_z(amb_depth)
 
-		if (use_periodic_forcing .and. (k .ge. kfirst) .and. (k .le. klast)) then
+		if (use_periodic_forcing .and. (k .ge. kfirst) &
+                                         .and. (k .le. klast)) then
 
                   ! artificially force the ambient seawater to have a much
                   ! lower salinity in order to make the forcing have a 
@@ -3343,22 +3400,22 @@ contains
              end if
 
 	deltat(i,k) = deltat(i,k)  &
-                 + (r1*sy+r2*sx)*(tempa(ihilf,khilf)*jcw(ihilf,khilf) &
-                 + (1 - jcw(ihilf,khilf))*tempa(i,k))  &
-                 + r1*sxy*(tempa(ihilf,k)*jcw(ihilf,k) &
-                 + (1-jcw(ihilf,k))*tempa(i,k)) &
-                 - r2*sxy*(tempa(i,khilf)*jcw(i,khilf) &
-                 + (1-jcw(i,khilf))*tempa(i,k)) &
-                 - (r2*sy+r1*sx)*tempa(i,k)                         
+                 + (r1*sy+r2*sx)*(tempa(ihilf,khilf)*     jcw(ihilf,khilf) &
+                 +                tempa(i,k)        *(1 - jcw(ihilf,khilf)))  &
+                 + r1*sxy*       (tempa(ihilf,k)*         jcw(ihilf,k) &
+                 +                tempa(i,k)*          (1-jcw(ihilf,k))) &
+                 - r2*sxy*       (tempa(i,khilf)*         jcw(i,khilf) &
+                 +                tempa(i,k)*          (1-jcw(i,khilf))) &
+                 - (r2*sy+r1*sx)* tempa(i,k)
        
 	deltas(i,k) = deltas(i,k)  &
-                + (r1*sy+r2*sx)*(salta(ihilf,khilf)*jcw(ihilf,khilf) &
-                + (1 - jcw(ihilf,khilf))*salta(i,k))  &
-                + r1*sxy*(salta(ihilf,k)*jcw(ihilf,k) &
-                + (1-jcw(ihilf,k))*salta(i,k)) &
-                - r2*sxy*(salta(i,khilf)*jcw(i,khilf) &
-                + (1-jcw(i,khilf))*salta(i,k)) &
-                - (r2*sy+r1*sx)*salta(i,k)      
+                + (r1*sy+r2*sx)*(salta(ihilf,khilf)*      jcw(ihilf,khilf) &
+                +                salta(i,k)*         (1 - jcw(ihilf,khilf)))  &
+                + r1*sxy*       (salta(ihilf,k)*          jcw(ihilf,k) &
+                +                salta(i,k)*         (1 - jcw(ihilf,k))) &
+                - r2*sxy*       (salta(i,khilf)*          jcw(i,khilf) &
+                +                salta(i,k)*         ( 1- jcw(i,khilf))) &
+                - (r2*sy+r1*sx)* salta(i,k)      
 
              if (frazil) then
                 do l = 1,nice
@@ -3406,7 +3463,6 @@ contains
              difw = (tempa(i,k) - tempa(i-1,k))*jcw(i-1,k)*kh*rdx(i-1)
              difn = (tempa(i,k+1) - tempa(i,k))*jcw(i,k+1)*kh*rdy(k)
              difs = (tempa(i,k) - tempa(i,k-1))*jcw(i,k-1)*kh*rdy(k-1)
-
 
              deltat(i,k) = deltat(i,k) &
                   + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt 
@@ -3530,8 +3586,8 @@ contains
               
                 ! add diffusive flux of latent heat release/uptake
 	        deltat(i,k) = deltat(i,k)  &
-                     - dt*bmelt(i,k)*((lat/c0) &
-                                   +  (ci/c0)*(btemp(i,k)-tint(i,k)))/pdepcp(i,k)
+                     - dt*bmelt(i,k)*((lat/c0)+(ci/c0)*(btemp(i,k)-tint(i,k)))&
+                      /pdepcp(i,k)
 
              end if
           end do
@@ -4071,6 +4127,15 @@ contains
        ymat(:,i) = real(i) - (y0+1.d0)
     end do
 
+    !$omp parallel default(none) &
+    !$omp private(i,k,lower_ilim,lower_klim,upper_ilim,upper_klim, &
+    !$omp         win_imin,win_kmin,win_imax,win_kmax, & 
+    !$omp         data_window, ocean_mask_window,matrix,rhs, &
+    !$omp         multiplier) &
+    !$omp shared(raw_data, ocean_mask, short_waves, long_waves, as,bs, &
+    !$omp        x0,y0, xmat,ymat, &
+    !$omp        domain_imin,domain_imax,domain_kmin,domain_kmax)
+    !$omp do
     do i=domain_imin,domain_imax
        do k=domain_kmin,domain_kmax
          
@@ -4159,10 +4224,10 @@ contains
                 stop 1
              end if
 
-
              long_waves(i,k) = rhs(3) / matrix(3,3)
              bs(i,k) = (rhs(2) - long_waves(i,k)*matrix(2,3)) / matrix(2,2)
-             as(i,k) = (rhs(1) - long_waves(i,k)*matrix(1,3) - bs(i,k)*matrix(2,1)) / matrix(1,1)
+             as(i,k) = (rhs(1) - long_waves(i,k)*matrix(1,3) - &
+                                    bs(i,k)*matrix(2,1)) / matrix(1,1)
 
           else
 
@@ -4172,6 +4237,9 @@ contains
 
        end do
     end do
+
+    !$omp end do
+    !$omp end parallel
 
     short_waves = 0.d0
     where(ocean_mask == 1)
