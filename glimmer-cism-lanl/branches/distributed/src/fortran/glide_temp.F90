@@ -66,7 +66,7 @@
 #define HORIZ_ADV 1.
 #endif
 ! vertical advection
-#ifdef NO_VERICAL_ADVECTION
+#ifdef NO_VERTICAL_ADVECTION
 #define VERT_ADV 0.
 #else
 #define VERT_ADV 1.
