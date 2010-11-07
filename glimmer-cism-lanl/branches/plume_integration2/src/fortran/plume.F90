@@ -204,7 +204,8 @@ contains
        run_plume_to_steady, &
        plume_reached_steady, &
        write_all_states, & 
-       write_every_n)
+       write_every_n, &
+       use_plume_initial_bmlt)
 
     ! NB: This subroutine is intended to be called only from a 
     ! glimmer-CISM driver that uses the plume to calculate the
@@ -242,7 +243,7 @@ contains
     logical,                      intent(in) :: write_all_states
 
     integer,                      intent(in) :: write_every_n
-    
+
     ! Steadiness tolerance.  Relative change in meltrate needed
     ! to continue plume time-stepping
     real(kind=kdp),               intent(in) :: plume_stopping_tol,plume_speed_stopping_tol
@@ -259,6 +260,8 @@ contains
     ! flag to indicate that the plume reached a steady state
     logical,intent(out) :: plume_reached_steady
 
+    logical,intent(in) :: use_plume_initial_bmlt
+
     !local variables
 
     real(kind=kdp) :: subcycling_time,ice_dt_in_sec
@@ -269,21 +272,21 @@ contains
     real(kind=kdp) :: prev_rel_change,prev_rel_speed_change
     real(kind=kdp) :: min_run_time_sec,max_run_time_sec
     character(len=512) :: log_message
-    
+
     integer :: time_step_count = 0
-    
+
     ! convert lower surface depth into height of basal surface and interface
     ! surface, storing results in plume's global variable
     bpos = lsrf + gldep + wcdep
     ipos = bpos - pdep
 
     where( landmask )
-        jcs = 0
-        bpos = gldep+wcdep
+       jcs = 0
+       bpos = gldep+wcdep
     elsewhere
-         jcs = 1
+       jcs = 1
     end where
-   
+
     !TODO: assign t_interior and ice_dz to globals 
     ! so that thermodynamics will pick up heat conduction into ice
 
@@ -302,95 +305,104 @@ contains
 
     ! while not steady
 
-    do while (((subcycling_time .le. ice_dt_in_sec) .and. &
-                               .not. run_plume_to_steady) .or. &
-                (run_plume_to_steady .and. &
-                 (subcycling_time .le. max_run_time_sec)))
+    if (.not. use_plume_initial_bmlt) then
+       do while (((subcycling_time .le. ice_dt_in_sec) .and. &
+            .not. run_plume_to_steady) .or. &
+            (run_plume_to_steady .and. &
+            (subcycling_time .le. max_run_time_sec)))
 
-       call plume_runstep()
+          call plume_runstep()
 
-      
-       ! calculate max error
-       max_rel_bmelt_change = maxval(abs(bmelt_old - bmelt)/ &
-            (abs(bmelt)+epsilon(1.d0)))
 
-       ! speed is an (m-2)*(n-2) array
-       ! this step is necessary because su and sv are on different grids
-       speed(2:(m_grid-1),2:(n_grid-1)) = sqrt(  &
-             (5.d-1*(su(1:m_grid-2,2:n_grid-1)+ &
-                     su(2:m_grid-1,2:n_grid-1))) ** 2.d0 + &
-             (5.d-1*(sv(2:m_grid-1,1:n_grid-2)+ &
-                     sv(2:m_grid-1,2:n_grid-1))) ** 2.d0 )
+          ! calculate max error
+          max_rel_bmelt_change = maxval(abs(bmelt_old - bmelt)/ &
+               (abs(bmelt)+epsilon(1.d0)))
 
-       if (time_step_count > 0) then                              
-                   
-            rel_speed_change_array = abs(speed - speed_old) / &
-                                    (abs(speed_old)+epsilon(1.d0))
+          ! speed is an (m-2)*(n-2) array
+          ! this step is necessary because su and sv are on different grids
+          speed(2:(m_grid-1),2:(n_grid-1)) = sqrt(  &
+               (5.d-1*(su(1:m_grid-2,2:n_grid-1)+ &
+               su(2:m_grid-1,2:n_grid-1))) ** 2.d0 + &
+               (5.d-1*(sv(2:m_grid-1,1:n_grid-2)+ &
+               sv(2:m_grid-1,2:n_grid-1))) ** 2.d0 )
 
-       end if
-       
-       max_rel_speed_change = maxval(rel_speed_change_array)
+          if (time_step_count > 0) then                              
 
-       where (rel_speed_change_array > plume_speed_stopping_tol)
-           debug = log(rel_speed_change_array / plume_speed_stopping_tol)
-       elsewhere
-           debug = 0.d0
-       end where
+             rel_speed_change_array = abs(speed - speed_old) / &
+                  (abs(speed_old)+epsilon(1.d0))
 
-       if (subcycling_time >= min_run_time_sec .and. &
-          (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
-          prev_rel_change = max_rel_bmelt_change
-          print '(a,e8.2,a,e8.2)', &
-                'max_rel_bmelt_change  ',max_rel_bmelt_change, &
-                '  stopping tol  ',plume_stopping_tol
-       end if
-
-       if((subcycling_time >= min_run_time_sec) .and. &
-          (max_rel_speed_change/prev_rel_speed_change < 1.d-1)) then
-          prev_rel_speed_change = max_rel_speed_change
-          print '(a,e8.2,a,e8.2)', &
-		'max_rel_speed_change  ', max_rel_speed_change, &
-	        '  stopping tol  ', plume_speed_stopping_tol
-       end if
-
-       if ((max_rel_bmelt_change < plume_stopping_tol) .and. &
-           (max_rel_speed_change < plume_speed_stopping_tol)) then
-          if (subcycling_time .ge. (min_run_time_sec)) then
-             plume_reached_steady = .true.
-             exit
           end if
-       end if
 
-       if (write_all_states .and. &
-           (mod(time_step_count,write_every_n) == 0)) then
-          call plume_netcdf_write_vars(time*3600.0d0*24.0d0*365.25d0 + &
-                                       subcycling_time)
-       end if
+          max_rel_speed_change = maxval(rel_speed_change_array)
 
-       time_step_count = time_step_count + 1
-       subcycling_time = subcycling_time + dt
-       bmelt_old = bmelt
-       speed_old = speed
+          where (rel_speed_change_array > plume_speed_stopping_tol)
+             debug = log(rel_speed_change_array / plume_speed_stopping_tol)
+          elsewhere
+             debug = 0.d0
+          end where
 
-    end do
+          if (subcycling_time >= min_run_time_sec .and. &
+               (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
+             prev_rel_change = max_rel_bmelt_change
+             print '(a,e8.2,a,e8.2)', &
+                  'max_rel_bmelt_change  ',max_rel_bmelt_change, &
+                  '  stopping tol  ',plume_stopping_tol
+          end if
+
+          if((subcycling_time >= min_run_time_sec) .and. &
+               (max_rel_speed_change/prev_rel_speed_change < 1.d-1)) then
+             prev_rel_speed_change = max_rel_speed_change
+             print '(a,e8.2,a,e8.2)', &
+                  'max_rel_speed_change  ', max_rel_speed_change, &
+                  '  stopping tol  ', plume_speed_stopping_tol
+          end if
+
+          if ((max_rel_bmelt_change < plume_stopping_tol) .and. &
+               (max_rel_speed_change < plume_speed_stopping_tol)) then
+             if (subcycling_time .ge. (min_run_time_sec)) then
+                plume_reached_steady = .true.
+                exit
+             end if
+          end if
+
+          if (write_all_states .and. &
+               (mod(time_step_count,write_every_n) == 0)) then
+             call plume_netcdf_write_vars(time*3600.0d0*24.0d0*365.25d0 + &
+                  subcycling_time)
+          end if
+
+          time_step_count = time_step_count + 1
+          subcycling_time = subcycling_time + dt
+          bmelt_old = bmelt
+          speed_old = speed
+
+       end do
+    end if
 
     btemp_out = btemp
-    bmelt_out = bmelt * (365.25d0*24.0d0*3600.0d0)
-
-    if (.not. plume_reached_steady) then
-       call io_append_output('plume did not reach steady state')
+    
+    if (use_plume_initial_bmlt) then
+       bmelt_out = bmelt
+    else
+       bmelt_out = bmelt * (365.25d0*24.0d0*3600.0d0)
     end if
- 
-    !we do this to make the plume output timestamps indicate the ice state
-    ! with respect to which the plume was steady
-    runtim = time*3600.0d0*24.0d0*365.25d0 
 
-    write(log_message, '(a,f6.1)') 'subcycling time in days', &
-                                   subcycling_time/(3600.0*24.0)
-    call io_append_output(trim(log_message))
+    if (.not. use_plume_initial_bmlt) then
+       if (.not. plume_reached_steady) then
+          call io_append_output('plume did not reach steady state')
+       end if
 
-    call io_write_surface_output(runtim,labtim)    
+       !we do this to make the plume output timestamps indicate the ice state
+       ! with respect to which the plume was steady
+       runtim = time*3600.0d0*24.0d0*365.25d0 
 
+       write(log_message, '(a,f6.1)') 'subcycling time in days', &
+            subcycling_time/(3600.0*24.0)
+       call io_append_output(trim(log_message))
+
+       call io_write_surface_output(runtim,labtim)    
+
+    end if
   end subroutine plume_iterate
 
   ! **************************************************************************
@@ -556,7 +568,7 @@ contains
     real(kind=kdp) :: cseedfix,cinffix	
 
     namelist /plume_nml/ &
-         mixlayer &
+            mixlayer &
 	 ,  in_glimmer &
          ,  restart &
          ,  restart_data_filename &
@@ -646,8 +658,8 @@ contains
     mixlayer    = .false. ! model a mixed-layer, rather than a plume
     ! (i.e. whole domain is given initial thickness)
     in_glimmer = .false.  ! by default, not running inside glimmer (ice shelf model)
-    restart     = .false. ! restart from previous model dump
-    restart_data_filename = '' ! file to read from for a restart
+    restart= .false. ! restart from previous model dump
+    restart_data_filename = '' !netcdf file to read from for a restart
     frazil      = .false. ! include frazil ice
     nonlin      = .true.  ! advection terms included
     horturb     = .false. ! horizontal diffusion included
@@ -954,9 +966,14 @@ contains
 
   end subroutine set_parameters
 
-  subroutine initialise_fields(suppress_ascii_output,iwetmin,iwetmax,kwetmin,kwetmax,bpos_ext)
+  subroutine initialise_fields(suppress_ascii_output, &
+       iwetmin,iwetmax,kwetmin,kwetmax, &
+       bpos_ext)
 
     ! read data and set all initial fields
+
+    use plume_io
+
     implicit none
 
     logical,intent(in) :: suppress_ascii_output
@@ -1010,6 +1027,37 @@ contains
     ctempd = 0.d0
     tint = tiuniform
 
+    if (restart) then
+       
+       call plume_netcdf_read_int_var(restart_data_filename, 'jcs', jcs)        
+       call plume_netcdf_read_int_var(restart_data_filename, 'jcw', jcw)
+       call plume_netcdf_read_int_var(restart_data_filename, 'jcd_u', jcd_u)
+       call plume_netcdf_read_int_var(restart_data_filename, 'jcd_v', jcd_v)
+       call plume_netcdf_read_int_var(restart_data_filename, 'jcd_fl', jcd_fl)
+
+       call plume_netcdf_read_real_var(restart_data_filename, 'bpos', bpos)
+       call plume_netcdf_read_real_var(restart_data_filename, 'ipos', ipos)
+       call plume_netcdf_read_real_var(restart_data_filename, 'pdep', pdep)
+       call plume_netcdf_read_real_var(restart_data_filename, 'u', utrans)
+       call plume_netcdf_read_real_var(restart_data_filename, 'v', vtrans)
+       call plume_netcdf_read_real_var(restart_data_filename, 'su', su)
+       call plume_netcdf_read_real_var(restart_data_filename, 'sv', sv)
+
+       call plume_netcdf_read_real_var(restart_data_filename, 'bmelt', bmelt)
+       call plume_netcdf_read_real_var(restart_data_filename, 'btemp', btemp)
+       call plume_netcdf_read_real_var(restart_data_filename, 'bsalt', bsalt)
+       call plume_netcdf_read_real_var(restart_data_filename, 'rhop' , rhop)
+       call plume_netcdf_read_real_var(restart_data_filename, 'temp' , temp)
+       call plume_netcdf_read_real_var(restart_data_filename, 'salt' , salt)
+       call plume_netcdf_read_real_var(restart_data_filename, 'entr' , entr)
+
+       utransa = utrans
+       vtransa = vtrans
+       tempa = temp
+       salta = salt
+
+    end if
+
     ! initialise ice to zero even when frazil is off so that densities are correct
     c_ice = 0.d0
     ca_ice = 0.d0
@@ -1039,17 +1087,23 @@ contains
 
 
     if (in_glimmer) then
-       if (.not. present(bpos_ext)) then
-          call io_append_output('Need to provide bpos_ext')
-          stop 1
-       end if
-       bpos = bpos_ext
-       if (.not. use_min_plume_thickness) then
-           call topog_depth_inflow_set(.not. use_min_plume_thickness .and. .not. mixlayer)
-       end if
+       if (restart) then
+          ! do nothing
+       else
 
-    else	
+          if (.not. present(bpos_ext)) then
+             call io_append_output('Need to provide bpos_ext')
+             stop 1
+          end if
+          bpos = bpos_ext
+          if (.not. use_min_plume_thickness) then
+             call topog_depth_inflow_set(.not. use_min_plume_thickness .and. .not. mixlayer)
+          end if
+        end if
 
+    elseif (restart) then	
+       !not in glimmer and doing a restart
+    else
        if (bathtype.gt.0) then
           call topog_depth_inflow_set(.not. use_min_plume_thickness .and. .not. mixlayer)
        else
@@ -1061,6 +1115,7 @@ contains
              if (context.eq."larsen") call inflow_set_larsen()
           end if
        end if
+
     end if
 
     ! set ambient properties
@@ -1146,44 +1201,54 @@ contains
 
     ! initialise flags, depths, and scalars
     ! -------------------------------------
+    if (.not. restart) then
 
-    jcs = 1
-    ipos = bpos - pdep
-    where (bpos <= dcr) 
-       ! set index for solid ice points (no water column)
-       ipos = bpos
-       jcs = 0
-    end where
+       jcs = 1
 
-    if (use_min_plume_thickness) then	
-       ! start off the plume thickness at the minimum everywhere
-       do i=domain_imin,domain_imax
-          do k=domain_kmin,domain_kmax
-             if (jcs(i,k) .eq. 1) then
-                pdep(i,k) = plume_min_thickness                
-                ipos(i,k) = bpos(i,k) - pdep(i,k)	                
-             end if
+       ipos = bpos - pdep
+       where (bpos <= dcr) 
+          ! set index for solid ice points (no water column)
+          ipos = bpos
+          jcs = 0
+       end where
+
+       if (use_min_plume_thickness) then	
+          ! start off the plume thickness at the minimum everywhere
+          do i=domain_imin,domain_imax
+             do k=domain_kmin,domain_kmax
+                if (jcs(i,k) .eq. 1) then
+                   pdep(i,k) = plume_min_thickness                
+                   ipos(i,k) = bpos(i,k) - pdep(i,k)	                
+                end if
+             end do
           end do
-       end do
-    else
-       pdep = bpos - ipos
-    end if
+       else
+          pdep = bpos - ipos
+       end if
+
     
-    ! set field for wet/dry points (jcw)
-    where (pdep >= dcr) jcw = 1
+       ! set field for wet/dry points (jcw)
+       where (pdep >= dcr) jcw = 1
+       
+    end if
 
     ! set fields to ambient-fluid properties for depth
     ! (used when considering newly-wet cells)
 
     zd = max(0.d0,wcdep + gldep - bpos)
 
-    tempa = get_tamb_z(zd)
-    salta = get_samb_z(zd)
+
     rhoa = get_rhoamb_z(zd)
-    temp = tempa
-    salt = salta
     rhoamb = rhoa
-    rhop = rhoa
+
+    if (.not. restart) then
+       tempa = get_tamb_z(zd)
+       salta = get_samb_z(zd)
+       temp = tempa
+       salt = salta
+       rhop = rhoa
+    end if
+
 
   end subroutine initialise_fields
 
@@ -1797,7 +1862,7 @@ contains
     !$omp         i,k,jcvfac,idel,kdel,iidx,kkdy,ihilf,khilf) &
     !$omp shared( bpos, pdep, ipos, jcw, jcd_negdep, su,sv,drag,ugriddrag,newudrag, &
     !$omp         u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, &
-    !$omp         jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs, &
+    !$omp         jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs,gwave_speed, &
     !$omp 	  icalcen,icalcan,kcalcen,kcalcan , &
     !$omp         dx,dxu,rdx,rdxu,dy,dyv,rdy,rdyv,ahdx,ahdxu,ahdy,ahdyv, &
     !$omp         wcdep,gldep,f,cdb,tangle,dcr,dt,small) &
@@ -1847,8 +1912,8 @@ contains
 
           ! plume thickness on the u-grid
           pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k))
-!          pdepu = 5.0d-1*(bpos(i,k)-ipos(i,k) + &
-!                          bpos(i+1,k)-ipos(i+1,k)) ! to get the new pdep?
+          pdepu = 5.0d-1*(bpos(i,k)-ipos(i,k) + &
+                          bpos(i+1,k)-ipos(i+1,k)) ! to get the new pdep?
           
           islope =  ipos(i+1,k) - ipos(i,k)  ! NB: this is the new ipos
 
@@ -2043,6 +2108,11 @@ contains
                    write(11,*) 'error: u courant exceeded at i=',i,' k=',k
                 end if
 
+		if ((abs(umid) + gwave_speed(i,k)) > dxx/dt) then
+                  write(*,*) 'error: u courant (w/ grv waves)at i=',i,' k=',k
+                  write(11,*) 'error: u courant (w/ grv waves) at i=',i,' k=',k
+		end if
+
                 sxy = sx -sy
                 r1 = (sign(one,sxy) + 1.d0)*5.0d-1
                 r2 = one - r1
@@ -2134,7 +2204,7 @@ contains
           islope = ipos(i,k+1) - ipos(i,k)
           ! plume thickness on the v-grid
           pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1))
-!          pdepv = 5.0d-1*sum(bpos(i,k:k+1)-ipos(i,k:k+1)) ! to get the new pdep?
+          pdepv = 5.0d-1*sum(bpos(i,k:k+1)-ipos(i,k:k+1)) ! to get the new pdep?
 
           ! final wet/dry logic
           if ((jcw(i,k).le.0).and.(jcw(i,k+1).le.0)) then
@@ -2299,6 +2369,10 @@ contains
                 write(*,*) 'error: v courant exceeded at i=',i,' k=',k
                 write(11,*) 'error: v courant exceeded at i=',i,' k=',k
              end if
+	     if ((abs(vmid)+gwave_speed(i,k)) > dyy/dt) then
+                  write(*,*) 'error: v courant (w/ grv waves)at i=',i,' k=',k
+                  write(11,*) 'error: v courant (w/ grv waves) at i=',i,' k=',k
+		end if
              ! calculate nonlinear terms
              sxy = sx -sy
              r1 = (dsign(one,sxy) + 1.d0)*5.0d-1
@@ -2452,8 +2526,8 @@ contains
     integer :: i,k
 
     if (plume_southern_bc > 0) then
-       print *, 'plume_southern_bc > 0 not fully implemented'
-       stop 1
+!       print *, 'plume_southern_bc > 0 not fully implemented'
+!       stop 1
     end if
 
     ! southern boundary
@@ -2490,7 +2564,8 @@ contains
               sv(i,domain_kmin) = 2.d0*sv(i,domain_kmin+1)-sv(i,domain_kmin+2)
               vtrans(i,domain_kmin) = sv(i,domain_kmin+1)* &
                    5.d-1*(pdep(i,domain_kmin+1)+pdep(i,domain_kmin+2))
-              ! need to decide what to do here
+		 	
+             ! need to decide what to do here
            end do
 
        case (2)
@@ -2594,8 +2669,8 @@ contains
     real(kind=kdp):: pdepold
 
     if (plume_southern_bc > 0) then
-       print *, "plume_southern_bc > 0 is not fully implemented"
-       stop 1
+!       print *, "plume_southern_bc > 0 is not fully implemented"
+!       stop 1
     end if
 
     ! southern boundary
@@ -3093,6 +3168,7 @@ contains
           ! find newly wet area
           if (pdepold .eq. 0.d0 .and. pdep(i,k) .gt. 0.d0) then
              jcd_fl(i,k) = 1 
+             print *, i,k
           end if
 
           ! find wetted area boundaries (main update of jcw)
@@ -3211,7 +3287,7 @@ contains
              ! newly-wet cell
              if (use_min_plume_thickness) then
                 print *, 'should not execute this'
-                stop 1
+!                stop 1
              end if
              slon = dmax1(0.d0,ipos(i,k)-ipos(i,k+1))*jcw(i,k+1)
              sloe = dmax1(0.d0,ipos(i,k)-ipos(i+1,k))*jcw(i+1,k)

@@ -18,6 +18,8 @@ module plume_io
   public :: io_write_long_step_output
   public :: plume_netcdf_write_vars
 
+  public :: plume_netcdf_read_real_var,plume_netcdf_read_int_var
+
   logical :: suppress_ascii_output,suppress_logging
 
   integer,parameter :: foutput = 11, &
@@ -33,11 +35,11 @@ module plume_io
   ! format strings for output
   character(len=*),parameter :: fmt6200 = &
        '(a,i2.2,a,i2.2,a,i4.4,a,i2.2,a,i2.2,a,i2.2)'
-  character(len=*),parameter :: fmt6100 = '(a11,i4,a6,i2,a11,i2,a15,i7,a1)'
-  character(len=*),parameter :: fmt6400 = '(a,i4,a,i2,a,i2,a,i7,a)'
-  character(len=*),parameter :: fmt6300 = '(a,i4,a,i2,a,i2,a,i2,a)'
+  character(len=*),parameter :: fmt6100 = '(a11,i8,a6,i2,a11,i2,a15,i15,a1)'
+  character(len=*),parameter :: fmt6400 = '(a,i8,a,i2,a,i2,a,i15,a)'
+!  character(len=*),parameter :: fmt6300 = '(a,i8,a,i2,a,i2,a,i2,a)'
   character(len=*),parameter :: fmt6350 = '(a,i3,a,d10.3,a)'
-  character(len=*),parameter :: fmt6500 = '(a,i4,a,i2,a,i2,a,i2,a)'
+  character(len=*),parameter :: fmt6500 = '(a,i6,a,i2,a,i2,a,i2,a)'
 
   character(len=512)::output_dir
   character(len=64) :: jobid
@@ -741,7 +743,105 @@ contains
 
   end subroutine plume_netcdf_init
 
-  subroutine plume_netcdf_write_vars(time)
+  subroutine plume_netcdf_read_real_var(ncfilename, varname, out_array)
+
+    implicit none
+
+    character(len=*),intent(in) :: ncfilename, varname
+    real(kind=kdp),dimension(:,:),intent(out) :: out_array
+
+    !local variables
+    integer :: x_dimid, y_dimid, time_dimid
+    integer :: nc_id, var_id, time_index
+    integer :: x_len, y_len, time_len
+    character(len=NF90_MAX_NAME) :: x_name,y_name,time_name
+
+    ! open file
+    call check( nf90_open(ncfilename, NF90_NOWRITE, nc_id))
+
+    ! get dimension ids
+    call check ( nf90_inq_dimid(nc_id, 'x', x_dimid) )
+    call check ( nf90_inq_dimid(nc_id, 'y', y_dimid) )
+    call check ( nf90_inq_dimid(nc_id, 'time', time_dimid) )
+
+    ! retrieve dimension values
+    call check ( nf90_inquire_dimension(nc_id, x_dimid, x_name, x_len) )
+    call check ( nf90_inquire_dimension(nc_id, y_dimid, y_name, y_len) )
+    call check ( nf90_inquire_dimension(nc_id, time_dimid, time_name, time_len) )
+
+    if (x_len .ne. size(out_array, 1)) then
+       print *, 'x dimensions do not match'
+       stop 1
+    end if
+
+    if (y_len .ne. size(out_array, 2)) then
+       print *, 'x dimensions do not match'
+       stop 1
+    end if
+
+    ! get variable id
+    call check ( nf90_inq_varid(nc_id, varname, var_id) )
+
+    ! read variable array (last time, all x and y values) and write into out_array
+    call check( nf90_get_var(nc_id, var_id, out_array, &
+                start=(/ 1,1,time_len /), &
+                count=(/ x_len,y_len, 1 /)) )
+
+    ! close file
+    call check( nf90_close(nc_id) )
+    
+ end subroutine plume_netcdf_read_real_var
+
+ subroutine plume_netcdf_read_int_var(ncfilename, varname, out_array)
+
+   implicit none
+
+   character(len=*),intent(in) :: ncfilename, varname
+   integer,dimension(:,:),intent(out) :: out_array
+
+   !local variables
+   integer :: x_dimid, y_dimid, time_dimid
+   integer :: nc_id, var_id, time_index
+   integer :: x_len, y_len, time_len
+   character(len=NF90_MAX_NAME) :: x_name,y_name,time_name
+
+   ! open file
+   call check( nf90_open(ncfilename, NF90_NOWRITE, nc_id))
+
+   ! get dimension ids
+   call check ( nf90_inq_dimid(nc_id, 'x', x_dimid) )
+   call check ( nf90_inq_dimid(nc_id, 'y', y_dimid) )
+   call check ( nf90_inq_dimid(nc_id, 'time', time_dimid) )
+
+   ! retrieve dimension values
+   call check ( nf90_inquire_dimension(nc_id, x_dimid, x_name, x_len) )
+   call check ( nf90_inquire_dimension(nc_id, y_dimid, y_name, y_len) )
+   call check ( nf90_inquire_dimension(nc_id, time_dimid, time_name, time_len) )
+
+   if (x_len .ne. size(out_array, 1)) then
+      print *, 'x dimensions do not match'
+      stop 1
+   end if
+
+   if (y_len .ne. size(out_array, 2)) then
+      print *, 'x dimensions do not match'
+      stop 1
+   end if
+
+   ! get variable id
+   call check ( nf90_inq_varid(nc_id, varname, var_id) )
+
+   ! read variable array (last time, all x and y values) and write into out_array
+   call check( nf90_get_var(nc_id, var_id, out_array, &
+        start=(/ 1,1,time_len /), &
+        count=(/ x_len,y_len, 1 /)) )
+
+   ! close file
+   call check( nf90_close(nc_id) )
+
+ end subroutine plume_netcdf_read_int_var
+
+ subroutine plume_netcdf_write_vars(time)
 
     real(kind=kdp),intent(in) :: time !what time (seconds) in the simulation does the state represent
 

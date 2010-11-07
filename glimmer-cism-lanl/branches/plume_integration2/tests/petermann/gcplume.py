@@ -35,6 +35,7 @@ class PlumeNamelist(object):
         self.vals = {'mixlayer' : False,
                      'in_glimmer' : True,
                      'restart' : False,
+                     'restart_data_filename' : '',
                      'frazil' : False,
                      'nonlin' : True,
                      'horturb' : True,
@@ -343,6 +344,7 @@ class GCConfig(object):
                                   'plume_imax' : None,
                                   'plume_kmin' : None,
                                   'plume_kmax' : None,
+                                  'plume_initial_bmlt' : False,     # Apply the initial bmelt field for all time (no dynamics)
                                   'plume_const_bmlt' : False,       # Apply a uniform melt rate under floating ice
                                   'plume_const_bmlt_rate' : 0.0     # At given rate in meters per year
                                   }
@@ -703,6 +705,28 @@ class LinearShelfJob(_GenInputJob):
         cmd = [_fortran_style('nc_gen_input', c) for c in cmd]
         return cmd
 
+class SandersonShelfJob(LinearShelfJob):
+
+    def __init__(self):
+        LinearShelfJob.__init__(self)
+
+        self.tauxy0 = None
+        self.ifthk = 0.0
+
+    def _resolveJob(self):
+
+        shelf_length = (self.n-self.kinbcw-(self.ifpos-1))*self.hy
+        widthY = (self.m- 2*1)*self.hx/2.0
+        g = 9.81
+        slope = 2*self.tauxy0/ (self.rhoi*g*widthY*(1-self.rhoi/self.rhoo))
+        self.ifthk = self.upthk - slope*shelf_length
+
+        self.gc.update(  {'boundary condition params' : {'tau_xy_0' : self.tauxy0,
+                                                         },
+                          } )
+        
+        LinearShelfJob._resolveJob(self)
+        
 class SteadyShelfJob(_GenInputJob):
     
     def __init__(self):
@@ -754,16 +778,14 @@ ssj.gc.update({'options' : {'flow_law' : 0,
                })
             
 
-class RegridJob(_BaseJob,_IO):
+class RestartIceJob(_BaseJob,_IO):
 
-#    def __init__(self,initJobFile):
-#        __init__(self,initJobFile,None)
     
     def __init__(self,initJobFile,initJobDir):
         _BaseJob.__init__(self)
 
         self.initJobFile = initJobFile
-
+        
         f = open(initJobFile,'r')
         try:
             self.initJob = pickle.load(f)
@@ -779,6 +801,8 @@ class RegridJob(_BaseJob,_IO):
         self.inputNcFile = os.path.join(_initJobDir,
                                         os.path.basename(self.initJob.outputfile))
 
+        _initJobName = 'sanderson_-1.0'
+        self.inputNcFile=  './sanderson_-1.0.out.nc'
         # figure out new name for this job
         if (len(_initJobName.split('_restart_')) > 1):
             newindex = int(_initJobName.split('_restart_')[1])+1
@@ -786,7 +810,8 @@ class RegridJob(_BaseJob,_IO):
         else:
             self.name = "%s_restart_%s" % (_initJobName, 1)
 
-
+        newindex = 1
+        self.name = 'sanderson_-1.0_restart_1'
         #parse the output of the old job to figure out the last time and index
         p = subprocess.Popen(['ncdump','-v', 'time', self.inputNcFile],stdout=subprocess.PIPE)
         times = p.stdout.read()
@@ -798,7 +823,7 @@ class RegridJob(_BaseJob,_IO):
         self.plume = self.initJob.plume
         self._jobDir = None
         self.tend = None
-
+            
     def _setJobDir(self,jd):
         realDir = os.path.expandvars(jd)
         if (not(os.path.lexists(realDir))):
@@ -850,6 +875,18 @@ class RegridJob(_BaseJob,_IO):
         return self.initJob.use_plume
     use_plume = property(fset=_setuse_plume,fget=_getuse_plume)
 
+    def _setplumedict(self, pd):
+        self.initJob.plume.update(pd)
+    def _getplumedict(self):
+        return self.initJob.plume
+    plume = property(fset=_setplumedict,fget=_getplumedict)
+
+    def _setgcdict(self, gcd):
+        self.initJob.gc.update(gcd)
+    def _getgcdict(self):
+        return self.initJob.gc
+    gc = property(fset=_setgcdict,fget=_getgcdict)
+    
     def _resolveJob(self):
         #resolve the contained job
         self.initJob._resolveJob()

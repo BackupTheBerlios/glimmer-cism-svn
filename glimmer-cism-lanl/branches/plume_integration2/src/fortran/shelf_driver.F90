@@ -63,7 +63,8 @@ program shelf_driver
   real(kind=dp) :: plume_steadiness_tol,plume_speed_steadiness_tol
 
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
-  logical :: plume_const_bmlt
+  logical :: plume_const_bmlt,plume_initial_bmlt
+
   real(kind=dp) :: plume_const_bmlt_rate
 
   call glimmer_GetCommandline()
@@ -198,9 +199,10 @@ program shelf_driver
           .true.,&
 	  plume_reached_steady, &
           plume_write_all_states, &
-          plume_write_every_n)
+          plume_write_every_n, &
+	  plume_initial_bmlt)
 
-     if (.not. plume_reached_steady) then
+     if (.not. plume_reached_steady .and. .not. plume_initial_bmlt) then
 	call write_log("Plume did not reach a steady state",GM_WARNING)
      end if
 
@@ -327,7 +329,8 @@ program shelf_driver
              .false., &                   !not necessarily running to steady
 	     plume_reached_steady, &
              plume_write_all_states, &
-             plume_write_every_n)
+             plume_write_every_n, &
+	     plume_initial_bmlt)
 
         call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
              model%general%ewn, model%general%nsn, fake_landw)
@@ -477,6 +480,7 @@ contains
     call GetValue(section, 'plume_kmin',plume_kmin)
     call GetValue(section, 'plume_kmax',plume_kmax)
     call GetValue(section, 'plume_const_bmlt', plume_const_bmlt)
+    call GetValue(section, 'plume_initial_bmlt', plume_initial_bmlt)
     call GetValue(section, 'plume_const_bmlt_rate', plume_const_bmlt_rate)
 
     call write_log('Plume config')
@@ -506,6 +510,8 @@ contains
     write(message,*) 'imin',plume_imin,'imax',plume_imax,'kmin',plume_kmin,'kmax',plume_kmax
     call write_log(message)
     write(message,*) 'plume_const_bmlt', plume_const_bmlt, 'plume_const_bmlt_rate', plume_const_bmlt_rate
+    call write_log(message)
+    write(message,*) 'plume_initial_bmlt:', plume_initial_bmlt
     call write_log(message)
 
   end subroutine plume_read_print_config

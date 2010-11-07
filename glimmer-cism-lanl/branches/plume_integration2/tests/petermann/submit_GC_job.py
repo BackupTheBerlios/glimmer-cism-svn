@@ -33,7 +33,7 @@ def write_jobscript(j,email,jobfile,walltime):
                           'run_GC_%s.sh' % j.name),
              'w')
 
-    script = '''#PBS -l nodes=1:ppn=1,walltime=%s
+    script = '''#PBS -l nodes=1:ppn=8,walltime=%s
                 #PBS -N GC_%s
                 #PBS -M %s
                 #PBS -m abe
