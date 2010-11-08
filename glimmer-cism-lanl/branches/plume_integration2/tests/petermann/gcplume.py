@@ -801,8 +801,6 @@ class RestartIceJob(_BaseJob,_IO):
         self.inputNcFile = os.path.join(_initJobDir,
                                         os.path.basename(self.initJob.outputfile))
 
-        _initJobName = 'sanderson_-1.0'
-        self.inputNcFile=  './sanderson_-1.0.out.nc'
         # figure out new name for this job
         if (len(_initJobName.split('_restart_')) > 1):
             newindex = int(_initJobName.split('_restart_')[1])+1
@@ -810,8 +808,6 @@ class RestartIceJob(_BaseJob,_IO):
         else:
             self.name = "%s_restart_%s" % (_initJobName, 1)
 
-        newindex = 1
-        self.name = 'sanderson_-1.0_restart_1'
         #parse the output of the old job to figure out the last time and index
         p = subprocess.Popen(['ncdump','-v', 'time', self.inputNcFile],stdout=subprocess.PIPE)
         times = p.stdout.read()

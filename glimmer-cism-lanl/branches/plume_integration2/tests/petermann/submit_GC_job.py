@@ -23,7 +23,7 @@ def readjob(jobfile):
     return j
 
 
-def write_jobscript(j,email,jobfile,walltime):
+def write_jobscript(j,email,jobfile,walltime,ppn):
 
     #
     # make scripts to run the code
@@ -33,7 +33,7 @@ def write_jobscript(j,email,jobfile,walltime):
                           'run_GC_%s.sh' % j.name),
              'w')
 
-    script = '''#PBS -l nodes=1:ppn=8,walltime=%s
+    script = '''#PBS -l nodes=1:ppn=%s,walltime=%s
                 #PBS -N GC_%s
                 #PBS -M %s
                 #PBS -m abe
@@ -42,14 +42,16 @@ def write_jobscript(j,email,jobfile,walltime):
 
                 p=$PWD
                 cd %s
+                export OMP_NUM_THREADS=%s
                 python `which run_job.py` %s
                 cd $p
                 exit 0;
                 EOF
-            ''' % (walltime, j.name, email,
+            ''' % (ppn,walltime, j.name, email,
                    os.path.expandvars('$GC_JOB_SCRIPTS/'),
                    os.path.expandvars('$GC_JOB_SCRIPTS/'),
                    os.path.dirname(os.path.abspath(jobfile)),
+		   ppn,
                    os.path.abspath(jobfile))
 
  
@@ -76,7 +78,7 @@ def queue_job(mode, j):
 	if (retcode != 0):
 	    raise Exception("Error running qsub")
 
-def submit_job(job,email,walltime,mode):
+def submit_job(job,email,walltime,mode,ppn):
     
     if (type(job) is str):
         j = readjob(job)
@@ -84,14 +86,14 @@ def submit_job(job,email,walltime,mode):
         j = job
 
     j.assertCanStage()
-    write_jobscript(j,email,j.serialFile,walltime)
+    write_jobscript(j,email,j.serialFile,walltime,ppn)
     
     queue_job(mode,j)
 
     
 def main():
 
-    USAGE="submit_GC_job.sh <job_file> <walltime> <mode>"
+    USAGE="submit_GC_job.sh <job_file> <walltime> <mode> [<ppn>]"
 
     #
     # set user-specific stuff
@@ -103,7 +105,7 @@ def main():
     # trap incorrect number of arguments
     #
 
-    if (len(sys.argv) != 4 ):
+    if (len(sys.argv) < 4 ):
         print('ERROR: incorrect number of arguments')
         print(USAGE)
         return
@@ -118,8 +120,13 @@ def main():
     print('%s: %s' % ('walltime',WALLTIME))
     MODE=sys.argv[3]
     print('%s: %s' % ('mode', MODE))
+    if (len(sys.argv) == 5):
+        ppn = sys.argv[4]
+    else:
+        ppn = 1
+    print('%s: %s' % ('ppn', ppn))
 
-    submit_job(JOB,EMAIL,WALLTIME,MODE)
+    submit_job(JOB,EMAIL,WALLTIME,MODE,ppn)
 
 
 if __name__ == '__main__':
