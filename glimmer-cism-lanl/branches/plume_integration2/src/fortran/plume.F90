@@ -306,10 +306,7 @@ contains
     ! while not steady
 
     if (.not. use_plume_initial_bmlt) then
-       do while (((subcycling_time .le. ice_dt_in_sec) .and. &
-            .not. run_plume_to_steady) .or. &
-            (run_plume_to_steady .and. &
-            (subcycling_time .le. max_run_time_sec)))
+       do while (subcycling_time .le. min(max_run_time_sec,ice_dt_in_sec))
 
           call plume_runstep()
 

@@ -58,7 +58,7 @@ program shelf_driver
   logical :: plume_write_all_states= .false.
   integer :: plume_write_every_n = 1
 
-  real(kind=dp) :: plume_min_subcycle_time
+  real(kind=dp) :: plume_min_subcycle_time,plume_max_subcycle_time
   real(kind=dp) :: plume_min_spinup_time,plume_max_spinup_time
   real(kind=dp) :: plume_steadiness_tol,plume_speed_steadiness_tol
 
@@ -325,7 +325,7 @@ program shelf_driver
              plume_steadiness_tol, &
              plume_speed_steadiness_tol, &
              plume_min_subcycle_time, &
-	     0.0_dp, &
+	     plume_max_subcycle_time, &
              .false., &                   !not necessarily running to steady
 	     plume_reached_steady, &
              plume_write_all_states, &
@@ -473,6 +473,7 @@ contains
     call GetValue(section, 'plume_min_spinup_time',plume_min_spinup_time)
     call GetValue(section, 'plume_max_spinup_time',plume_max_spinup_time)
     call GetValue(section, 'plume_min_subcycle_time',plume_min_subcycle_time)
+    call GetValue(section, 'plume_max_subcycle_time',plume_max_subcycle_time)
     call GetValue(section, 'plume_steadiness_tol', plume_steadiness_tol)
     call GetValue(section, 'plume_speed_steadiness_tol', plume_speed_steadiness_tol)
     call GetValue(section, 'plume_imin',plume_imin)
@@ -506,6 +507,8 @@ contains
     write(message,*) 'plume_max_spinup_time:',plume_max_spinup_time
     call write_log(message)
     write(message,*) 'plume_min_subcycle_time', plume_min_subcycle_time
+    call write_log(message)
+    write(message,*) 'plume_max_subcycle_time', plume_max_subcycle_time
     call write_log(message)
     write(message,*) 'imin',plume_imin,'imax',plume_imax,'kmin',plume_kmin,'kmax',plume_kmax
     call write_log(message)
