@@ -614,22 +614,22 @@ contains
   subroutine make_linear_shelf()
 
     ! local variables
-    integer :: i,j
+    integer :: i,j,k
     integer :: ifpos,kinbcw
     integer,parameter :: zero_buf = 1
     real :: hx,hy
     real :: rhoi, rhoo
-    real :: upstream_thk, if_thk, upstream_vel
+    real :: upstream_thk, if_thk, upstream_vel,inflow_a
     real :: chan_depth,otopg,ltopg,acab_per_year
     real,dimension(:),allocatable :: rand_row
 
-    real :: k,tmp
+    real :: tmp
     real :: rand_amp
 
     character (len=512) :: linear_shelf_params = "<fname> <nx> <ny> <n_level> <hx> <hy> <upstream_thk> &
-       & <upstream_vel> <ifpos> <ifthk> <ocean_depth> <kinbcw>"
+       & <upstream_vel> <inflow_a> <ifpos> <ifthk> <ocean_depth> <kinbcw>"
 
-    if (command_argument_count() /= 13) then
+    if (command_argument_count() /= 14) then
        write(*,*)"Incorrect number of parameters. Linear shelf requires: &
             &  ",trim(linear_shelf_params)
        stop 1
@@ -668,18 +668,22 @@ contains
     write(*,*) 'upstream_vel',upstream_vel
 
     call get_command_argument(10,argstr)
+    read(argstr,'(f18.12)') inflow_a
+    write(*,*) 'inflow_a', inflow_a
+
+    call get_command_argument(11,argstr)
     read(argstr,'(i5)') ifpos
     write(*,*) 'ifpos',ifpos
 
-    call get_command_argument(11,argstr)
+    call get_command_argument(12,argstr)
     read(argstr,'(f18.12)') if_thk
     write(*,*) 'if_thk', if_thk
 
-    call get_command_argument(12,argstr)
+    call get_command_argument(13,argstr)
     read(argstr,'(f18.12)') otopg
     write(*,*) 'otopg', otopg
 
-    call get_command_argument(13,argstr)
+    call get_command_argument(14,argstr)
     read(argstr,'(i5)') kinbcw
     write(*,*) 'kinbc_width',kinbcw
 
@@ -715,10 +719,17 @@ contains
     kinbcmask = 0
     kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
     
-    uvelhom = 0.0
-    vvelhom = 0.0
+    uvelhom = 0.d0
+    vvelhom = 0.d0
 
-    vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
+    vvelhom(:,ny-kinbcw:ny-1,:) = upstream_vel
+
+    do j=ny-kinbcw-10,ny
+       do i=1+zero_buf,nx-zero_buf
+          thck(i,j) = thck(i,j) + real(j-(ny-kinbcw-10))/real(ny-(ny-kinbcw-10)) & 
+                                  *inflow_a * (xs(i)-xs(nx/2))*(xs(i)-xs(nx/2))
+       end do
+    end do
 
     call write_nc_file(.true.)
 
