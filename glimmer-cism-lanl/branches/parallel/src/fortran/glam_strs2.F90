@@ -384,8 +384,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics solver'
   print *, ' '
-  print *, 'iter #     uvel resid         vvel resid       target resid'
-!  print *, 'iter #     resid (L2 norm)       target resid'
+!  print *, 'iter #     uvel resid         vvel resid       target resid'
+  print *, 'iter #     resid (L2 norm)       target resid'
   print *, ' '
 
   ! ****************************************************************************************
@@ -398,8 +398,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
 
-  !do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
-  do while ( maxval(resid) > minres .and. counter < cmax)   ! standard residual calculation
+  do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
+  !do while ( maxval(resid) > minres .and. counter < cmax)   ! standard residual calculation
   !do while ( resid(1) > minres .and. counter < cmax)        ! standard residual (for 1d solutions where d*/dy=0) 
 
     ! calc effective viscosity using previously calc vel. field
@@ -604,11 +604,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !    ! output the iteration status: iteration number, max residual, and location of max residual
 !    ! (send output to the screen or to the log file, per whichever line is commented out) 
-    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
+!    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
 !    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
 !    !call write_log (message)
 
-!    print '(i4,3g20.6)', counter, L2norm, NL_target    ! Output when using L2norm for convergence
+    print '(i4,3g20.6)', counter, L2norm, NL_target    ! Output when using L2norm for convergence
 
     counter = counter + 1   ! advance the iteration counter
 
@@ -4362,37 +4362,51 @@ subroutine putpcgc(value,col,row,pt)
     end if
  
  
-   !*sfp* for JFNK, store he main block diagonal coeffs and off diag coeffs 
+   !*sfp* if using JFNK, store the main block diagonal coeffs and off diag coeffs 
    elseif ( nonlinear == HO_NONLIN_JFNK )then
 
-    if ( .not. storeoffdiag ) then ! block diag coeffs in normal storage space
-        ! load entry into Triad sparse matrix format
-        if (value /= 0.0d0) then
-          pcgval(ct) = value
-          pcgcol(ct) = col
-          pcgrow(ct) = row
-          ct = ct + 1
-        end if
-    else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
-        ! load entry into Triad sparse matrix format
-        if( pt == 1 )then ! store uv coeffs 
-            if (value /= 0.0d0) then
-              pcgvaluv(ct2) = value
-              pcgcoluv(ct2) = col
-              pcgrowuv(ct2) = row
-              ct2 = ct2 + 1
-            end if
-        else if( pt == 2 )then ! store vu coeffs
-            if (value /= 0.0d0) then
-              pcgvalvu(ct2) = value
-              pcgcolvu(ct2) = col
-              pcgrowvu(ct2) = row
-              ct2 = ct2 + 1
-            end if
-        end if
-    end if
+    if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then      ! if using Triad format to store matrix entries
 
-   end if
+      if ( .not. storeoffdiag ) then ! block diag coeffs in normal storage space
+          ! load entry into Triad sparse matrix format
+          if (value /= 0.0d0) then
+            pcgval(ct) = value
+            pcgcol(ct) = col
+            pcgrow(ct) = row
+            ct = ct + 1
+          end if
+      else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
+          ! load entry into Triad sparse matrix format
+          if( pt == 1 )then ! store uv coeffs 
+              if (value /= 0.0d0) then
+                pcgvaluv(ct2) = value
+                pcgcoluv(ct2) = col
+                pcgrowuv(ct2) = row
+                ct2 = ct2 + 1
+              end if
+          else if( pt == 2 )then ! store vu coeffs
+              if (value /= 0.0d0) then
+                pcgvalvu(ct2) = value
+                pcgcolvu(ct2) = col
+                pcgrowvu(ct2) = row
+                ct2 = ct2 + 1
+              end if
+          end if
+      end if
+
+    else    ! if storing matrix entires directly in Trilinos sparse format
+
+      ! *sfp* NOTE: that this option does not allow for storing offidag terms at present
+      ! (I assume that Andy can grab these when we know they are correct)
+      if (value /= 0.0d0) then
+         !AGS: If we find that sparsity changes inside a time step,
+         !     consider adding entry even for value==0.
+         call putintotrilinosmatrix(row, col, value)
+      end if
+
+    end if  ! end of "if using Triad or Trilinos storage format" construct
+ 
+   end if   ! end of "if using Picard or JFNK for nonlinear solve" construct
    
   return
  
