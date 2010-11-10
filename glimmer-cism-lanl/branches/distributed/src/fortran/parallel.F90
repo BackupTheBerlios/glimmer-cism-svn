@@ -159,7 +159,7 @@ contains
     character(len=*) :: file
     ! begin
     write(0,*) "WARNING: not parallel in ",file," at line ",line
-    STOP
+!    STOP
   end subroutine
 
   subroutine parallel_barrier
