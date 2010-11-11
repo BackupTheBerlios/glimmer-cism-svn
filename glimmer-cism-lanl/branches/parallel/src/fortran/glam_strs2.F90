@@ -519,7 +519,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !    print *, 'L2 with/without ghost (k)= ', counter, &
 !              sqrt(DOT_PRODUCT(F,F)), L2norm
-    if (counter .le. 2) NL_target = NL_tol * L2norm
+!    if (counter .le. 2) NL_target = NL_tol * L2norm
+    if (counter == 1) NL_target = NL_tol * L2norm
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
