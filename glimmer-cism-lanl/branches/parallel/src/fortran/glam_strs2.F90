@@ -2312,7 +2312,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
         if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
             storeoffdiag = .true.
-            h = croshorizmainbc_lat(dew,           dns,           & 
+            h = -croshorizmainbc_lat(dew,           dns,           & 
                                 slopex,        slopey,        &
                                 dsigmadew(up), dsigmadns(up), & 
                                 pt,            2,             & 
@@ -2415,7 +2415,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
      if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
          storeoffdiag = .true.
-         h = croshorizmainbc_lat(dew,           dns,            &
+         h = -croshorizmainbc_lat(dew,           dns,            &
                                  slopex,        slopey,         &
                                  dsigmadew(up), dsigmadns(up),  &
                                  pt,            1,              &
@@ -2522,7 +2522,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
          if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
              storeoffdiag = .true.
-             h = croshorizmainbc(dew,           dns,            &
+             h = -croshorizmainbc(dew,           dns,            &
                                  slopex,        slopey,         &
                                  dsigmadew(up), dsigmadns(up),  &
                                  pt,            bcflag,         &
@@ -2546,7 +2546,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
          if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag)then
              storeoffdiag = .true.
-             h = croshorizmainbc(dew,           dns,            &
+             h = -croshorizmainbc(dew,           dns,            &
                                  slopex,        slopey,         &
                                  dsigmadew(up), dsigmadns(up),  &
                                  pt,            bcflag,         &
