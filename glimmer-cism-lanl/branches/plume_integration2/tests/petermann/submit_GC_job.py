@@ -23,7 +23,7 @@ def readjob(jobfile):
     return j
 
 
-def write_jobscript(j,email,jobfile,walltime,ppn):
+def write_jobscript(j,email,jobfile,walltime,ppn,overwrite):
 
     #
     # make scripts to run the code
@@ -43,7 +43,7 @@ def write_jobscript(j,email,jobfile,walltime,ppn):
                 p=$PWD
                 cd %s
                 export OMP_NUM_THREADS=%s
-                python `which run_job.py` %s
+                python `which run_job.py` %s %s &> %s.out.log
                 cd $p
                 exit 0;
                 EOF
@@ -52,7 +52,9 @@ def write_jobscript(j,email,jobfile,walltime,ppn):
                    os.path.expandvars('$GC_JOB_SCRIPTS/'),
                    os.path.dirname(os.path.abspath(jobfile)),
 		   ppn,
-                   os.path.abspath(jobfile))
+                   os.path.abspath(jobfile),
+                   (overwrite and '-overwrite' or ''),
+                   j.name)
 
  
     f.write(script)
@@ -78,7 +80,7 @@ def queue_job(mode, j):
 	if (retcode != 0):
 	    raise Exception("Error running qsub")
 
-def submit_job(job,email,walltime,mode,ppn):
+def submit_job(job,email,walltime,mode,ppn,overwrite):
     
     if (type(job) is str):
         j = readjob(job)
@@ -86,21 +88,23 @@ def submit_job(job,email,walltime,mode,ppn):
         j = job
 
     j.assertCanStage()
-    write_jobscript(j,email,j.serialFile,walltime,ppn)
+    write_jobscript(j,email,j.serialFile,walltime,ppn,overwrite)
     
     queue_job(mode,j)
 
     
 def main():
 
-    USAGE="submit_GC_job.sh <job_file> <walltime> <mode> [<ppn>]"
+    USAGE="submit_GC_job.sh <job_file> <walltime> <mode> [<ppn>] [-overwrite]"
 
     #
     # set user-specific stuff
     #
 
     EMAIL='gladish@cims.nyu.edu'
-
+    ppn = 1
+    OVERWRITE = False
+    
     #
     # trap incorrect number of arguments
     #
@@ -120,13 +124,26 @@ def main():
     print('%s: %s' % ('walltime',WALLTIME))
     MODE=sys.argv[3]
     print('%s: %s' % ('mode', MODE))
-    if (len(sys.argv) == 5):
-        ppn = sys.argv[4]
-    else:
-        ppn = 1
-    print('%s: %s' % ('ppn', ppn))
+    if (len(sys.argv) >= 5):
+        arg5 = sys.argv[4]
+        if (arg5.startswith('-')):
+            if (arg5 == '-overwrite'):
+                OVERWRITE = True
+            else:
+                raise Exception("Unrecognized option: %s" % arg5)
+        else:
+            ppn = sys.argv[4]
 
-    submit_job(JOB,EMAIL,WALLTIME,MODE,ppn)
+    if (len(sys.argv) == 6):
+        if (sys.argv[5] == '-overwrite'):
+            OVERWRITE = True
+        else:
+            raise Exception("Unrecognized option: %s" % sys.argv[5])
+        
+    print('%s: %s' % ('ppn', ppn))
+    print('%s: %s' % ('overwrite', OVERWRITE))
+    
+    submit_job(JOB,EMAIL,WALLTIME,MODE,ppn,OVERWRITE)
 
 
 if __name__ == '__main__':

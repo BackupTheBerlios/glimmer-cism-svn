@@ -727,7 +727,7 @@ contains
     do j=ny-kinbcw-10,ny
        do i=1+zero_buf,nx-zero_buf
           thck(i,j) = thck(i,j) + real(j-(ny-kinbcw-10))/real(ny-(ny-kinbcw-10)) & 
-                                  *inflow_a * (xs(i)-xs(nx/2))*(xs(i)-xs(nx/2))
+                                  *inflow_a * (xs(i)-xs((nx-1)/2+1))*(xs(i)-xs((nx-1)/2+1))
        end do
     end do
 

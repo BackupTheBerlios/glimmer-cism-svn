@@ -17,7 +17,8 @@ program nc_regrid
   integer :: nx_new, ny_new, ny_old, nx_old, nt_old
   integer :: nlevel                                !only allow new nlevel = old nlevel
   real(kind=dp) :: hx_old, hy_old, hx_new, hy_new
-  real(kind=dp) :: hx_new_kin, hy_new_kin
+
+!  real(kind=dp) :: hx_new_kin, hy_new_kin
 
   ! first two old x values, and old y values
   real(kind=dp),dimension(2) :: x1_old,y1_old
@@ -49,7 +50,6 @@ subroutine main()
                                     &<kin_w_margin> <kin_e_margin> "
 
   character(len=128) :: argstr
-
 
 
   if (command_argument_count() /= 17) then
@@ -185,7 +185,7 @@ subroutine write_real_margins(data_old,data_new, &
 	data_new(1:nx1, (ny1+1-n_marg):ny1) = &
 					data_old(nx0/2,ny0)
   else
-	data_new((w_marg+1)+1:(nx1-e_marg),&
+	data_new((w_marg+1):(nx1-e_marg),&
 	         (ny1+1-n_marg):ny1) = &
                                data_old(nx0/2,ny0)
   end if
@@ -198,6 +198,7 @@ subroutine write_interior(data_old, data_new, nx_old,nx_new,ny_old,ny_new,&
 
   real(kind=dp),dimension(:,:),intent(in) :: data_old
   real(kind=dp),dimension(:,:),intent(inout) :: data_new
+
   integer,intent(in) :: nx_old,nx_new,ny_old,ny_new
   integer,intent(in) :: n_margin,s_margin,w_margin,e_margin
 
@@ -206,7 +207,11 @@ subroutine write_interior(data_old, data_new, nx_old,nx_new,ny_old,ny_new,&
   integer :: j_old_bot,j_new_bot,j_old_top,j_new_top 
   integer :: i_prev,j_prev
   real(kind=dp) :: a,b
-  integer :: i,j
+  real(kind=dp),dimension(size(data_new,1),size(data_new,2)) :: data_new_temp
+  integer :: i,j,l
+
+  data_new_temp = 0.d0
+
   i_old_left = w_margin+1
   i_new_left = w_margin+1
   i_old_right = nx_old - e_margin
@@ -221,11 +226,17 @@ subroutine write_interior(data_old, data_new, nx_old,nx_new,ny_old,ny_new,&
      do j=j_new_bot,j_new_top
  	 
          i_prev = int((real(i) - i_new_left)*(hx_new/hx_old)) + i_old_left
-         j_prev = int((real(j) - j_new_bot)*(hy_new/hy_old)) + j_old_bot
-         a = (real(i)-i_new_left) - &
-                aint((real(i)-i_new_left)*(hx_new/hx_old))*(hx_old/hx_new)
-	 b = (real(j)-j_new_bot) - &
-		aint((real(j)-j_new_bot)*(hy_new/hy_old))*(hy_old/hy_new)
+         j_prev = int((real(j) - j_new_bot) *(hy_new/hy_old)) + j_old_bot
+
+         ! a is the fractional number of old cells in the x-direction
+         ! from the previous old grid point
+         ! to the current new grid point. b is the same, in the y-direction
+
+         a = (real(i)-i_new_left)*(hx_new/hx_old) - &
+                aint((real(i)-i_new_left)*(hx_new/hx_old))
+
+	 b = (real(j)-j_new_bot)*(hy_new/hy_old) - &
+		aint((real(j)-j_new_bot) *(hy_new/hy_old))
 
 	 data_new(i,j) = (1-a)*(1-b) * data_old(i_prev,j_prev)     + &
 	                 (1-a)*   b  * data_old(i_prev,j_prev+1)   + &
@@ -233,6 +244,25 @@ subroutine write_interior(data_old, data_new, nx_old,nx_new,ny_old,ny_new,&
 	                    a *   b  * data_old(i_prev+1,j_prev+1)
      end do
   end do
+
+  ! smooth data_new twice
+  do l=1,3
+  do i=(i_new_left+1),(i_new_right-1)
+     do j=(j_new_bot+1),(j_new_top-1)
+ 	 data_new_temp(i,j) = data_new(i,j) + &
+              (4.d0*data_new(i,j) &
+                  -data_new(i-1,j) &
+                  -data_new(i+1,j) &
+                  -data_new(i,j-1) &
+                  -data_new(i,j+1))*(-0.1d0)
+
+     end do
+  end do
+
+  data_new(i_new_left+1:i_new_right-1,j_new_bot+1:j_new_top-1) = &
+       data_new_temp(i_new_left+1:i_new_right-1,j_new_bot+1:j_new_top-1)
+      
+end do 
 
 end subroutine write_interior
 
@@ -335,10 +365,10 @@ subroutine define_new_data()
   hy_new = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
                     (ny_new - thk_s_margin - thk_n_margin - 1)
 
-  hx_new_kin = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
-                        (nx_new - thk_w_margin - thk_e_margin - 1)
-  hy_new_kin = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
-                        (ny_new - thk_s_margin - thk_n_margin - 1)
+!  hx_new_kin = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
+!                        (nx_new - thk_w_margin - thk_e_margin - 1)
+!  hy_new_kin = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
+!                        (ny_new - thk_s_margin - thk_n_margin - 1)
 
   !now populate the dimension variables
   xs_new = (/ ( x1_old(1) + (i-1)*hx_new,i=1,nx_new ) /)
@@ -377,19 +407,22 @@ subroutine define_new_data()
   do j=1,nlevel
      call write_real_margins(uvelhom_old(:,:,j),uvelhom_new(:,:,j), 1.0d0, 0.0d0,&
                              nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
-                             0,0,0,0)
+                             kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin)
      call write_real_margins(vvelhom_old(:,:,j),vvelhom_new(:,:,j), 1.0d0, 0.0d0,&
                              nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
-                             0,0,0,0)
+                             kin_n_margin,kin_s_margin-1,kin_w_margin,kin_e_margin)
      call write_interior(uvelhom_old(:,:,j),uvelhom_new(:,:,j), nx_old-1,nx_new-1, &
-                         ny_old-1,ny_new-1,0,0,0,0)
+                         ny_old-1,ny_new-1,&
+                         kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin)
 
      call write_interior(vvelhom_old(:,:,j),vvelhom_new(:,:,j), nx_old-1,nx_new-1, &
-                         ny_old-1,ny_new-1,0,0,0,0)
+                         ny_old-1,ny_new-1, &
+                         kin_n_margin,kin_s_margin-1,kin_w_margin,kin_e_margin)
 
      call write_real_margins(temp_old(:,:,j), temp_new(:,:,j), 1.0d0, 0.0d0, &
                              nx_old, nx_new, ny_old, ny_new, &
                              0,0,0,0)
+
      call write_interior(temp_old(:,:,j), temp_new(:,:,j), nx_old,nx_new, &
                          ny_old, ny_new, 0,0,0,0)
 
@@ -505,5 +538,166 @@ subroutine write_nc_file()
     end if
 
   end subroutine check
+
+!!$  subroutine local_linear(raw_data,ocean_mask,short_waves, long_waves, as, bs)
+!!$
+!!$    implicit none
+!!$
+!!$    real(kind=kdp),dimension(:,:),intent(in)  :: raw_data
+!!$    integer,dimension(:,:),intent(in)         :: ocean_mask
+!!$    real(kind=kdp),dimension(:,:),intent(out) ::short_waves, long_waves, as, bs
+!!$
+!!$    ! raw_data is the field to be filtered
+!!$    ! ocean_mask is equal to 1 where the raw_data is valid, 0 otherwise
+!!$
+!!$    integer :: m,n,i,k
+!!$    integer :: lower_ilim,lower_klim, upper_ilim,upper_klim
+!!$    integer :: win_imin,win_kmin,win_imax,win_kmax
+!!$    integer,parameter :: window_width = 3
+!!$
+!!$    real(kind=kdp),dimension(window_width,window_width) :: data_window
+!!$    integer(kind=kdp),dimension(window_width,window_width) :: ocean_mask_window
+!!$
+!!$    real(kind=kdp),dimension(window_width,window_width) :: xmat,ymat
+!!$    real(kind=kdp),dimension(3,3) :: matrix
+!!$    real(kind=kdp),dimension(3)   :: rhs
+!!$    real(kind=kdp)                :: multiplier, x0, y0
+!!$
+!!$    as = 0.d0
+!!$    bs = 0.d0
+!!$    long_waves = 0.d0
+!!$    short_waves = 0.d0
+!!$
+!!$    m = size(raw_data,1)
+!!$    n = size(raw_data,2)
+!!$
+!!$    x0 = floor( (window_width-1) /2.d0 )
+!!$    y0 = floor( (window_width-1) /2.d0 )
+!!$
+!!$    do i= 1,window_width
+!!$       xmat(i,:) = real(i) - (x0+1.d0)
+!!$       ymat(:,i) = real(i) - (y0+1.d0)
+!!$    end do
+!!$
+!!$    !$omp parallel default(none) &
+!!$    !$omp private(i,k,lower_ilim,lower_klim,upper_ilim,upper_klim, &
+!!$    !$omp         win_imin,win_kmin,win_imax,win_kmax, & 
+!!$    !$omp         data_window, ocean_mask_window,matrix,rhs, &
+!!$    !$omp         multiplier) &
+!!$    !$omp shared(raw_data, ocean_mask, short_waves, long_waves, as,bs, &
+!!$    !$omp        x0,y0, xmat,ymat, &
+!!$    !$omp        domain_imin,domain_imax,domain_kmin,domain_kmax)
+!!$    !$omp do
+!!$    do i=domain_imin,domain_imax
+!!$       do k=domain_kmin,domain_kmax
+!!$         
+!!$          lower_ilim = max(domain_imin,i-int(floor(  (window_width-1)/2.d0)))
+!!$          upper_ilim = min(domain_imax,i+int(ceiling((window_width-1)/2.d0)))
+!!$          lower_klim = max(domain_kmin,k-int(floor(  (window_width-1)/2.d0)))
+!!$          upper_klim = min(domain_kmax,k+int(ceiling((window_width-1)/2.d0)))
+!!$
+!!$          data_window = 0.d0
+!!$          win_imin = int((lower_ilim-i)+(x0+1.d0))
+!!$          win_imax = win_imin + (upper_ilim-lower_ilim)
+!!$          win_kmin = int((lower_klim-k)+(y0+1.d0))
+!!$          win_kmax = win_kmin + (upper_klim-lower_klim)
+!!$
+!!$          data_window( win_imin:win_imax, &
+!!$                       win_kmin:win_kmax ) = &
+!!$               raw_data(lower_ilim:upper_ilim,lower_klim:upper_klim)
+!!$
+!!$          ocean_mask_window = 0
+!!$          ocean_mask_window(win_imin:win_imax, &
+!!$                       win_kmin:win_kmax ) = &
+!!$               ocean_mask(lower_ilim:upper_ilim,lower_klim:upper_klim)
+!!$
+!!$          ! try determining the value at (i,k) determined by a local
+!!$          ! linear approximation in the data_window
+!!$
+!!$          if (ocean_mask(i,k) == 1) then
+!!$
+!!$             matrix(1,1) = sum( xmat * xmat, mask=(ocean_mask_window==1))
+!!$             matrix(1,2) = sum( xmat * ymat, mask=(ocean_mask_window==1))
+!!$             matrix(1,3) = sum( xmat       , mask=(ocean_mask_window==1))
+!!$             matrix(2,2) = sum( ymat * ymat, mask=(ocean_mask_window==1))
+!!$             matrix(2,3) = sum( ymat       , mask=(ocean_mask_window==1))
+!!$             matrix(3,3) = sum(ocean_mask_window)
+!!$             matrix(2,1) = matrix(1,2)
+!!$             matrix(3,1) = matrix(1,3)
+!!$             matrix(3,2) = matrix(2,3)
+!!$
+!!$             rhs(1) = sum( xmat * data_window, mask=(ocean_mask_window==1))
+!!$             rhs(2) = sum( ymat * data_window, mask=(ocean_mask_window==1))
+!!$             rhs(3) = sum( data_window       , mask=(ocean_mask_window==1))
+!!$
+!!$             ! do Gaussian elim on matrix
+!!$             if (matrix(1,1) == 0.d0) then
+!!$                print *, i,k
+!!$                print *, xmat(:,3)
+!!$                print *, xmat(:,2)
+!!$                print *, xmat(:,1)
+!!$                print *, 'zero entry in 1,1'
+!!$                stop 1
+!!$             end if
+!!$             multiplier = matrix(2,1)/matrix(1,1)
+!!$             matrix(2,:) = matrix(2,:) - multiplier*matrix(1,:)
+!!$             rhs(2)      = rhs(2) -      multiplier*rhs(1)
+!!$
+!!$             if (matrix(1,1) == 0.d0) then
+!!$                print *, i,k
+!!$                print *, matrix(1,:)
+!!$                print *, matrix(2,:)
+!!$                print *, matrix(3,:)
+!!$                print *, 'zero entry in 1,1'
+!!$                stop 1
+!!$             end if
+!!$             multiplier = matrix(3,1)/matrix(1,1)
+!!$             matrix(3,:) = matrix(3,:) - multiplier*matrix(1,:)
+!!$             rhs(3)      = rhs(3) -      multiplier*rhs(1)
+!!$
+!!$             if (matrix(2,2) == 0.d0) then
+!!$                print *, i,k
+!!$                print *, matrix(1,:)
+!!$                print *, matrix(2,:)
+!!$                print *, matrix(3,:)
+!!$                print *, 'zero entry in 2,2'
+!!$                stop 1
+!!$             end if
+!!$             multiplier = matrix(3,2)/matrix(2,2)
+!!$             matrix(3,:) = matrix(3,:) - multiplier*matrix(2,:)
+!!$             rhs(3)      = rhs(3)      - multiplier*rhs(2)
+!!$
+!!$             if (matrix(3,3) == 0.d0) then
+!!$                print *, i,k
+!!$                print *, matrix(1,:)
+!!$                print *, matrix(2,:)
+!!$                print *, matrix(3,:)
+!!$                print *, 'zero entry in 3,3'
+!!$                stop 1
+!!$             end if
+!!$
+!!$             long_waves(i,k) = rhs(3) / matrix(3,3)
+!!$             bs(i,k) = (rhs(2) - long_waves(i,k)*matrix(2,3)) / matrix(2,2)
+!!$             as(i,k) = (rhs(1) - long_waves(i,k)*matrix(1,3) - &
+!!$                                    bs(i,k)*matrix(2,1)) / matrix(1,1)
+!!$
+!!$          else
+!!$
+!!$             long_waves(i,k) = 0.d0
+!!$
+!!$          end if
+!!$
+!!$       end do
+!!$    end do
+!!$
+!!$    !$omp end do
+!!$    !$omp end parallel
+!!$
+!!$    short_waves = 0.d0
+!!$    where(ocean_mask == 1)
+!!$       short_waves = raw_data - long_waves
+!!$    end where
+!!$
+!!$  end subroutine local_linear
 
 end program nc_regrid
