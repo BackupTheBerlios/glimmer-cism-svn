@@ -198,14 +198,7 @@ contains
                                         model%geometry%lsrf,     model%geometry%topg,               &
                                         model%geomderv%dthckdew, model%geomderv%dthckdns,           &
                                         model%geomderv%dusrfdew, model%geomderv%dusrfdns,           &
-!                                        model%geomderv%dthckdew_unstag, model%geomderv%dthckdns_unstag, &
-!                                        model%geomderv%dusrfdew_unstag, model%geomderv%dusrfdns_unstag, &
-!                                        model%geomderv%dusrfdew-model%geomderv%dthckdew_unstag,         &
-!                                        model%geomderv%dusrfdns-model%geomderv%dthckdns_unstag,         & 
-!                                        model%geomderv%dlsrfdew_unstag,            &
-!                                        model%geomderv%dlsrfdew_unstag,            &
-                                        model%geomderv%dlsrfdns,            & 
-                                        model%geomderv%dlsrfdns,            & 
+                                        model%geomderv%dlsrfdew, model%geomderv%dlsrfdns,           & 
                                         model%geomderv%stagthck, model%temper%flwa*vis0/vis0_glam,  &
                                         model%basalproc%minTauf,                                    & 
                                         model%velocity_hom%btraction,                               & 
@@ -234,7 +227,7 @@ contains
 
          end if
 
-        !Compute the velocity norm - this is independant of the methods used to compute the u and v components so
+        !Compute the velocity norm - this is independent of the methods used to compute the u and v components so
         !we put it out here
 
         model%velocity_hom%velnorm = sqrt(model%velocity_hom%uvel**2 + model%velocity_hom%vvel**2)

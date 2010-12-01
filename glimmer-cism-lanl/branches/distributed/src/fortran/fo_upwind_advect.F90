@@ -7,6 +7,7 @@ module fo_upwind_advect
     use glimmer_paramets, only: sp, dp, len0, thk0, tim0, vel0, tim0, acc0, scyr
     use glide_types
     use glide_velo_higher  
+!    use glide_thck
 
     private
     public :: fo_upwind_advect_init, fo_upwind_advect_driver, fo_upwind_advect_final
@@ -69,6 +70,10 @@ module fo_upwind_advect
     ! driver routine for the 1st order, upwind mass transport scheme
 
         type(glide_global_type), intent(inout) :: model
+
+        ! Compute the new geometry derivatives for this time step
+!        call geometry_derivs(model)
+!        call geometry_derivs_unstag(model)
 
         print *, ' '
         print *, '(dH/dt using first-order upwinding)'

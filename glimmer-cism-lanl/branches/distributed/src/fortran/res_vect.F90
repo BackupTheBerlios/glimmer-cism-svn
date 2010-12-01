@@ -136,22 +136,22 @@ real (kind = dp) :: scale_ghosts = 0.0d0
 ! AGS: Residual norm includes scaling to decrease importance of ghost values
 ! By calling it a redefinition of an inner product, it is kosher.
       L2square = 0.0
-      do i = 1, nu1
-         if (g_flag(i) .eq. 0) then
-            L2square = L2square + Au_b_wig(i) * Au_b_wig(i)
-         else
-            L2square = L2square + scale_ghosts * Au_b_wig(i) * Au_b_wig(i)
-         endif
-      end do
-
-      do i = 1, nu1
-         if (g_flag(nu1+i) .eq. 0) then
-            L2square = L2square + Cv_d_wig(i) * Cv_d_wig(i)
-         else
-            L2square = L2square + scale_ghosts * Cv_d_wig(i) * Cv_d_wig(i)
-         endif
-      end do
-! when the combined version is used, converge take fewer iterations
+!      do i = 1, nu1
+!         if (g_flag(i) .eq. 0) then
+!            L2square = L2square + Au_b_wig(i) * Au_b_wig(i)
+!         else
+!            L2square = L2square + scale_ghosts * Au_b_wig(i) * Au_b_wig(i)
+!         endif
+!      end do
+!
+!      do i = 1, nu1
+!         if (g_flag(nu1+i) .eq. 0) then
+!            L2square = L2square + Cv_d_wig(i) * Cv_d_wig(i)
+!         else
+!            L2square = L2square + scale_ghosts * Cv_d_wig(i) * Cv_d_wig(i)
+!         endif
+!      end do
+! when the combined version is used, convergence wrong
 !      do i = 1, nu2
 !         if (g_flag(i) .eq. 0) then
 !            L2square = L2square + uvec(i) * uvec(i)

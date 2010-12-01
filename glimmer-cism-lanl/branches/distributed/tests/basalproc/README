@@ -1,0 +1,115 @@
+
+Notes on issues related to running the basal processes test case
+________________________________________________________________
+
+As of Oct. 2010, the various hacks to the code necessary to run the basal processes
+test case have changed, and are recorded here.
+
+First, note that it is no longer necessary to spin up the temperature while holding the thickness
+constant. This simplifies things a bit in that one no longer needs to hach the thickness evoltuion
+files (e.g. glam.F90, remap_glamutils.F90) at all (notes on hacks needed to do the T spinup first, w/o 
+thickness evolution, are included at the bottom of this doc).
+
+It is still necessary to hack simple_glide.F90 a bit, and those hacks are as follows:
+
+(1) on or around line 36, comment out the following 3 lines ...
+
+  call simple_massbalance(climate,model,time)
+  call simple_surftemp(climate,model,time)
+  call spinup_lithot(model)
+
+This is so that the code is forced to use the temperature and mass balance files loaded 
+in from the .nc file (and we ignore the isostacy calc.)
+
+(2) on or around line 146, comment out the following two lines ...
+
+     call simple_massbalance(climate,model,time)
+     call simple_surftemp(climate,model,time)     
+
+Again, to avoid updating the SMB and temperature fields and overwriting the values form the .nc file 
+that we want to hold constant.
+
+NOTE that prev. we were also commenting out the call to 'glide_step3' (line 143). It is important that
+this no longer happens and that this line remains active.
+
+In glam_strs2.F90, there is a hack that much be made so that the ice shelf boundary conditions are correctly
+applied. On or around line 310, there is a "hacks" section. Make sure that the following lines are active:
+
+  do ns=1,nsn-1; do ew=1,ewn-1
+      if( umask(ew,ns) == 37 )then
+          umask(ew,ns) = 41
+      endif
+  end do; end do
+
+This will force the land margin at the downstream end, identified by the masking code, to be treated as if it
+was a calving front. This is necessary because, while we want to apply an ice shelf bc here we don't want the ice to
+actually be thin enough so that it can float (and thus unground).
+
+An additional hack to glam_strs2.F90, on line 3931, allows one to use the newer, Newton-based iteration for implementing
+the plastic till basal boundary condition. To allow this, make sure that the line
+
+    tau(ewn-8:ewn-1,:) = 1.0d3 / tau0_glam 
+
+is active. This holds the yield stress for the downstream region constant - it does not evolve as it does in the rest
+of the domain, in order to maintain a slippery region downstream throughout the entire run, which is needed. Otherwise
+the thin ice here gets cold, the till stiffens up, and sliding in the rest of the domain upstream is affected.
+
+In glam_strs2.F90, it is also useful to check around line 2351. The code should look like:
+
+!    if( cc < 10 )then   ! use this to "pre-condition" the shelf BC w/ the simple, 1d version
+    if( cc >= 0 )then   ! use this to use only the 1d version
+!    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
+
+... which will make sure that the simple 1d form of the ice shelf bc is applied.
+
+Other notes:
+
+Currently, the config file has 'which_ho_babc = 7', which tells the code to use the newer (still under devel), Newton-
+based iteration for enforcing the till yield stress boundary condition. This has worked well for a number of test
+cases, but may still have problems in some cases. If the code seems to be behaving funny, set 'which_ho_babc = 2'.
+This will force the code to go back to the older (possibly slower) version of enforcing this same boundary 
+condition. 
+
+NOTE that if one wants to enforce a constant B^2 bc for the ice plain portion of the domain, as opposed to 
+a constant yield stress, then which_ho_babc = 2 must be set in the config file (i.e. the new iteration cannot be used to
+enforce both a yield stress and B^2 bc over diff portions of the domain). 
+
+SFP 10-15-2010
+
+
+If for some reason, we still want to do the spinup in two parts (T equil first, then T and H equil), the following
+hacks are necessary to "glam.F90" and "remap_glamutils.F90":
+
+For T equil only (that is, hold H const while letting T spinup to ss):
+
+glam.F90
+
+On or around line 63, make sure the follow ing lines are commented out:
+
+        call horizontal_remap( model%remap_wk%dt_ir,                                         &
+                               model%general%ewn-1,        model%general%nsn-1,              &
+                               ntrace_ir,   nghost_ir,                                       &
+                               model%remap_wk%ubar_ir,     model%remap_wk%vbar_ir,           &
+                               model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
+                               model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
+                               model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
+                               model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
+                               model%remap_wk%hm_ir,       model%remap_wk%tarea_ir)
+
+remap_glamutils.F90
+
+On or around line 180, make sure the following lines are commented OUT:
+
+    !Map from IR thickness field back to Glide thickness field
+    thck = wk%thck_ir(:,:,1) / thk0
+
+    !Apply accumulation
+    thck = thck + acab*dt
+
+    !Remove thickness from previously masked out locations
+    thck = thck * wk%mask_ir
+
+Later, if one wants to evolve with both T and H evolution on, then these same lines must be made 
+active and the executable file must be rebuilt.
+
+SFP 10-21-2010

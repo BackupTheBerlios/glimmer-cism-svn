@@ -94,8 +94,7 @@ implicit none
   ! additional storage needed for off diagonal blocks when using JFNK for nonlinear iteration
   real (kind = dp), dimension(:), allocatable :: pcgvaluv, pcgvalvu
   integer, dimension(:), allocatable :: pcgcoluv, pcgrowuv, pcgcolvu, pcgrowvu
-
-  integer :: ct
+  integer :: ct, ct2
 
 !RN_20100125: The following are for Trilinos:
   ! This flag switches between: 
@@ -107,6 +106,7 @@ implicit none
   integer :: whatsparse ! needed for putpgcg()
   integer :: nonlinear  ! flag for indicating type of nonlinar iteration (Picard vs. JFNK)
   logical, save :: storeoffdiag = .false. ! true only if using JFNK solver and block, off diag coeffs needed
+  logical, save :: calcoffdiag = .false. 
 
   real (kind = dp) :: linearSolveTime = 0
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
@@ -268,7 +268,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
   integer, parameter :: cmax = 100                  ! max no. of iterations
-  integer :: counter, linit                                ! iteation counter 
+  integer :: counter, linit               ! iteation counter 
   character(len=100) :: message                     ! error message
 
   ! variables used for incorporating generic wrapper to sparse solver
@@ -315,6 +315,14 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
         endif
     end do; end do
  end if
+
+!! hack for basal processes submodel test case, to avoid floatation at downstream
+!! end yet still allow for application of a floating ice bc there
+!  do ns=1,nsn-1; do ew=1,ewn-1
+!      if( umask(ew,ns) == 37 )then
+!          umask(ew,ns) = 41
+!      endif
+!  end do; end do
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -371,14 +379,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 ! KJE SLAP incompatibility of main_task
   ! print some info to the screen to update on iteration progress
-  if (main_task) then 
-     print *, ' '
-     print *, 'Running Payne/Price higher-order dynamics solver'
-     print *, ' '
-     print *, 'iter #     uvel resid          vvel resid         target resid'
-!     print *, 'iter #     resid(L2norm)         target resid'
-     print *, ' '
-  endif
+  print *, ' '
+  print *, 'Running Payne/Price higher-order dynamics solver'
+  print *, ' '
+  print *, 'iter #     uvel resid         vvel resid       target resid'
+!  print *, 'iter #     resid (L2 norm)       target resid'
+  print *, ' '
 
   ! ****************************************************************************************
   ! START of Picard iteration
@@ -577,8 +583,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 1 )
 
-    call plasticbediteration( ewn, nsn, uvel(upn,:,:), tvel(upn,:,:), btraction, velbcvect, &
-                   minTauf, plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
+    call plasticbediteration( ewn, nsn, uvel(upn,:,:), tvel(upn,:,:), btraction, minTauf, &
+                              plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
 
     ! apply unstable manifold correction to converged velocities
     uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
@@ -596,16 +602,16 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     end if
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-    counter = counter + 1   ! advance the iteration counter
-
-    ! output the iteration status: iteration number, max residual, and location of max residual
-    ! (send output to the screen or to the log file, per whichever line is commented out) 
+!    ! output the iteration status: iteration number, max residual, and location of max residual
+!    ! (send output to the screen or to the log file, per whichever line is commented out) 
     print '(i4,3g20.6)', counter, resid(1), resid(2), minres
-    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
-    !call write_log (message)
+!    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
+!    !call write_log (message)
 
 ! KJE uncomment to match previous
 !    print '(i4,3g20.6)', counter, L2norm, NL_target
+
+    counter = counter + 1   ! advance the iteration counter
 
   end do
 
@@ -928,11 +934,16 @@ subroutine JFNK                 (model,umask,tstep)
 ! calculate F(u^k-1,v^k-1)
 !==============================================================================
 
+    calcoffdiag = .true.    ! save off diag matrix components
+
     call calc_F (xk_1, F, xk_size, c_ptr_to_object, L2norm, matrixA, matrixC)
+!    call calc_F (xk_1, F, xk_size, c_ptr_to_object, L2norm)
 
    call c_f_pointer(c_ptr_to_object,fptr) ! convert C ptr to F ptr
    matrixA = fptr%matrixA
    matrixC = fptr%matrixC
+
+    calcoffdiag = .false.    ! next time calling calc_F, DO NOT save off diag matrix components
 
     L2norm_wig = sqrt(DOT_PRODUCT(F,F)) ! with ghost
 
@@ -997,6 +1008,7 @@ subroutine JFNK                 (model,umask,tstep)
 ! form F(x + epsilon*wk1) = F(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
 
     call calc_F (xk_1_plus, F_plus, xk_size, c_ptr_to_object, crap, matrixA, matrixC)
+!    call calc_F (xk_1_plus, F_plus, xk_size, c_ptr_to_object, crap)
 
 ! put approximation of J*wk1 in wk2
 
@@ -1202,8 +1214,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
             ! "effstr" = eff. strain rate squared
             effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
                          0.25_dp * (vgradew + ugradns)**2 + &
-                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
-!                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
+!                         f1 * (ugradup**2 + vgradup**2)      ! make line ACTIVE for "capping" version (see note below)   
+                         f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
 
     ! -----------------------------------------------------------------------------------
     ! NOTES on capping vs. non-capping version of eff. strain rate calc.
@@ -1220,9 +1232,9 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! available as a config file option or possibly removed altogether.   
 
     ! Old "capping" scheme       ! these lines must be active to use the "capping" scheme for the efvs calc
-            where (effstr < effstrminsq)
-                   effstr = effstrminsq
-            end where
+!            where (effstr < effstrminsq)
+!                   effstr = effstrminsq
+!            end where
 
     ! Note that the vert dims are explicit here, since glide_types defines this 
     ! field as having dims 1:upn. This is something that we'll have to decide on long-term;
@@ -1353,106 +1365,6 @@ function getlocationarray(ewn, nsn, upn,  &
 end function getlocationarray
 
 !***********************************************************************
-
-function slapsolvstr(ewn, nsn, upn, &
-                     vel, uindx, its, answer )
-
-! *sp* routine to solve Ax=b sparse matrix problem 
-
-  implicit none
-
-  integer, intent(in) :: ewn, nsn, upn
-  real (kind = dp), dimension(:,:,:), intent(in) :: vel
-  integer, dimension(:,:), intent(in) :: uindx
-
-  real (kind = dp), dimension(:), intent(out) :: answer
-
-  real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: slapsolvstr
-  integer, intent(inout) :: its
-
-  integer :: ew, ns
-
-  real (kind = dp), dimension(:), allocatable :: rwork
-  integer, dimension(:), allocatable :: iwork
-
-  real (kind = dp), parameter :: tol = 1.0e-12_dp
-  real (kind = dp) :: err
-
-  integer, parameter :: isym = 0, itol = 2, itmax = 100
-  integer, dimension(2) :: loc
-  integer :: iter, ierr, mxnelt
-
-! ** move to values subr   
-
-  pcgsize(2) = ct - 1
-
-  call ds2y(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym)
-
-!** plot the matrix to check that it has the correct form
-!call dcpplt(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym,ulog)      
-
-  mxnelt = 60 * pcgsize(1); allocate(rwork(mxnelt),iwork(mxnelt))
-
-!**     solve the problem using the SLAP package routines     
-!**     -------------------------------------------------
-!**     n ... order of matrix a (in)
-!**     b ... right hand side vector (in)                        
-!**     x ... initial quess/final solution vector (in/out)                        
-!**     nelt ... number of non-zeroes in A (in)
-!**     ia, ja ... sparse matrix format of A (in)
-!**     a ... matrix held in SLAT column format (in)
-!**     isym ... storage method (0 is complete) (in)
-!**     itol ... convergence criteria (2 recommended) (in)                     
-!**     tol ... criteria for convergence (in)
-!**     itmax ... maximum number of iterations (in)
-!**     iter ... returned number of iterations (out)
-!**     err ... error estimate of solution (out)
-!**     ierr ... returned error message (0 is ok) (out)
-!**     iunit ... unit for error writes during iteration (0 no write) (in)
-!**     rwork ... workspace for SLAP routines (in)
-!**     mxnelt ... maximum array and vector sizes (in)
-!**     iwork ... workspace for SLAP routines (in)
-
-! *sp* initial estimate for vel. field?
-  do ns = 1,nsn-1
-  do ew = 1,ewn-1
-   if (uindx(ew,ns) /= 0) then
-    loc = getlocrange(upn, uindx(ew,ns))
-    answer(loc(1):loc(2)) = vel(:,ew,ns)
-    answer(loc(1)-1) = vel(1,ew,ns)
-    answer(loc(2)+1) = vel(upn,ew,ns)
-   end if
-  end do
-  end do
-
-  call dslucs(pcgsize(1),rhsd,answer,pcgsize(2),pcgrow,pcgcol,pcgval, &
-              isym,itol,tol,itmax,iter,err,ierr,0,rwork,mxnelt,iwork,mxnelt)
-
-  if (ierr .ne. 0) then
-    print *, 'pcg error ', ierr, itmax, iter, tol, err
-    ! stop
-  end if
-
-  deallocate(rwork,iwork)
-
-  do ns = 1,nsn-1
-  do ew = 1,ewn-1
-     if (uindx(ew,ns) /= 0) then
-       loc = getlocrange(upn, uindx(ew,ns))
-       slapsolvstr(:,ew,ns) = answer(loc(1):loc(2))
-     else
-       slapsolvstr(:,ew,ns) = 0.0d0
-     end if
-  end do
-  end do
-
-  its = its + iter
-
-  return
-
-end function slapsolvstr
-
-! *****************************************************************************
 
 subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
 
@@ -1678,6 +1590,7 @@ end subroutine apply_precond
 !***********************************************************************
 
  subroutine calc_F (xtp, F, xk_size, c_ptr_to_object, L2norm, matrixA, matrixC) bind(C, name='calc_F')
+! subroutine calc_F (xtp, F, xk_size, c_ptr_to_object, L2norm)
 
   ! Calculates either F(x) or F(x+epsilon*vect) for the JFNK method
   ! Recall that x=[v,u]
@@ -2072,10 +1985,10 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   end if
 
   !*sfp* Old version
-  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
+  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if  
 
   !*sfp* correction from Carl Gladdish
-  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
+  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if   
 
   select case (whichresid)
 
@@ -2335,6 +2248,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer :: ew, ns, up, up_start
 
   ct = 1        ! index to count the number of non-zero entries in the sparse matrix
+  ct2 = 1
 
   if( assembly == 1 )then   ! for normal assembly (assembly=0), start vert index at sfc and go to bed
       up_start = upn        ! for boundary traction calc (assembly=1), do matrix assembly on for equations at bed
@@ -2651,19 +2565,19 @@ subroutine bodyset(ew,  ns,  up,           &
                                                    normal,fwdorbwd)              &
                                                  * local_othervel ) /scalebabc
 
-!        if( nonlinear == HO_NONLIN_JFNK )then
-!            storeoffdiag = .true.
-!            h = croshorizmainbc_lat(dew,           dns,           &
-!                                slopex,        slopey,        &
-!                                dsigmadew(up), dsigmadns(up), &
-!                                pt,            2,             &
-!                                dup(up),       local_othervel,&
-!                                oneortwo,      twoorone,      &
-!                                onesideddiff,                 &
-!                                 normal,fwdorbwd)
-!            call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt )
-!            storeoffdiag = .false.
-!        end if
+        if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
+            storeoffdiag = .true.
+            h = -croshorizmainbc_lat(dew,           dns,           & 
+                                slopex,        slopey,        &
+                                dsigmadew(up), dsigmadns(up), & 
+                                pt,            2,             & 
+                                dup(up),       local_othervel,& 
+                                oneortwo,      twoorone,      & 
+                                onesideddiff,                 &
+                                 normal,fwdorbwd) / scalebabc 
+            call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt ) 
+            storeoffdiag = .false.
+        end if     
 
     end if     ! up = 1 or up = upn (IF at lateral boundary and IF at surface or bed)
 
@@ -2690,8 +2604,8 @@ subroutine bodyset(ew,  ns,  up,           &
     ! That is achieved in the following if construct ...
 
 !    if( cc < 10 )then   ! use this to "pre-condition" the shelf BC w/ the simple, 1d version
-!    if( cc >= 0 )then   ! use this to use only the 1d version
-    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
+    if( cc >= 0 )then   ! use this to use only the 1d version
+!    if( cc > 1000000 )then   ! use this to go straight to the full 2d version of the bc
 
     ! --------------------------------------------------------------------------------------
     ! (1) source term (strain rate at shelf/ocean boundary) from Weertman's analytical solution 
@@ -2754,19 +2668,19 @@ subroutine bodyset(ew,  ns,  up,           &
                                                normal,        fwdorbwd)       &
                                               * local_othervel ) + source
 
-!     if( nonlinear == HO_NONLIN_JFNK )then
-!         storeoffdiag = .true.
-!         h = croshorizmainbc_lat(dew,           dns,            &
-!                                 slopex,        slopey,         &
-!                                 dsigmadew(up), dsigmadns(up),  &
-!                                 pt,            1,              &
-!                                 dup(up),       local_othervel, &
-!                                 oneortwo,      twoorone,       &
-!                                 onesideddiff,                  &
-!                                 normal,        fwdorbwd)
-!         call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt )
-!         storeoffdiag = .false.
-!     end if
+     if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
+         storeoffdiag = .true.
+         h = -croshorizmainbc_lat(dew,           dns,            &
+                                 slopex,        slopey,         &
+                                 dsigmadew(up), dsigmadns(up),  &
+                                 pt,            1,              &
+                                 dup(up),       local_othervel, &
+                                 oneortwo,      twoorone,       &
+                                 onesideddiff,                  &
+                                 normal,        fwdorbwd)
+         call fillsprsebndy( h, locplusup, loc_latbc, up, normal, pt )
+         storeoffdiag = .false.
+     end if
 
   else   ! NOT at a lateral boundary 
 
@@ -2783,12 +2697,12 @@ subroutine bodyset(ew,  ns,  up,           &
 
      rhsd(locplusup) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
 
-!     if( nonlinear == HO_NONLIN_JFNK )then
-!         storeoffdiag = .true.
-!         h = croshorizmain(pt,up,local_efvs)
-!         call fillsprsemain(h,locplusup,loc,up,pt)
-!         storeoffdiag = .false.
-!     end if
+     if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
+         storeoffdiag = .true.
+         h = croshorizmain(pt,up,local_efvs)   
+         call fillsprsemain(h,locplusup,loc,up,pt)
+         storeoffdiag = .false.
+     end if     
 
   end if
 
@@ -2844,31 +2758,8 @@ subroutine bodyset(ew,  ns,  up,           &
      ! which results from moving them from the LHS over to the RHS, has been moved
      ! inside of "croshorizmainbc".
 
-     if( bcflag(2) /= 2 )then
+     if( bcflag(2) == 2 )then
 
-          rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
-                                             slopex,        slopey,         &
-                                             dsigmadew(up), dsigmadns(up),  &
-                                             pt,            bcflag,         &
-                                             dup(up),       local_othervel, &
-                                             local_efvs,                    &
-                                             oneortwo, twoorone, g_cros )  &
-                                              * local_othervel ) /scalebabc
-
-!         if( nonlinear == HO_NONLIN_JFNK )then
-!             storeoffdiag = .true.
-!             h = croshorizmainbc(dew,           dns,            &
-!                                 slopex,        slopey,         &
-!                                 dsigmadew(up), dsigmadns(up),  &
-!                                 pt,            bcflag,         &
-!                                 dup(up),       local_othervel, &
-!                                 local_efvs,                    &
-!                                 oneortwo, twoorone, g_cros )
-!             call fillsprsemain(h,locplusup,loc,up,pt)
-!             storeoffdiag = .false.
-!         end if
-
-     else
           rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
                                              slopex,        slopey,         &
                                              dsigmadew(up), dsigmadns(up),  &
@@ -2881,20 +2772,44 @@ subroutine bodyset(ew,  ns,  up,           &
                                              plastic_coeff=plastic_coeff_rhs(pt,ew,ns) ) &
                                               * local_othervel )            &
                                              + plastic_rhs(pt,ew,ns) / (sum(local_efvs(2,:,:))/4.0d0) &
-                                             *(len0/thk0)
+                                             *(len0/thk0) / scalebabc
 
-!         if( nonlinear == HO_NONLIN_JFNK )then
-!             storeoffdiag = .true.
-!             h = croshorizmainbc(dew,           dns,            &
-!                                 slopex,        slopey,         &
-!                                 dsigmadew(up), dsigmadns(up),  &
-!                                 pt,            bcflag,         &
-!                                 dup(up),       local_othervel, &
-!                                 local_efvs,                    &
-!                                 oneortwo, twoorone, g_cros )
-!             call fillsprsemain(h,locplusup,loc,up,pt)
-!             storeoffdiag = .false.
-!         end if
+         if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
+             storeoffdiag = .true.
+             h = -croshorizmainbc(dew,           dns,            &
+                                 slopex,        slopey,         &
+                                 dsigmadew(up), dsigmadns(up),  &
+                                 pt,            bcflag,         &
+                                 dup(up),       local_othervel, &
+                                 local_efvs,                    &
+                                 oneortwo, twoorone, g_cros ) / scalebabc
+             call fillsprsemain(h,locplusup,loc,up,pt)
+             storeoffdiag = .false.
+         end if
+
+     else if( bcflag(2) /= 2 )then
+
+          rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
+                                             slopex,        slopey,         &
+                                             dsigmadew(up), dsigmadns(up),  &
+                                             pt,            bcflag,         &
+                                             dup(up),       local_othervel, &
+                                             local_efvs,                    &
+                                             oneortwo, twoorone, g_cros )  &
+                                              * local_othervel ) / scalebabc 
+
+         if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag)then
+             storeoffdiag = .true.
+             h = -croshorizmainbc(dew,           dns,            &
+                                 slopex,        slopey,         &
+                                 dsigmadew(up), dsigmadns(up),  &
+                                 pt,            bcflag,         &
+                                 dup(up),       local_othervel, &
+                                 local_efvs,                    &
+                                 oneortwo, twoorone, g_cros ) / scalebabc
+             call fillsprsemain(h,locplusup,loc,up,pt)
+             storeoffdiag = .false.
+         end if
 
       end if
 
@@ -3506,8 +3421,8 @@ function normhorizmainbc_lat(dew,       dns,   &
     if( normal(1) .eq. 0.0_dp )then     ! centered in x ...
 
            c = fourorone(which) * dusrfdew / (2*dew)
-           g(2,3,2) = c
-           g(2,1,2) = -c
+           g(2,3,2) = c * whichbc(what)
+           g(2,1,2) = -c * whichbc(what)
 
     elseif( normal(1) .ne. 0.0_dp )then     ! forward/backward in x ...
 
@@ -4188,7 +4103,22 @@ subroutine calcbetasquared (whichbabc,               &
     case(2)     ! take input value for till yield stress and force betasquared to be implemented such
                 ! that plastic-till sliding behavior is enforced (see additional notes in documentation).
 
-      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+!      betasquared = minTauf*tau0_glam / dsqrt( (thisvel*vel0*scyr)**2 + (othervel*vel0*scyr)**2 + (smallnum)**2 )
+
+!! *sfp* This hack for use w/ the basal processes test case, although as of Oct. 2010, it is working well
+!! enough to just apply the yield stress basal bc everywhere in the domain.
+!      betasquared = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
+!                    (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
+!      betasquared(ewn-8:ewn-1,:) = 5.0d0
+
+!! *sfp* similar version to above, but holds a constant yield stress for the downstream portion of the domain 
+!! rather than holding/applying a constant B^2. This necessary so that till module dynamics do not control the sliding 
+!! at the downstream end of the domain, which we want to remain constant (we want it to remain slipper, as if it were
+!! an active ice plain, regardless of the till dynamics in the ice stream proper)
+      betasquared(1:ewn-9,:) = minTauf(1:ewn-9,:)*tau0_glam / dsqrt( (thisvel(1:ewn-9,:)*vel0*scyr)**2 + &
+                    (othervel(1:ewn-9,:)*vel0*scyr)**2 + (smallnum)**2 )
+      betasquared(ewn-8:ewn-1,:) = 1.0d3 / dsqrt( (thisvel(ewn-8:ewn-1,:)*vel0*scyr)**2 + &
+                    (othervel(ewn-8:ewn-1,:)*vel0*scyr)**2 + (smallnum)**2 )
 
     case(3)     ! circular ice shelf: set B^2 ~ 0 except for at center, where B^2 >> 0 to enforce u,v=0 there
 
@@ -4219,7 +4149,7 @@ end subroutine calcbetasquared
 
 !***********************************************************************
 
-subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, tau, &
+subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, minTauf, &
                             plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
 
     implicit none
@@ -4230,8 +4160,7 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
 
     real (kind = dp), intent(in), dimension(:,:,:) :: btraction
 
-    real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: velbcvect
-    real (kind = dp), intent(in), dimension(ewn-1,nsn-1) :: tau
+    real (kind = dp), intent(in), dimension(ewn-1,nsn-1) :: minTauf      
 
     real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: plastic_coeff_lhs
     real (kind = dp), intent(out), dimension(2,ewn-1,nsn-1) :: plastic_coeff_rhs
@@ -4239,7 +4168,7 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
     real (kind = dp), intent(inout), dimension(1,ewn-1,nsn-1) :: plastic_resid
 
 
-    real (kind = dp), dimension(ewn-1,nsn-1) :: gamma, beta
+    real (kind = dp), dimension(ewn-1,nsn-1) :: gamma, beta, tau
 
     real (kind = dp) :: c, big_C, relax
     real (kind = dp) :: F11, F12, F21, F22, M11, M12, M21, M22, h1, h2, IM11, IM12, IM21, IM22, &
@@ -4249,6 +4178,12 @@ subroutine plasticbediteration( ewn, nsn, uvel0, vvel0, btraction, velbcvect, ta
     integer :: ew, ns, countstuck, countslip
 
     countstuck = 0; countslip = 0; sigma_x0 = 0; sigma_y0 = 0
+
+    tau = minTauf
+
+    !! *sfp* the following is a hack to allow the new plastic bed implementation to be used with 
+    !! the basal processes test case
+    !tau(ewn-8:ewn-1,:) = 1.0d3 / tau0_glam 
 
 !    print *, 'inside plastic bed iteration subroutine (near top)'
 
@@ -4671,7 +4606,7 @@ subroutine putpcgc(value,col,row,pt)
           pcgcol(ct) = col
           pcgrow(ct) = row
           ct = ct + 1
-        end if	
+        end if
     else
         ! Option to load entry directly into Trilinos sparse matrix 
         if (value /= 0.0d0) then
@@ -4685,7 +4620,7 @@ subroutine putpcgc(value,col,row,pt)
    elseif ( nonlinear == HO_NONLIN_JFNK )then
 
    if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then
-!    if ( .not. storeoffdiag ) then ! block diag coeffs in normal storage space
+    if ( .not. storeoffdiag ) then ! block diag coeffs in normal storage space
         ! load entry into Triad sparse matrix format
         if (value /= 0.0d0) then
           pcgval(ct) = value
@@ -4693,22 +4628,22 @@ subroutine putpcgc(value,col,row,pt)
           pcgrow(ct) = row
           ct = ct + 1
         end if
-!    else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
-!        ! load entry into Triad sparse matrix format
-!        if( pt == 1 )then ! store uv coeffs
-!            if (value /= 0.0d0) then
-!              pcgvaluv(ct) = value
-!              pcgcoluv(ct) = col
-!              pcgrowuv(ct) = row
-!            end if
-!        else if( pt == 2 )then ! store vu coeffs
-!            if (value /= 0.0d0) then
-!              pcgvalvu(ct) = value
-!              pcgcolvu(ct) = col
-!              pcgrowvu(ct) = row
-!            end if
-!        end if
-!    end if
+    else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
+        ! load entry into Triad sparse matrix format
+        if( pt == 1 )then ! store uv coeffs
+            if (value /= 0.0d0) then
+              pcgvaluv(ct) = value
+              pcgcoluv(ct) = col
+              pcgrowuv(ct) = row
+            end if
+        else if( pt == 2 )then ! store vu coeffs
+            if (value /= 0.0d0) then
+              pcgvalvu(ct) = value
+              pcgcolvu(ct) = col
+              pcgrowvu(ct) = row
+            end if
+        end if
+    end if
     else !standalone jfnk
         ! Option to load entry directly into Trilinos sparse matrix 
         if (value /= 0.0d0) then
@@ -4718,7 +4653,6 @@ subroutine putpcgc(value,col,row,pt)
         end if
     end if
 
-   
    end if
    
   return
@@ -4751,12 +4685,12 @@ function scalebasalbc( coeffblock, bcflag, lateralboundry, beta, efvs )
            ! Use the magnitude of the coeff associated with the vert stress gradients.
            ! NOTE that relevant coeffs are stored in diff parts of block depending
             scale = 1.0d0
-!           ! on type of boudnary
-!           if( lateralboundry )then
-!               scale = abs( coeffblock(3,3,3) );
-!           else
-!               scale = abs( coeffblock(3,2,2) );
-!           end if
+           ! on type of boudnary
+           if( lateralboundry )then
+               scale = abs( coeffblock(3,3,3) );
+           else
+               scale = abs( coeffblock(3,2,2) );
+           end if
 
            if( scale .le. 0.0d0 )then
             scale = 1.0d0

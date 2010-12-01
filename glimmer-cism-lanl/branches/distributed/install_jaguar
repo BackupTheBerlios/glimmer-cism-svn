@@ -15,7 +15,7 @@ FC="ftn -Minform=inform -Mbounds -g -Mchkptr" \
 F77="ftn -Minform=inform -Mbounds -g -Mchkptr" \
 CC="cc -Minform=inform -Mbounds -g" \
 CXX="CC -Minform=inform -Mbounds -g" \
-CPPFLAGS="-DHAVE_MPI -DMPICH_IGNORE_CXX_SEEK" FCFLAGS="-DNO_RESCALE" \
+CPPFLAGS="-DHAVE_MPI -DMPICH_IGNORE_CXX_SEEK"  \
 LDFLAGS="-pgcpplibs -L/opt/cray/hdf5/1.8.3.1/hdf5-pgi/lib -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib" \
 NETCDF_LIBS="-lnetcdff -lnetcdf" \
 LIBS="-lhdf5_hl -lhdf5 -lz" \

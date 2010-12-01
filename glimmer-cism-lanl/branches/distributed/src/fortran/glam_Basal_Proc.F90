@@ -2,7 +2,7 @@ module glam_Basal_Proc
 	
 	
 use glide_types
-use glimmer_paramets, only : dp,sp,vel0,tau0_glam
+use glimmer_paramets, only : dp,sp,vel0,tau0_glam,thk0,tim0
 use glimmer_physcon,  only : grav, rhow, rhos, scyr
 use glimmer_log,      only : write_log
 
@@ -113,9 +113,13 @@ contains
     real (kind = dp) :: f1
     integer :: i
 
+    
     !Calculate basal melt rate on staggered grid
   	call stagvarb(bmlt, stagbmlt,ewn,nsn)
-      
+	!Re-Scale bmlt (scale2d_f1=scyr*thk0/tim0):
+	stagbmlt=stagbmlt*(scyr*thk0/tim0)
+    
+    
 !    !Calculate the magnitude of basal velocity, in m/yr
 	Ub=scyr*vel0* (sqrt(ubas(:,:)**2+vbas(:,:)**2))
 
