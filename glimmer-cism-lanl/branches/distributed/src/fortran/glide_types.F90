@@ -940,9 +940,9 @@ end type glide_global_type
     real(kind = dp) ,dimension(:,:) ,allocatable :: d2usrfcross
     integer ,dimension(2) :: pcgsize
     integer ,dimension(:) ,allocatable :: gxf
+    real(kind = dp)  :: L2norm
     type(sparse_matrix_type)  :: matrixA
     type(sparse_matrix_type)  :: matrixC
-    real(kind = dp)  :: L2norm
 
   end type pass_through
 

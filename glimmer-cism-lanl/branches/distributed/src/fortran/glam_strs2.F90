@@ -731,7 +731,6 @@ subroutine JFNK                 (model,umask,tstep)
   integer, allocatable, dimension(:) :: myIndices
   integer :: mySize = -1
 
-! KJE pushed down derived type 'model' a level 
   ewn = model%general%ewn
   nsn = model%general%nsn
   upn = model%general%upn
@@ -821,6 +820,7 @@ subroutine JFNK                 (model,umask,tstep)
 
   allocate(tvel(upn,ewn-1,nsn-1)) 
   tvel = 0.0_dp
+  L2norm = 1.0d20
  
   ! *sfp** allocate space for variables used by 'mindcrash' function
   allocate(corr(upn,ewn-1,nsn-1,2,2),usav(upn,ewn-1,nsn-1,2))
@@ -905,6 +905,11 @@ subroutine JFNK                 (model,umask,tstep)
 !         end subroutine noxfinish
 !        end interface
   
+ call init_resid_type(resid_object, model, k, uindx, umask, d2thckdewdns, d2usrfdewdns, &
+      pcgsize, gx_flag, matrixA, matrixC, L2norm, ewn, nsn)
+    fptr => resid_object
+    c_ptr_to_object =  c_loc(fptr)
+
   call ghost_preprocess_jfnk( ewn, nsn, upn, uindx, ughost, vghost, &
                          xk_1, uvel, vvel, gx_flag, pcgsize(1)) ! jfl_20100430
 
@@ -920,10 +925,10 @@ subroutine JFNK                 (model,umask,tstep)
 !  call noxsolve(xk_size, xk_1, c_ptr_to_object)
 !  call noxfinish()
 
-  do k = 1, kmax
-
 ! KJE moved inside of k iteration index - probably too redundant but needed until 
 ! NOX is hooked up
+
+  do k = 1, kmax
 
  call init_resid_type(resid_object, model, k, uindx, umask, d2thckdewdns, d2usrfdewdns, &
       pcgsize, gx_flag, matrixA, matrixC, L2norm, ewn, nsn)
@@ -936,10 +941,10 @@ subroutine JFNK                 (model,umask,tstep)
 
     calcoffdiag = .true.    ! save off diag matrix components
 
-    call calc_F (xk_1, F, xk_size, c_ptr_to_object, L2norm, matrixA, matrixC)
-!    call calc_F (xk_1, F, xk_size, c_ptr_to_object, L2norm)
+    call calc_F (xk_1, F, xk_size, c_ptr_to_object)
 
    call c_f_pointer(c_ptr_to_object,fptr) ! convert C ptr to F ptr
+   L2norm = fptr%L2norm
    matrixA = fptr%matrixA
    matrixC = fptr%matrixC
 
@@ -952,13 +957,11 @@ subroutine JFNK                 (model,umask,tstep)
 ! -check at all k if target is reached
 !==============================================================================
 
-!      print *, 'target with L2norm with or without ghost?'
+    if (k .eq. 1) NL_target = NL_tol * L2norm_wig
 
-    if (k .eq. 1) NL_target = NL_tol * L2norm
+    print *, 'L2 w/ghost (k)= ',k,L2norm_wig,L2norm
 
-    print *, 'L2 with, without ghost (k)= ', k, L2norm_wig, L2norm
-
-    if (L2norm .lt. NL_target) exit ! nonlinear convergence criterion
+    if (L2norm_wig .lt. NL_target) exit ! nonlinear convergence criterion
 
 !==============================================================================
 ! solve J(u^k-1,v^k-1)dx = -F(u^k-1,v^k-1) with fgmres, dx = [dv, du]  
@@ -991,6 +994,8 @@ subroutine JFNK                 (model,umask,tstep)
       call apply_precond ( matrixA, matrixC, pcgsize(1), 2*pcgsize(1), &
                            wk1, wk2, whichsparse ) 
 
+!      call apply_precond_nox( wk2, wk1, 2*pcgsize(1), xk_1, c_ptr_to_object ) 
+
       GOTO 10
 
       ELSEIF ( icode >= 2 ) THEN  ! matvec step: Jacobian free approach
@@ -1003,12 +1008,11 @@ subroutine JFNK                 (model,umask,tstep)
          xk_1_plus = xk_1 + epsilon*vectx
 
          call solver_postprocess_jfnk( ewn, nsn, upn, uindx, &
-                                  xk_1_plus, vvel, uvel, ghostbvel )
+                                  xk_1_plus, vvel, uvel, ghostbvel, pcgsize(1) )
 
 ! form F(x + epsilon*wk1) = F(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
 
-    call calc_F (xk_1_plus, F_plus, xk_size, c_ptr_to_object, crap, matrixA, matrixC)
-!    call calc_F (xk_1_plus, F_plus, xk_size, c_ptr_to_object, crap)
+    call calc_F (xk_1_plus, F_plus, xk_size, c_ptr_to_object)
 
 ! put approximation of J*wk1 in wk2
 
@@ -1034,7 +1038,7 @@ subroutine JFNK                 (model,umask,tstep)
 
       xk_1 = xk_1 + dx(1:2*pcgsize(1))
 
-      call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel )
+      call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel, pcgsize(1) )
 
 ! WATCHOUT FOR PERIODIC BC      
 
@@ -1049,7 +1053,7 @@ subroutine JFNK                 (model,umask,tstep)
 !  deallocate(resid_object%gxf )
 
   do ns = 1,nsn-1
-      do ew = 1,ewn-1 
+      do ew = 1,ewn-1
       ! *sfp** calc. fluxes from converged vel. fields (for input to thickness evolution subroutine)
          if (umask(ew,ns) > 0) then
              uflx(ew,ns) = vertintg(upn, sigma, uvel(:,ew,ns)) * stagthck(ew,ns)
@@ -1443,12 +1447,13 @@ end subroutine solver_postprocess
 !***********************************************************************
 
  subroutine solver_postprocess_jfnk( ewn, nsn, upn, uindx, answrapped, ansunwrappedv, &
-   ansunwrappedu, ghostbvel )
+   ansunwrappedu, ghostbvel, pcg1 )
 
    ! Unwrap the vels from the solution vector and place into a 3d array.
 
    implicit none
 
+   integer :: pcg1
    integer, intent(in) :: ewn, nsn, upn
    integer, dimension(:,:), intent(in) :: uindx
    real (kind = dp), dimension(:), intent(in) :: answrapped
@@ -1463,10 +1468,10 @@ end subroutine solver_postprocess
            if (uindx(ew,ns) /= 0) then
              loc = getlocrange(upn, uindx(ew,ns))
              ansunwrappedv(:,ew,ns) = answrapped(loc(1):loc(2))
-             ansunwrappedu(:,ew,ns) = answrapped(loc(2)+1:2*loc(2))
+             ansunwrappedu(:,ew,ns) = answrapped(pcg1+loc(1):pcg1+loc(2))
              !! save the fictitious basal velocities for basal traction calculation !!
              ghostbvel(2,:,ew,ns) = answrapped( loc(2)-1:loc(2)+1 )
-             ghostbvel(1,:,ew,ns) = answrapped( 2*loc(2)-1:2*loc(2)+1 )
+             ghostbvel(1,:,ew,ns) = answrapped( pcg1+loc(2)-1:pcg1+loc(2)+1 )
            else
              ansunwrappedv(:,ew,ns) = 0.0d0
              ansunwrappedu(:,ew,ns) = 0.0d0
@@ -1589,8 +1594,8 @@ end subroutine apply_precond
 
 !***********************************************************************
 
- subroutine calc_F (xtp, F, xk_size, c_ptr_to_object, L2norm, matrixA, matrixC) bind(C, name='calc_F')
-! subroutine calc_F (xtp, F, xk_size, c_ptr_to_object, L2norm)
+ subroutine calc_F (xtp, F, xk_size, c_ptr_to_object)
+! subroutine calc_F (xtp, F, xk_size, c_ptr_to_object, matrixA, matrixC) bind(C, name='calc_F')
 
   ! Calculates either F(x) or F(x+epsilon*vect) for the JFNK method
   ! Recall that x=[v,u]
@@ -1602,8 +1607,8 @@ end subroutine apply_precond
   implicit none
 
    integer(c_int) ,intent(in) ,value  :: xk_size
-   real(c_double)  ,intent(in)  :: xtp(xk_size)
-   real (c_double) ,intent(out)       :: F(xk_size)
+   real(c_double)  ,intent(in)        :: xtp(xk_size)
+   real(c_double)  ,intent(out)       :: F(xk_size)
    type(pass_through) ,pointer        :: fptr=>NULL()
    type(c_ptr) ,intent(inout)         :: c_ptr_to_object
 
@@ -1620,9 +1625,11 @@ end subroutine apply_precond
   real (kind = dp), dimension(:,:,:) ,pointer :: uvel, vvel, flwa
   type(sparse_matrix_type) :: matrixA, matrixC
   real (kind = dp), dimension(:) ,allocatable :: vectx
+  real (kind = dp), dimension(:) ,allocatable :: vectp
 
   real (kind = dp) :: L2square
-  real (kind = dp), intent(out):: L2norm
+!  real (kind = dp), intent(inout):: L2norm
+  real (kind = dp) :: L2norm
 
   call c_f_pointer(c_ptr_to_object,fptr) ! convert C ptr to F ptr= resid_object
            
@@ -1658,13 +1665,14 @@ end subroutine apply_precond
   efvs => fptr%model%velocity_hom%efvs(:,:,:)
   uvel => fptr%model%velocity_hom%uvel(:,:,:)
   vvel => fptr%model%velocity_hom%vvel(:,:,:)
+  L2norm = fptr%L2norm
 
   allocate( ui(ewn-1,nsn-1), um(ewn-1,nsn-1) )
   ui= fptr%ui
   um = fptr%um
 
   pcgsize = fptr%pcgsize
-  allocate( gxf(2*pcgsize(1)) )
+  allocate( gxf(pcgsize(1)) )
 
   gxf = fptr%gxf
 
@@ -1673,6 +1681,7 @@ end subroutine apply_precond
 
   matrixA = fptr%matrixA
   matrixC = fptr%matrixC
+  allocate( vectp( pcgsize(1)) )
   allocate( vectx(2*pcgsize(1)) )
 
     call findefvsstr(ewn,  nsn,  upn,       &
@@ -1715,6 +1724,13 @@ end subroutine apply_precond
       call savetrilinosmatrix(0);
     end if
     
+    vectp = xtp(1:pcgsize(1))
+
+    call res_vect(matrixA, vectp, rhsd, pcgsize(1), counter, gxf, L2square, whatsparse)
+    L2norm=L2square
+
+    F(1:pcgsize(1)) = vectp(1:pcgsize(1)) 
+
 !==============================================================================
 ! jfl 20100412: residual for u comp: Fu= C(utp,vtp)utp - d(utp,vtp)  
 !==============================================================================
@@ -1745,18 +1761,29 @@ end subroutine apply_precond
       call savetrilinosmatrix(1);
     end if
     
-      vectx = xtp
+    vectp(1:pcgsize(1)) = xtp(pcgsize(1)+1:2*pcgsize(1))
 
-   call res_vect_jfnk(matrixA, matrixC, vectx, rhsx, pcgsize(1), 2*pcgsize(1), counter, gxf, L2square, whatsparse)
-    L2norm = L2square
+    call res_vect(matrixC, vectp, rhsd, pcgsize(1), counter, gxf, L2square, whatsparse)
+    L2norm = sqrt(L2norm + L2square)
 
-    F = vectx 
+    F(pcgsize(1)+1:2*pcgsize(1)) = vectp(1:pcgsize(1)) 
 
+!      vectx = xtp 
+!
+!   call res_vect_jfnk(matrixA, matrixC, vectx, rhsx, pcgsize(1), 2*pcgsize(1), counter, gxf, L2square, whatsparse)
+!    L2norm = L2square
+!    F = vectx 
+
+  fptr%model%velocity_hom%btraction => btraction(:,:,:)
   fptr%model%velocity_hom%btraction => btraction(:,:,:)
   fptr%model%temper%flwa => flwa(:,:,:)
   fptr%model%velocity_hom%efvs => efvs(:,:,:)
   fptr%model%velocity_hom%uvel => uvel(:,:,:)
   fptr%model%velocity_hom%vvel => vvel(:,:,:)
+
+  fptr%L2norm = L2norm
+  fptr%matrixA = matrixA
+  fptr%matrixC = matrixC
 
 end subroutine calc_F
 
@@ -1831,7 +1858,7 @@ end subroutine ghost_preprocess
          if (uindx(ew,ns) /= 0) then
 
              loc = getlocrange(upn, uindx(ew,ns))
-             xk_1(pcg1+loc(1):loc(2)) = uvel(:,ew,ns)
+             xk_1(pcg1+loc(1):pcg1+loc(2)) = uvel(:,ew,ns)
              xk_1(pcg1+loc(1)-1)      = ughost(1,ew,ns) ! ghost at top
              xk_1(pcg1+loc(2)+1)      = ughost(2,ew,ns) ! ghost at base
 
@@ -1839,10 +1866,9 @@ end subroutine ghost_preprocess
              xk_1(loc(1)-1)      = vghost(1,ew,ns) ! ghost at top
              xk_1(loc(2)+1)      = vghost(2,ew,ns) ! ghost at base
 
-             gx_flag(loc(1)-1) = 1 ! v ghost at top
-             gx_flag(loc(2)+1) = 2 ! v ghost at base 
-             gx_flag(pcg1+loc(1)-1) = 1 ! u ghost at top
-             gx_flag(pcg1+loc(2)+1) = 2 ! u ghost at base
+! independent of u and v
+             gx_flag(loc(1)-1) = 1 ! ghost at top
+             gx_flag(loc(2)+1) = 2 ! ghost at base 
          end if
      end do
    end do
@@ -4780,6 +4806,7 @@ subroutine init_resid_type(resid_object, model, k, uindx, umask, &
   do i = 1, 2*pcgsize(1)
   resid_object%gxf(i) = gx_flag(i)
   end do
+  resid_object%L2norm = L2norm
   resid_object%matrixA = matrixA
   resid_object%matrixC = matrixC
   resid_object%model%velocity_hom%efvs => model%velocity_hom%efvs(:,:,:)

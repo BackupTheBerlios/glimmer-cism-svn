@@ -54,7 +54,7 @@ extern "C" {
     if (!interface->isSparsitySet()) {
       // The matrix has not been "FillComplete()"ed. First fill of time step.
       int ierr = matrix.InsertGlobalValues(rowInd, 1, &val, &colInd);
-      // assert(ierr==0);
+      assert(ierr==0);
     }
     else {
       // Subsequent matrix fills of each time step.
