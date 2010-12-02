@@ -25,8 +25,8 @@ TrilinosMatrix_Interface::~TrilinosMatrix_Interface() {
 
 // Accessor methods
 bool TrilinosMatrix_Interface::isSparsitySet() const {return isFillCompleted_;}
-const int TrilinosMatrix_Interface::bandwidth() const {return bandwidth_;}
-const int TrilinosMatrix_Interface::matrixOrder() const {return matrixOrder_;}
+int TrilinosMatrix_Interface::bandwidth() const {return bandwidth_;}
+int TrilinosMatrix_Interface::matrixOrder() const {return matrixOrder_;}
 const Epetra_Map& TrilinosMatrix_Interface::getFullMap() const {return *fullMap_;}
 const Epetra_Map& TrilinosMatrix_Interface::getRowMap() const {return *rowMap_;}
 Teuchos::RCP<Epetra_CrsMatrix>& TrilinosMatrix_Interface::getOperator() {return operator_;}

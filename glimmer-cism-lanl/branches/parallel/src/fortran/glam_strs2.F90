@@ -455,7 +455,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   else
      call solvewithtrilinos(rhsd, answer, linearSolveTime)
      totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
-     write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+!     write(*,*) 'Total linear solve time so far', totalLinearSolveTime
   endif
 
 !==============================================================================
@@ -531,7 +531,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   else
      call solvewithtrilinos(rhsd, answer, linearSolveTime)
      totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
-     write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+!     write(*,*) 'Total linear solve time so far', totalLinearSolveTime
   endif
 
 !==============================================================================
@@ -790,7 +790,7 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
      call getpartition(mySize, myIndices)
 
      ! Now send this partition to Trilinos initialization routines
-     call inittrilinos(20, mySize, myIndices)
+     call inittrilinos(25, mySize, myIndices)
 
      ! Triad sparse matrix not used in this case, so save on memory
      pcgsize(2) = 1
@@ -1440,7 +1440,7 @@ subroutine apply_precond( matrixA, matrixC, nu1, nu2, wk1, wk2, whichsparse )
          call restoretrilinosmatrix(0);
          call solvewithtrilinos(vectp, answer, linearSolveTime)
          totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
-         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+!         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
       endif
       wk2(1:nu1) = answer(:)
 
@@ -1454,7 +1454,7 @@ subroutine apply_precond( matrixA, matrixC, nu1, nu2, wk1, wk2, whichsparse )
          call restoretrilinosmatrix(1);
          call solvewithtrilinos(vectp, answer, linearSolveTime)
          totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
-         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+!         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
       endif
       wk2(nu1+1:nu2) = answer(:)
 
@@ -4399,10 +4399,12 @@ subroutine putpcgc(value,col,row,pt)
 
       ! *sfp* NOTE: that this option does not allow for storing offidag terms at present
       ! (I assume that Andy can grab these when we know they are correct)
-      if (value /= 0.0d0) then
-         !AGS: If we find that sparsity changes inside a time step,
-         !     consider adding entry even for value==0.
+      if (.not. storeoffdiag) then
+        if (value /= 0.0d0) then
+           !AGS: If we find that sparsity changes inside a time step,
+           !     consider adding entry even for value==0.
          call putintotrilinosmatrix(row, col, value)
+        end if
       end if
 
     end if  ! end of "if using Triad or Trilinos storage format" construct
