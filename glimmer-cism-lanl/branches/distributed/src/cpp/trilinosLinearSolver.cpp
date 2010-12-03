@@ -36,8 +36,7 @@ extern "C" {
       Teuchos::rcp(new Epetra_Map(-1,mySize,myIndicies,1,comm) );
 
     // Create an interface that holds a CrsMatrix instance and some useful methods.
-    interface = Teuchos::rcp(new TrilinosMatrix_Interface(rowMap,
-                                                 bandwidth, comm));
+    interface = Teuchos::rcp(new TrilinosMatrix_Interface(rowMap, bandwidth, comm));
   }
 
   //============================================================
@@ -54,7 +53,8 @@ extern "C" {
     if (!interface->isSparsitySet()) {
       // The matrix has not been "FillComplete()"ed. First fill of time step.
       int ierr = matrix.InsertGlobalValues(rowInd, 1, &val, &colInd);
-      assert(ierr==0);
+      if (ierr<0) {cout << "Error Code for " << rowInd << "  " << colInd << "  = ("<< ierr <<")"<<endl; exit(1);}
+      else if (ierr>0) cout << "Warning Code for " << rowInd << "  " << colInd << "  = ("<< ierr <<")"<<endl;
     }
     else {
       // Subsequent matrix fills of each time step.
@@ -114,7 +114,6 @@ extern "C" {
     Teuchos::Time linearTime("LinearTime");
     linearTime.start();
 
-    // int ierr;
     // Lock in sparsity pattern
     if (!interface->isSparsitySet()) interface->finalizeSparsity();
 

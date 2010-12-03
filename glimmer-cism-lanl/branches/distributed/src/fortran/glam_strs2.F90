@@ -395,7 +395,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  !do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
+  ! do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
   do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
@@ -843,7 +843,7 @@ subroutine JFNK                 (model,umask,tstep)
      call getpartition(mySize, myIndices)
 
      ! Now send this partition to Trilinos initialization routines
-     call inittrilinos(20, mySize, myIndices)
+     call inittrilinos(25, mySize, myIndices)
 
      ! Triad sparse matrix not used in this case, so save on memory
      pcgsize(2) = 1
@@ -4645,42 +4645,51 @@ subroutine putpcgc(value,col,row,pt)
    !*sfp* for JFNK, store he main block diagonal coeffs and off diag coeffs
    elseif ( nonlinear == HO_NONLIN_JFNK )then
 
-   if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then
-    if ( .not. storeoffdiag ) then ! block diag coeffs in normal storage space
-        ! load entry into Triad sparse matrix format
-        if (value /= 0.0d0) then
-          pcgval(ct) = value
-          pcgcol(ct) = col
-          pcgrow(ct) = row
-          ct = ct + 1
-        end if
-    else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
-        ! load entry into Triad sparse matrix format
-        if( pt == 1 )then ! store uv coeffs
-            if (value /= 0.0d0) then
-              pcgvaluv(ct) = value
-              pcgcoluv(ct) = col
-              pcgrowuv(ct) = row
-            end if
-        else if( pt == 2 )then ! store vu coeffs
-            if (value /= 0.0d0) then
-              pcgvalvu(ct) = value
-              pcgcolvu(ct) = col
-              pcgrowvu(ct) = row
-            end if
-        end if
-    end if
-    else !standalone jfnk
-        ! Option to load entry directly into Trilinos sparse matrix 
+    if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then      ! if using Triad format to store matrix entries
+
+      if ( .not. storeoffdiag ) then ! block diag coeffs in normal storage space
+          ! load entry into Triad sparse matrix format
+          if (value /= 0.0d0) then
+            pcgval(ct) = value
+            pcgcol(ct) = col
+            pcgrow(ct) = row
+            ct = ct + 1
+          end if
+      else if ( storeoffdiag ) then ! off-block diag coeffs in other storage
+          ! load entry into Triad sparse matrix format
+          if( pt == 1 )then ! store uv coeffs
+              if (value /= 0.0d0) then
+                pcgvaluv(ct2) = value
+                pcgcoluv(ct2) = col
+                pcgrowuv(ct2) = row
+                ct2 = ct2 + 1
+              end if
+          else if( pt == 2 )then ! store vu coeffs
+              if (value /= 0.0d0) then
+                pcgvalvu(ct2) = value
+                pcgcolvu(ct2) = col
+                pcgrowvu(ct2) = row
+                ct2 = ct2 + 1
+              end if
+          end if
+      end if
+
+    else    ! if storing matrix entires directly in Trilinos sparse format
+
+      ! *sfp* NOTE: that this option does not allow for storing offidag terms at present
+      ! (I assume that Andy can grab these when we know they are correct)
+      if (.not. storeoffdiag) then
         if (value /= 0.0d0) then
            !AGS: If we find that sparsity changes inside a time step,
            !     consider adding entry even for value==0.
-           call putintotrilinosmatrix(row, col, value)
+         call putintotrilinosmatrix(row, col, value)
         end if
-    end if
+      end if
 
-   end if
-   
+    end if  ! end of "if using Triad or Trilinos storage format" construct
+
+   end if   ! end of "if using Picard or JFNK for nonlinear solve" construct
+
   return
  
 end subroutine putpcgc 
