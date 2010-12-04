@@ -439,7 +439,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! jfl 20100412: residual for v comp: Fv= A(u^k-1,v^k-1)v^k-1 - b(u^k-1,v^k-1)  
 !==============================================================================
 
-    call res_vect( matrix, vk_1, rhsd, size(rhsd), counter, g_flag, L2square, whichsparse )
+    call res_vect( matrix, vk_1, rhsd, size(rhsd), g_flag, L2square, whichsparse )
 
       L2norm  = L2square
       F(1:pcgsize(1)) = vk_1(:)
@@ -512,7 +512,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! jfl 20100412: residual for u comp: Fu= C(u^k-1,v^k-1)u^k-1 - d(u^k-1,v^k-1)  
 !==============================================================================
 
-    call res_vect( matrix, uk_1, rhsd, size(rhsd), counter, g_flag, L2square, whichsparse )
+    call res_vect( matrix, uk_1, rhsd, size(rhsd), g_flag, L2square, whichsparse )
 
     L2norm = sqrt(L2norm + L2square)
     F(pcgsize(1)+1:2*pcgsize(1)) = uk_1(:) ! F = [ Fv, Fu ]
@@ -905,7 +905,7 @@ subroutine JFNK                 (model,umask,tstep)
 !         end subroutine noxfinish
 !        end interface
   
- call init_resid_type(resid_object, model, k, uindx, umask, d2thckdewdns, d2usrfdewdns, &
+ call init_resid_type(resid_object, model, uindx, umask, d2thckdewdns, d2usrfdewdns, &
       pcgsize, gx_flag, matrixA, matrixC, L2norm, ewn, nsn)
     fptr => resid_object
     c_ptr_to_object =  c_loc(fptr)
@@ -925,21 +925,14 @@ subroutine JFNK                 (model,umask,tstep)
 !  call noxsolve(xk_size, xk_1, c_ptr_to_object)
 !  call noxfinish()
 
-! KJE moved inside of k iteration index - probably too redundant but needed until 
-! NOX is hooked up
-
-  do k = 1, kmax
-
- call init_resid_type(resid_object, model, k, uindx, umask, d2thckdewdns, d2usrfdewdns, &
-      pcgsize, gx_flag, matrixA, matrixC, L2norm, ewn, nsn)
-    fptr => resid_object
-    c_ptr_to_object =  c_loc(fptr)
-
 !==============================================================================
 ! calculate F(u^k-1,v^k-1)
 !==============================================================================
 
-    calcoffdiag = .true.    ! save off diag matrix components
+  do k = 1, kmax
+
+!    calcoffdiag = .true.    ! save off diag matrix components
+    calcoffdiag = .false.    ! save off diag matrix components
 
     call calc_F (xk_1, F, xk_size, c_ptr_to_object)
 
@@ -991,10 +984,10 @@ subroutine JFNK                 (model,umask,tstep)
       IF ( icode == 1 ) THEN   ! precond step: use of Picard linear solver
                                ! wk2 = P^-1*wk1
 
-      call apply_precond ( matrixA, matrixC, pcgsize(1), 2*pcgsize(1), &
-                           wk1, wk2, whichsparse ) 
+!      call apply_precond ( matrixA, matrixC, pcgsize(1), 2*pcgsize(1), &
+!                           wk1, wk2, whichsparse ) 
 
-!      call apply_precond_nox( wk2, wk1, 2*pcgsize(1), xk_1, c_ptr_to_object ) 
+      call apply_precond_nox( wk2, wk1, xk_size, xk_1, c_ptr_to_object ) 
 
       GOTO 10
 
@@ -1594,6 +1587,81 @@ end subroutine apply_precond
 
 !***********************************************************************
 
+subroutine apply_precond_nox( wk2_nox, wk1_nox, xk_size, xtp, c_ptr_to_object ) 
+
+  ! Apply preconditioner operator for JFNK solver through NOX: wk2 = P^-1 *wk1 
+  ! The preconditioner operator is in fact taken from the Picard solver
+  ! There is a splitting of the v (A matrix) and u (C matrix) equations
+  ! Each component is solved to a loose tolerance (as opposed to Picard)
+
+  implicit none
+
+! variables coming through from NOX
+  integer(c_int) ,intent(in) ,value  :: xk_size
+  real(c_double)  ,intent(in)        :: xtp(xk_size)
+  real (c_double) ,intent(in)        :: wk1_nox(xk_size)
+  real (c_double) ,intent(out)       :: wk2_nox(xk_size)
+  type(pass_through) ,pointer        :: fptr=>NULL()
+  type(c_ptr) ,intent(inout)         :: c_ptr_to_object
+
+  integer :: nu1, nu2, whichsparse
+  integer :: iter
+  type(sparse_matrix_type) :: matrixA, matrixC
+  real (kind = dp), dimension(xk_size) :: wk1
+  real (kind = dp), dimension(xk_size) :: wk2
+  real (kind = dp), allocatable, dimension(:) :: answer, vectp
+  real (kind = dp) :: err
+
+  call c_f_pointer(c_ptr_to_object,fptr) ! convert C ptr to F ptr= resid_object
+
+  matrixA = fptr%matrixA
+  matrixC = fptr%matrixC
+  whichsparse = fptr%model%options%which_ho_sparse
+  pcgsize = fptr%pcgsize
+           
+  nu1 = pcgsize(1)
+  nu2 = 2*pcgsize(1)
+  allocate ( answer(nu1) )
+  allocate ( vectp(nu1) )
+  wk1  = wk1_nox
+
+! ID as a test
+!  wk2_nox  = wk1
+
+! precondition v component 
+       
+      answer = 0d0 ! initial guess
+      vectp(:) = wk1(1:nu1) ! rhs for precond v
+      if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then
+         call sparse_easy_solve(matrixA, vectp, answer, err, iter, whichsparse, nonlinear_solver = nonlinear)
+      else
+         call restoretrilinosmatrix(0);
+         call solvewithtrilinos(vectp, answer, linearSolveTime)
+         totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
+         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+      endif
+      wk2(1:nu1) = answer(:)
+
+! precondition u component 
+       
+      answer = 0d0 ! initial guess
+      vectp(:) = wk1(nu1+1:nu2) ! rhs for precond u
+      if (whatsparse /= STANDALONE_TRILINOS_SOLVER) then
+         call sparse_easy_solve(matrixC, vectp, answer, err, iter, whichsparse, nonlinear_solver = nonlinear)
+      else
+         call restoretrilinosmatrix(1);
+         call solvewithtrilinos(vectp, answer, linearSolveTime)
+         totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
+         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+      endif
+      wk2(nu1+1:nu2) = answer(:)
+
+  wk2_nox  = wk2
+
+end subroutine apply_precond_nox
+
+!***********************************************************************
+
  subroutine calc_F (xtp, F, xk_size, c_ptr_to_object)
 ! subroutine calc_F (xtp, F, xk_size, c_ptr_to_object, matrixA, matrixC) bind(C, name='calc_F')
 
@@ -1638,7 +1706,6 @@ end subroutine apply_precond
   upn = fptr%model%general%upn
   whichbabc = fptr%model%options%which_ho_babc
   whichefvs = fptr%model%options%which_ho_efvs
-  counter = fptr%k
   dew = fptr%model%numerics%dew
   dns = fptr%model%numerics%dns
   sigma => fptr%model%numerics%sigma(:)
@@ -1675,6 +1742,8 @@ end subroutine apply_precond
   allocate( gxf(pcgsize(1)) )
 
   gxf = fptr%gxf
+! temporary to test JFNK -  need to take out
+  counter = 1
 
   d2usrfdewdns = fptr%d2usrfcross
   d2thckdewdns = fptr%d2thckcross
@@ -1726,7 +1795,7 @@ end subroutine apply_precond
     
     vectp = xtp(1:pcgsize(1))
 
-    call res_vect(matrixA, vectp, rhsd, pcgsize(1), counter, gxf, L2square, whatsparse)
+    call res_vect(matrixA, vectp, rhsd, pcgsize(1), gxf, L2square, whatsparse)
     L2norm=L2square
 
     F(1:pcgsize(1)) = vectp(1:pcgsize(1)) 
@@ -1763,14 +1832,14 @@ end subroutine apply_precond
     
     vectp(1:pcgsize(1)) = xtp(pcgsize(1)+1:2*pcgsize(1))
 
-    call res_vect(matrixC, vectp, rhsd, pcgsize(1), counter, gxf, L2square, whatsparse)
+    call res_vect(matrixC, vectp, rhsd, pcgsize(1), gxf, L2square, whatsparse)
     L2norm = sqrt(L2norm + L2square)
 
     F(pcgsize(1)+1:2*pcgsize(1)) = vectp(1:pcgsize(1)) 
 
 !      vectx = xtp 
 !
-!   call res_vect_jfnk(matrixA, matrixC, vectx, rhsx, pcgsize(1), 2*pcgsize(1), counter, gxf, L2square, whatsparse)
+!   call res_vect_jfnk(matrixA, matrixC, vectx, rhsx, pcgsize(1), 2*pcgsize(1), gxf, L2square, whatsparse)
 !    L2norm = L2square
 !    F = vectx 
 
@@ -4747,7 +4816,7 @@ end function scalebasalbc
 
 !***********************************************************************
 
-subroutine init_resid_type(resid_object, model, k, uindx, umask, &
+subroutine init_resid_type(resid_object, model, uindx, umask, &
      d2thckdewdns, d2usrfdewdns, pcgsize, gx_flag, matrixA, matrixC, L2norm, ewn, nsn)
   
   use ,intrinsic :: iso_c_binding 
@@ -4760,7 +4829,7 @@ subroutine init_resid_type(resid_object, model, k, uindx, umask, &
   type(sparse_matrix_type) ,intent(in) :: matrixA, matrixC
   
   integer :: i, j
-  integer                   ,intent(in) :: k, ewn, nsn
+  integer                   ,intent(in) :: ewn, nsn
   integer, dimension(2)     ,intent(in) :: pcgsize
   integer                   ,intent(in) :: gx_flag(2*pcgsize(1)) ! 0 :reg cell
   integer                   ,intent(in) :: uindx(ewn-1,nsn-1), umask(ewn-1,nsn-1)
@@ -4801,8 +4870,8 @@ subroutine init_resid_type(resid_object, model, k, uindx, umask, &
   resid_object%model%velocity_hom%btraction => model%velocity_hom%btraction(:,:,:)
   resid_object%model%options%which_ho_babc = model%options%which_ho_babc
   resid_object%model%options%which_ho_efvs = model%options%which_ho_efvs
+  resid_object%model%options%which_ho_sparse = model%options%which_ho_sparse
   resid_object%model%velocity_hom%beta => model%velocity_hom%beta(:,:)
-  resid_object%k = k
   do i = 1, ewn-1 
    do j = 1, nsn-1 
     resid_object%ui(i,j)  = uindx(i,j)

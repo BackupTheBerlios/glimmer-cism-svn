@@ -1,6 +1,6 @@
 !  uvec is either u^k-1 or v^k-1 on input and Av-b or Cu-d on output
 
-subroutine res_vect ( matrix, uvec, bvec, nu, counter, g_flag, L2square, whatsparse)
+subroutine res_vect ( matrix, uvec, bvec, nu, g_flag, L2square, whatsparse)
 
 
 use glimmer_paramets, only : dp
@@ -10,7 +10,7 @@ use glide_mask
 
 implicit none
 
-integer :: i, j, counter, nu, nele, whatsparse ! nu: size of uvec and bvec
+integer :: i, j, nu, nele, whatsparse ! nu: size of uvec and bvec
 integer, dimension(nu), intent(in) :: g_flag ! 0 :reg cell
                                              ! 1 :top ghost, 2 :base ghost
 
@@ -63,7 +63,7 @@ real (kind = dp) :: scale_ghosts = 0.0d0
 
 end subroutine res_vect
 
-subroutine res_vect_jfnk ( matrixA, matrixC, uvec, bvec, nu1, nu2, counter, g_flag, L2square, whatsparse)
+subroutine res_vect_jfnk ( matrixA, matrixC, uvec, bvec, nu1, nu2, g_flag, L2square, whatsparse)
 
 ! similar to res_vect, but state vector uvec and rhs vector bvec are now both velocities (kje 101005)
 ! as an intermediate step, right now A and C matrices are separate, but eventually they will be combined
@@ -75,7 +75,7 @@ use glide_mask
 
 implicit none
 
-integer :: i, j, counter, nu1, nu2, nele, whatsparse ! nu2: size of uvec and bvec, size of u, v within
+integer :: i, j, nu1, nu2, nele, whatsparse ! nu2: size of uvec and bvec, size of u, v within
 !integer, dimension(:), intent(in) :: g_flag ! 0 :reg cell
                                              ! 1 :top ghost, 2 :base ghost
 

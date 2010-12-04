@@ -933,7 +933,6 @@ end type glide_global_type
   type ,public :: pass_through
 
     type(glide_global_type)  :: model
-    integer :: k
     integer ,dimension(:,:) ,allocatable :: ui 
     integer ,dimension(:,:) ,allocatable :: um 
     real(kind = dp) ,dimension(:,:) ,allocatable :: d2thckcross
