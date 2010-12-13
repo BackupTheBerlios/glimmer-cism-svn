@@ -334,9 +334,9 @@ If you are not sure what to do here but have LAPACK installed in a standard loca
             CXXFLAGS="$CXXFLAGS $CPPFLAGS -DTRILINOS -I$ac_cv_trilinos_prefix/include"
             LDFLAGS="$LDFLAGS -L$ac_cv_trilinos_prefix/lib" 
             #  Jaguar LIBS list
-	    LIBS="$LIBS -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lkomplex -lifpack -lpamgen_extras -lpamgen -lamesos -lgaleri -laztecoo -ldpliris -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lshards -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lparmetis -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lmetis -lmpichcxx -lstd -lC"
+            LIBS="$LIBS -lpiro -llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lModeLaplace -lanasaziepetra -lanasazi -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lparmetis -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lmetis -lmpichcxx -lstd -lC"
             #  Coyote LIBS list
-            #EPETRA_LIBRARIES should be read from trilinos_build_path/include/Makefile.export.Trilinos
+            #EPETRA_LIBRARIES should be read from trilinos_build_path/include/Makefile.export.NOX
             #for now, setting in enable_mpi option
 	    #LIBS="$LIBS $EPETRA_LIBRARIES -lstdc++"
 fi

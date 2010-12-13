@@ -713,7 +713,8 @@ subroutine JFNK                 (model,umask,tstep)
 
   real (kind = dp), parameter :: NL_tol = 1.0d-06
 
-  integer, parameter :: kmax = 100, img = 20, img1 = img+1
+  integer, parameter :: img = 20, img1 = img+1
+  integer :: kmax = 100
   character(len=100) :: message
 
 !*sfp* needed to incorporate generic wrapper to solver
@@ -921,10 +922,15 @@ subroutine JFNK                 (model,umask,tstep)
 !                                                       F = [Fv(u,v), Fu(u,v)] 
 !==============================================================================
 
+!! UNCOMMENT these lines to switch to NOX's JFNK
+!  print *, 'STARTING NOX'
+!! AGS: To Do:  send in distributed xk_1, or myIndices array, for distributed nox
 !  call noxinit(xk_size, xk_1, 1, c_ptr_to_object)
 !  call noxsolve(xk_size, xk_1, c_ptr_to_object)
 !  call noxfinish()
-
+!  kmax = 0     ! turn off native JFNK below
+!  print *, 'ENDING NOX'
+!
 !==============================================================================
 ! calculate F(u^k-1,v^k-1)
 !==============================================================================
@@ -950,7 +956,7 @@ subroutine JFNK                 (model,umask,tstep)
 ! -check at all k if target is reached
 !==============================================================================
 
-    if (k .eq. 1) NL_target = NL_tol * L2norm_wig
+    if (k .eq. 1) NL_target = NL_tol * (L2norm_wig + 1.0e-2)
 
     print *, 'L2 w/ghost (k)= ',k,L2norm_wig,L2norm
 
@@ -987,7 +993,9 @@ subroutine JFNK                 (model,umask,tstep)
 !      call apply_precond ( matrixA, matrixC, pcgsize(1), 2*pcgsize(1), &
 !                           wk1, wk2, whichsparse ) 
 
-      call apply_precond_nox( wk2, wk1, xk_size, xk_1, c_ptr_to_object ) 
+! AGS: CONSIDER ADDING NEXT LINE FOR UNPERTURBED MATRIX
+!      call calc_F (xk_1, F, xk_size, c_ptr_to_object)
+      call apply_precond_nox( wk2, wk1, xk_size, c_ptr_to_object ) 
 
       GOTO 10
 
@@ -1587,7 +1595,7 @@ end subroutine apply_precond
 
 !***********************************************************************
 
-subroutine apply_precond_nox( wk2_nox, wk1_nox, xk_size, xtp, c_ptr_to_object ) 
+subroutine apply_precond_nox( wk2_nox, wk1_nox, xk_size, c_ptr_to_object )  bind(C, name='apply_precond_nox')
 
   ! Apply preconditioner operator for JFNK solver through NOX: wk2 = P^-1 *wk1 
   ! The preconditioner operator is in fact taken from the Picard solver
@@ -1598,7 +1606,6 @@ subroutine apply_precond_nox( wk2_nox, wk1_nox, xk_size, xtp, c_ptr_to_object )
 
 ! variables coming through from NOX
   integer(c_int) ,intent(in) ,value  :: xk_size
-  real(c_double)  ,intent(in)        :: xtp(xk_size)
   real (c_double) ,intent(in)        :: wk1_nox(xk_size)
   real (c_double) ,intent(out)       :: wk2_nox(xk_size)
   type(pass_through) ,pointer        :: fptr=>NULL()
@@ -1638,7 +1645,7 @@ subroutine apply_precond_nox( wk2_nox, wk1_nox, xk_size, xtp, c_ptr_to_object )
          call restoretrilinosmatrix(0);
          call solvewithtrilinos(vectp, answer, linearSolveTime)
          totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
-         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+!         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
       endif
       wk2(1:nu1) = answer(:)
 
@@ -1652,7 +1659,7 @@ subroutine apply_precond_nox( wk2_nox, wk1_nox, xk_size, xtp, c_ptr_to_object )
          call restoretrilinosmatrix(1);
          call solvewithtrilinos(vectp, answer, linearSolveTime)
          totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
-         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+!         write(*,*) 'Total linear solve time so far', totalLinearSolveTime
       endif
       wk2(nu1+1:nu2) = answer(:)
 
@@ -1662,7 +1669,7 @@ end subroutine apply_precond_nox
 
 !***********************************************************************
 
- subroutine calc_F (xtp, F, xk_size, c_ptr_to_object)
+ subroutine calc_F (xtp, F, xk_size, c_ptr_to_object) bind(C, name='calc_F')
 ! subroutine calc_F (xtp, F, xk_size, c_ptr_to_object, matrixA, matrixC) bind(C, name='calc_F')
 
   ! Calculates either F(x) or F(x+epsilon*vect) for the JFNK method

@@ -43,9 +43,7 @@ extern "C" {
     Epetra_SerialComm Comm;
 #endif
     
-    int i, j, ierr;
-    int MyPID = Comm.MyPID();
-    bool verbose = (MyPID == 0);
+    int j, ierr;
     Epetra_Map RowMap(order, 0, Comm);
     int NumMyElements = RowMap.NumMyElements();
     int *MyGlobalElements = new int[NumMyElements];
