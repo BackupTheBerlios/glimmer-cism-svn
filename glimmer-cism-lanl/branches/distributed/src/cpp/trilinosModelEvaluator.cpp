@@ -1,7 +1,7 @@
 #include "trilinosModelEvaluator.hpp"
 
 extern "C" {
-  void calc_F(double* x, double* f, int N, void* bb, double* unusedNorm);
+  void calc_F(double* x, double* f, int N, void* bb);
   void apply_precond_nox(double* x, double* y, int n, void* bb);
 }
 /*******************************************************************************/
@@ -14,16 +14,11 @@ trilinosModelEvaluator::trilinosModelEvaluator (
 			     : N(N_), comm(comm_), blackbox_res(blackbox_res_)
 {
   
-  cout << "IN TrilinosModelEvaluator constructor" << endl;
-
-  	cout << " proc  = " << comm.MyPID() << endl; 
-  	cout << " N = " << N << endl;
-  	cout << " st = " << statevector[0] <<"   " << statevector[37] << endl;
-  //This processor has N unknowns -- global will be calculated
-
-//  xMap = Teuchos::rcp(new Epetra_Map(-1, N, 0, scomm));
+  cout << "In TrilinosModelEvaluator constructor:" << endl;
   xMap = Teuchos::rcp(new Epetra_Map(-1, N, 0, comm));
-  	cout << " Ntot =" << xMap->NumGlobalElements() << endl;
+
+  cout << "  proc  = " << comm.MyPID() <<  ",  N = " << N 
+       << ",  Ntot = " << xMap->NumGlobalElements() << endl;
 
   xVec = Teuchos::rcp(new Epetra_Vector(Copy, *xMap, statevector));
 
@@ -45,7 +40,6 @@ Teuchos::RCP<const Epetra_Map> trilinosModelEvaluator::get_f_map() const{
 
 // Return initial solution and x_dot init
 Teuchos::RCP<const Epetra_Vector> trilinosModelEvaluator::get_x_init() const{
-double nrm; xVec->Norm2(&nrm); cout << "AGS INIT NRM " << nrm << endl;
   return xVec;
 }
 
@@ -84,7 +78,7 @@ EpetraExt::ModelEvaluator::OutArgs trilinosModelEvaluator::createOutArgs() const
 // Evaluate model on InArgs
 void trilinosModelEvaluator::evalModel(const InArgs& inArgs, const OutArgs& outArgs) const{
 
-  double nrm, glnrm;
+  //double nrm;
   // Get the solution vector x from inArgs and residual vector from outArgs
   RCP<const Epetra_Vector> x = inArgs.get_x();
   RCP<Epetra_Vector> f = outArgs.get_f();
@@ -96,10 +90,10 @@ void trilinosModelEvaluator::evalModel(const InArgs& inArgs, const OutArgs& outA
 
   if (f != Teuchos::null) {
     f->PutScalar(0.0);
-    calc_F(x->Values(), f->Values(), N, blackbox_res, &glnrm);
+    calc_F(x->Values(), f->Values(), N, blackbox_res);
 
-    f->Norm2(&nrm);
-    cout << "AGS  Resid norm in eval_model total " << nrm << "   from glimmer " << glnrm << endl;
+    //f->Norm2(&nrm);
+    //cout << "AGS  Resid norm in eval_model total " << nrm << endl;
   }
 
   RCP<Epetra_Operator> WPrec = outArgs.get_WPrec();
@@ -114,7 +108,6 @@ trilinosPreconditioner::trilinosPreconditioner (
        int N_, RCP<Epetra_Vector> xVec_, RCP<Epetra_Map> xMap_, void* blackbox_res_)
        : N(N_), xVec(xVec_), xMap(xMap_), blackbox_res(blackbox_res_)
 {
-  cout << "In trilinosPreconditioner contructor " << endl;
 }
 
 int trilinosPreconditioner::ApplyInverse(const Epetra_MultiVector& X, Epetra_MultiVector& Y) const

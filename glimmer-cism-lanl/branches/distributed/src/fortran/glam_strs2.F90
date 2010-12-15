@@ -923,14 +923,13 @@ subroutine JFNK                 (model,umask,tstep)
 !==============================================================================
 
 !! UNCOMMENT these lines to switch to NOX's JFNK
-!  print *, 'STARTING NOX'
 !! AGS: To Do:  send in distributed xk_1, or myIndices array, for distributed nox
+!  print*,"Calling NOX for JFNK"
 !  call noxinit(xk_size, xk_1, 1, c_ptr_to_object)
 !  call noxsolve(xk_size, xk_1, c_ptr_to_object)
 !  call noxfinish()
 !  kmax = 0     ! turn off native JFNK below
-!  print *, 'ENDING NOX'
-!
+
 !==============================================================================
 ! calculate F(u^k-1,v^k-1)
 !==============================================================================
@@ -990,11 +989,6 @@ subroutine JFNK                 (model,umask,tstep)
       IF ( icode == 1 ) THEN   ! precond step: use of Picard linear solver
                                ! wk2 = P^-1*wk1
 
-!      call apply_precond ( matrixA, matrixC, pcgsize(1), 2*pcgsize(1), &
-!                           wk1, wk2, whichsparse ) 
-
-! AGS: CONSIDER ADDING NEXT LINE FOR UNPERTURBED MATRIX
-!      call calc_F (xk_1, F, xk_size, c_ptr_to_object)
       call apply_precond_nox( wk2, wk1, xk_size, c_ptr_to_object ) 
 
       GOTO 10
@@ -1007,9 +1001,6 @@ subroutine JFNK                 (model,umask,tstep)
 
          vectx(:) = wk1(1:2*pcgsize(1)) ! for v and u
          xk_1_plus = xk_1 + epsilon*vectx
-
-         call solver_postprocess_jfnk( ewn, nsn, upn, uindx, &
-                                  xk_1_plus, vvel, uvel, ghostbvel, pcgsize(1) )
 
 ! form F(x + epsilon*wk1) = F(u^k-1 + epsilon*wk1u, v^k-1 + epsilon*wk1v)
 
@@ -1039,13 +1030,15 @@ subroutine JFNK                 (model,umask,tstep)
 
       xk_1 = xk_1 + dx(1:2*pcgsize(1))
 
-      call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel, pcgsize(1) )
-
 ! WATCHOUT FOR PERIODIC BC      
 
   end do
 
+   call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel, pcgsize(1) )
    call ghost_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, ughost, vghost, pcgsize(1) )
+
+  print*,"Solution vector norm after JFNK = " ,sqrt(DOT_PRODUCT(xk_1,xk_1))
+
 
 !  deallocate(resid_object%ui )
 !  deallocate(resid_object%um ) 
@@ -1759,6 +1752,10 @@ end subroutine apply_precond_nox
   matrixC = fptr%matrixC
   allocate( vectp( pcgsize(1)) )
   allocate( vectx(2*pcgsize(1)) )
+
+  call solver_postprocess_jfnk( ewn, nsn, upn, ui, &
+                                xtp, vvel, uvel, ghostbvel, pcgsize(1) )
+
 
     call findefvsstr(ewn,  nsn,  upn,       &
                      stagsigma,  counter,  &

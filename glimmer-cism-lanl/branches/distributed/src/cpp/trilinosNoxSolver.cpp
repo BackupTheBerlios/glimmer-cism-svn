@@ -19,6 +19,7 @@ static RCP<Epetra_MpiComm> Comm_;
 
 static EpetraExt::ModelEvaluator::InArgs inArgs;
 static EpetraExt::ModelEvaluator::OutArgs outArgs;
+static bool printProc;
 
 
 extern "C" {
@@ -28,18 +29,19 @@ void noxinit_( int* nelems, double* statevector,
 
  try {
 
-  cout << "NOXINIT CALLED    for nelem=" << *nelems << endl;
-
   // Build the epetra communicator
   Comm_=rcp(new Epetra_MpiComm(MPI_COMM_WORLD));
   Epetra_Comm& Comm=*Comm_;
+  printProc = (Comm_->MyPID() == 0);
+  
+  if (printProc) cout << "NOXINIT CALLED    for nelem=" << *nelems << endl;
 
   paramList = rcp(new Teuchos::ParameterList);
 
   
-  cout << "NOXINIT reading input.xml" << endl;
   Teuchos::updateParametersFromXmlFile("input.xml", paramList.get());
-  cout << "NOXINIT: param list is\n" << *paramList << endl;
+  if (printProc)
+  cout << "NOXInit: param list from input.xml is:\n" << *paramList << endl;
 
   model = rcp(new trilinosModelEvaluator(*nelems, statevector, Comm, blackbox_res));
     
@@ -67,7 +69,7 @@ void noxsolve_(int* nelems, double* statevector, void* blackbox_res)
     TEST_FOR_EXCEPTION(Nsolver==Teuchos::null, logic_error, 
                           "Exception: noxsolve called with solver=null: \n"
        << "You either did not call noxinit first, or called noxfinish already");
-    cout << "NOXSOLVE CALLED" << endl;
+    if (printProc) cout << "NOXSolve called" << endl;
 
     // Solve    
     Nsolver->evalModel(inArgs,outArgs);
@@ -75,10 +77,6 @@ void noxsolve_(int* nelems, double* statevector, void* blackbox_res)
     // Copy out the solution
     RCP<Epetra_Vector> xout = outArgs.get_g(0); 
     if(xout == Teuchos::null) throw "evalModel is NOT returning a vector";
-
-    double nrm;
-    xout->Norm2(&nrm);
-    cout << "After NOXSOLVE, soln has norm: " << nrm << endl;
 
     for (int i=0; i<*nelems; i++) statevector[i] = (*xout)[i];
   }
@@ -91,7 +89,7 @@ void noxsolve_(int* nelems, double* statevector, void* blackbox_res)
 /****************************************************/ 
 void noxfinish_()
 {
- cout << "NOXFINISH CALLED" << endl;
+ if (printProc) cout << "NOXFinish called" << endl;
 
  // Free memory
  Nsolver   = Teuchos::null;

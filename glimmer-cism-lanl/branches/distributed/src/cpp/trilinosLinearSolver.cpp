@@ -198,7 +198,7 @@ extern "C" {
     //delete[] myGlobalElements;
 
     elapsedTime = linearTime.stop();
-    *out << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
+//    *out << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
 
     //cout << " ======================================" << endl;
   }
