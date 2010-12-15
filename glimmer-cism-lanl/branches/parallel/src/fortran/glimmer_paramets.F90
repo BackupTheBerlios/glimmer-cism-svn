@@ -54,10 +54,10 @@ module glimmer_paramets
   integer, parameter :: idiag = 30, jdiag = 50  ! point for diagnostic output
 
 #ifdef NO_RESCALE
-  real(dp), parameter :: thk0 = 1          ! m
-  real(dp), parameter :: len0 = 1        ! m
-  real(dp), parameter :: vel0 = 1 / scyr    ! m yr^{-1} converted to S.I. units
-  real(dp), parameter :: vis0 = 1 / scyr 
+  real(dp), parameter :: thk0 = 1.d0           ! m
+  real(dp), parameter :: len0 = 1.d0           ! m
+  real(dp), parameter :: vel0 = 1.d0 / scyr    ! m yr^{-1} converted to S.I. units
+  real(dp), parameter :: vis0 = 1.d0 / scyr 
 
 
 #else
@@ -71,7 +71,7 @@ module glimmer_paramets
   ! *sfp* defined these to convert scales to values used by GLAM
   real(dp), parameter :: tau0_glam = rhoi*grav*thk0                   ! stress scale in GLAM ( Pa )  
   real(dp), parameter :: vis0_glam = tau0_glam**(-gn) * (vel0/len0)   ! rate factor scale in GLAM ( Pa^-3 s^-1 )
-  real(dp), parameter :: evs0 = tau0_glam * (vel0/len0) ! eff. visc. scale in GLAM ( Pa s )
+  real(dp), parameter :: evs0 = tau0_glam * (vel0/len0)               ! eff. visc. scale in GLAM ( Pa s )
 
 
   real(dp), parameter :: acc0 = thk0 * vel0 / len0  ! m s^{-1} 

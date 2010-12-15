@@ -55,13 +55,13 @@ module glimmer_physcon
   
   save
 
-  real(dp),parameter :: scyr = 31556926.0        !*FD Number of seconds in a year (s). Note
+  real(dp),parameter :: scyr = 31556926.0d0      !*FD Number of seconds in a year (s). Note
                                                  !*FD that this is for a 365.242 day year, and might
                                                  !*FD need changing.
 
   real(dp),parameter :: pi = 3.1415926535897d0   !*FD Value of $\pi$.
 
-  real(dp),parameter :: rhoi = 910.0             !*FD The density of ice (kg m$^{-3}$)
+  real(dp),parameter :: rhoi = 910.0d0           !*FD The density of ice (kg m$^{-3}$)
   real(dp),parameter :: rhom = 3300.0d0          !*FD The density of magma(?) (kg m$^{-3}$)
 
   real(dp),parameter :: rhoo = 1028.0d0          !*FD The density of the ocean (kg m$^{-3}$)
@@ -69,7 +69,7 @@ module glimmer_physcon
   real(dp),parameter :: rhos = 2600.0d0          !*FD The density of solid till (kg m$^{-3}$)
   real(dp),parameter :: f = - rhoo / rhoi
 
-  real(dp),parameter :: grav = 9.81              !*FD The acceleration due to gravity (m s$^{-2}$)
+  real(dp),parameter :: grav = 9.81d0            !*FD The acceleration due to gravity (m s$^{-2}$)
 
   integer, parameter :: gn = 3                   !*FD The power dependency of Glenn's flow law.
 
