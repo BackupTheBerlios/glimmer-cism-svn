@@ -40,6 +40,7 @@ void noxinit_( int* nelems, double* statevector,
 
   
   Teuchos::updateParametersFromXmlFile("input.xml", paramList.get());
+  paramList->set("Lean Matrix Free",true); // Saves some GMRES steps
   if (printProc)
   cout << "NOXInit: param list from input.xml is:\n" << *paramList << endl;
 
