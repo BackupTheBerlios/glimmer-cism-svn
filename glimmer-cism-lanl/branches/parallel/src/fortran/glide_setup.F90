@@ -203,7 +203,6 @@ contains
 
  !-------------------------------------------------------------------------
 
-
   subroutine glide_load_sigma(model,unit)
 
     !*FD Loads a file containing
@@ -228,15 +227,16 @@ contains
     ! Beginning of code
 
     upn=model%general%upn
-
     
     select case(model%options%which_sigma)
+
     case(0)
        call write_log('Calculating sigma levels')
        do up=1,upn
-          level = real(up-1)/real(upn-1)
+          level = real(up-1,kind=dp)/real(upn-1,kind=dp)
           model%numerics%sigma(up) = glide_find_level(level, model%options%which_sigma_builtin, up, upn)
        end do
+
     case(1)
        inquire (exist=there,file=process_path(model%funits%sigfile))
        if (.not.there) then
@@ -247,10 +247,19 @@ contains
        open(unit,file=process_path(model%funits%sigfile))
        read(unit,'(f9.7)',err=10,end=10) (model%numerics%sigma(up), up=1,upn)
        close(unit)
+
     case(2)
        call write_log('Using sigma levels from main configuration file')
+
     end select
+
+    if (allocated(model%numerics%stagsigma)) then
+       model%numerics%stagsigma(1:upn-1) =   &
+            (model%numerics%sigma(1:upn-1) + model%numerics%sigma(2:upn)) / 2.0_dp
+    endif
+
     call print_sigma(model)
+
     return
 
 10  call write_log('something wrong with sigma coord file',GM_FATAL)
@@ -434,7 +443,7 @@ contains
     call GetValue(section, 'guess_specified',    model%velocity_hom%is_velocity_valid)
     call GetValue(section, 'which_ho_source',    model%options%which_ho_source)
     call GetValue(section, 'include_thin_ice',   model%options%ho_include_thinice)
-!whl - added Price-Payne higher-order (glam) options
+    !whl - added Price-Payne higher-order (glam) options
     call GetValue(section, 'which_ho_babc',      model%options%which_ho_babc)
     call GetValue(section, 'which_ho_efvs',      model%options%which_ho_efvs)
     call GetValue(section, 'which_ho_resid',     model%options%which_ho_resid)
@@ -454,10 +463,11 @@ contains
     character(len=500) :: message
 
     ! local variables
-    character(len=*), dimension(0:2), parameter :: temperature = (/ &
-         'isothermal', &
-         'full      ', &
-         'steady    ' /)
+    character(len=*), dimension(0:3), parameter :: temperature = (/ &
+         'isothermal         ', &
+         'full               ', &
+         'steady             ', &
+         'remapping advection' /)  !whl - whichtemp mod - new option
     character(len=*), dimension(0:2), parameter :: flow_law = (/ &
          'Paterson and Budd                ', &
          'Paterson and Budd (temp=-10degC) ', &
@@ -651,7 +661,6 @@ contains
                        ho_whichsource(model%options%which_ho_source)
     call write_log(message)
 
-!whl - added Payne-Price higher-order (glam) options
     write(message,*) 'ho_whichbabc            :',model%options%which_ho_babc,  &
                       ho_whichbabc(model%options%which_ho_babc)
     call write_log(message)
