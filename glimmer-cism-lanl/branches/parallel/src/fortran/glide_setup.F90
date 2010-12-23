@@ -253,10 +253,8 @@ contains
 
     end select
 
-    if (allocated(model%numerics%stagsigma)) then
-       model%numerics%stagsigma(1:upn-1) =   &
+    model%numerics%stagsigma(1:upn-1) =   &
             (model%numerics%sigma(1:upn-1) + model%numerics%sigma(2:upn)) / 2.0_dp
-    endif
 
     call print_sigma(model)
 
