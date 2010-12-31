@@ -704,6 +704,9 @@ contains
     if (model%options%which_ho_sparse < 0 .or. model%options%which_ho_sparse >= size(ho_whichsparse)) then
         call write_log('Error, HO sparse solver input out of range', GM_FATAL)
     end if
+    if (model%options%whichtemp == TEMP_REMAP_ADV .and. model%options%whichevol /= EVOL_INC_REMAP) then
+        call write_log('Error, must use remapping for thickness evolution if remapping temperature', GM_FATAL)
+    end if
 
 
     call write_log('')

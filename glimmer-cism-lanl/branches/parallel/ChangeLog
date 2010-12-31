@@ -1,5 +1,8 @@
 2010-12-31 William Lipscomb
  A few minor code changes that do not change any results.
+ * src/fortran/glide_setup.F90: added a check that will abort the code if the
+	config file specifies temperature = 3 (the temperature remap option)
+	without setting evolution = 3 (the thickness remap option)
  * src/fortran/glide_vars.def: added bfricflx as an optional diagnostic field
  * src/fortran/glide_stress.F90: changed some code that assumed uniform-thickness
 	sigma layers.  Still get the same answer if layers are uniform, but
