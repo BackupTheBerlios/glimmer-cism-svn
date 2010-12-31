@@ -1,4 +1,22 @@
-2010-12-29 William Lipscomb
+2010-12-31 William Lipscomb
+ A few minor code changes that do not change any results.
+ * src/fortran/glide_vars.def: added bfricflx as an optional diagnostic field
+ * src/fortran/glide_stress.F90: changed some code that assumed uniform-thickness
+	sigma layers.  Still get the same answer if layers are uniform, but
+	also should work if layers are not uniform
+ * src/fortran/glide_bwater.F90: added a comment
+
+2010-12-31 William Lipscomb
+ Removing old glissade*.F90 files that are not used.
+ Note that glissade_temp.F90 is new and is not being removed.
+	
+ * src/fortran/glissade.F90: removed
+ * src/fortran/glissade_velo.F90: removed
+ * src/fortran/glissade_remap.F90: removed
+ * src/fortran/glissade_constants.F90: removed
+ * src/fortran/Makefile.am: removed old glissade files from libglide
+	
+2010-12-30 William Lipscomb
  Various code changes that allow for the ice temperature and other tracers to be
  advected using the incremental remapping transport scheme.  This option is turned
  on by setting temperature = 3 in the config file.  When this option is set, the

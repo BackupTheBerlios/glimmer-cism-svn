@@ -43,6 +43,10 @@ contains
 
     case(BWATER_LOCAL)
 
+       ! model%tempwk%c(1) =  model%tempwk%dt_wat
+       !              c(2) =  1.0d0 - 0.5d0 * model%tempwk%dt_wat * model%paramets%hydtim
+       !              c(3) =  1.0d0 + 0.5d0 * model%tempwk%dt_wat * model%paramets%hydtim
+
        do t_wat = 1, model%tempwk%nwat
           do ns = 1,model%general%nsn
              do ew = 1,model%general%ewn
