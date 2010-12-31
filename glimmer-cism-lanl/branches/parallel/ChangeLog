@@ -1,3 +1,50 @@
+2010-12-29 William Lipscomb
+ Various code changes that allow for the ice temperature and other tracers to be
+ advected using the incremental remapping transport scheme.  This option is turned
+ on by setting temperature = 3 in the config file.  When this option is set, the
+ ice temperature is staggered in the vertical direction relative to the velocity.
+ That is, temperature values lie at the midpoint of vertical layers, instead of 
+ at layer interfaces as assumed by standard Glimmer, and the basal boundary
+ condition is different.  
+
+ Since I added two modules and changed src/fortran/Makefile, you will need to do
+ a fresh configure and build following this update.  However, config files do not
+ need to be modified.  Answers should be unchanged unless you set temperature = 3
+ in the config file.
+
+ * src/fortran/glissade_temp.F90: new module containing initialization and driver
+	routines for a temperature solver that solves for vertical diffusion
+	and strain heating (but not advection) in local columns.  Includes new
+	subroutines for computing the appropriate matrix elements and for computing
+	basal friction and melting.
+ * src/fortran/glide_utils.F90: new module containing subroutines called from both
+	the standard driver in glide_temp.F90 and the new driver in glissade_temp.F90.
+ * src/fortran/glide_temp.F90: moved some subroutines to the new glide_utils module.
+	Renamed timeevoltemp as glide_temp_driver and renamed init_temp as glide_init_temp.
+	Removed some unused subroutines (swchpnt, swapbndt, temperature_smoothing).
+	Found a bug in subroutine findvtri_init; the expression for tau*u at the bed
+	is valid only for the shallow-ice approximation, not higher-order.  Noted the
+	bug but did not fix it.  (Steve may want to take a look.)
+ * src/fortran/glide.F90: added options to call the new init and driver subroutines
+	in module glissade_temp.  Modified argument lists for other init routines.
+ * src/fortran/glam.F90: added code for advecting temperature and other tracers (in
+	addition to ice thickness) using the incremental remapping scheme. Includes
+	a vertical remapping step. 
+ * src/fortran/remap_glamutils.F90: various changes to convert temperature and other
+	tracers to arrays that can be transported using the remapping scheme.
+	Added subroutine vertical_remap to map temperature and other tracers back 
+	onto the sigma grid following the horizontal remapping. 
+ * src/fortran/glam_strs2.F90: modified suboutine findefvsstr to compute effective
+	stresses correctly for the case that the flow factor is located at layer 
+	midpoints (i.e., co-located with efvs) in the vertical column.
+ * src/fortran/simple_glide.F90: added some code to call subroutine glide_write_diagnostics
+	at a user-specified interval (every ndiag timesteps).
+ * src/fortran/glide_setup.F90: Added idiag and jdiag (indices of diagnostic point)
+	to the numerics derived type.
+ * src/fortran/glide_types.F90: changed some comments
+ * src/fortran/glissade.F90: renamed subroutine vertical_remap to avoid a name conflict
+ * src/fortran/Makefile.am: added new modules glide_temp_utils and glissade_temp to libglide
+	
 2010-07-26 William Lipscomb
  Several minor changes:
  * src/fortran/glide_diagnostics: formatting changes
