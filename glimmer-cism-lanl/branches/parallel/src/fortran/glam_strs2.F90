@@ -122,7 +122,7 @@ contains
 
 subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
                                        dew,   dns,           &
-                                       sigma, stagsigma )
+                                       sigma)
 
     ! Allocate arrays and initialize variables.
     implicit none
@@ -131,7 +131,6 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     real (kind = dp), intent(in) :: dew, dns
 
     real (kind = dp), dimension(:), intent(in)  :: sigma
-    real (kind = dp), dimension(:), intent(out)  :: stagsigma
 
     integer :: up
 
@@ -151,7 +150,8 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     ! not regularly spaced. 
     dup = (/ ( (sigma(2)-sigma(1)), up = 1, upn) /)
     dupm = - 0.25_dp / dup
-    stagsigma = (sigma(1:upn-1) + sigma(2:upn)) / 2.0_dp
+!whl - Moved stagsigma calculation to glide_setup module
+!!    stagsigma(1:upn-1) = (sigma(1:upn-1) + sigma(2:upn)) / 2.0_dp
 
     ! p1 = -1/n   - used with rate factor in eff. visc. def.
     ! p2 = (1-n)/2n   - used with eff. strain rate in eff. visc. def. 
@@ -632,7 +632,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
       end do
   end do
 
-
   ! de-allocation sparse matrix solution variables 
   deallocate(tvel)
   deallocate(uindx,corr,usav)
@@ -695,8 +694,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   ! will simply be included as another option within that subroutine) 
   real (kind = dp), dimension(:,:),   intent(in)  :: beta 
 
-
-!whl - to do - Merge whichbabc with whichbtrc?
   integer, intent(in) :: whichbabc
   integer, intent(in) :: whichefvs
   integer, intent(in) :: whichresid
@@ -734,11 +731,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
   nonlinear = whichnonlinear
-
-!whl - Moved initialization stuff to glam_velo_fordsiapstr_init
-
-!whl - Took these out of initialization because these will change
-!      for prognostic thickness
 
   ! *sfp** geometric 1st deriv. for generic input variable 'ipvr',
   !      output as 'opvr' (includes 'upwinding' for boundary values)
@@ -825,8 +817,6 @@ subroutine JFNK                 (ewn,      nsn,    upn,  &
   allocate( F(2*pcgsize(1)), F_plus(2*pcgsize(1)), dx(2*pcgsize(1)))
   allocate( wk1(2*pcgsize(1)), wk2(2*pcgsize(1)), rhs(2*pcgsize(1)))
   allocate( vv(2*pcgsize(1),img1), wk(2*pcgsize(1), img))
-
-  !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
 
   call ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
                          uk_1, vk_1, uvel, vvel, g_flag) ! jfl_20100430
@@ -1081,15 +1071,41 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
   case(0)       ! calculate eff. visc. using eff. strain rate
 
+ 
   if (1 == counter) then
-    do ns = 2,nsn-1; do ew = 2,ewn-1
-    if (thck(ew,ns) > 0.0_dp) then
-      ! this is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n),
-      ! which is averaged to midpoints in the vertical (i.e. it lives on a staggered 
-      ! grid in the vertical, which is the case for "efvs" as well).
-      forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
-    end if; end do; end do
-  end if
+
+!whl - If temp and flwa live on the staggered vertical grid (like the effective viscosity),
+!      then the size of flwa is (upn-1), and vertical averaging of flwa is not needed here.
+
+     if (size(flwa,1)==upn-1) then   ! temperature and flwa live on staggered vertical grid
+
+        do ns = 2,nsn-1
+        do ew = 2,ewn-1
+           if (thck(ew,ns) > 0.0_dp) then
+              ! This is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n).
+              ! If both temperature and eff. visc. live on a staggered grid in the vertical, then
+              !  no vertical averaging is needed.
+              flwafact(1:upn-1,ew,ns) = 0.5_dp * flwa(1:upn-1,ew,ns)**p1
+           end if
+        end do
+        end do
+
+     else  ! size(flwa,1)=upn; temperature and flwa live on unstaggered vertical grid
+
+       do ns = 2,nsn-1
+       do ew = 2,ewn-1
+          if (thck(ew,ns) > 0.0_dp) then
+             ! this is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n),
+             ! which is averaged to midpoints in the vertical (i.e. it lives on a staggered 
+             ! grid in the vertical, which is the case for "efvs" as well).
+             forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
+          end if
+       end do
+       end do
+
+     end if   ! present(flwa_vstag)
+
+  endif       ! counter
 
   do ns = 2,nsn-1
       do ew = 2,ewn-1
@@ -1468,12 +1484,11 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
                  dusrfdew, dthckdew, d2usrfdew2, d2thckdew2,     &
                  dusrfdns, dthckdns, d2usrfdns2, d2thckdns2,     &
                  d2usrfdewdns, d2thckdewdns, dlsrfdew, dlsrfdns, &
-                 stagthck, whichbabc,            &
+                 stagthck, whichbabc,                            &
                  uindx, umask,                                   &
                  lsrf, topg, minTauf, flwa, beta, btraction,     &
                  vtp, utp, nu1, nu2, g_flag,                     &
-                 F, L2norm, matrixA, matrixC )
-
+                 F, L2norm, matrixA, matrixC)
 
   ! Calculates either F(x) or F(x+epsilon*vect) for the JFNK method
   ! Recall that x=[v,u]
@@ -1510,7 +1525,6 @@ subroutine calc_F (ewn, nsn, upn, stagsigma, counter,            &
   real (kind = dp), dimension(:,:,:), intent(inout) :: efvs, btraction
   real (kind = dp), dimension(:,:,:), intent(in) :: uvel, vvel, flwa
            
-                                         
     call findefvsstr(ewn,  nsn,  upn,       &
                      stagsigma,  counter,  &
                      whichefvs,  efvs,     &

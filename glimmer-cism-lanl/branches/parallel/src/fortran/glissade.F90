@@ -37,6 +37,8 @@
 
   module glissade
 
+!whl - This module will probably be removed soon.
+
     use glimmer_global, only: sp, dp
     use glissade_constants
     use glide_deriv
@@ -51,7 +53,7 @@
     contains
 
 !****************************************************************************
-!lipscomb - For now, this subroutine is just a wrapper for init_remap 
+!whl - For now, this subroutine is just a wrapper for init_remap 
 
   subroutine init_glissade(model)
 
@@ -488,10 +490,10 @@
           ! Reduces to 1st order where needed to preserve monotonicity
           !------------------------------------------------------------
  
-          call vertical_remap(ewn,      nsn,       &
-                              ntrace,   nlyr,      &
-                              zi1,      zi2,       &
-                              workt)
+          call glissade_vertical_remap(ewn,      nsn,       &
+                                       ntrace,   nlyr,      &
+                                       zi1,      zi2,       &
+                                       workt)
  
           if (vert_conservation_check) then
              ! compute sum of h*tracer for each column
@@ -607,10 +609,10 @@
 !****************************************************************************
 !lipscomb - Later, this subroutine will be moved to a lower level.
 
-  subroutine vertical_remap(ewn,      nsn,       &
-                            ntrace,   nlyr,      &
-                            zi1,      zi2,       &
-                            trcr)
+  subroutine glissade_vertical_remap(ewn,      nsn,       &
+                                     ntrace,   nlyr,      &
+                                     zi1,      zi2,       &
+                                     trcr)
  
     ! Conservative remapping of tracer fields from one set of vertical 
     ! coordinates to another.  Tracer fields are reconstructed linearly
@@ -815,7 +817,7 @@
           enddo         ! nt
        enddo            ! k
  
-  end subroutine vertical_remap
+  end subroutine glissade_vertical_remap
 
 !*************************************************************************
 

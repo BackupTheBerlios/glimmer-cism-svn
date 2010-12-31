@@ -184,7 +184,7 @@ module glide_types
     !*FD \item[1] Do full temperature solution (also find vertical velocity
     !*FD and apparent vertical velocity)
     !*FD \item[2] Do NOTHING - hold temperatures steady at initial value  
-    !*FD \item[3] Use remapping to advect temperature (no advection in glide_temp)
+    !*FD \item[3] Use remapping to advect temperature (no advection by glide_temp)
     !*FD \end{description}
 
     integer :: whichflwa = 0
@@ -736,8 +736,11 @@ module glide_types
     real(dp),dimension(:),pointer :: sigma => null() !*FD Sigma values for vertical spacing of 
                                                      !*FD model levels
     real(dp),dimension(:),pointer :: stagsigma => null() !*FD Staggered values of sigma (layer midpts)
+
     integer :: profile_period = 100            !*FD profile frequency
-    integer :: ndiag = 1000                    !*FD diagnostic frequency
+    integer :: ndiag = 9999999                 !*FD diagnostic frequency
+    integer :: idiag = 1                       !*FD grid indices for diagnostic point
+    integer :: jdiag = 1
   end type glide_numerics
   
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1062,12 +1065,12 @@ contains
     call coordsystem_allocate(model%general%ice_grid, model%temper%lcondflx)
     call coordsystem_allocate(model%general%ice_grid, model%temper%dissipcol)
 
-
-!whl - For whichtemp = TEMP_ADV, temperature and flow factor live on the staggered
+!whl - For whichtemp = TEMP_REMAP_ADV, temperature and flow factor live on the staggered
 !      vertical grid.  In this case, temperature and flwa are defined at the
-!      midpoint of each of layers 1:upn-1.  In adddition, the temperature 
+!      midpoint of each of layers 1:upn-1.  The temperature (but not flwa)
 !      is defined at the upper surface (k = 0) and lower surface (k = upn).
-
+!whl - Since there is no temperature advection in glide_temp, the extra rows and 
+!      columns (0, ewn+1, nsn+1) in the horizontal are not needed.
     if (model%options%whichtemp == TEMP_REMAP_ADV) then
        allocate(model%temper%temp(0:upn,1:ewn,1:nsn)); model%temper%temp = 0.0
        call coordsystem_allocate(model%general%ice_grid, upn-1, model%temper%flwa)

@@ -54,6 +54,9 @@ program simple_glide
   use glimmer_config
   use glimmer_commandline
   use glimmer_writestats_module
+
+  use glide_diagnostics
+
   implicit none
 
 #ifdef GPTL
@@ -75,6 +78,8 @@ program simple_glide
   real(kind=rk) time
   real(kind=dp) t1,t2
   integer clock,clock_rate,ret
+
+  integer :: tstep_count
 
   ! start gptl
 #ifdef GPTL
@@ -137,11 +142,20 @@ program simple_glide
   call simple_surftemp(climate,model,time)
   call spinup_lithot(model)
 
+  tstep_count = 0
+
   do while(time.le.model%numerics%tend)
      call glide_tstep_p1(model,time)
      call glide_tstep_p2(model)
      call glide_tstep_p3(model)
      ! override masking stuff for now
+
+     tstep_count = tstep_count + 1
+     if (mod(tstep_count, model%numerics%ndiag) == 0) then
+        call glide_write_diag(model, time, model%numerics%idiag, &
+                                           model%numerics%jdiag )
+     endif
+
      time = time + model%numerics%tinc
      call simple_massbalance(climate,model,time)
      call simple_surftemp(climate,model,time)     
