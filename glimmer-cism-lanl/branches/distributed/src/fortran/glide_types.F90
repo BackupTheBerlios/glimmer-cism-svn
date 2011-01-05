@@ -96,8 +96,9 @@ module glide_types
 
   !Constants that describe the options available
   integer, parameter :: TEMP_SURFACE_AIR_TEMP = 0
-  integer, parameter :: TEMP_FULL_SOLUTION = 1
+  integer, parameter :: TEMP_FULL = 1
   integer, parameter :: TEMP_STEADY = 2
+  integer, parameter :: TEMP_REMAP_ADV = 3
 
   integer, parameter :: FLWA_PATERSON_BUDD = 0
   integer, parameter :: FLWA_PATERSON_BUDD_CONST_TEMP = 1
@@ -183,6 +184,7 @@ module glide_types
     !*FD \item[1] Do full temperature solution (also find vertical velocity
     !*FD and apparent vertical velocity)
     !*FD \item[2] Do NOTHING - hold temperatures steady at initial value  
+    !*FD \item[3] Use remapping to advect temperature (no advection by glide_temp)
     !*FD \end{description}
 
     integer :: whichflwa = 0
@@ -233,7 +235,7 @@ module glide_types
     !*FD \begin{description}
     !*FD \item[0] Set equal to zero everywhere
     !*FD \item[1] Set (non--zero) constant
-    !*FD \item[2] Set to (non--zero) constant where where temperature is at pressure melting point of ice, otherwise to zero
+    !*FD \item[2] Set to (non--zero) constant where temperature is at pressure melting point of ice, otherwise to zero
     !*FD \item[3] \texttt{tanh} function of basal water depth 
     !*FD \end{description}
 
@@ -339,15 +341,13 @@ module glide_types
     !*FD \item[2] mean value
     !*FD \begin{description}
 
-!end whlmod
-
     !*sfp* added
     integer :: which_disp = 0
     !*FD Flag that indicates method for computing the dissipation during the temperature calc.
     !*FD \begin{description}
     !*FD \item[0] for 0-order SIA approx
-    !*FD \item[1] for 1-st order solution (e.g. Blatter-Pattyn)
-    !*FD \item[2] for 1-st order depth-integrated solution (SSA)
+    !*FD \item[1] for 1st order solution (e.g. Blatter-Pattyn)
+    !*FD \item[2] for 1st order depth-integrated solution (SSA)
     !*FD \begin{description}
 
     !*sfp* added
@@ -629,15 +629,26 @@ module glide_types
   type glide_temper
 
     !*FD Holds fields relating to temperature.
-
-    real(dp),dimension(:,:,:),pointer :: temp => null() !*FD Three-dimensional temperature field.
-    real(dp),dimension(:,:),  pointer :: bheatflx => null() !*FD basal heat flux
+    !whl - In standard Glide, temp and flwa live on the unstaggered vertical grid
+    !      at layer interfaces.  But if whichtemp = 3 (remapping advection of 
+    !      temperature), temp and flwa live on the staggered vertical grid, 
+    !      at layer midpoints.
+    !whl - added some heat flux terms: bfricflx, ucondflx, lcondflx, dissipcol
+    !      Note: bheatflx, ucondflx, and lcondflx are defined as positive down,
+    !            so they will generally be < 0.  
+    !      However, bfricflx and dissipcol are defined to be >= 0.
+    real(dp),dimension(:,:,:),pointer :: temp => null() !*FD 3D temperature field.
+    real(dp),dimension(:,:),  pointer :: bheatflx => null() !*FD basal heat flux (geothermal)
     real(dp),dimension(:,:,:),pointer :: flwa => null() !*FD Glenn's $A$.
     real(dp),dimension(:,:),  pointer :: bwat => null() !*FD Basal water depth
     real(dp),dimension(:,:),  pointer :: bwatflx => null() !*FD Basal water flux 
     real(dp),dimension(:,:),  pointer :: stagbwat => null() !*FD Basal water depth in velo grid
     real(dp),dimension(:,:),  pointer :: bmlt => null() !*FD Basal melt-rate
     real(dp),dimension(:,:),  pointer :: bmlt_tavg => null() !*FD Basal melt-rate
+    real(dp),dimension(:,:),  pointer :: bfricflx => null() !*FD basal heat flux from friction
+    real(dp),dimension(:,:),  pointer :: ucondflx => null() !*FD conductive heat flux at upper sfc
+    real(dp),dimension(:,:),  pointer :: lcondflx => null() !*FD conductive heat flux at lower sfc
+    real(dp),dimension(:,:),  pointer :: dissipcol => null() !*FD total heat dissipation in column
     
     integer  :: niter   = 0      !*FD
     real(sp) :: perturb = 0.0    !*FD
@@ -725,8 +736,11 @@ module glide_types
     real(dp),dimension(:),pointer :: sigma => null() !*FD Sigma values for vertical spacing of 
                                                      !*FD model levels
     real(dp),dimension(:),pointer :: stagsigma => null() !*FD Staggered values of sigma (layer midpts)
+
     integer :: profile_period = 100            !*FD profile frequency
-    integer :: ndiag = 1000                    !*FD diagnostic frequency
+    integer :: ndiag = 9999999                 !*FD diagnostic frequency
+    integer :: idiag = 1                       !*FD grid indices for diagnostic point
+    integer :: jdiag = 1
   end type glide_numerics
   
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -846,7 +860,7 @@ module glide_types
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
   type glide_paramets
-    real(dp),dimension(5) :: bpar = (/ 2.0d0, 10.0d0, 10.0d0, 0.0d0, 1.0d0 /)
+    real(dp),dimension(5) :: bpar = (/ 0.2d0, 0.5d0, 0.0d0 ,1.0d-2, 1.0d0/)
     real(dp) :: btrac_const = 0.d0 ! m yr^{-1} Pa^{-1} (gets scaled during init)
     real(dp) :: btrac_slope = 0.0d0 ! Pa^{-1} (gets scaled during init)
     real(dp) :: btrac_max = 0.d0  !  m yr^{-1} Pa^{-1} (gets scaled during init)
@@ -972,6 +986,10 @@ contains
     !*FD \item \texttt{flwa(upn,ewn,nsn))}
     !*FD \item \texttt{bwat(ewn,nsn))}
     !*FD \item \texttt{bmlt(ewn,nsn))}
+    !*FD \item \texttt{bfricflx(ewn,nsn))}
+    !*FD \item \texttt{ucondflx(ewn,nsn))}
+    !*FD \item \texttt{lcondflx(ewn,nsn))}
+    !*FD \item \texttt{dissipcol(ewn,nsn))}
     !*FD \end{itemize}
 
     !*FD In \texttt{model\%velocity}:
@@ -1052,14 +1070,30 @@ contains
     allocate(model%general%y0(nsn-1))!; model%general%y0 = 0.0
     allocate(model%general%x1(ewn))!; model%general%x1 = 0.0
     allocate(model%general%y1(nsn))!; model%general%y1 = 0.0
-    allocate(model%temper%temp(upn,0:ewn+1,0:nsn+1)); model%temper%temp = 0.0
-    call coordsystem_allocate(model%general%ice_grid, upn, model%temper%flwa)
     call coordsystem_allocate(model%general%ice_grid, model%temper%bheatflx)
     call coordsystem_allocate(model%general%ice_grid, model%temper%bwat)
     call coordsystem_allocate(model%general%ice_grid, model%temper%bwatflx)
     call coordsystem_allocate(model%general%velo_grid, model%temper%stagbwat)
     call coordsystem_allocate(model%general%ice_grid, model%temper%bmlt)
     call coordsystem_allocate(model%general%ice_grid, model%temper%bmlt_tavg)
+    call coordsystem_allocate(model%general%ice_grid, model%temper%bfricflx)
+    call coordsystem_allocate(model%general%ice_grid, model%temper%ucondflx)
+    call coordsystem_allocate(model%general%ice_grid, model%temper%lcondflx)
+    call coordsystem_allocate(model%general%ice_grid, model%temper%dissipcol)
+
+!whl - For whichtemp = TEMP_REMAP_ADV, temperature and flow factor live on the staggered
+!      vertical grid.  In this case, temperature and flwa are defined at the
+!      midpoint of each of layers 1:upn-1.  The temperature (but not flwa)
+!      is defined at the upper surface (k = 0) and lower surface (k = upn).
+!whl - Since there is no temperature advection in glide_temp, the extra rows and 
+!      columns (0, ewn+1, nsn+1) in the horizontal are not needed.
+    if (model%options%whichtemp == TEMP_REMAP_ADV) then
+       allocate(model%temper%temp(0:upn,1:ewn,1:nsn)); model%temper%temp = 0.0
+       call coordsystem_allocate(model%general%ice_grid, upn-1, model%temper%flwa)
+    else
+       allocate(model%temper%temp(upn,0:ewn+1,0:nsn+1)); model%temper%temp = 0.0
+       call coordsystem_allocate(model%general%ice_grid, upn, model%temper%flwa)
+    endif
 
     allocate(model%lithot%temp(1:ewn,1:nsn,model%lithot%nlayer)); model%lithot%temp = 0.0
     call coordsystem_allocate(model%general%ice_grid, model%lithot%mask)
@@ -1188,8 +1222,8 @@ contains
        allocate(model%numerics%sigma(upn))
     endif
 
+    !whl - to do - might be useful to change to (0:upn)
     allocate(model%numerics%stagsigma(upn-1))
-
     
     ! allocate memory for grounding line
     allocate (model%ground%gl_ew(ewn-1,nsn))
@@ -1235,7 +1269,6 @@ contains
     deallocate(model%general%x1) 
     deallocate(model%general%y1) 
 
-
     deallocate(model%temper%temp)
     deallocate(model%temper%flwa)
     deallocate(model%temper%bheatflx)
@@ -1244,7 +1277,10 @@ contains
     deallocate(model%temper%stagbwat)
     deallocate(model%temper%bmlt)
     deallocate(model%temper%bmlt_tavg)
-
+    deallocate(model%temper%bfricflx)
+    deallocate(model%temper%ucondflx)
+    deallocate(model%temper%lcondflx)
+    deallocate(model%temper%dissipcol)
     
     deallocate(model%ground%gl_ns)
     deallocate(model%ground%gl_ew)

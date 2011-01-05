@@ -335,6 +335,13 @@ average:       1
 load:          1
 hot:           1
 
+[bfricflx]
+dimensions:    time, y1, x1
+units:         watt/meter2
+long_name:     basal friction flux
+data:          data%temper%bfricflx
+coordinates:   lon lat
+
 [bheatflx]
 dimensions:    time, y1, x1
 units:         watt/meter2

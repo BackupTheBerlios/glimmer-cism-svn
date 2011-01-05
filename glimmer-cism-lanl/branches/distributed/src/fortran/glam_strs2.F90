@@ -121,7 +121,7 @@ contains
 
 subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
                                        dew,   dns,           &
-                                       sigma, stagsigma )
+                                       sigma)
 
     ! Allocate arrays and initialize variables.
     implicit none
@@ -130,7 +130,6 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     real (kind = dp), intent(in) :: dew, dns
 
     real (kind = dp), dimension(:), intent(in)  :: sigma
-    real (kind = dp), dimension(:), intent(out)  :: stagsigma
 
     integer :: up
 
@@ -150,7 +149,8 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     ! not regularly spaced. 
     dup = (/ ( (sigma(2)-sigma(1)), up = 1, upn) /)
     dupm = - 0.25_dp / dup
-    stagsigma = (sigma(1:upn-1) + sigma(2:upn)) / 2.0_dp
+!whl - Moved stagsigma calculation to glide_setup module
+!!    stagsigma(1:upn-1) = (sigma(1:upn-1) + sigma(2:upn)) / 2.0_dp
 
     ! p1 = -1/n   - used with rate factor in eff. visc. def.
     ! p2 = (1-n)/2n   - used with eff. strain rate in eff. visc. def. 
@@ -632,7 +632,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
       end do
   end do
 
-
   ! de-allocation sparse matrix solution variables 
   deallocate(tvel)
   deallocate(uindx,corr,usav)
@@ -695,8 +694,6 @@ subroutine JFNK                 (model,umask,tstep)
   ! will simply be included as another option within that subroutine) 
   real (kind = dp), dimension(:,:)  ,pointer :: beta 
 
-
-!whl - to do - Merge whichbabc with whichbtrc?
   integer :: whichbabc
   integer :: whichefvs
   integer :: whichresid
@@ -731,6 +728,26 @@ subroutine JFNK                 (model,umask,tstep)
   ! AGS: partition information for distributed solves
   integer, allocatable, dimension(:) :: myIndices
   integer :: mySize = -1
+
+!  interface
+!    subroutine noxsolve(vectorSize,vector,v_container) bind(C,name='noxsolve')
+!      use ,intrinsic :: iso_c_binding
+!          integer(c_int)                :: vectorSize
+!          real(c_double)  ,dimension(*) :: vector
+!          type(c_ptr)                   :: v_container
+!      end subroutine noxsolve
+!
+!    subroutine noxinit(vectorSize,vector,comm,v_container) bind(C,name='noxinit')
+!      use ,intrinsic :: iso_c_binding
+!          integer(c_int)                :: vectorSize,comm
+!          real(c_double)  ,dimension(*) :: vector
+!          type(c_ptr)                   :: v_container
+!      end subroutine noxinit
+!
+!      subroutine noxfinish() bind(C,name='noxfinish')
+!       use ,intrinsic :: iso_c_binding
+!      end subroutine noxfinish
+!  end interface
 
   ewn = model%general%ewn
   nsn = model%general%nsn
@@ -773,11 +790,6 @@ subroutine JFNK                 (model,umask,tstep)
   ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
   nonlinear = whichnonlinear
-
-!whl - Moved initialization stuff to glam_velo_fordsiapstr_init
-
-!whl - Took these out of initialization because these will change
-!      for prognostic thickness
 
   ! *sfp** geometric 1st deriv. for generic input variable 'ipvr',
   !      output as 'opvr' (includes 'upwinding' for boundary values)
@@ -884,28 +896,6 @@ subroutine JFNK                 (model,umask,tstep)
   allocate( wk1(2*pcgsize(1)), wk2(2*pcgsize(1)), rhs(2*pcgsize(1)))
   allocate( vv(2*pcgsize(1),img1), wk(2*pcgsize(1), img))
 
-  !whl - Removed subroutine findbtrcstr; superseded by calcbetasquared
-
-!        interface
-!         subroutine noxsolve(vectorSize,vector,v_container) bind(C,name='noxsolve')
-!          use ,intrinsic :: iso_c_binding
-!              integer(c_int)                :: vectorSize
-!              real(c_double)  ,dimension(*) :: vector
-!              type(c_ptr)                   :: v_container
-!          end subroutine noxsolve
-
-!         subroutine noxinit(vectorSize,vector,comm,v_container) bind(C,name='noxinit')
-!          use ,intrinsic :: iso_c_binding
-!              integer(c_int)                :: vectorSize,comm
-!              real(c_double)  ,dimension(*) :: vector
-!              type(c_ptr)                   :: v_container
-!          end subroutine noxinit
-
-!         subroutine noxfinish() bind(C,name='noxfinish')
-!          use ,intrinsic :: iso_c_binding
-!         end subroutine noxfinish
-!        end interface
-  
  call init_resid_type(resid_object, model, uindx, umask, d2thckdewdns, d2usrfdewdns, &
       pcgsize, gx_flag, matrixA, matrixC, L2norm, ewn, nsn)
     fptr => resid_object
@@ -917,19 +907,19 @@ subroutine JFNK                 (model,umask,tstep)
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
 
+  calcoffdiag = .false.    ! save off diag matrix components
+
 !==============================================================================
 ! Beginning of Newton loop. Solves F(x) = 0 for x where x = [v, u] and
 !                                                       F = [Fv(u,v), Fu(u,v)] 
 !==============================================================================
 
-!! UNCOMMENT these lines to switch to NOX's JFNK
-!! AGS: To Do:  send in distributed xk_1, or myIndices array, for distributed nox
-!  print*,"Calling NOX for JFNK"
+! UNCOMMENT these lines to switch to NOX's JFNK
+! AGS: To Do:  send in distributed xk_1, or myIndices array, for distributed nox
 !  call noxinit(xk_size, xk_1, 1, c_ptr_to_object)
 !  call noxsolve(xk_size, xk_1, c_ptr_to_object)
 !  call noxfinish()
 !  kmax = 0     ! turn off native JFNK below
-
 !==============================================================================
 ! calculate F(u^k-1,v^k-1)
 !==============================================================================
@@ -937,7 +927,7 @@ subroutine JFNK                 (model,umask,tstep)
   do k = 1, kmax
 
 !    calcoffdiag = .true.    ! save off diag matrix components
-    calcoffdiag = .false.    ! save off diag matrix components
+!    calcoffdiag = .false.    ! save off diag matrix components
 
     call calc_F (xk_1, F, xk_size, c_ptr_to_object)
 
@@ -946,7 +936,7 @@ subroutine JFNK                 (model,umask,tstep)
    matrixA = fptr%matrixA
    matrixC = fptr%matrixC
 
-    calcoffdiag = .false.    ! next time calling calc_F, DO NOT save off diag matrix components
+!    calcoffdiag = .false.    ! next time calling calc_F, DO NOT save off diag matrix components
 
     L2norm_wig = sqrt(DOT_PRODUCT(F,F)) ! with ghost
 
@@ -1034,17 +1024,12 @@ subroutine JFNK                 (model,umask,tstep)
 
   end do
 
+! (need to update these values from fptr%uvel,vvel,stagthck etc)
+
    call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel, pcgsize(1) )
    call ghost_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, ughost, vghost, pcgsize(1) )
 
   print*,"Solution vector norm after JFNK = " ,sqrt(DOT_PRODUCT(xk_1,xk_1))
-
-
-!  deallocate(resid_object%ui )
-!  deallocate(resid_object%um ) 
-!  deallocate(resid_object%d2thckcross )
-!  deallocate(resid_object%d2thckcross ) 
-!  deallocate(resid_object%gxf )
 
   do ns = 1,nsn-1
       do ew = 1,ewn-1
@@ -1157,15 +1142,8 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
   case(0)       ! calculate eff. visc. using eff. strain rate
 
+ 
   if (1 == counter) then
-    do ns = 2,nsn-1; do ew = 2,ewn-1
-    if (thck(ew,ns) > 0.0_dp) then
-      ! this is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n),
-      ! which is averaged to midpoints in the vertical (i.e. it lives on a staggered 
-      ! grid in the vertical, which is the case for "efvs" as well).
-      forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
-    end if; end do; end do
-  end if
 
 !  if (main_task) then
 !    print *, 'nsn=', nsn
@@ -1176,6 +1154,39 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 !    print *, 'efvs shape =', shape(efvs)
 !    print *, 'flwafact shape =', shape(flwafact)
 !  endif
+
+!whl - If temp and flwa live on the staggered vertical grid (like the effective viscosity),
+!      then the size of flwa is (upn-1), and vertical averaging of flwa is not needed here.
+
+     if (size(flwa,1)==upn-1) then   ! temperature and flwa live on staggered vertical grid
+
+        do ns = 2,nsn-1
+        do ew = 2,ewn-1
+           if (thck(ew,ns) > 0.0_dp) then
+              ! This is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n).
+              ! If both temperature and eff. visc. live on a staggered grid in the vertical, then
+              !  no vertical averaging is needed.
+              flwafact(1:upn-1,ew,ns) = 0.5_dp * flwa(1:upn-1,ew,ns)**p1
+           end if
+        end do
+        end do
+
+     else  ! size(flwa,1)=upn; temperature and flwa live on unstaggered vertical grid
+
+       do ns = 2,nsn-1
+       do ew = 2,ewn-1
+          if (thck(ew,ns) > 0.0_dp) then
+             ! this is the rate factor term in the expression for the eff. visc: 1/2*A^(-1/n),
+             ! which is averaged to midpoints in the vertical (i.e. it lives on a staggered 
+             ! grid in the vertical, which is the case for "efvs" as well).
+             forall (up = 1:upn-1) flwafact(up,ew,ns) = 0.5_dp * (sum(flwa(up:up+1,ew,ns)) / 2.0_dp)**p1
+          end if
+       end do
+       end do
+
+     end if   ! present(flwa_vstag)
+
+  endif       ! counter
 
   do ns = 2,nsn-1
       do ew = 2,ewn-1
@@ -1663,7 +1674,6 @@ end subroutine apply_precond_nox
 !***********************************************************************
 
  subroutine calc_F (xtp, F, xk_size, c_ptr_to_object) bind(C, name='calc_F')
-! subroutine calc_F (xtp, F, xk_size, c_ptr_to_object, matrixA, matrixC) bind(C, name='calc_F')
 
   ! Calculates either F(x) or F(x+epsilon*vect) for the JFNK method
   ! Recall that x=[v,u]
@@ -1846,6 +1856,10 @@ end subroutine apply_precond_nox
 !   call res_vect_jfnk(matrixA, matrixC, vectx, rhsx, pcgsize(1), 2*pcgsize(1), gxf, L2square, whatsparse)
 !    L2norm = L2square
 !    F = vectx 
+
+
+    call solver_postprocess_jfnk( ewn, nsn, upn, ui, xtp, vvel, uvel, ghostbvel, pcgsize(1) )
+
 
   fptr%model%velocity_hom%btraction => btraction(:,:,:)
   fptr%model%velocity_hom%btraction => btraction(:,:,:)
@@ -2064,12 +2078,12 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
           (abs(corr(:,:,:,new(pt),pt)) * abs(corr(:,:,:,old(pt),pt)) + small)) > &
            ssthres .and. corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt) /= 0.0_dp )
 
-      mindcrshstr = usav(:,:,:,pt) + &
-                    corr(:,:,:,new(pt),pt) * abs(corr(:,:,:,old(pt),pt)) / &
-                    abs(corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt))
+!      mindcrshstr = usav(:,:,:,pt) + &
+!                    corr(:,:,:,new(pt),pt) * abs(corr(:,:,:,old(pt),pt)) / &
+!                    abs(corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt))
 
-!      mindcrshstr = vel; ! jfl uncomment this and comment out line above 
-!                         ! to avoid the unstable manifold correction
+      mindcrshstr = vel; ! jfl uncomment this and comment out line above 
+                         ! to avoid the unstable manifold correction
 
     elsewhere
 

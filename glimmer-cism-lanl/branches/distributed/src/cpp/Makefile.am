@@ -12,19 +12,8 @@ CLEANFILES = $(BUILT_SOURCES)
 libcalltrilinos_a_SOURCES = solveTriadMatrixWithTrilinos.cpp \
                             trilinosLinearSolver.cpp \
                             matrixInterface.cpp \
-                            trilinosPartition.cpp \
-                            trilinosNoxSolver.cpp \
-                            trilinosModelEvaluator.cpp
-
-libcalltrilinos_a_DEPENDENCIES = matrixInterface.hpp \
-                                 trilinosModelEvaluator.hpp
-
-#libcalltrilinos_a_SOURCES = solveTriadMatrixWithTrilinos.cpp \
-#                            trilinosLinearSolver.cpp \
-#                            matrixInterface.cpp \
-#                            trilinosPartition.cpp 
-#
-#libcalltrilinos_a_DEPENDENCIES = matrixInterface.hpp 
+                            trilinosPartition.cpp
+libcalltrilinos_a_DEPENDENCIES = matrixInterface.hpp
 
 ALL_SRC= $(libcalltrilinoa_a_SOURCES)
 
