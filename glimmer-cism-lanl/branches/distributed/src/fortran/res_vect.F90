@@ -2,6 +2,7 @@
 
 subroutine res_vect ( matrix, uvec, bvec, nu, g_flag, L2square, whatsparse)
 
+use parallel
 
 use glimmer_paramets, only : dp
 use glimmer_sparse_type
@@ -40,7 +41,7 @@ real (kind = dp) :: scale_ghosts = 0.0d0
       else 
         call matvecwithtrilinos(uvec, Au_b_wig);
       endif 
-      
+
       do i = 1, nu
          Au_b_wig(i) = Au_b_wig(i) - bvec(i)
       enddo
@@ -58,6 +59,9 @@ real (kind = dp) :: scale_ghosts = 0.0d0
             L2square = L2square + scale_ghosts * Au_b_wig(i) * Au_b_wig(i)
          endif
       end do
+
+      !JEFF Sum L2square across nodes
+      L2square = parallel_reduce_sum(L2square)
 
       return
 

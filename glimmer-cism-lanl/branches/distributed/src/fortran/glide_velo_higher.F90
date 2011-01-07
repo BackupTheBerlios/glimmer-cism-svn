@@ -187,7 +187,6 @@ contains
                                       model%velocity_hom%uflx,    model%velocity_hom%vflx) 
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
-           !TREY
            if ( model%options%which_ho_nonlinear == HO_NONLIN_PICARD ) then ! Picard (standard solver)
 
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
@@ -232,7 +231,7 @@ contains
 
         model%velocity_hom%velnorm = sqrt(model%velocity_hom%uvel**2 + model%velocity_hom%vvel**2)
         model%velocity_hom%is_velocity_valid = .true.
-        
+
     end subroutine
 
     subroutine velo_hom_pattyn(ewn, nsn, upn, dew, dns, sigma, &

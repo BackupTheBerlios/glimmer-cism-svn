@@ -18,6 +18,11 @@ the Payne/Price implementation.  The "PP" version currently has evolution=0
 so the ice sheet evolves, which exercises the new solvers being developed and 
 assessed with this test case. 
 
+hump_mpi.PP.config Notes: (Jeff, 1/7/11)
+This configuration file is configured to work with parallel_mpi.F90 on Jaguar.
+We have temperature advection turned off in order to skip code being rewritten
+by Bill.
+
 The script performs the following three steps:
 1. Create a netCDF input file for Glimmer.
 2. Run Glimmer, creating a netCDF output file.

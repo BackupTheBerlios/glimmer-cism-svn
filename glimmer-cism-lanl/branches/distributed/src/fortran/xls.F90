@@ -14,7 +14,7 @@ contains
 !!$        end do
 !!$
 !!$        close(11)
-        call parallel_print(fname,data)
+        call distributed_print(fname,data)
     end subroutine
 
     subroutine write_xls_int(fname, data)
@@ -29,7 +29,7 @@ contains
 !!$        end do
 !!$
 !!$        close(11)
-        call parallel_print(fname,data)
+        call distributed_print(fname,data)
     end subroutine
 
 
@@ -46,7 +46,7 @@ contains
 !!$            end do
 !!$        end do
 !!$        close(11)
-        call parallel_print(fname,data)
+        call distributed_print(fname,data)
     end subroutine
 
     subroutine write_sparse_system(name, ia, ja, a,nelt)

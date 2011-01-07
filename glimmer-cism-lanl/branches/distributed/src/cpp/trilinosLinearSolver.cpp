@@ -19,6 +19,8 @@ static Teuchos::RCP<TrilinosMatrix_Interface> interface;
 static Teuchos::RCP<Epetra_CrsMatrix> savedMatrix_A;
 static Teuchos::RCP<Epetra_CrsMatrix> savedMatrix_C;
 
+bool returnGlobalVec = true;
+
 extern "C" {
   //================================================================
   //================================================================
@@ -39,6 +41,8 @@ extern "C" {
     interface = Teuchos::rcp(new TrilinosMatrix_Interface(rowMap, bandwidth, comm));
   }
 
+  void returnownedvector_() { returnGlobalVec = false;}
+
   //============================================================
   // RN_20091118: This is to update the matrix with new entries.
   //============================================================
@@ -52,7 +56,7 @@ extern "C" {
 
     if (!interface->isSparsitySet()) {
       // The matrix has not been "FillComplete()"ed. First fill of time step.
-      int ierr = matrix.InsertGlobalValues(rowInd, 1, &val, &colInd);
+	    int ierr = matrix.InsertGlobalValues(rowInd, 1, &val, &colInd);
       if (ierr<0) {cout << "Error Code for " << rowInd << "  " << colInd << "  = ("<< ierr <<")"<<endl; exit(1);}
       else if (ierr>0) cout << "Warning Code for " << rowInd << "  " << colInd << "  = ("<< ierr <<")"<<endl;
     }
@@ -107,8 +111,10 @@ extern "C" {
   // RN_20091118: This is to make calls to Trilinos solvers.
   //========================================================
   void solvewithtrilinos_(double* rhs, double* answer, double& elapsedTime) {
-    //cout << " ======================================" << endl;
-    //cout << " IN SOLVE()" << endl;
+    // cout << " ======================================" << endl;
+    // cout << " IN SOLVE()" << endl;
+    // Epetra_CrsMatrix& matrix = *(interface->getOperator());
+    // matrix.Print(cout);
 
     // RN_20100211: Start timing
     Teuchos::Time linearTime("LinearTime");
@@ -129,12 +135,13 @@ extern "C" {
     // Inserting values into the rhs: "-1" for Fortran to C Numbering
     double *myGlobalValues = new double[numMyElements];
     for (int j=0; j<numMyElements; ++j) {
-      myGlobalValues[j] = rhs[myGlobalElements[j] -1 ];
+        myGlobalValues[j] = rhs[myGlobalElements[j] -1 ];
     }
+
     ierr = b.ReplaceGlobalValues(numMyElements, &myGlobalValues[0],
 				 &myGlobalElements[0]);
-
 */
+
     Epetra_Vector x(map);
 
     Teuchos::ParameterList paramList;
@@ -148,11 +155,11 @@ extern "C" {
 
     Stratimikos::DefaultLinearSolverBuilder linearSolverBuilder;
 
- //   Teuchos::RCP<Epetra_Vector> epetraRhs = Teuchos::rcp(&b, false);
     Teuchos::RCP<Epetra_Vector> epetraSol = Teuchos::rcp(&x, false);
 
-
-    Teuchos::RCP<Epetra_Vector> epetraRhs = interface->getPartitionedVec(rhs);
+    Teuchos::RCP<Epetra_Vector> epetraRhs;
+    if (returnGlobalVec) epetraRhs = interface->getPartitionedVec(rhs);
+    else                 epetraRhs = Teuchos::rcp(new Epetra_Vector(View, map, rhs));
 
     Teuchos::RCP<const Thyra::LinearOpBase<double> >
       thyraOper = Thyra::epetraLinearOp(interface->getOperator());
@@ -177,28 +184,11 @@ extern "C" {
 
     thyraSol = Teuchos::null;
 
-/*
-#ifdef ONLY_RETURN_OWNED_VECTOR
-    x.ExtractCopy(answer);
-#else
-    // Import result to map with a Halo -- now the global problem
-    const Epetra_Map& answerMap = interface->getFullMap();
-    Epetra_Vector xExtra(answerMap); // local vector in each processor
-
-    // RN_20091218: Create an import map and then import the data to the
-    // local vector.
-    Epetra_Import import(answerMap, map);
-
-    xExtra.Import(x, import, Add);
-    xExtra.ExtractCopy(answer);
-#endif
-*/
-    interface->spreadVector(x, answer);
-
-    //delete[] myGlobalElements;
+    if (returnGlobalVec) interface->spreadVector(x, answer);
+    else                 x.ExtractCopy(answer);
 
     elapsedTime = linearTime.stop();
-//    *out << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
+    *out << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
 
     //cout << " ======================================" << endl;
   }
@@ -231,7 +221,9 @@ extern "C" {
     Teuchos::RCP<Epetra_Vector> epetra_x = interface->getPartitionedVec(x);
     Epetra_Vector y(map);
     interface->getOperator()->Multiply(false, *epetra_x, y);
-    interface->spreadVector(y, answer);
+
+    if (returnGlobalVec) interface->spreadVector(y, answer);
+    else                 y.ExtractCopy(answer);
   }
 
 } // extern"C"

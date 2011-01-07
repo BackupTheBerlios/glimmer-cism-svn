@@ -1008,6 +1008,7 @@ contains
 
   end subroutine calc_btrc
 
+#ifdef JEFFORIG
   subroutine calc_basal_shear(model)
     !*FD calculate basal shear stress: tau_{x,y} = -ro_i*g*H*d(H+h)/d{x,y}
     use glimmer_physcon, only : rhoi,grav
@@ -1018,6 +1019,21 @@ contains
     model%velocity%tau_x = -rhoi*grav*model%geomderv%stagthck
     model%velocity%tau_y = model%velocity%tau_x * model%geomderv%dusrfdns
     model%velocity%tau_x = model%velocity%tau_x * model%geomderv%dusrfdew
+  end subroutine calc_basal_shear
+#endif
+
+  subroutine calc_basal_shear(stagthck, dusrfdew, dusrfdns, tau_x, tau_y)
+    !*FD calculate basal shear stress: tau_{x,y} = -ro_i*g*H*d(H+h)/d{x,y}
+    use glimmer_physcon, only : rhoi,grav
+    implicit none
+    real(dp),dimension(:,:),intent(in) :: stagthck    !*FD Ice thickness (scaled)
+    real (dp),dimension(:,:),intent(in) :: dusrfdew, dusrfdns
+    real(dp),dimension(:,:),intent(out) :: tau_x
+    real(dp),dimension(:,:),intent(out) :: tau_y
+
+    tau_x = -rhoi*grav*stagthck
+    tau_y = tau_x * dusrfdns
+    tau_x = tau_x * dusrfdew
   end subroutine calc_basal_shear
 
 end module glide_velo

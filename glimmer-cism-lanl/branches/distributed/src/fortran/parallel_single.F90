@@ -33,6 +33,9 @@ module parallel
   integer,save :: global_ewn,global_nsn,local_ewn,local_nsn,own_ewn,own_nsn
   integer,save :: ewlb,ewub,nslb,nsub
 
+  ! global IDs
+  integer,parameter :: ProcsEW = 1
+
   integer,parameter :: staggered_lhalo = lhalo
   integer,parameter :: staggered_uhalo = 0
 
@@ -159,7 +162,6 @@ contains
     character(len=*) :: file
     ! begin
     write(0,*) "WARNING: not parallel in ",file," at line ",line
-    STOP
   end subroutine
 
   subroutine parallel_barrier
@@ -191,6 +193,32 @@ contains
     call mpi_finalize(ierror)
   end subroutine
 
+  function parallel_globalID(locns, locew, upstride)
+    ! Returns a unique ID for a given row and column reference that is identical across all processors.
+    ! For instance if Proc 2: (17,16) is the same global cell as Proc 3: (17,1), then the globalID will be the same for both.
+    ! These IDs are spaced upstride apart.  upstride = number of vertical layers.  Typically (upn) + number of ghost layers (2 = top and bottom)
+    integer,intent(IN) :: locns, locew, upstride
+    integer :: parallel_globalID
+    ! locns is local NS (row) grid index
+    ! locew is local EW (col) grid index
+    integer :: global_row, global_col, global_ID
+    character(len=40) :: local_coord
+
+    global_row = (locns - uhalo) + this_rank/ProcsEW * own_nsn
+    	! Integer division required for this_rank/ProcsEW
+    global_col = (locew - lhalo) + mod(this_rank, ProcsEW) * own_ewn
+        ! There are ProcsEW processors per row.
+
+    global_ID = ((global_row - 1) * global_ewn + (global_col - 1)) * upstride + 1
+
+    ! Testing Code
+    ! write(local_coord, "A13,I10.1,A2,I10.1,A1") " (NS, EW) = (", locns, ", ", locew, ")"
+	! write(*,*) "Processor reference ", this_rank, local_coord, " globalID = ", global_ID
+
+	!return value
+	parallel_globalID = global_ID
+  end function
+
   subroutine parallel_halo_integer_2d(a)
     implicit none
     integer,dimension(:,:) :: a
@@ -218,32 +246,41 @@ contains
 	endif 
   end subroutine
 
-  subroutine parallel_halo_verify_integer_2d(a)
+  function parallel_halo_verify_integer_2d(a)
     implicit none
     integer,dimension(:,:) :: a
+    logical :: parallel_halo_verify_integer_2d
 
     if (tasks >= 2) then
 		! Do nothing
 	endif 
-  end subroutine
 
-  subroutine parallel_halo_verify_real8_2d(a)
+	parallel_halo_verify_integer_2d = .TRUE.
+  end function
+
+  function parallel_halo_verify_real8_2d(a)
     implicit none
     real(8),dimension(:,:) :: a
+    logical :: parallel_halo_verify_real8_2d
 
     if (tasks >= 2) then
 		! Do nothing
 	endif 
-  end subroutine
 
-  subroutine parallel_halo_verify_real8_3d(a)
+	parallel_halo_verify_real8_2d = .TRUE.
+  end function
+
+  function parallel_halo_verify_real8_3d(a)
     implicit none
     real(8),dimension(:,:,:) :: a
+    logical :: parallel_halo_verify_real8_3d
 
     if (tasks >= 2) then
 		! Do nothing
 	endif 
-  end subroutine
+
+	parallel_halo_verify_real8_3d = .TRUE.
+  end function
 
   subroutine parallel_initialise
     use mpi 
@@ -311,6 +348,34 @@ contains
     close(u)
   end subroutine
 
+  function parallel_reduce_sum(x)
+    ! Sum x across all of the nodes.
+    ! In parallel_single mode just return x.
+    use mpi
+    implicit none
+    real(8) :: x, parallel_reduce_sum
+
+    parallel_reduce_sum = x
+    return
+  end function
+
+  function parallel_reduce_max(x)
+    ! Max x across all of the nodes.
+    ! In parallel_single mode just return x.
+    use mpi
+    implicit none
+    real(8) :: x, parallel_reduce_max
+
+    parallel_reduce_max = x
+    return
+  end function
+
+  subroutine parallel_set_trilinos_return_vect
+    ! Trilinos can return the full solution to each node or just the owned portion
+    ! For parallel_single mode the full solution is expected
+    ! This is the default value, so no action is required.
+  end subroutine
+
   subroutine parallel_show_minmax(label,values)
     implicit none
     character(*) :: label
@@ -323,10 +388,9 @@ contains
     implicit none
     integer :: line
     character(len=*) :: file
-    ! begin
     write(0,*) "STOP in ",file," at line ",line
-    ! stop
-    write(0,*) "RUNNING in parallel_single mode, so STOP IGNORED."
+    stop
+    ! write(0,*) "RUNNING in parallel_single mode, so STOP IGNORED."
   end subroutine
 
   subroutine parallel_temp_halo(a)

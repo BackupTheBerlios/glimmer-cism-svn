@@ -409,8 +409,8 @@ contains
 
         !write(*,*)"flwa", minval(flwa), maxval(flwa)
         call parallel_show_minmax("flwa",flwa)
-        call parallel_print("h",h)
-        call parallel_print("flwa",flwa)
+        ! call parallel_print("h",h)
+        ! call parallel_print("flwa",flwa)
 
 #ifdef DEBUG_FIELDS
         call write_xls("dzdx.txt",dzdx)

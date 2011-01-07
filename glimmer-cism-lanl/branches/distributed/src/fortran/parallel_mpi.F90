@@ -21,6 +21,48 @@ module parallel
   integer,save :: ewlb,ewub,nslb,nsub
   integer,save :: east,north,south,west
 
+  ! global IDs
+  integer,save :: ProcsEW
+
+  ! JEFF Declarations for undistributed variables on main_task.
+  ! Later move to separate module?  These are only temporary until code is completely distributed.
+  real(8),dimension(:,:,:),allocatable :: gathered_efvs  ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:,:),allocatable :: gathered_uvel  ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:,:),allocatable :: gathered_vvel  ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:),allocatable :: gathered_uflx    ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:),allocatable :: gathered_vflx    ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:,:),allocatable :: gathered_velnorm  ! Variable calculated in run_ho_diagnostic(), is this used?
+  real(8),dimension(:,:),allocatable :: gathered_thck    ! Used in horizontal_remap_in()
+  real(8),dimension(:,:),allocatable :: gathered_stagthck ! Used in horizontal_remap_in()
+  real(4),dimension(:,:),allocatable :: gathered_acab    ! Used in horizontal_remap_in()
+  real(8),dimension(:,:,:),allocatable :: gathered_temp  ! Used in horizontal_remap_in()
+  real(8),dimension(:,:),allocatable :: gathered_dusrfdew  ! Used in glide_stress()
+  real(8),dimension(:,:),allocatable :: gathered_dusrfdns  ! Used in glide_stress()
+  real(8),dimension(:,:),allocatable :: gathered_dthckdew  ! Used in glide_stress()
+  real(8),dimension(:,:),allocatable :: gathered_dthckdns  ! Used in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauxx   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauyy   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauxy   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauscalar   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauxz   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauyz   ! Calculated in glide_stress()
+  real(8),dimension(:,:),allocatable :: gathered_topg  ! Bedrock topology, Used in glide_set_mask()
+  integer,dimension(:,:),allocatable :: gathered_thkmask  ! Calculated in glide_set_mask()
+  real(8),dimension(:,:),allocatable :: gathered_marine_bc_normal  ! Calculated in glide_marine_margin_normal()
+  real(8),dimension(:,:,:),allocatable :: gathered_surfvel   ! Used in calc_gline_flux()
+  real(8),dimension(:,:),allocatable :: gathered_gline_flux   ! Calculated in calc_gline_flux()
+  real(8),dimension(:,:),allocatable :: gathered_ubas   ! Used in calc_gline_flux()
+  real(8),dimension(:,:),allocatable :: gathered_vbas   ! Used in calc_gline_flux()
+  real(8),dimension(:,:),allocatable :: gathered_relx   ! Used in glide_marinlim()
+  real(8),dimension(:,:,:),allocatable :: gathered_flwa   ! Used in glide_marinlim()
+  real(4),dimension(:,:),allocatable :: gathered_calving   ! Used in glide_marinlim()
+  real(4),dimension(:,:),allocatable :: gathered_backstress   ! Used in glide_marinlim()
+  real(8),dimension(:,:),allocatable :: gathered_usrf   ! Used in glide_marinlim()
+  logical,dimension(:,:),allocatable :: gathered_backstressmap ! Used in glide_marinlim()
+  real(8),dimension(:,:),allocatable :: gathered_tau_x   ! Calculated in calc_basal_shear()
+  real(8),dimension(:,:),allocatable :: gathered_tau_y   ! Calculated in calc_basal_shear()
+  real(8),dimension(:,:),allocatable :: gathered_lsrf   ! Used in glide_marinlim()
+
   interface broadcast
      module procedure broadcast_character
      module procedure broadcast_integer
@@ -32,12 +74,28 @@ module parallel
      module procedure broadcast_real8_1d
   end interface
 
+  interface distributed_gather_var
+     module procedure distributed_gather_var_integer_2d
+     module procedure distributed_gather_var_logical_2d
+     module procedure distributed_gather_var_real4_2d
+     module procedure distributed_gather_var_real4_3d
+     module procedure distributed_gather_var_real8_2d
+     module procedure distributed_gather_var_real8_3d
+  end interface
+
   interface distributed_get_var
      module procedure distributed_get_var_integer_2d
      module procedure distributed_get_var_real4_1d
      module procedure distributed_get_var_real4_2d
      module procedure distributed_get_var_real8_2d
      module procedure distributed_get_var_real8_3d
+  end interface
+
+  interface distributed_print
+     ! Gathers a distributed variable and writes to file
+     module procedure distributed_print_integer_2d
+     module procedure distributed_print_real8_2d
+     module procedure distributed_print_real8_3d
   end interface
 
   interface distributed_put_var
@@ -47,6 +105,15 @@ module parallel
      module procedure distributed_put_var_real8_2d
      module procedure distributed_put_var_real8_3d
      module procedure parallel_put_var_real8
+  end interface
+
+  interface distributed_scatter_var
+     module procedure distributed_scatter_var_integer_2d
+     module procedure distributed_scatter_var_logical_2d
+     module procedure distributed_scatter_var_real4_2d
+     module procedure distributed_scatter_var_real4_3d
+     module procedure distributed_scatter_var_real8_2d
+     module procedure distributed_scatter_var_real8_3d
   end interface
 
   interface parallel_def_var
@@ -80,6 +147,7 @@ module parallel
   end interface
 
   interface parallel_print
+     ! Writes a parallel (same on all processors) variable to file by just writing from main_task
      module procedure parallel_print_integer_2d
      module procedure parallel_print_real8_2d
      module procedure parallel_print_real8_3d
@@ -170,6 +238,408 @@ contains
     integer :: ierror
     ! begin
     call mpi_bcast(a,size(a),mpi_real8,main_rank,comm,ierror)
+  end subroutine
+
+  subroutine distributed_gather_var_integer_2d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    integer,dimension(:,:),intent(in) :: values
+    integer,dimension(:,:),allocatable,intent(inout) :: global_values
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    integer,dimension(:),allocatable :: recvbuf
+    integer,dimension(:,:),allocatable :: sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(1,1))  ! This prevents a problem with NULL pointers later.
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_integer,&
+         recvbuf,recvcounts,displs,mpi_integer,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+    end if
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_gather_var_logical_2d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    logical,dimension(:,:),intent(in) :: values
+    logical,dimension(:,:),allocatable,intent(inout) :: global_values
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    logical,dimension(:),allocatable :: recvbuf
+    logical,dimension(:,:),allocatable :: sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(1,1))  ! This prevents a problem with NULL pointers later.
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_logical,&
+         recvbuf,recvcounts,displs,mpi_logical,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+    end if
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_gather_var_real4_2d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    real(4),dimension(:,:),intent(in) :: values
+    real(4),dimension(:,:),allocatable,intent(inout) :: global_values
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(4),dimension(:),allocatable :: recvbuf
+    real(4),dimension(:,:),allocatable :: sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(1,1))  ! This prevents a problem with NULL pointers later.
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real4,&
+         recvbuf,recvcounts,displs,mpi_real4,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+    end if
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_gather_var_real4_3d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    real(4),dimension(:,:,:),intent(in) :: values
+    real(4),dimension(:,:,:),allocatable,intent(inout) :: global_values
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(4),dimension(:),allocatable :: recvbuf
+    real(4),dimension(:,:,:),allocatable :: sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(size(values,1),minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)*size(values,1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(1,1,1))  ! This prevents a problem with NULL pointers later.
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(size(values,1),mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:,:) = values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real4,&
+         recvbuf,recvcounts,displs,mpi_real4,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(:,bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/size(values,1),bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+    end if
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_gather_var_real8_2d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    real(8),dimension(:,:),intent(in) :: values
+    real(8),dimension(:,:),allocatable,intent(inout) :: global_values
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(8),dimension(:),allocatable :: recvbuf
+    real(8),dimension(:,:),allocatable :: sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(1,1))  ! This prevents a problem with NULL pointers later.
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
+         recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+    end if
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_gather_var_real8_3d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    real(8),dimension(:,:,:),intent(in) :: values
+    real(8),dimension(:,:,:),allocatable,intent(inout) :: global_values
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(8),dimension(:),allocatable :: recvbuf
+    real(8),dimension(:,:,:),allocatable :: sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(size(values,1),minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)*size(values,1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       if (allocated(global_values)) then
+          deallocate(global_values)
+       endif
+       allocate(global_values(1,1,1))  ! This prevents a problem with NULL pointers later.
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(size(values,1),mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:,:) = values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
+         recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(:,bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/size(values,1),bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+    end if
+    ! automatic deallocation
   end subroutine
 
   function distributed_get_var_integer_2d(ncid,varid,values,start)
@@ -540,6 +1010,9 @@ contains
     end do
     if (ewtasks*nstasks/=tasks) call parallel_stop(__FILE__,__LINE__)
 
+    ! Store critical value for creating global IDs.  Defines grid distribution.
+    ProcsEW = ewtasks
+
     ewrank = mod(this_rank,ewtasks)
     rewtasks = 1/real(ewtasks,8)
     ewlb = nint(ewrank*global_ewn*rewtasks)+1-lhalo
@@ -574,6 +1047,234 @@ contains
     distributed_owner = (ew>lhalo.and.ew<=local_ewn-uhalo.and.&
          ns>lhalo.and.ns<=local_nsn-uhalo)
   end function
+
+  subroutine distributed_print_integer_2d(name,values)
+    use mpi
+    implicit none
+    character(*) :: name
+    integer,dimension(:,:) :: values
+
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    integer,dimension(:),allocatable :: recvbuf
+    integer,dimension(:,:),allocatable :: global_values,sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_integer,&
+         recvbuf,recvcounts,displs,mpi_integer,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+       write(ts,'(i3.3)') tasks
+       open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+       if (size(values,1)<local_ewn) then
+          do j = lbound(global_values,2),ubound(global_values,2)
+             do i = lbound(global_values,1),ubound(global_values,1)
+                write(u,*) j,i,global_values(i,j)
+             end do
+             write(u,'()')
+          end do
+       else
+          do j = lbound(global_values,2),ubound(global_values,2)
+             do i = lbound(global_values,1),ubound(global_values,1)
+                write(u,*) j,i,global_values(i,j)
+             end do
+             write(u,'()')
+          end do
+       end if
+       close(u)
+    end if
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_print_real8_2d(name,values)
+    use mpi
+    implicit none
+    character(*) :: name
+    real(8),dimension(:,:) :: values
+
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(8),dimension(:),allocatable :: recvbuf
+    real(8),dimension(:,:),allocatable :: global_values,sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
+         recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+       write(ts,'(i3.3)') tasks
+       open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+       if (size(values,1)<local_ewn) then
+          do j = lbound(global_values,2),ubound(global_values,2)
+             do i = lbound(global_values,1),ubound(global_values,1)
+                write(u,*) j,i,global_values(i,j)
+             end do
+             write(u,'()')
+          end do
+       else
+          do j = lbound(global_values,2),ubound(global_values,2)
+             do i = lbound(global_values,1),ubound(global_values,1)
+                write(u,*) j,i,global_values(i,j)
+             end do
+             write(u,'()')
+          end do
+       end if
+       close(u)
+    end if
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_print_real8_3d(name,values)
+    use mpi
+    implicit none
+    character(*) :: name
+    real(8),dimension(:,:,:) :: values
+
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,recvcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(8),dimension(:),allocatable :: recvbuf
+    real(8),dimension(:,:,:),allocatable :: global_values,sendbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+    if (main_task) then
+       allocate(global_values(size(values,1),minval(bounds(1,:)):maxval(bounds(2,:)),&
+            minval(bounds(3,:)):maxval(bounds(4,:))))
+       global_values(:,:,:) = 0
+       allocate(displs(tasks+1))
+       allocate(recvcounts(tasks))
+       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)*size(values,1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+recvcounts(i)
+       end do
+       allocate(recvbuf(displs(tasks+1)))
+    else
+       allocate(displs(1))
+       allocate(recvcounts(1))
+       allocate(recvbuf(1))
+    end if
+    allocate(sendbuf(size(values,1),mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    sendbuf(:,:,:) = values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
+         recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
+    if (main_task) then
+       do i = 1,tasks
+          global_values(:,bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
+               reshape(recvbuf(displs(i)+1:displs(i+1)), &
+               (/size(values,1),bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
+       end do
+       write(ts,'(i3.3)') tasks
+       open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+       if (size(values,2)<local_ewn) then
+          do j = lbound(global_values,3),ubound(global_values,3)
+             do i = lbound(global_values,2),ubound(global_values,2)
+                write(u,'(2i6,100g15.5e3)') j,i,global_values(:,i,j)
+             end do
+             write(u,'()')
+          end do
+       else
+          do j = lbound(global_values,3),ubound(global_values,3)
+             do i = lbound(global_values,2),ubound(global_values,2)
+                write(u,'(2i6,100g15.5e3)') j,i,global_values(:,i,j)
+             end do
+             write(u,'()')
+          end do
+       end if
+       close(u)
+    end if
+    ! automatic deallocation
+  end subroutine
 
   function distributed_put_var_integer_2d(ncid,varid,values,start)
     use mpi
@@ -937,6 +1638,358 @@ contains
     !automatic deallocation
   end function
 
+  subroutine distributed_scatter_var_integer_2d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    integer,dimension(:,:),intent(inout) :: values  ! populated from values on main_task
+    integer,dimension(:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,sendcounts
+    integer,dimension(:,:),allocatable :: bounds
+    integer,dimension(:),allocatable :: sendbuf
+    integer,dimension(:,:),allocatable :: recvbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+
+    if (main_task) then
+       allocate(displs(tasks+1))
+       allocate(sendcounts(tasks))
+       sendcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+sendcounts(i)
+       end do
+       allocate(sendbuf(displs(tasks+1)))
+
+       do i = 1,tasks
+          sendbuf(displs(i)+1:displs(i+1)) = reshape(&
+               global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)),&
+               (/displs(i+1)-displs(i)/))
+       end do
+    else
+       allocate(displs(1))
+       allocate(sendcounts(1))
+       allocate(sendbuf(1))
+    end if
+    allocate(recvbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    call mpi_scatterv(sendbuf,sendcounts,displs,mpi_integer,&
+         recvbuf,size(recvbuf),mpi_integer,main_rank,comm,ierror)
+    values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo) = recvbuf(:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_logical_2d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    logical,dimension(:,:),intent(inout) :: values  ! populated from values on main_task
+    logical,dimension(:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,sendcounts
+    integer,dimension(:,:),allocatable :: bounds
+    logical,dimension(:),allocatable :: sendbuf
+    logical,dimension(:,:),allocatable :: recvbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+
+    if (main_task) then
+       allocate(displs(tasks+1))
+       allocate(sendcounts(tasks))
+       sendcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+sendcounts(i)
+       end do
+       allocate(sendbuf(displs(tasks+1)))
+
+       do i = 1,tasks
+          sendbuf(displs(i)+1:displs(i+1)) = reshape(&
+               global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)),&
+               (/displs(i+1)-displs(i)/))
+       end do
+    else
+       allocate(displs(1))
+       allocate(sendcounts(1))
+       allocate(sendbuf(1))
+    end if
+    allocate(recvbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    call mpi_scatterv(sendbuf,sendcounts,displs,mpi_logical,&
+         recvbuf,size(recvbuf),mpi_logical,main_rank,comm,ierror)
+    values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo) = recvbuf(:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_real4_2d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    real(4),dimension(:,:),intent(inout) :: values  ! populated from values on main_task
+    real(4),dimension(:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,sendcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(4),dimension(:),allocatable :: sendbuf
+    real(4),dimension(:,:),allocatable :: recvbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+
+    if (main_task) then
+       allocate(displs(tasks+1))
+       allocate(sendcounts(tasks))
+       sendcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+sendcounts(i)
+       end do
+       allocate(sendbuf(displs(tasks+1)))
+
+       do i = 1,tasks
+          sendbuf(displs(i)+1:displs(i+1)) = reshape(&
+               global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)),&
+               (/displs(i+1)-displs(i)/))
+       end do
+    else
+       allocate(displs(1))
+       allocate(sendcounts(1))
+       allocate(sendbuf(1))
+    end if
+    allocate(recvbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    call mpi_scatterv(sendbuf,sendcounts,displs,mpi_real4,&
+         recvbuf,size(recvbuf),mpi_real4,main_rank,comm,ierror)
+    values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo) = recvbuf(:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_real4_3d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    real(4),dimension(:,:,:),intent(inout) :: values  ! populated from values on main_task
+    real(4),dimension(:,:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,sendcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(4),dimension(:),allocatable :: sendbuf
+    real(4),dimension(:,:,:),allocatable :: recvbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+
+    if (main_task) then
+       allocate(displs(tasks+1))
+       allocate(sendcounts(tasks))
+       sendcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)*size(values,1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+sendcounts(i)
+       end do
+       allocate(sendbuf(displs(tasks+1)))
+
+       do i = 1,tasks
+          sendbuf(displs(i)+1:displs(i+1)) = reshape(global_values(:,bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)),&
+                                                     (/displs(i+1)-displs(i)/))
+       end do
+    else
+       allocate(displs(1))
+       allocate(sendcounts(1))
+       allocate(sendbuf(1))
+    end if
+    allocate(recvbuf(size(values,1),mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    call mpi_scatterv(sendbuf,sendcounts,displs,mpi_real4,&
+         recvbuf,size(recvbuf),mpi_real4,main_rank,comm,ierror)
+    values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo) = recvbuf(:,:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_real8_2d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    real(8),dimension(:,:),intent(inout) :: values  ! populated from values on main_task
+    real(8),dimension(:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,sendcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(8),dimension(:),allocatable :: sendbuf
+    real(8),dimension(:,:),allocatable :: recvbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+
+    if (main_task) then
+       allocate(displs(tasks+1))
+       allocate(sendcounts(tasks))
+       sendcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+sendcounts(i)
+       end do
+       allocate(sendbuf(displs(tasks+1)))
+
+       do i = 1,tasks
+          sendbuf(displs(i)+1:displs(i+1)) = reshape(&
+               global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)),&
+               (/displs(i+1)-displs(i)/))
+       end do
+    else
+       allocate(displs(1))
+       allocate(sendcounts(1))
+       allocate(sendbuf(1))
+    end if
+    allocate(recvbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    call mpi_scatterv(sendbuf,sendcounts,displs,mpi_real8,&
+         recvbuf,size(recvbuf),mpi_real8,main_rank,comm,ierror)
+    values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo) = recvbuf(:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_real8_3d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    real(8),dimension(:,:,:),intent(inout) :: values  ! populated from values on main_task
+    real(8),dimension(:,:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    integer :: i,ierror,j,k
+    integer,dimension(4) :: mybounds
+    integer,dimension(:),allocatable :: displs,sendcounts
+    integer,dimension(:,:),allocatable :: bounds
+    real(8),dimension(:),allocatable :: sendbuf
+    real(8),dimension(:,:,:),allocatable :: recvbuf
+
+    ! begin
+    mybounds(1) = ewlb+lhalo
+    mybounds(2) = ewub-uhalo
+    mybounds(3) = nslb+lhalo
+    mybounds(4) = nsub-uhalo
+    if (main_task) then
+       allocate(bounds(4,tasks))
+    else
+       allocate(bounds(1,1))
+    end if
+    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
+         main_rank,comm,ierror)
+
+    if (main_task) then
+       allocate(displs(tasks+1))
+       allocate(sendcounts(tasks))
+       sendcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)*size(values,1)
+       displs(1) = 0
+       do i = 1,tasks
+          displs(i+1) = displs(i)+sendcounts(i)
+       end do
+       allocate(sendbuf(displs(tasks+1)))
+
+       do i = 1,tasks
+          sendbuf(displs(i)+1:displs(i+1)) = reshape(global_values(:,bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)),&
+                                                     (/displs(i+1)-displs(i)/))
+       end do
+    else
+       allocate(displs(1))
+       allocate(sendcounts(1))
+       allocate(sendbuf(1))
+    end if
+    allocate(recvbuf(size(values,1),mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
+    call mpi_scatterv(sendbuf,sendcounts,displs,mpi_real8,&
+         recvbuf,size(recvbuf),mpi_real8,main_rank,comm,ierror)
+    values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo) = recvbuf(:,:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
   subroutine global_sum(x,y)
     use mpi
     implicit none
@@ -1128,6 +2181,32 @@ contains
     call broadcast(values)
   end function
 
+  function parallel_globalID(locns, locew, upstride)
+    ! Returns a unique ID for a given row and column reference that is identical across all processors.
+    ! For instance if Proc 2: (17,16) is the same global cell as Proc 3: (17,1), then the globalID will be the same for both.
+    ! These IDs are spaced upstride apart.  upstride = number of vertical layers.  Typically (upn) + number of ghost layers (2 = top and bottom)
+    integer,intent(IN) :: locns, locew, upstride
+    integer :: parallel_globalID
+    ! locns is local NS (row) grid index
+    ! locew is local EW (col) grid index
+    integer :: global_row, global_col, global_ID
+    character(len=40) :: local_coord
+
+    global_row = (locns - uhalo) + this_rank/ProcsEW * own_nsn
+    	! Integer division required for this_rank/ProcsEW
+    global_col = (locew - lhalo) + mod(this_rank, ProcsEW) * own_ewn
+        ! There are ProcsEW processors per row.
+
+    global_ID = ((global_row - 1) * global_ewn + (global_col - 1)) * upstride + 1
+
+    ! JEFF Testing Code
+    ! write(local_coord, "A13,I10.1,A2,I10.1,A1") " (NS, EW) = (", locns, ", ", locew, ")"
+	! write(*,*) "Processor reference ", this_rank, local_coord, " globalID = ", global_ID
+
+	!return value
+	parallel_globalID = global_ID
+  end function
+
   subroutine parallel_halo_integer_2d(a)
     use mpi
     implicit none
@@ -1284,7 +2363,7 @@ contains
     a(:,:,:lhalo) = nrecv(:,:,:)
   end subroutine
 
-  subroutine parallel_halo_verify_integer_2d(a)
+  function parallel_halo_verify_integer_2d(a)
     use mpi
     implicit none
     integer,dimension(:,:) :: a
@@ -1294,7 +2373,8 @@ contains
     integer,dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
     integer,dimension(local_ewn,lhalo) :: nrecv,ssend
     integer,dimension(local_ewn,uhalo) :: nsend,srecv
-    logical :: notverify_flag  
+    logical :: notverify_flag
+    logical :: parallel_halo_verify_integer_2d
 
     ! begin
 
@@ -1324,6 +2404,7 @@ contains
     call mpi_send(wsend,size(wsend),mpi_integer,west,this_rank,comm,ierror)
 
     call mpi_wait(wrequest,mpi_status_ignore,ierror)
+    ! ANY True if any value is true (LOGICAL)
     notverify_flag = ANY(a(local_ewn-uhalo+1:,1+lhalo:local_nsn-uhalo) /= wrecv(:,:))
     call mpi_wait(erequest,mpi_status_ignore,ierror)
     notverify_flag = notverify_flag .OR. ANY(a(:lhalo,1+lhalo:local_nsn-uhalo) /= erecv(:,:))
@@ -1338,13 +2419,16 @@ contains
     call mpi_wait(nrequest,mpi_status_ignore,ierror)
     notverify_flag = notverify_flag .OR. ANY(a(:,:lhalo) /= nrecv(:,:))
 
-    if (.NOT. notverify_flag) then
+    ! if notverify_flag is TRUE, then there was some difference detected
+    if (notverify_flag) then
          write(*,*) "Halo Verify FAILED on processor ", this_rank
-         call parallel_stop(__FILE__,__LINE__)
+         ! call parallel_stop(__FILE__,__LINE__)
     endif
-  end subroutine
 
-  subroutine parallel_halo_verify_real8_2d(a)
+    parallel_halo_verify_integer_2d = .NOT. notverify_flag  ! return if verified (True) or not verified (False)
+  end function
+
+  function parallel_halo_verify_real8_2d(a)
     use mpi
     implicit none
     real(8),dimension(:,:) :: a
@@ -1354,7 +2438,8 @@ contains
     real(8),dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
     real(8),dimension(local_ewn,lhalo) :: nrecv,ssend
     real(8),dimension(local_ewn,uhalo) :: nsend,srecv
-    logical :: notverify_flag  
+    logical :: notverify_flag
+    logical :: parallel_halo_verify_real8_2d
 
     ! begin
 
@@ -1398,13 +2483,15 @@ contains
     call mpi_wait(nrequest,mpi_status_ignore,ierror)
     notverify_flag = notverify_flag .OR. ANY(a(:,:lhalo) /= nrecv(:,:))
 
-    if (.NOT. notverify_flag) then
+    if (notverify_flag) then
          write(*,*) "Halo Verify FAILED on processor ", this_rank
-         call parallel_stop(__FILE__,__LINE__)
+         ! call parallel_stop(__FILE__,__LINE__)
     endif
-  end subroutine
 
-  subroutine parallel_halo_verify_real8_3d(a)
+    parallel_halo_verify_real8_2d = .NOT. notverify_flag
+  end function
+
+  function parallel_halo_verify_real8_3d(a)
     use mpi
     implicit none
     real(8),dimension(:,:,:) :: a
@@ -1415,6 +2502,7 @@ contains
     real(8),dimension(size(a,1),local_ewn,lhalo) :: nrecv,ssend
     real(8),dimension(size(a,1),local_ewn,uhalo) :: nsend,srecv
     logical :: notverify_flag
+    logical :: parallel_halo_verify_real8_3d
 
     ! begin
 
@@ -1458,11 +2546,13 @@ contains
     call mpi_wait(nrequest,mpi_status_ignore,ierror)
     notverify_flag = notverify_flag .OR. ANY(a(:,:,:lhalo) /= nrecv(:,:,:))
 
-    if (.NOT. notverify_flag) then
+    if (notverify_flag) then
          write(*,*) "Halo Verify FAILED on processor ", this_rank
-         call parallel_stop(__FILE__,__LINE__)
+         ! call parallel_stop(__FILE__,__LINE__)
     endif
-  end subroutine
+
+    parallel_halo_verify_real8_3d = .NOT. notverify_flag
+  end function
 
   subroutine parallel_initialise
     use mpi
@@ -1615,231 +2705,79 @@ contains
   end subroutine
 
   subroutine parallel_print_integer_2d(name,values)
-    use mpi
     implicit none
     character(*) :: name
     integer,dimension(:,:) :: values
-    
+
     integer,parameter :: u = 33
     character(3) :: ts
-    integer :: i,ierror,j,k
-    integer,dimension(4) :: mybounds
-    integer,dimension(:),allocatable :: displs,recvcounts
-    integer,dimension(:,:),allocatable :: bounds
-    integer,dimension(:),allocatable :: recvbuf
-    integer,dimension(:,:),allocatable :: global_values,sendbuf
+    integer :: i,j
 
     ! begin
-    mybounds(1) = ewlb+lhalo
-    mybounds(2) = ewub-uhalo
-    mybounds(3) = nslb+lhalo
-    mybounds(4) = nsub-uhalo
     if (main_task) then
-       allocate(bounds(4,tasks))
-    else
-       allocate(bounds(1,1))
-    end if
-    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
-         main_rank,comm,ierror)
-    if (main_task) then
-       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
-            minval(bounds(3,:)):maxval(bounds(4,:))))
-       global_values(:,:) = 0
-       allocate(displs(tasks+1))
-       allocate(recvcounts(tasks))
-       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
-       displs(1) = 0
-       do i = 1,tasks
-          displs(i+1) = displs(i)+recvcounts(i)
-       end do
-       allocate(recvbuf(displs(tasks+1)))
-    else
-       allocate(displs(1))
-       allocate(recvcounts(1))
-       allocate(recvbuf(1))
-    end if
-    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
-    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
-    call mpi_gatherv(sendbuf,size(sendbuf),mpi_integer,&
-         recvbuf,recvcounts,displs,mpi_integer,main_rank,comm,ierror)
-    if (main_task) then
-       do i = 1,tasks
-          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
-               reshape(recvbuf(displs(i)+1:displs(i+1)), &
-               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
-       end do
        write(ts,'(i3.3)') tasks
        open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
-       if (size(values,1)<local_ewn) then
-          do j = lbound(global_values,2),ubound(global_values,2)-1
-             do i = lbound(global_values,1),ubound(global_values,1)-1
-                write(u,*) j,i,global_values(i,j)
-             end do
-             write(u,'()')
+       do j = lbound(values,2),ubound(values,2)
+          do i = lbound(values,1),ubound(values,1)
+             write(u,*) j,i,values(i,j)
           end do
-       else
-          do j = lbound(global_values,2),ubound(global_values,2)
-             do i = lbound(global_values,1),ubound(global_values,1)
-                write(u,*) j,i,global_values(i,j)
-             end do
-             write(u,'()')
-          end do
-       end if
+          write(u,'()')
+       end do
        close(u)
     end if
+
+    call parallel_barrier  ! Only the main_task writes the variable.  Rest wait here.
     ! automatic deallocation
   end subroutine
 
   subroutine parallel_print_real8_2d(name,values)
-    use mpi
     implicit none
     character(*) :: name
     real(8),dimension(:,:) :: values
-    
+
     integer,parameter :: u = 33
     character(3) :: ts
-    integer :: i,ierror,j,k
-    integer,dimension(4) :: mybounds
-    integer,dimension(:),allocatable :: displs,recvcounts
-    integer,dimension(:,:),allocatable :: bounds
-    real(8),dimension(:),allocatable :: recvbuf
-    real(8),dimension(:,:),allocatable :: global_values,sendbuf
+    integer :: i,j
 
     ! begin
-    mybounds(1) = ewlb+lhalo
-    mybounds(2) = ewub-uhalo
-    mybounds(3) = nslb+lhalo
-    mybounds(4) = nsub-uhalo
     if (main_task) then
-       allocate(bounds(4,tasks))
-    else
-       allocate(bounds(1,1))
-    end if
-    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
-         main_rank,comm,ierror)
-    if (main_task) then
-       allocate(global_values(minval(bounds(1,:)):maxval(bounds(2,:)),&
-            minval(bounds(3,:)):maxval(bounds(4,:))))
-       global_values(:,:) = 0
-       allocate(displs(tasks+1))
-       allocate(recvcounts(tasks))
-       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)
-       displs(1) = 0
-       do i = 1,tasks
-          displs(i+1) = displs(i)+recvcounts(i)
-       end do
-       allocate(recvbuf(displs(tasks+1)))
-    else
-       allocate(displs(1))
-       allocate(recvcounts(1))
-       allocate(recvbuf(1))
-    end if
-    allocate(sendbuf(mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
-    sendbuf(:,:) = values(1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
-    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
-         recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
-    if (main_task) then
-       do i = 1,tasks
-          global_values(bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
-               reshape(recvbuf(displs(i)+1:displs(i+1)), &
-               (/bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
-       end do
        write(ts,'(i3.3)') tasks
        open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
-       if (size(values,1)<local_ewn) then
-          do j = lbound(global_values,2),ubound(global_values,2)-1
-             do i = lbound(global_values,1),ubound(global_values,1)-1
-                write(u,*) j,i,global_values(i,j)
-             end do
-             write(u,'()')
+       do j = lbound(values,2),ubound(values,2)
+          do i = lbound(values,1),ubound(values,1)
+             write(u,*) j,i,values(i,j)
           end do
-       else
-          do j = lbound(global_values,2),ubound(global_values,2)
-             do i = lbound(global_values,1),ubound(global_values,1)
-                write(u,*) j,i,global_values(i,j)
-             end do
-             write(u,'()')
-          end do
-       end if
+          write(u,'()')
+       end do
        close(u)
     end if
-    ! automatic deallocation
+
+    call parallel_barrier  ! Only the main_task writes the variable.  Rest wait here.
   end subroutine
 
   subroutine parallel_print_real8_3d(name,values)
-    use mpi
     implicit none
     character(*) :: name
     real(8),dimension(:,:,:) :: values
-    
+
     integer,parameter :: u = 33
     character(3) :: ts
-    integer :: i,ierror,j,k
-    integer,dimension(4) :: mybounds
-    integer,dimension(:),allocatable :: displs,recvcounts
-    integer,dimension(:,:),allocatable :: bounds
-    real(8),dimension(:),allocatable :: recvbuf
-    real(8),dimension(:,:,:),allocatable :: global_values,sendbuf
+    integer :: i,j
 
     ! begin
-    mybounds(1) = ewlb+lhalo
-    mybounds(2) = ewub-uhalo
-    mybounds(3) = nslb+lhalo
-    mybounds(4) = nsub-uhalo
     if (main_task) then
-       allocate(bounds(4,tasks))
-    else
-       allocate(bounds(1,1))
-    end if
-    call mpi_gather(mybounds,4,mpi_integer,bounds,4,mpi_integer,&
-         main_rank,comm,ierror)
-    if (main_task) then
-       allocate(global_values(size(values,1),minval(bounds(1,:)):maxval(bounds(2,:)),&
-            minval(bounds(3,:)):maxval(bounds(4,:))))
-       global_values(:,:,:) = 0
-       allocate(displs(tasks+1))
-       allocate(recvcounts(tasks))
-       recvcounts(:) = (bounds(2,:)-bounds(1,:)+1)*(bounds(4,:)-bounds(3,:)+1)*size(values,1)
-       displs(1) = 0
-       do i = 1,tasks
-          displs(i+1) = displs(i)+recvcounts(i)
-       end do
-       allocate(recvbuf(displs(tasks+1)))
-    else
-       allocate(displs(1))
-       allocate(recvcounts(1))
-       allocate(recvbuf(1))
-    end if
-    allocate(sendbuf(size(values,1),mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
-    sendbuf(:,:,:) = values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
-    call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
-         recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
-    if (main_task) then
-       do i = 1,tasks
-          global_values(:,bounds(1,i):bounds(2,i),bounds(3,i):bounds(4,i)) = &
-               reshape(recvbuf(displs(i)+1:displs(i+1)), &
-               (/size(values,1),bounds(2,i)-bounds(1,i)+1,bounds(4,i)-bounds(3,i)+1/))
-       end do
        write(ts,'(i3.3)') tasks
        open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
-       if (size(values,2)<local_ewn) then
-          do j = lbound(global_values,3),ubound(global_values,3)-1
-             do i = lbound(global_values,2),ubound(global_values,2)-1
-                write(u,'(2i6,100g15.5e3)') j,i,global_values(:,i,j)
-             end do
-             write(u,'()')
+       do j = lbound(values,3),ubound(values,3)
+          do i = lbound(values,2),ubound(values,2)
+             write(u,'(2i6,100g15.5e3)') j,i,values(:,i,j)
           end do
-       else
-          do j = lbound(global_values,3),ubound(global_values,3)
-             do i = lbound(global_values,2),ubound(global_values,2)
-                write(u,'(2i6,100g15.5e3)') j,i,global_values(:,i,j)
-             end do
-             write(u,'()')
-          end do
-       end if
+          write(u,'()')
+       end do
        close(u)
     end if
-    ! automatic deallocation
+
+    call parallel_barrier  ! Only the main_task writes the variable.  Rest wait here.
   end subroutine
 
   function parallel_put_att_character(ncid,varid,name,values)
@@ -1936,6 +2874,40 @@ contains
     if (main_task) parallel_redef = nf90_redef(ncid)
     call broadcast(parallel_redef)
   end function
+
+  function parallel_reduce_sum(x)
+    use mpi
+    implicit none
+    real(8) :: x
+
+    integer :: ierror
+    real(8) :: recvbuf,sendbuf, parallel_reduce_sum
+    ! begin
+    sendbuf = x
+    call mpi_allreduce(sendbuf,recvbuf,1,mpi_real8,mpi_sum,comm,ierror)
+    parallel_reduce_sum = recvbuf
+    return
+  end function
+
+  function parallel_reduce_max(x)
+    use mpi
+    implicit none
+    real(8) :: x
+
+    integer :: ierror
+    real(8) :: recvbuf,sendbuf, parallel_reduce_max
+    ! begin
+    sendbuf = x
+    call mpi_allreduce(sendbuf,recvbuf,1,mpi_real8,mpi_max,comm,ierror)
+    parallel_reduce_max = recvbuf
+    return
+  end function
+
+  subroutine parallel_set_trilinos_return_vect
+    ! Trilinos can return the full solution to each node or just the owned portion
+    ! For parallel_mpi mode only the owned portion is expected
+    call returnownedvector()  ! in trilinosLinearSolver.cpp
+  end subroutine
 
   subroutine parallel_show_minmax(label,values)
     use mpi

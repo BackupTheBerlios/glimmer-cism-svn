@@ -10,6 +10,9 @@
 #include "glide_mask.inc"
 #include "config.inc"
 
+!GlobalIDs are for distributed TRILINOS variable IDs
+#define globalIDs
+
 !***********************************************************************
 
 module glam_strs2
@@ -111,6 +114,10 @@ implicit none
   real (kind = dp) :: linearSolveTime = 0
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
 
+  ! AGS: partition information for distributed solves
+  ! JEFF: Moved to module-level scope for globalIDs
+  integer, allocatable, dimension(:) :: myIndices
+  integer :: mySize = -1
 
 !***********************************************************************
 
@@ -278,10 +285,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer :: iter, pic
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
 
-  ! AGS: partition information for distributed solves
-  integer, allocatable, dimension(:) :: myIndices
-  integer :: mySize = -1
-
   ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
 
@@ -301,14 +304,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! assign it a unique number. If not assign a zero.             
   uindx = indxvelostr(ewn, nsn, upn, umask,pcgsize(1))
 
-
-
 !!!!!!!!!! Boundary conditions HACKS section !!!!!!!!!!!!!
 
 !! A hack of the boundary condition mask needed for the Ross Ice Shelf exp.
 !! The quick check of whether or not this is the Ross experiment is to look
 !! at the domain size.
  if( ewn == 151 .and. nsn == 115 )then
+    call not_parallel(__FILE__, __LINE__)
     do ns=1,nsn-1; do ew=1,ewn-1
         if( umask(ew,ns) == 21 .or. umask(ew,ns) == 5 )then
             umask(ew,ns) = 73
@@ -343,19 +345,48 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !==============================================================================
 
   if (whatsparse == STANDALONE_TRILINOS_SOLVER) then
+#ifdef globalIDs
+     write(*,*) "Using GlobalIDs..."
+	 ! JEFF: Define myIndices in terms of globalIDs
+     allocate(myIndices(pcgsize(1)))  ! myIndices is an integer vector with a unique ID for each layer for ice grid points
+     call distributed_create_partition(ewn, nsn, (upn + 2) , uindx, pcgsize(1), myIndices)  ! Uses uindx mask to determine ice grid points.
+     mySize = pcgsize(1)  ! Set variable for inittrilinos
+
+     !write(*,*) "GlobalIDs myIndices..."
+     !write(*,*) "pcgsize = ", pcgsize(1)
+     !write(*,*) "myIndices = ", myIndices
+     !call parallel_stop(__FILE__, __LINE__)
+#else
      ! AGS: Get partition -- later this will be known by distributed glimmer
      call dopartition(pcgsize(1), mySize)
      allocate(myIndices(mySize))
      call getpartition(mySize, myIndices)
 
+     !write(*,*) "Trilinos Generated Partition Map myIndices..."
+     !write(*,*) "pcgsize = ", pcgsize(1), " mySize = ", mySize
+     !write(*,*) "myIndices = ", myIndices
+     !call parallel_stop(__FILE__, __LINE__)
+#endif
+
      ! Now send this partition to Trilinos initialization routines
      call inittrilinos(20, mySize, myIndices)
+
+     ! Set if need full solution vector returned or just owned portion
+#ifdef globalIDs
+     ! We default Trilinos to return full solution vector.
+     ! Per AGS, for both distributed and serial globalIDs cases, we must return just owned portion in order to prevent a permutation of the results.
+     ! This was built into parallel_set_trilinos_return_vect that handled the difference between _single and _mpi versions.
+     call returnownedvector()
+!     call parallel_set_trilinos_return_vect
+#endif
 
      !No Triad matrix needed in this case -- save on memory alloc
      pcgsize(2) = 1
 
-     deallocate(myIndices)
+     ! JEFF: deallocate myIndices after the solve loop, because used in translation between globalIDs and local indices
+     ! deallocate(myIndices)
   endif
+
 
 !==============================================================================
 ! RN_20100126: End of the block
@@ -409,9 +440,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dusrfdns,   dthckdns, &
                      umask)
 
-    !JEFFHERE
-    call parallel_stop(__FILE__, __LINE__)
-    
+	! JEFF 10/25
     ! calculate coeff. for stress balance in y-direction 
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &
@@ -431,6 +460,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 0 )
 
+    !JEFF rhsd() verify
+    ! write(*,*) "RHS = ", rhsd(:)
 
     ! put vels and coeffs from 3d arrays into sparse vector format
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
@@ -439,6 +470,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! jfl 20100412: residual for v comp: Fv= A(u^k-1,v^k-1)v^k-1 - b(u^k-1,v^k-1)  
 !==============================================================================
 
+    !JEFF - The multiplication Ax is done across all nodes, but Ax - b is only computed locally, so L2square needs to be summed.
     call res_vect( matrix, vk_1, rhsd, size(rhsd), g_flag, L2square, whichsparse )
 
       L2norm  = L2square
@@ -455,7 +487,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   else
      call solvewithtrilinos(rhsd, answer, linearSolveTime)
      totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
-     write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+     ! write(*,*) 'Total linear solve time so far', totalLinearSolveTime
   endif
 
 !==============================================================================
@@ -472,14 +504,17 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     ! This is necessary since we have not yet solved for the x-comp of vel, which needs the
     ! old prev. guess as an input (NOT the new guess).
 
-
 ! implement periodic boundary conditions in y (if flagged)
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     if( periodic_ns )then
+        call not_parallel(__FILE__, __LINE__)
+
         tvel(:,:,nsn-1) = tvel(:,:,2)
         tvel(:,:,1) = tvel(:,:,nsn-2)
     end if
     if( periodic_ew )then
+        call not_parallel(__FILE__, __LINE__)
+
         tvel(:,ewn-1,:) = tvel(:,2,:)
         tvel(:,1,:) = tvel(:,ewn-2,:)
     end if
@@ -530,7 +565,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   else
      call solvewithtrilinos(rhsd, answer, linearSolveTime)
      totalLinearSolveTime = totalLinearSolveTime + linearSolveTime
-     write(*,*) 'Total linear solve time so far', totalLinearSolveTime
+     ! write(*,*) 'Total linear solve time so far', totalLinearSolveTime
   endif
 
 !==============================================================================
@@ -583,8 +618,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 1 )
 
-    call plasticbediteration( ewn, nsn, uvel(upn,:,:), tvel(upn,:,:), btraction, minTauf, &
-                              plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
+    !JEFF Commented out plasticbediteration() per Steve Price. December 2010
+    ! call plasticbediteration( ewn, nsn, uvel(upn,:,:), tvel(upn,:,:), btraction, minTauf, &
+    !                          plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
 
     ! apply unstable manifold correction to converged velocities
     uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
@@ -593,10 +629,14 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! implement periodic boundary conditions in x (if flagged)
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     if( periodic_ns )then
+        call not_parallel(__FILE__, __LINE__)
+
         uvel(:,:,nsn-1) = uvel(:,:,2)
         uvel(:,:,1) = uvel(:,:,nsn-2)
     end if
     if( periodic_ew )then
+        call not_parallel(__FILE__, __LINE__)
+
         uvel(:,ewn-1,:) = uvel(:,2,:)
         uvel(:,1,:) = uvel(:,ewn-2,:)
     end if
@@ -622,8 +662,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   call ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
                           ughost, vghost )
 
-  do ns = 1,nsn-1
-      do ew = 1,ewn-1
+  do ns = 1+staggered_lhalo,size(umask,2)-staggered_uhalo
+      do ew = 1+staggered_lhalo,size(umask,1)-staggered_uhalo
       ! calc. fluxes from converged vel. fields (needed for input to thickness evolution subroutine)
          if (umask(ew,ns) > 0) then
              uflx(ew,ns) = vertintg(upn, sigma, uvel(:,ew,ns)) * stagthck(ew,ns)
@@ -631,6 +671,22 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
          end if
       end do
   end do
+
+  !JEFF: Coordinate halos
+  !JEFF: umask is marked as INOUT and is updated for the Ross Ice Shelf experiment, but for no other, so don't update halos
+  !JEFF: btraction and efvs are calculated in this routine, but only for "owned" grid cells, so update halos to get neighboring values.
+  !JEFF: uvel, vvel, uflx, and vflx are calculated in this routine, but only for "owned" grid cells, so update halos to get neighboring values.
+  call parallel_halo(btraction)
+  call parallel_halo(efvs)
+  call parallel_halo(uvel)
+  call parallel_halo(vvel)
+  call parallel_halo(uflx)
+  call parallel_halo(vflx)
+
+  ! JEFF: Deallocate myIndices which is used to intialize Trilinos
+  if (whatsparse == STANDALONE_TRILINOS_SOLVER) then
+     deallocate(myIndices)
+  endif
 
   ! de-allocation sparse matrix solution variables 
   deallocate(tvel)
@@ -1274,8 +1330,15 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
   end select
 
-  call parallel_halo_verify(efvs)
-  ! efvs is an unstaggered grid in an staggered declaration.  Steve Price said he reused the variable from the other core.
+! JEFF Halo does NOT verify, because used a staggered array to hold unstaggered data.  The unstaggered data fits because remove two rows and columns of data.
+! The current parallel_halo(efvs) routine won't update a staggered array.
+! I think it is OK, so I'm passing for now.
+!  if (.NOT. parallel_halo_verify(efvs)) then
+!      ! efvs is an unstaggered grid in an staggered declaration.  Steve Price said he reused the variable from the other core.
+!      write(*,*) "Halo Verify failed for findefvstr()"
+!      call parallel_stop(__FILE__, __LINE__)
+!  endif
+
   return
 end subroutine findefvsstr
 
@@ -1345,6 +1408,8 @@ end function getlocrange
 
 function getlocationarray(ewn, nsn, upn,  &
                           mask )
+    use parallel
+
     implicit none
 
     integer, intent(in) :: ewn, nsn, upn
@@ -1354,8 +1419,8 @@ function getlocationarray(ewn, nsn, upn,  &
 
     cumsum = 0
 
-    do ew=1,ewn-1
-        do ns=1,nsn-1
+    do ew=1+staggered_lhalo,size(mask,1)-staggered_uhalo
+        do ns=1+staggered_lhalo,size(mask,2)-staggered_uhalo
         if ( GLIDE_HAS_ICE( mask(ew,ns) ) ) then
             cumsum = cumsum + ( upn + 2 )
             getlocationarray(ew,ns) = cumsum
@@ -1375,11 +1440,141 @@ end function getlocationarray
 
 !***********************************************************************
 
+function getdistributedlocationarray(ewn, nsn, upn, mask )
+	! Returns an array with the variable ID bases for each ice grid point.  If a point (ew,ns) doesn't have ice, then it has 0.
+	! This uses globalIDs and includes the ID bases for the halos in the array.
+	! This ID array uses the same IDs used to initialize Trilinos myIndices.
+	! JEFF 11/23/10
+    use parallel
+
+    implicit none
+
+    integer, intent(in) :: ewn, nsn, upn
+    integer, dimension(:,:), intent(in) :: mask
+    integer, dimension(ewn-1,nsn-1) :: getdistributedlocationarray
+    integer :: ew, ns
+
+    do ew=1,size(mask,1)
+        do ns=1,size(mask,2)
+	        if ( GLIDE_HAS_ICE( mask(ew,ns) ) ) then
+	            getdistributedlocationarray(ew,ns) = parallel_globalID(ns, ew, upn + 2)  ! Extra two layers for ghost layers
+	        else
+	            getdistributedlocationarray(ew,ns) = 0
+	        end if
+        end do
+    end do
+
+    return
+end function getdistributedlocationarray
+
+!***********************************************************************
+
+function slapsolvstr(ewn, nsn, upn, &
+                     vel, uindx, its, answer )
+
+! *sp* routine to solve Ax=b sparse matrix problem 
+
+  implicit none
+
+  integer, intent(in) :: ewn, nsn, upn
+  real (kind = dp), dimension(:,:,:), intent(in) :: vel
+  integer, dimension(:,:), intent(in) :: uindx
+
+  real (kind = dp), dimension(:), intent(out) :: answer
+
+  real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: slapsolvstr
+  integer, intent(inout) :: its
+
+  integer :: ew, ns
+
+  real (kind = dp), dimension(:), allocatable :: rwork
+  integer, dimension(:), allocatable :: iwork
+
+  real (kind = dp), parameter :: tol = 1.0e-12_dp
+  real (kind = dp) :: err
+
+  integer, parameter :: isym = 0, itol = 2, itmax = 100
+  integer, dimension(2) :: loc
+  integer :: iter, ierr, mxnelt
+
+! ** move to values subr   
+
+  pcgsize(2) = ct - 1
+
+  call ds2y(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym)
+
+!** plot the matrix to check that it has the correct form
+!call dcpplt(pcgsize(1),pcgsize(2),pcgrow,pcgcol,pcgval,isym,ulog)      
+
+  mxnelt = 60 * pcgsize(1); allocate(rwork(mxnelt),iwork(mxnelt))
+
+!**     solve the problem using the SLAP package routines     
+!**     -------------------------------------------------
+!**     n ... order of matrix a (in)
+!**     b ... right hand side vector (in)                        
+!**     x ... initial quess/final solution vector (in/out)                        
+!**     nelt ... number of non-zeroes in A (in)
+!**     ia, ja ... sparse matrix format of A (in)
+!**     a ... matrix held in SLAT column format (in)
+!**     isym ... storage method (0 is complete) (in)
+!**     itol ... convergence criteria (2 recommended) (in)                     
+!**     tol ... criteria for convergence (in)
+!**     itmax ... maximum number of iterations (in)
+!**     iter ... returned number of iterations (out)
+!**     err ... error estimate of solution (out)
+!**     ierr ... returned error message (0 is ok) (out)
+!**     iunit ... unit for error writes during iteration (0 no write) (in)
+!**     rwork ... workspace for SLAP routines (in)
+!**     mxnelt ... maximum array and vector sizes (in)
+!**     iwork ... workspace for SLAP routines (in)
+
+! *sp* initial estimate for vel. field?
+  do ns = 1,nsn-1
+  do ew = 1,ewn-1
+   if (uindx(ew,ns) /= 0) then
+    loc = getlocrange(upn, uindx(ew,ns))
+    answer(loc(1):loc(2)) = vel(:,ew,ns)
+    answer(loc(1)-1) = vel(1,ew,ns)
+    answer(loc(2)+1) = vel(upn,ew,ns)
+   end if
+  end do
+  end do
+
+  call dslucs(pcgsize(1),rhsd,answer,pcgsize(2),pcgrow,pcgcol,pcgval, &
+              isym,itol,tol,itmax,iter,err,ierr,0,rwork,mxnelt,iwork,mxnelt)
+
+  if (ierr .ne. 0) then
+    print *, 'pcg error ', ierr, itmax, iter, tol, err
+    ! stop
+  end if
+
+  deallocate(rwork,iwork)
+
+  do ns = 1,nsn-1
+  do ew = 1,ewn-1
+     if (uindx(ew,ns) /= 0) then
+       loc = getlocrange(upn, uindx(ew,ns))
+       slapsolvstr(:,ew,ns) = answer(loc(1):loc(2))
+     else
+       slapsolvstr(:,ew,ns) = 0.0d0
+     end if
+  end do
+  end do
+
+  its = its + iter
+
+  return
+
+end function slapsolvstr
+
+! *****************************************************************************
+
 subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
 
   ! Puts sparse matrix variables in SLAP triad format into "matrix" derived type, 
   ! so that it can be passed to the generic solver wrapper, "sparse_easy_solve". 
   ! Takes place of the old, explicit solver interface to SLAP linear solver.
+  use parallel
 
   implicit none
 
@@ -1404,13 +1599,16 @@ subroutine solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vel )
 
   ! Initial estimate for vel. field; take from 3d array and put into
   ! the format of a solution vector.
-  do ns = 1,nsn-1
-    do ew = 1,ewn-1
+  do ns = 1+staggered_lhalo,size(uindx,2)-staggered_uhalo
+   do ew = 1+staggered_lhalo,size(uindx,1)-staggered_uhalo
         if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
             answer(loc(1):loc(2)) = vel(:,ew,ns)
             answer(loc(1)-1) = vel(1,ew,ns)
             answer(loc(2)+1) = vel(upn,ew,ns)
+
+            !JEFF Verifying Trilinos Input
+            ! write(*,*) "Initial answer at (", ew, ", ", ns, ") = ", answer(loc(1)-1:loc(2)+1)
         end if
     end do
   end do
@@ -1422,6 +1620,7 @@ end subroutine solver_preprocess
 subroutine solver_postprocess( ewn, nsn, upn, pt, uindx, answrapped, ansunwrapped, ghostbvel )
 
   ! Unwrap the vels from the solution vector and place into a 3d array.
+  use parallel
 
   implicit none
 
@@ -1434,8 +1633,8 @@ subroutine solver_postprocess( ewn, nsn, upn, pt, uindx, answrapped, ansunwrappe
   integer, dimension(2) :: loc
   integer :: ew, ns
 
-  do ns = 1,nsn-1
-      do ew = 1,ewn-1
+  do ns = 1+staggered_lhalo,size(uindx,2)-staggered_uhalo
+      do ew = 1+staggered_lhalo,size(uindx,1)-staggered_uhalo
           if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
             ansunwrapped(:,ew,ns) = answrapped(loc(1):loc(2))
@@ -1883,6 +2082,8 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
 ! ghost flag vector. uk_1, vk_1 and the ghost flag vector are used for 
 ! the residual calculation (jfl 20100430)
 
+  use parallel
+
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn
@@ -1897,8 +2098,8 @@ subroutine ghost_preprocess( ewn, nsn, upn, uindx, ughost, vghost, &
 
   g_flag = 0
 
-  do ns = 1,nsn-1
-   do ew = 1,ewn-1
+  do ns = 1+staggered_lhalo,size(uindx,2)-staggered_uhalo
+   do ew = 1+staggered_lhalo,size(uindx,1)-staggered_uhalo
         if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
             uk_1(loc(1):loc(2)) = uvel(:,ew,ns)
@@ -1969,6 +2170,7 @@ subroutine ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
 
 ! puts ghost values (which are now in  uk_1 and vk_1) into ughost and 
 ! vghost so that they can be used fro the next time step (jfl 20100430)
+  use parallel
 
   implicit none
 
@@ -1980,8 +2182,8 @@ subroutine ghost_postprocess( ewn, nsn, upn, uindx, uk_1, vk_1, &
   integer :: ew, ns
   integer, dimension(2) :: loc
 
-  do ns = 1,nsn-1
-      do ew = 1,ewn-1
+  do ns = 1+staggered_lhalo,size(uindx,2)-staggered_uhalo
+      do ew = 1+staggered_lhalo,size(uindx,1)-staggered_uhalo
           if (uindx(ew,ns) /= 0) then
             loc = getlocrange(upn, uindx(ew,ns))
             ughost(1,ew,ns) = uk_1(loc(1)-1) ! ghost at top
@@ -2042,8 +2244,9 @@ end subroutine ghost_postprocess
 function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   ! Function to perform 'unstable manifold correction' (see Hindmarsch and Payne, 1996,
-  ! "Time-step limits for stable solutions of the ice-sheet equation", Annals of 
+  ! "Time-step limits for stable solutions of the ice-sheet equation", Annals of
   ! Glaciology, 23, p.74-85)
+  use parallel
 
   implicit none
 
@@ -2061,10 +2264,11 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   real (kind = dp), intrinsic :: abs, acos
 
   integer, dimension(2), save :: new = 1, old = 2
-  integer :: locat(3)
+  !JEFF integer :: locat(3)
 
   integer :: nr
   integer, dimension(size(vel,1),size(vel,2),size(vel,3)) :: vel_ne_0
+  real (kind = dp) :: sum_vel_ne_0
 
   if (counter == 1) then
     usav(:,:,:,pt) = 0.0d0
@@ -2098,29 +2302,32 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   end if
 
   !*sfp* Old version
-  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if  
+  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
 
   !*sfp* correction from Carl Gladdish
-  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if   
+  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
 
   select case (whichresid)
 
-  ! options for residual calculation method, as specified in configuration file 
+  ! options for residual calculation method, as specified in configuration file
   ! (see additional notes in "higher-order options" section of documentation)
-  ! case(0): use max of abs( vel_old - vel ) / vel ) 
-  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels 
+  ! case(0): use max of abs( vel_old - vel ) / vel )
+  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels
   ! case(2): use mean of abs( vel_old - vel ) / vel )
 
    case(0)
     resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
-    locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+    resid = parallel_reduce_max(resid)
+    !JEFF locat is only used in diagnostic print statement below.
+    !locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
 
    case(1)
     nr = size( vel, dim=1 ) ! number of grid points in vertical ...
     resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
                         MASK = vel .ne. 0.0_dp)
-    locat = maxloc( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
-            MASK = vel .ne. 0.0_dp)
+    resid = parallel_reduce_max(resid)
+    !JEFF locat = maxloc( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
+    !JEFF        MASK = vel .ne. 0.0_dp)
 
    case(2)
     nr = size( vel, dim=1 )
@@ -2128,8 +2335,14 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
     where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
 
     ! include basal velocities in resid. calculation when using MEAN
+    ! JEFF Compute sums across nodes in order to compute mean.
     resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
-            MASK = vel .ne. 0.0_dp) / sum( vel_ne_0 )
+            MASK = vel .ne. 0.0_dp)
+    resid = parallel_reduce_sum(resid)
+    sum_vel_ne_0 = sum( vel_ne_0 )
+    sum_vel_ne_0 = parallel_reduce_sum(sum_vel_ne_0)
+
+    resid = resid / sum_vel_ne_0
 
     ! ignore basal velocities in resid. calculation when using MEAN
     ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
@@ -2137,13 +2350,13 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
     ! NOTE that the location of the max residual is somewhat irrelevent here
     !      since we are using the mean resid for convergence testing
-    locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+    ! locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
 
   end select
 
     usav(:,:,:,pt) = vel
 
-    ! Additional debugging line, useful when trying to determine if convergence is being consistently 
+    ! Additional debugging line, useful when trying to determine if convergence is being consistently
     ! help up by the residual at one or a few particular locations in the domain.
     !print '("* ",i3,g20.6,3i6,g20.6)', counter, resid, locat, vel(locat(1),locat(2),locat(3))*vel0
 
@@ -2324,6 +2537,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   ! in the expression Au = b. Calls numerous other subroutines, including boundary
   ! condition subroutines, which determin "b".
 
+  use parallel
+
   implicit none
 
   integer, intent(in) :: ewn, nsn, upn, count, assembly
@@ -2382,12 +2597,31 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                         betasquared )
 ! intent(out) betasquared
 
-  do ns = 1,nsn-1
-    do ew = 1,ewn-1
+  ! JEFF Debug Code Oct 2010
+  ! call parallel_print("betasquared", betasquared)
+  ! call parallel_stop(__FILE__, __LINE__)
 
+  ! Note loc_array is defined only for non-halo ice grid points.
+  ! JEFFLOC returns an array with starting indices into solution vector for each ice grid point.
+#ifdef globalIDs
+  loc_array = getdistributedlocationarray(ewn, nsn, upn, mask)
+#else
+  call not_parallel(__FILE__, __LINE__)
+  loc_array = getlocationarray(ewn, nsn, upn, mask)
+#endif
+!  !!!!!!!!! useful for debugging !!!!!!!!!!!!!!
+!    print *, 'loc_array = '
+!    print *, loc_array
+!    pause
+
+  ! JEFFLOC Why are these do loops reversed from normal.  Bigger question is do I need to restrict to non-halo grid points?
+  do ns = 1+staggered_lhalo,size(mask,2)-staggered_uhalo
+    do ew = 1+staggered_lhalo,size(mask,1)-staggered_uhalo
      ! Calculate the depth-averaged value of the rate factor, needed below when applying an ice shelf
      ! boundary condition (complicated code so as not to include funny values at boundaries ...
      ! ... kind of a mess and could be redone or made into a function or subroutine).
+     ! SUM has the definition SUM(ARRAY, DIM, MASK) MASK is either scalar or the same shape as ARRAY
+     ! JEFFLOC Concerned about the edges at (ew+1, ns), (ew, ns+1), and (ew+1,ns+1)
      flwabar = ( sum( flwa(:,ew,ns), 1, flwa(1,ew,ns)*vis0_glam < 1.0d-10 )/real(upn) + &
                sum( flwa(:,ew,ns+1), 1, flwa(1,ew,ns+1)*vis0_glam < 1.0d-10 )/real(upn)  + &
                sum( flwa(:,ew+1,ns), 1, flwa(1,ew+1,ns)*vis0_glam < 1.0d-10 )/real(upn)  + &
@@ -2397,15 +2631,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                sum( flwa(:,ew+1,ns)/flwa(:,ew+1,ns), 1, flwa(1,ew+1,ns)*vis0 < 1.0d-10 )/real(upn) + &
                sum( flwa(:,ew+1,ns+1)/flwa(:,ew+1,ns+1), 1, flwa(1,ew+1,ns+1)*vis0_glam < 1.0d-10 )/real(upn) )
 
-    if( ns == 1 .and. ew == 1 ) then
-           loc_array = getlocationarray(ewn, nsn, upn, mask )
-    end if
-
-!  !!!!!!!!! useful for debugging !!!!!!!!!!!!!!
-!    print *, 'loc_array = '
-!    print *, loc_array
-!    pause
-
+	!JEFFLOC.  Is loc(1) used as an ID or an index?
     loc(1) = loc_array(ew,ns)
 
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -2418,6 +2644,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 !    print *, 'In main body ... ew, ns = ', ew, ns
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+        !JEFFLOC Watch for usage of hidden output vars: fvert(:), dsigmadew(:), dsigmadns(:), d2sigmadew2(:), d2sigmadns2(:), d2sigmadewdns(:), d2sigmadewdsigma, d2sigmadnsdsigma
         call calccoeffs( upn,               sigma,              &
                          stagthck(ew,ns),                       &
                          dusrfdew(ew,ns),   dusrfdns(ew,ns),    &
@@ -2427,6 +2654,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          d2thckdew2(ew,ns), d2thckdns2(ew,ns),  &
                          d2thckdewdns(ew,ns))
 
+        ! JEFFLOC Are these uses as IDs or indices.
         ! get index of cardinal neighbours
         loc(2) = loc_array(ew+1,ns)
         loc(3) = loc_array(ew-1,ns)
@@ -2441,8 +2669,12 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
             ! we simply use the closest values. This could probably be improved upon at some point
             ! by extrpolating values for efvs at the sfc and bed using one-sided diffs, and it is not clear
             ! how important this simplfication is.
+            !JEFFLOC indshift() returns three-element shift index for up, ew, and ns respectively.
+            !JEFFLOC It does get passed loc_array, but it doesn't use it.  Further, the shifts can be at most 1 unit in any direction.
             shift = indshift( 0, ew, ns, up, ewn, nsn, upn, loc_array, stagthck(ew-1:ew+1,ns-1:ns+1) )
 
+			!JEFFLOC As long as not accessing halo ice points, then won't shift off of halo of size at least 1.
+			!JEFFLOC Completed scan on 11/23.  Testing change of definition of loc_array.
             call bodyset(ew,  ns,  up,        &
                          ewn, nsn, upn,       &
                          dew,      dns,       &
@@ -2451,10 +2683,12 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                          thisdusrfdx,         &
                          dusrfdew, dusrfdns,  &
                          dlsrfdew, dlsrfdns,  &
-                         efvs(up-1+shift(1):up+shift(1),ew:ew+1,ns:ns+1),  &
+                         efvs(up-1+shift(1):up+shift(1), &
+                              ew:ew+1, &
+                              ns:ns+1),  &
                          othervel(up-1+shift(1):up+1+shift(1),  &
-                         ew-1+shift(2):ew+1+shift(2),  &
-                         ns-1+shift(3):ns+1+shift(3)), &
+                                  ew-1+shift(2):ew+1+shift(2),  &
+                                  ns-1+shift(3):ns+1+shift(3)), &
                          betasquared(ew,ns),           &
                          btraction,                    &
                          whichbabc, assembly )
@@ -2554,7 +2788,7 @@ subroutine bodyset(ew,  ns,  up,           &
                    local_thisvel,          &
                    abar, cc)
 
-  ! This subroutine does the bulk of the work in calling the appropriate discretiztion routines,
+  ! This subroutine does the bulk of the work in calling the appropriate discretization routines,
   ! which determine the values for coefficients that will go into the sparse matrix, for points
   ! on and inside of the boundaries.
 
@@ -2668,7 +2902,7 @@ subroutine bodyset(ew,  ns,  up,           &
         ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
         ! which results from moving them from the LHS over to the RHS, has been moved
         ! inside of "croshorizmainbc_lat".
-        rhsd(locplusup) = sum( croshorizmainbc_lat(dew,           dns,           &
+        rhsd(distributed_globalID_to_localindex(locplusup)) = sum( croshorizmainbc_lat(dew,           dns,           &
                                                    slopex,        slopey,        &
                                                    dsigmadew(up), dsigmadns(up), &
                                                    pt,            2,             &
@@ -2771,7 +3005,7 @@ subroutine bodyset(ew,  ns,  up,           &
     ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
     ! which results from moving them from the LHS over to the RHS, has been moved
     ! inside of "croshorizmainbc_lat".
-    rhsd(locplusup) = sum( croshorizmainbc_lat(dew,           dns,            &
+    rhsd(distributed_globalID_to_localindex(locplusup)) = sum( croshorizmainbc_lat(dew,           dns,            &
                                                slopex,        slopey,         &
                                                dsigmadew(up), dsigmadns(up),  &
                                                pt,            1,              &
@@ -2807,8 +3041,7 @@ subroutine bodyset(ew,  ns,  up,           &
      ! which results from moving them from the LHS over to the RHS, is explicit and 
      ! hast NOT been moved inside of "croshorizmin" (as is the case for the analogous
      ! boundary condition routines).
-
-     rhsd(locplusup) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
+     rhsd(distributed_globalID_to_localindex(locplusup)) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
 
      if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
          storeoffdiag = .true.
@@ -2873,7 +3106,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
      if( bcflag(2) == 2 )then
 
-          rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
+          rhsd(distributed_globalID_to_localindex(locplusup)) = sum( croshorizmainbc(dew,           dns,            &
                                              slopex,        slopey,         &
                                              dsigmadew(up), dsigmadns(up),  &
                                              pt,            bcflag,         &
@@ -2902,7 +3135,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
      else if( bcflag(2) /= 2 )then
 
-          rhsd(locplusup) = sum( croshorizmainbc(dew,           dns,            &
+          rhsd(distributed_globalID_to_localindex(locplusup)) = sum( croshorizmainbc(dew,           dns,            &
                                              slopex,        slopey,         &
                                              dsigmadew(up), dsigmadns(up),  &
                                              pt,            bcflag,         &
@@ -2967,7 +3200,7 @@ subroutine valueset(local_value)
   real (kind = dp), intent(in) :: local_value
 
   call putpcgc(1.0_dp,locplusup,locplusup)
-  rhsd(locplusup) = local_value
+  rhsd(distributed_globalID_to_localindex(locplusup)) = local_value
 
   return
 
@@ -4726,6 +4959,9 @@ subroutine putpcgc(value,col,row,pt)
            !AGS: If we find that sparsity changes inside a time step,
            !     consider adding entry even for value==0.
            call putintotrilinosmatrix(row, col, value)
+
+           !JEFF: Verify matrix matches for globalIDs case
+           ! call verify_trilinos_rowcolval(row, col, value)
         end if
     end if
 
@@ -4780,6 +5016,114 @@ subroutine putpcgc(value,col,row,pt)
   return
  
 end subroutine putpcgc 
+
+!***********************************************************************
+
+  subroutine distributed_create_partition(ewn, nsn, upstride, mask, mySize, myIndices)
+  	! distributed_create_partition builds myIndices ID vector for Trilinos using (ns,ew) coordinates in mask
+  	! ewn, nsn, are bounds for mask (including halos).
+  	! upstride is the total number of vertical layers including any ghosts
+  	! mask is ice mask with non-zero values for cells with ice.
+  	! mySize is number of elements in myIndices
+  	! myIndices is integer vector in which IDs are def
+	  use parallel
+
+ 	  implicit none
+
+	  integer, intent(in) :: ewn, nsn, upstride
+	  integer, intent(in), dimension(:,:) :: mask
+	  integer, intent(in) :: mySize
+	  integer, intent(out), dimension(:) :: myIndices
+
+	  integer :: ew, ns, pointno
+	  integer :: glblID, upindx, slnindx
+
+
+      ! Step through mask, but exclude halo
+	  do ew = 1+staggered_lhalo,size(mask,1)-staggered_uhalo
+	     do ns = 1+staggered_lhalo,size(mask,2)-staggered_uhalo
+	        if ( mask(ew,ns) /= 0 ) then
+	          pointno = mask(ew,ns)  ! Note that pointno starts at value 1.  If we step through correctly then consecutive values
+	          ! write(*,*) "pointno = ", pointno
+	          ! first layer ID is set from parallel_globalID, rest by incrementing through layers
+	          glblID = parallel_globalID(ns, ew, upstride)
+	          ! write(*,*) "global ID (ew, ns) = (", ew, ",", ns, ") ", glblID
+	          upindx = 0
+	          do slnindx = (pointno - 1) * upstride + 1, pointno * upstride
+	              ! slnindx is offset into myIndices for current ice cell's layers. upindx is offset from current globalID.
+  	              myIndices(slnindx) = glblID + upindx
+  	              upindx = upindx + 1
+  	              ! write(*,*) "myIndices offset = ", slnindx
+	          end do
+	        endif
+	      end do
+	  end do
+
+	  return
+  end subroutine
+
+!***********************************************************************
+
+  function distributed_globalID_to_localindex(globalID)
+  	! distributed_globalID_to_localindex searches myIndices ID vector for given globalID and returns the corresponding index.
+  	! This converts a globalID to its position in the solution vector.
+  	! This is required for setting rhsd which is indexed by the solution vector index.
+  	! myIndices is assumed to be a module-level variable which holds the local processor's ID partition list.
+  	! This function will work for both globalIDs and regular partitions.
+  	! In the latter case it is redundant, because the ID will be at the same index, so it is just an identity function.
+  	! JEFF 11/2010
+	  use parallel
+
+ 	  implicit none
+
+	  integer, intent(in) :: globalID
+
+	  integer :: distributed_globalID_to_localindex, lindex
+
+#ifdef globalIDs
+      ! linear search from beginning of myIndices.
+      ! Inefficient.  There could be some ordering of myIndices that would enable us to us a binary search.  Not certain at this time.
+	  do lindex = 1, size(myIndices)
+	     if ( myIndices(lindex) == globalID ) then
+	     	distributed_globalID_to_localindex = lindex
+	     	return
+	     endif
+	  end do
+
+	  ! If get to here, then no match found.  Return -1 to cause bounds check error.
+	  write(*,*) "Error in distributed_globalID_to_localindex().  GlobalID to match = ", globalID
+	  write(*,*) "MyIndices vector = "
+	  write(*,*) myIndices
+
+	  distributed_globalID_to_localindex = -1
+	  return
+#else
+      distributed_globalID_to_localindex = globalID
+      return
+#endif
+
+  end function distributed_globalID_to_localindex
+
+!***********************************************************************
+
+  subroutine verify_trilinos_rowcolval(row, col, value)
+     ! Translates back globalID row and col values to their original grid values and outputs the set
+     ! For verification of the matrix passed to Trilinos.
+     ! JEFF November 2010
+     integer, intent(in) :: row, col
+     real (kind = dp), intent(in) :: value
+     integer :: locrow, loccol
+
+#ifdef globalIDs
+     locrow = distributed_globalID_to_localindex(row)
+     loccol = distributed_globalID_to_localindex(col)
+#else
+     locrow = row
+     loccol = col
+#endif
+
+     write (*,*) "Row = ", locrow, " Col = ", loccol, " Value = ", value
+  end subroutine verify_trilinos_rowcolval
 
 !***********************************************************************
 

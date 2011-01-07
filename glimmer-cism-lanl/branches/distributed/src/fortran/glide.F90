@@ -233,17 +233,28 @@ contains
     if (model%options%whichevol== EVOL_INC_REMAP ) then
 
         if (model%options%whichtemp == TEMP_REMAP_ADV) then ! Use IR to advect temperature
-
+#ifdef JEFFORIG
            call horizontal_remap_init( model%remap_wk,    &
                                        model%numerics%dew, model%numerics%dns,  &
                                        model%general%ewn,  model%general%nsn,   &
                                        model%general%upn,  model%numerics%sigma )    
+#endif
+           !JEFF In distributed, horizontal remapping is serialized, so it needs to be initialized with full grid size
+           call horizontal_remap_init( model%remap_wk,    &
+                                       model%numerics%dew, model%numerics%dns,  &
+                                       global_ewn,  global_nsn,   &
+                                       model%general%upn,  model%numerics%sigma )
 
         else  ! Use IR to transport thickness only
-
+#ifdef JEFFORIG
            call horizontal_remap_init( model%remap_wk,    &
                                        model%numerics%dew, model%numerics%dns,  &
                                        model%general%ewn,  model%general%nsn)
+#endif
+           !JEFF In distributed, horizontal remapping is serialized, so it needs to be initialized with full grid size
+           call horizontal_remap_init( model%remap_wk,    &
+                                       model%numerics%dew, model%numerics%dns,  &
+                                       global_ewn,  global_nsn)
 
         endif ! whichtemp
 
@@ -466,7 +477,7 @@ contains
     select case(model%options%whichevol)
     case(EVOL_PSEUDO_DIFF) ! Use precalculated uflx, vflx -----------------------------------
 
-       call not_parallel(__FILE__,__LINE__)
+       call parallel_stop(__FILE__,__LINE__)
        call thck_lin_evolve(model,model%temper%newtemps)
 
     case(EVOL_ADI) ! Use explicit leap frog method with uflx,vflx -------------------
@@ -481,15 +492,34 @@ contains
 
     case(EVOL_INC_REMAP) ! Use incremental remapping scheme for advecting ice thickness ---
                          ! (and temperature too, if whichtemp = TEMP_REMAP_ADV)
-       !TREY
        call inc_remap_driver( model )
 
-       call glide_stress( model )       !*sfp* added for populating stress tensor w/ HO fields
+       !JEFF Gathers required for glide_stress
+       call distributed_gather_var(model%geomderv%dusrfdew, gathered_dusrfdew)
+       call distributed_gather_var(model%geomderv%dusrfdns, gathered_dusrfdns)
+       call distributed_gather_var(model%geomderv%dthckdew, gathered_dthckdew)
+       call distributed_gather_var(model%geomderv%dthckdns, gathered_dthckdns)
+
+       ! Tau is calculated in glide_stress and initialized in glide_types.
+       ! These gathers effective just create variables of the correct size to hold the values.
+       ! If I had a better mechanism, then I could just create the variables locally,
+       ! then distribute at the end.
+       call distributed_gather_var(model%velocity_hom%tau%xx, gathered_tauxx)
+       call distributed_gather_var(model%velocity_hom%tau%yy, gathered_tauyy)
+       call distributed_gather_var(model%velocity_hom%tau%xy, gathered_tauxy)
+       call distributed_gather_var(model%velocity_hom%tau%scalar, gathered_tauscalar)
+       call distributed_gather_var(model%velocity_hom%tau%xz, gathered_tauxz)
+       call distributed_gather_var(model%velocity_hom%tau%yz, gathered_tauyz)
+
+       if (main_task) then
+          call glide_stress( model )       !*sfp* added for populating stress tensor w/ HO fields
+       endif
+
+       call parallel_barrier   ! Other tasks hold here until main_task completes
 
     ! *sfp** added for summer modeling school
     case(EVOL_FO_UPWIND) ! Use first order upwind scheme for mass transport
-       ! JEFF Check for distributed.  Changed to parallel_stop ignored in "parallel_single" mode.
-       call parallel_stop(__FILE__,__LINE__)
+       call not_parallel(__FILE__,__LINE__)
        call fo_upwind_advect_driver( model )
  
     end select
@@ -503,25 +533,63 @@ contains
 #ifdef PROFILING
     call glide_prof_start(model,model%glide_prof%ice_mask2)
 #endif
+
+#ifdef JEFFORIG
     call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
+#endif
+    call distributed_gather_var(model%geometry%topg, gathered_topg)
+    call distributed_gather_var(model%geometry%thkmask, gathered_thkmask)
+
+    if (main_task) then
+	   call glide_set_mask(model%numerics, gathered_thck, gathered_topg, &
+                        model%general%ewn, model%general%nsn, model%climate%eus, &
+                        gathered_thkmask, model%geometry%iarea, model%geometry%ivol, exec_serial=.TRUE.)
+    endif
+
+    call parallel_barrier   ! Other tasks hold here until main_task completes
 #ifdef PROFILING
     call glide_prof_stop(model,model%glide_prof%ice_mask2)
 #endif
 
     !calculate the normal at the marine margin
+    call distributed_gather_var(model%geometry%marine_bc_normal, gathered_marine_bc_normal)
+
+#ifdef JEFFORIG
     call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
+#endif
+
+    if (main_task) then
+       call glide_marine_margin_normal(gathered_thck, gathered_thkmask, gathered_marine_bc_normal, exec_serial=.TRUE.)
+    endif
+
+    call parallel_barrier   ! Other tasks hold here until main_task completes
 
     !calculate the grounding line flux after the mask is correct
+    call distributed_gather_var(model%velocity%surfvel, gathered_surfvel)
+    call distributed_gather_var(model%ground%gline_flux, gathered_gline_flux)
+    call distributed_gather_var(model%velocity%ubas, gathered_ubas)
+    call distributed_gather_var(model%velocity%vbas, gathered_vbas)
+
+#ifdef JEFFORIG
     call calc_gline_flux(model%geomderv%stagthck,model%velocity%surfvel, &
-    model%geometry%thkmask,model%ground%gline_flux, model%velocity%ubas, &
-    model%velocity%vbas, model%numerics%dew)
+                         model%geometry%thkmask,model%ground%gline_flux, model%velocity%ubas, &
+                         model%velocity%vbas, model%numerics%dew)
+#endif
+    if (main_task) then
+       call calc_gline_flux(gathered_stagthck, gathered_surfvel, &
+                         gathered_thkmask, gathered_gline_flux, gathered_ubas, &
+                         gathered_vbas, model%numerics%dew)
+    endif
+
+    call parallel_barrier   ! Other tasks hold here until main_task completes
 
    ! ------------------------------------------------------------------------ 
     ! Remove ice which is either floating, or is present below prescribed
     ! depth, depending on value of whichmarn
     ! ------------------------------------------------------------------------ 
+#ifdef JEFFORIG
     call glide_marinlim(model%options%whichmarn, &
          model%geometry%thck,      &
          model%isos%relx,      &
@@ -544,15 +612,67 @@ contains
          model%general%nsn, &
          model%general%ewn, &
          model%geometry%usrf)
+#endif
+    call distributed_gather_var(model%isos%relx, gathered_relx)
+    call distributed_gather_var(model%temper%flwa, gathered_flwa)
+    call distributed_gather_var(model%climate%calving, gathered_calving)
+    call distributed_gather_var(model%climate%backstress, gathered_backstress)
+    call distributed_gather_var(model%geometry%usrf, gathered_usrf)
+    call distributed_gather_var(model%climate%backstressmap, gathered_backstressmap)
+
+    if (main_task) then
+       call glide_marinlim(model%options%whichmarn, &
+         gathered_thck,      &
+         gathered_relx,      &
+         gathered_topg,   &
+         gathered_flwa,   &
+         model%numerics%sigma,   &
+         gathered_thkmask,    &
+         model%numerics%mlimit,     &
+         model%numerics%calving_fraction, &
+         model%climate%eus,         &
+         gathered_calving,  &
+         gathered_backstress, &
+         model%climate%tempanmly, &
+         model%numerics%dew,    &
+         model%numerics%dns, &
+         gathered_backstressmap, &
+         model%climate%stressout, &
+         model%climate%stressin, &
+         model%ground, &
+         model%general%nsn, &
+         model%general%ewn, &
+         gathered_usrf)
+    endif
+
+    call parallel_barrier   ! Other tasks hold here until main_task completes
 
     !issues with ice shelf, calling it again fixes the mask
-    call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
+#ifdef JEFFORIG
+   call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
                         model%general%ewn, model%general%nsn, model%climate%eus, &
                         model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
+#endif
+    if (main_task) then
+	   call glide_set_mask(model%numerics, gathered_thck, gathered_topg, &
+                        model%general%ewn, model%general%nsn, model%climate%eus, &
+                        gathered_thkmask, model%geometry%iarea, model%geometry%ivol, exec_serial=.TRUE.)
+    endif
 
+    call parallel_barrier   ! Other tasks hold here until main_task completes
+
+#ifdef JEFFORIG
     call calc_iareaf_iareag(model%numerics%dew,model%numerics%dns, &
                             model%geometry%iarea, model%geometry%thkmask, &
                             model%geometry%iareaf, model%geometry%iareag)
+#endif
+    if (main_task) then
+	    call calc_iareaf_iareag(model%numerics%dew,model%numerics%dns, &
+	                            model%geometry%iarea, gathered_thkmask, &
+	                            model%geometry%iareaf, model%geometry%iareag)
+    endif
+
+    call parallel_barrier   ! Other tasks hold here until main_task completes
 
     ! ------------------------------------------------------------------------
     ! update ice/water load if necessary
@@ -561,6 +681,9 @@ contains
     call glide_prof_start(model,model%glide_prof%isos_water)
 #endif
     if (model%isos%do_isos) then
+       !JEFF the isos_icewaterload() is passed the entire model, so I don't know what gathered variables it needs.
+       call not_parallel(__FILE__, __LINE__)
+
        if (model%numerics%time.ge.model%isos%next_calc) then
           model%isos%next_calc = model%isos%next_calc + model%isos%period
           call isos_icewaterload(model)
@@ -570,15 +693,30 @@ contains
 #ifdef PROFILING
     call glide_prof_stop(model,model%glide_prof%isos_water)
 #endif
-    
+
     ! basal shear stress calculations
+#ifdef JEFFORIG
     call calc_basal_shear(model)
+#endif
+    call distributed_gather_var(model%velocity%tau_x, gathered_tau_x)
+    call distributed_gather_var(model%velocity%tau_y, gathered_tau_y)
+
+    if (main_task) then
+	    call calc_basal_shear(gathered_stagthck, &
+	                          gathered_dusrfdew, &
+	                          gathered_dusrfdns, &
+	                          gathered_tau_x, &
+	                          gathered_tau_y)
+    endif
+
+    call parallel_barrier   ! Other tasks hold here until main_task completes
 
   end subroutine glide_tstep_p2
 
   subroutine glide_tstep_p3(model)
     !*FD Performs third part of time-step of an ice model instance:
     !*FD calculate isostatic adjustment and upper and lower ice surface
+    use parallel
     use isostasy
     use glide_setup
     implicit none
@@ -591,6 +729,9 @@ contains
     call glide_prof_start(model,model%glide_prof%isos)
 #endif
     if (model%isos%do_isos) then
+       !JEFF the isos_isostasy() is passed the entire model, so I don't know what gathered variables it needs.
+       call not_parallel(__FILE__, __LINE__)
+
        call isos_isostasy(model)
     end if
 #ifdef PROFILING
@@ -600,8 +741,18 @@ contains
     ! ------------------------------------------------------------------------
     ! calculate upper and lower ice surface
     ! ------------------------------------------------------------------------
+#ifdef JEFFORIG
     call glide_calclsrf(model%geometry%thck, model%geometry%topg, model%climate%eus, model%geometry%lsrf)
     model%geometry%usrf = max(0.d0,model%geometry%thck + model%geometry%lsrf)
+#endif
+    call distributed_gather_var(model%geometry%lsrf, gathered_lsrf)
+
+    if (main_task) then
+	    call glide_calclsrf(gathered_thck, gathered_topg, model%climate%eus, gathered_lsrf)
+	    gathered_usrf = max(0.d0,gathered_thck + gathered_lsrf)
+    endif
+
+    call parallel_barrier   ! Other tasks hold here until main_task completes
 
     ! increment time counter
     model%numerics%timecounter = model%numerics%timecounter + 1

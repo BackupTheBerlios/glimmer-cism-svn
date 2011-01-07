@@ -31,6 +31,8 @@ module glam
 
     ! This driver is called from "glide.F90", in subroutine "glide_tstep_p2"
     subroutine inc_remap_driver( model )
+        use parallel
+        implicit none
 
         type(glide_global_type), intent(inout) :: model
 
@@ -44,94 +46,155 @@ module glam
         ! Compute higher-order ice velocities
 
         ! This driver is called from "glide_velo_higher.F90"
-        !TREY
         call run_ho_diagnostic(model)   ! in glide_velo_higher.F90
 
-        ! Use incremental remapping algorithm to evolve the ice thickness
-        ! (and optionally, temperature and other tracers)
+        ! JEFF Glue Code to serialize
+        ! Glue code to gather the distributed variables back to main_task processor.
+        ! These are outputs from run_ho_diagnostic and are gathered presuming they will be used
+        call distributed_gather_var(model%velocity_hom%efvs, gathered_efvs)
+        call distributed_gather_var(model%velocity_hom%uvel, gathered_uvel)
+        call distributed_gather_var(model%velocity_hom%vvel, gathered_vvel)
+        call distributed_gather_var(model%velocity_hom%uflx, gathered_uflx)
+        call distributed_gather_var(model%velocity_hom%vflx, gathered_vflx)
+        call distributed_gather_var(model%velocity_hom%velnorm, gathered_velnorm)
 
-        if (model%options%whichtemp == TEMP_REMAP_ADV) then   ! Use IR to advect temperature
-                                                              ! (and other tracers, if present)
+        !Verifying that distributed_gather is working.
+        ! call distributed_print("uvel_distributed", model%velocity_hom%uvel)
+        ! call parallel_print("uvel_gathered", gathered_uvel)
+        !After gathering, then update nsn and ewn to full values (and zero halos?)
+        model%general%ewn = global_ewn
+        model%general%nsn = global_nsn
 
-           ! Put relevant model variables into a format that inc. remapping code wants.
-           ! (This subroutine lives in module remap_glamutils)
-           ! Assume that the remapping grid has horizontal dimensions (ewn-1, nsn-1), so that
-           !  scalar and velo grids are the same size.
-           ! Alse assume that temperature points are staggered in the vertical relative
-           !  to velocity points, with temp(0) at the top surface and temp(upn) at the
-           !  bottom surface. 
-           ! Do not advect temp(0), since fixed at artm
-           ! At least for now, do not advect temp(upn) either.
-
-           call horizontal_remap_in (model%remap_wk,          model%numerics%dt,                     &
-                                     model%geometry%thck(1:model%general%ewn-1,1:model%general%nsn-1),  &
-                                     model%velocity_hom%uflx, model%velocity_hom%vflx,               &
-                                     model%geomderv%stagthck, model%numerics%thklim,                 &
-                                     model%velocity_hom%uvel, model%velocity_hom%vvel,               &
-                                     model%temper%temp  (1:model%general%upn-1,                        &
-                                                         1:model%general%ewn-1,1:model%general%nsn-1))
-
-           ! Remap temperature and fractional thickness for each layer
-           ! (This subroutine lives in module remap_advection)
-
-           do k = 1, model%general%upn-1
-              
-              call horizontal_remap( model%remap_wk%dt_ir,                                         &
-                                     model%general%ewn-1,        model%general%nsn-1,              &
-                                     ntrace_ir,                  nghost_ir,                        &
-                                     model%remap_wk%uvel_ir (:,:,k),                               &
-                                     model%remap_wk%vvel_ir (:,:,k),                               &
-                                     model%remap_wk%thck_ir (:,:,k),                               &
-                                     model%remap_wk%trace_ir(:,:,:,k),                             &
-                                     model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
-                                     model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
-                                     model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
-                                     model%remap_wk%hm_ir,       model%remap_wk%tarear_ir)
-
-           enddo
-
-           ! Interpolate tracers back to sigma coordinates
-
-           call vertical_remap( model%general%ewn-1,     model%general%nsn-1,               &
-                                model%general%upn,       ntrace_ir,                         &
-                                model%numerics%sigma,    model%remap_wk%thck_ir(:,:,:),     & 
-                                model%remap_wk%trace_ir)
-
-           ! put output from inc. remapping code back into format that model wants
-           ! (this subroutine lives in module remap_glamutils)
-
-           call horizontal_remap_out (model%remap_wk,     model%geometry%thck,            &
-                                      model%climate%acab, model%numerics%dt,              &
-                                      model%temper%temp(1:model%general%upn-1,:,:) )
-
-        else  ! Use IR to transport thickness only
-
-           call horizontal_remap_in (model%remap_wk,          model%numerics%dt,                     &
-                                     model%geometry%thck(1:model%general%ewn-1,1:model%general%nsn-1),    &
-                                     model%velocity_hom%uflx, model%velocity_hom%vflx,               &
-                                     model%geomderv%stagthck, model%numerics%thklim)
-
-        ! call inc. remapping code for thickness advection (i.e. dH/dt calcualtion)
-        ! (this subroutine lives in module remap_advection)
-
-           call horizontal_remap( model%remap_wk%dt_ir,                                         &
-                                  model%general%ewn-1,        model%general%nsn-1,              &
-                                  ntrace_ir,                  nghost_ir,                        &
-                                  model%remap_wk%uvel_ir,     model%remap_wk%vvel_ir,           &
-                                  model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
-                                  model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
-                                  model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
-                                  model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
-                                  model%remap_wk%hm_ir,       model%remap_wk%tarear_ir)
+        !Gather vars required for following remap routines.
+        call distributed_gather_var(model%geometry%thck, gathered_thck)
+        call distributed_gather_var(model%geomderv%stagthck, gathered_stagthck)
+        call distributed_gather_var(model%climate%acab, gathered_acab)
+        call distributed_gather_var(model%temper%temp, gathered_temp)
 
         ! Put output from inc. remapping code back into format that model wants.
         ! (This subroutine lives in module remap_glamutils)
 
-           call horizontal_remap_out (model%remap_wk,     model%geometry%thck,                 &
-                                      model%climate%acab, model%numerics%dt )
+        if (main_task) then
+	        ! Use incremental remapping algorithm to evolve the ice thickness
+	        ! (and optionally, temperature and other tracers)
+	        if (model%options%whichtemp == TEMP_REMAP_ADV) then   ! Use IR to advect temperature
+	                                                              ! (and other tracers, if present)
 
-        endif   ! whichtemp
+	           ! Put relevant model variables into a format that inc. remapping code wants.
+	           ! (This subroutine lives in module remap_glamutils)
+	           ! Assume that the remapping grid has horizontal dimensions (ewn-1, nsn-1), so that
+	           !  scalar and velo grids are the same size.
+	           ! Also assume that temperature points are staggered in the vertical relative
+	           !  to velocity points, with temp(0) at the top surface and temp(upn) at the
+	           !  bottom surface.
+	           ! Do not advect temp(0), since fixed at artm
+	           ! At least for now, do not advect temp(upn) either.
 
+#ifdef JEFFORIG
+	           call horizontal_remap_in (model%remap_wk,          model%numerics%dt,                     &
+	                                     model%geometry%thck(1:model%general%ewn-1,1:model%general%nsn-1),  &
+	                                     model%velocity_hom%uflx, model%velocity_hom%vflx,               &
+	                                     model%geomderv%stagthck, model%numerics%thklim,                 &
+	                                     model%velocity_hom%uvel, model%velocity_hom%vvel,               &
+	                                     model%temper%temp  (1:model%general%upn-1,                        &
+	                                                         1:model%general%ewn-1,1:model%general%nsn-1))
+#endif
+	           call horizontal_remap_in (model%remap_wk,          model%numerics%dt,                     &
+	                                     gathered_thck(1:model%general%ewn-1,1:model%general%nsn-1),  &
+	                                     gathered_uflx, gathered_vflx,               &
+	                                     gathered_stagthck, model%numerics%thklim,                 &
+	                                     gathered_uvel, gathered_vvel,               &
+	                                     gathered_temp  (1:model%general%upn-1,                        &
+	                                                         1:model%general%ewn-1,1:model%general%nsn-1))
+
+	           ! Remap temperature and fractional thickness for each layer
+	           ! (This subroutine lives in module remap_advection)
+
+	           do k = 1, model%general%upn-1
+		          !JEFF all variables going into horizontal_remap are relative to remap_wk, so no gathering required.
+	              call horizontal_remap( model%remap_wk%dt_ir,                                         &
+	                                     model%general%ewn-1,        model%general%nsn-1,              &
+	                                     ntrace_ir,                  nghost_ir,                        &
+	                                     model%remap_wk%uvel_ir (:,:,k),                               &
+	                                     model%remap_wk%vvel_ir (:,:,k),                               &
+	                                     model%remap_wk%thck_ir (:,:,k),                               &
+	                                     model%remap_wk%trace_ir(:,:,:,k),                             &
+	                                     model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
+	                                     model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
+	                                     model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
+	                                     model%remap_wk%hm_ir,       model%remap_wk%tarear_ir)
+
+	           enddo
+
+	           ! Interpolate tracers back to sigma coordinates
+               !JEFF sigma is "Sigma values for vertical spacing of model levels" which is the same on all nodes.
+               !JEFF Rest of parameters vertical_remap are relative to remap_wk, so no gathering required.
+	           call vertical_remap( model%general%ewn-1,     model%general%nsn-1,               &
+	                                model%general%upn,       ntrace_ir,                         &
+	                                model%numerics%sigma,    model%remap_wk%thck_ir(:,:,:),     &
+	                                model%remap_wk%trace_ir)
+
+#ifdef JEFFORIG
+	           ! put output from inc. remapping code back into format that model wants
+	           ! (this subroutine lives in module remap_glamutils)
+	           call horizontal_remap_out (model%remap_wk,     model%geometry%thck,            &
+	                                      model%climate%acab, model%numerics%dt,              &
+	                                      model%temper%temp(1:model%general%upn-1,:,:) )
+#endif
+	            !JEFF gathered_thck is updated in this procedure.  I don't know about gathered_temp yet.
+		        ! put output from inc. remapping code back into format that model wants
+		        ! (this subroutine lives in "remap_glamutils.F90")
+		        call horizontal_remap_out(model%remap_wk, gathered_thck,                 &
+		                                  gathered_acab, model%numerics%dt,              &
+	                                      gathered_temp(1:model%general%upn-1,:,:) )
+
+	        else  ! Use IR to transport thickness only
+		        ! call inc. remapping code for thickness advection (i.e. dH/dt calcualtion)
+		        ! (this subroutine lives in module remap_advection)
+
+		        ! put relevant model variables into a format that inc. remapping code wants
+		        ! (this subroutine lives in "remap_glamutils.F90")
+#ifdef JEFFORIG
+	           Updated call call horizontal_remap_in (model%remap_wk,          model%numerics%dt,                     &
+	                                     model%geometry%thck(1:model%general%ewn-1,1:model%general%nsn-1),    &
+	                                     model%velocity_hom%uflx, model%velocity_hom%vflx,               &
+	                                     model%geomderv%stagthck, model%numerics%thklim)
+#endif
+	           call horizontal_remap_in (model%remap_wk,          model%numerics%dt,                     &
+	                                     gathered_thck(1:model%general%ewn-1,1:model%general%nsn-1),    &
+	                                     gathered_uflx, gathered_vflx,               &
+	                                     gathered_stagthck, model%numerics%thklim)
+
+	            !JEFF all variables going into horizontal_remap are relative to remap_wk, so no gathering required.
+		        ! call inc. remapping code for thickness advection (i.e. dH/dt calcualtion)
+		        ! (this subroutine lives in "remap_advection.F90")
+	           call horizontal_remap( model%remap_wk%dt_ir,                                         &
+	                                  model%general%ewn-1,        model%general%nsn-1,              &
+	                                  ntrace_ir,                  nghost_ir,                        &
+	                                  model%remap_wk%uvel_ir,     model%remap_wk%vvel_ir,           &
+	                                  model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
+	                                  model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
+	                                  model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
+	                                  model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
+	                                  model%remap_wk%hm_ir,       model%remap_wk%tarear_ir)
+
+#ifdef JEFFORIG
+		        ! put output from inc. remapping code back into format that model wants
+		        ! (this subroutine lives in "remap_glamutils.F90")
+	           call horizontal_remap_out (model%remap_wk,     model%geometry%thck,                 &
+	                                      model%climate%acab, model%numerics%dt )
+#endif
+	            ! gathered_thck is updated in this procedure
+		        ! put output from inc. remapping code back into format that model wants
+		        ! (this subroutine lives in "remap_glamutils.F90")
+		        call horizontal_remap_out(model%remap_wk, gathered_thck,                 &
+		                                   gathered_acab, model%numerics%dt )
+
+
+	        endif   ! whichtemp
+        endif    ! main_task
+
+        call parallel_barrier   ! Other tasks hold here until main_task completes
     end subroutine inc_remap_driver
 
         ! NOTE finalization routine, to be written for PP HO core needs to be written (e.g.

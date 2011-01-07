@@ -203,8 +203,9 @@ module remap_glamutils
            wk%vvel_ir(:,:,1) = 0.0_dp
        endwhere
 
-      call write_xls("uflx.txt", uflx)
-      call write_xls("vflx.txt", vflx)
+      !JEFF Can't call these in single-processor mode, because gathers variable.  Can switch to parallel_print if output required.
+      !call write_xls("uflx.txt", uflx)
+      !call write_xls("vflx.txt", vflx)
 
     endif
 

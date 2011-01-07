@@ -2,7 +2,7 @@
 ! stress and effective viscosity fields. To be called at the end of HO vel calculation in 'run_ho_diagnostic'
 
 module stress_hom
-
+    use parallel
     use glimmer_paramets, only : dp
     use glide_types
 
@@ -20,6 +20,7 @@ module stress_hom
 
 !        case( HO_STRESSCALC_PP )
 
+#ifdef JEFFORIG
             call calcstrsstr(model%general%ewn,  model%general%nsn,  model%general%upn,     &
                        model%numerics%dew,       model%numerics%dns,                        &
                        model%numerics%sigma,     model%numerics%stagsigma,                  & 
@@ -31,6 +32,18 @@ module stress_hom
                        model%velocity_hom%tau%xx,      model%velocity_hom%tau%yy,           &
                        model%velocity_hom%tau%xy,      model%velocity_hom%tau%scalar,       &
                        model%velocity_hom%tau%xz,      model%velocity_hom%tau%yz )
+#endif
+            call calcstrsstr(model%general%ewn,  model%general%nsn,  model%general%upn,     &
+                       model%numerics%dew,       model%numerics%dns,                        &
+                       model%numerics%sigma,     model%numerics%stagsigma,                  &
+                       gathered_thck,                                                 &
+                       gathered_dusrfdew,   gathered_dusrfdns,                  &
+                       gathered_dthckdew,   gathered_dthckdns,                  &
+                       gathered_uvel,       gathered_vvel,              &
+                       gathered_efvs,                                             &
+                       gathered_tauxx,      gathered_tauyy,           &
+                       gathered_tauxy,      gathered_tauscalar,       &
+                       gathered_tauxz,      gathered_tauyz )
 
 !        case( HO_STRESSCALC_PBJ )
 
