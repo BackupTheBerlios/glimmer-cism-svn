@@ -499,7 +499,8 @@ contains
          '~basal water', &
          '~basal melt ', &
          'taub^3      ' /)
-    character(len=*), dimension(0:4), parameter :: evolution = (/ &
+    character(len=*), dimension(0:5), parameter :: evolution = (/ &
+         'Open AD test case                     ', &   ! *sfp* Open AD test case: evol of T only, through vert diff only
          'pseudo-diffusion                      ', &
          'ADI scheme                            ', &
          'iterated diffusion                    ', &
@@ -600,7 +601,7 @@ contains
     end if
     write(message,*) 'slip_coeff              : ', model%options%whichbtrc, slip_coeff(model%options%whichbtrc)
     call write_log(message)
-    if (model%options%whichevol.lt.0 .or. model%options%whichevol.ge.size(evolution)) then
+    if (model%options%whichevol.lt.-1 .or. model%options%whichevol.ge.size(evolution)) then
        call write_log('Error, evolution out of range',GM_FATAL)
     end if
     write(message,*) 'evolution               : ', model%options%whichevol, evolution(model%options%whichevol)

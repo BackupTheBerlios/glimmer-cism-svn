@@ -243,6 +243,7 @@ module glide_types
 
     !*FD Thickness evolution method:
     !*FD \begin{description}
+    !*FD \item[-1] evolution of temperature only, through vert diff only (for Open AD test case) 
     !*FD \item[0] Pseudo-diffusion approach 
     !*FD \item[2] Diffusion approach (also calculates velocities)
     !*FD \item[3] Incremental remapping
