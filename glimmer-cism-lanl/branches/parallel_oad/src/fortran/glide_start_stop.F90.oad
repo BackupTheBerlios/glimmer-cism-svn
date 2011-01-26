@@ -1,0 +1,421 @@
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! +                                                           +
+! +  glide_start_stop.f90 - part of the GLIMMER ice model           + 
+! +                                                           +
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! 
+! Copyright (C) 2004 GLIMMER contributors - see COPYRIGHT file 
+! for list of contributors.
+!
+! This program is free software; you can redistribute it and/or 
+! modify it under the terms of the GNU General Public License as 
+! published by the Free Software Foundation; either version 2 of 
+! the License, or (at your option) any later version.
+!
+! This program is distributed in the hope that it will be useful, 
+! but WITHOUT ANY WARRANTY; without even the implied warranty of 
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the 
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License 
+! along with this program; if not, write to the Free Software 
+! Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 
+! 02111-1307 USA
+!
+! GLIMMER is maintained by:
+!
+! Ian Rutt
+! School of Geographical Sciences
+! University of Bristol
+! University Road
+! Bristol
+! BS8 1SS
+! UK
+!
+! email: <i.c.rutt@bristol.ac.uk> or <ian.rutt@physics.org>
+!
+! GLIMMER is hosted on NeSCForge:
+!
+! http://forge.nesc.ac.uk/projects/glimmer/
+!
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+#ifdef HAVE_CONFIG_H
+#include "config.inc"
+#endif
+
+module glide_start_stop
+
+  use glide_types
+  use glimmer_log
+  use remap_glamutils
+  use glide_io
+  use glide_lithot
+
+!  use glimmer_config
+!  use glide_nc_custom
+!  use glide_profile
+!  use glide_deriv
+!  use glimmer_global
+
+  use fo_upwind_advect, only : fo_upwind_advect_final, fo_upwind_advect_init
+  use glam_Basal_Proc, only : Basal_Proc_final, Basal_Proc_final
+
+  implicit none
+  !*FD module containing finalisation of glide
+  !*FD this subroutine had to be split out from glide.f90 to avoid
+  !*FD circular dependencies
+  !*FD Updated by Tim Bocek to allow for several models to be
+  !*FD registered and finalized with a single call without needing
+  !*FD the model at call time
+
+  integer, parameter :: max_models = 32
+
+  type pmodel_type
+    !*FD Contains a pointer to a model
+    !*FD This is a hack to get around Fortran's lack of arrays of pointers
+    type(glide_global_type), pointer :: p => null()
+  end type pmodel_type
+
+  !*FD Pointers to all registered models
+  !*FD This has a fixed size at compile time
+  type(pmodel_type), dimension(max_models), save :: registered_models
+
+  integer, private, parameter :: dummyunit=99
+
+contains
+
+  subroutine glide_config(model,config)
+    !*FD read glide configuration from file and print it to the log
+    use glide_setup
+    use isostasy
+    use glimmer_ncparams
+    use glimmer_config
+    use glimmer_map_init
+    use glimmer_filenames
+    implicit none
+    type(glide_global_type) :: model        !*FD model instance
+    type(ConfigSection), pointer :: config  !*FD structure holding sections of configuration file
+
+    type(ConfigSection), pointer :: ncconfig
+
+    ! read configuration file
+    call glide_readconfig(model,config)
+    call glide_printconfig(model)
+    ! Read alternate sigma levels from config file, if necessary
+    call glide_read_sigma(model,config)
+    ! read isostasy configuration file
+    call isos_readconfig(model%isos,config)
+    call isos_printconfig(model%isos)
+    ! read mapping from config file
+    ! **** Use of dew and dns here is an ugly fudge that
+    ! **** allows the use of old [GLINT projection] config section
+    ! **** for backwards compatibility. It will be deleted soon.
+    ! **** (You have been warned!)
+    ! **** N.B. Here, dew and dns are unscaled - i.e. real distances in m
+    call glimmap_readconfig(model%projection,config, &
+         model%numerics%dew, &
+         model%numerics%dns)
+
+    ! netCDF I/O
+    if (trim(model%funits%ncfile).eq.'') then
+       ncconfig => config
+    else
+       call ConfigRead(process_path(model%funits%ncfile),ncconfig)
+    end if
+    call glimmer_nc_readparams(model,ncconfig)
+  end subroutine glide_config
+
+  subroutine glide_initialise(model)
+    !*FD initialise GLIDE model instance
+    use glide_setup
+    use glimmer_ncio
+    use glide_velo
+    use glide_velo_higher
+    use glide_thck
+    use glide_temp
+    use glissade_temp
+    use glimmer_log
+    use glimmer_scales
+    use glide_mask
+    use isostasy
+    use glimmer_map_init
+    use glide_ground
+
+    ! *sfp** added
+    use glam_strs2, only : glam_velo_fordsiapstr_init
+    use remap_glamutils, only : horizontal_remap_init
+
+    ! *sfp** added for summer modeling school
+    use fo_upwind_advect, only : fo_upwind_advect_init
+
+    !*mb* added 
+    use glam_Basal_Proc, only : Basal_Proc_init
+
+    implicit none
+    type(glide_global_type) :: model        !*FD model instance
+
+    integer :: i,j
+
+    call write_log(glimmer_version)
+
+    ! initialise scales
+    call glimmer_init_scales
+    call initnan !Initialize the NAN representation, hack to get smart compilers like gfortran to divide by zero
+
+    ! scale parameters
+    call glide_scale_params(model)
+    ! set up coordinate systems
+    model%general%ice_grid = coordsystem_new(0.d0, 0.d0, &
+         model%numerics%dew, model%numerics%dns, &
+         model%general%ewn, model%general%nsn)
+    model%general%velo_grid = coordsystem_new(model%numerics%dew/2.,model%numerics%dns/2., &
+         model%numerics%dew,model%numerics%dns, &
+         model%general%ewn-1,model%general%nsn-1)
+
+    ! allocate arrays
+    call glide_allocarr(model)
+
+    ! initialise bed softness to uniform parameter
+    model%velocity%bed_softness = model%velowk%btrac_const
+
+    !Initialize boundary condition fields to be NaN everywhere
+    model%geometry%marine_bc_normal = NaN
+
+    ! load sigma file
+    call glide_load_sigma(model,dummyunit)
+
+    ! set uniform basal heat flux
+    model%temper%bheatflx = model%paramets%geot
+
+    ! open all input files
+    call openall_in(model)
+    ! and read first time slice
+    call glide_io_readall(model,model)
+    ! Write projection info to log
+    call glimmap_printproj(model%projection)
+
+    ! handle relaxed/equilibrium topo
+    ! Initialise isostasy first
+    call init_isostasy(model)
+    select case(model%options%whichrelaxed)
+    case(1) ! Supplied topography is relaxed
+       model%isos%relx = model%geometry%topg
+    case(2) ! Supplied topography is in equilibrium
+       call isos_relaxed(model)
+    end select
+
+    ! open all output files
+    call openall_out(model)
+    ! create glide variables
+    call glide_io_createall(model)
+
+    ! initialise glide components
+    call init_velo(model)
+
+    if (model%options%whichtemp == TEMP_REMAP_ADV) then
+       call glissade_init_temp(model)
+    else
+       call glide_init_temp(model)
+    endif
+
+    call init_thck(model)
+
+    call glide_initialise_backstress(model%geometry%thck,&
+                                     model%climate%backstressmap,&
+                                     model%climate%backstress, &
+                                     model%climate%stressin, &
+                                     model%climate%stressout)
+    if (model%options%gthf.gt.0) then
+       call init_lithot(model)
+    end if
+
+    if (model%options%which_ho_diagnostic == HO_DIAG_PATTYN_UNSTAGGERED .or. &
+        model%options%which_ho_diagnostic == HO_DIAG_PATTYN_STAGGERED) then
+
+        call init_velo_hom_pattyn(model)
+
+    end if
+
+    ! *sfp** added; initialization of Payne/Price HO dynamics subroutine ... name can change once agreed on
+    if (model%options%which_ho_diagnostic == HO_DIAG_PP ) then
+
+        call glam_velo_fordsiapstr_init(model%general%ewn,    model%general%nsn,  &
+                                        model%general%upn,                        &
+                                        model%numerics%dew,   model%numerics%dns, &
+                                        model%numerics%sigma)
+    end if
+
+    ! *sfp** added; initialization of LANL incremental remapping subroutine for thickness evolution
+    if (model%options%whichevol== EVOL_INC_REMAP ) then
+
+        if (model%options%whichtemp == TEMP_REMAP_ADV) then ! Use IR to advect temperature
+
+           call horizontal_remap_init( model%remap_wk,    &
+                                       model%numerics%dew, model%numerics%dns,  &
+                                       model%general%ewn,  model%general%nsn,   &
+                                       model%general%upn,  model%numerics%sigma )
+
+        else  ! Use IR to transport thickness only
+
+           call horizontal_remap_init( model%remap_wk,    &
+                                       model%numerics%dew, model%numerics%dns,  &
+                                       model%general%ewn,  model%general%nsn)
+
+        endif ! whichtemp
+
+    endif
+
+    ! *sfp** added for summer modeling school
+    if (model%options%whichevol== EVOL_FO_UPWIND ) then
+
+        call fo_upwind_advect_init( model%general%ewn, model%general%nsn )
+
+    endif
+
+    ! *mb* added; initialization of basal proc. module
+    if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
+        model%options%which_bmod == BAS_PROC_FASTCALC) then
+
+        call Basal_Proc_init (model%general%ewn, model%general%nsn,model%basalproc,     &
+                              model%numerics%ntem)
+    end if
+
+    ! initialise ice age
+    ! Currently the ice age is only computed for remapping transport
+    ! (whichevol = 3 or 4)
+    model%geometry%age(:,:,:) = 0._dp
+
+    if (model%options%hotstart.ne.1) then
+       ! initialise Glen's flow parameter A using an isothermal temperature distribution
+       call glide_temp_driver(model,0)
+    end if
+
+    ! calculate mask
+    call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
+                        model%general%ewn, model%general%nsn, model%climate%eus, &
+                        model%geometry%thkmask, model%geometry%iarea, model%geometry%ivol)
+
+    call calc_iareaf_iareag(model%numerics%dew,model%numerics%dns, &
+                            model%geometry%iarea, model%geometry%thkmask, &
+                            model%geometry%iareaf, model%geometry%iareag)
+
+    !calculate the normal at the marine margin
+    call glide_marine_margin_normal(model%geometry%thck, model%geometry%thkmask, model%geometry%marine_bc_normal)
+
+    ! and calculate lower and upper ice surface
+    call glide_calclsrf(model%geometry%thck, model%geometry%topg, model%climate%eus,model%geometry%lsrf)
+
+    model%geometry%usrf = model%geometry%thck + model%geometry%lsrf
+
+    ! initialise profile
+#ifdef PROFILING
+    call glide_prof_init(model)
+#endif
+
+    ! register the newly created model so that it can be finalised in the case
+    ! of an error without needing to pass the whole thing around to every
+    ! function that might cause an error
+    call register_model(model)
+  end subroutine glide_initialise
+
+  subroutine register_model(model)
+    !*FD Registers a model, ensuring that it is finalised in the case of an error
+    type(glide_global_type), target :: model
+    integer :: i
+
+    do i = 1, max_models
+      if (.not. associated(registered_models(i)%p)) then
+         registered_models(i)%p => model
+         model%model_id = i
+         return
+      end if
+    end do
+    call write_log("Model was not registered, did you instantiate too many instances?", GM_FATAL)
+  end subroutine
+
+  subroutine deregister_model(model)
+    !*FD Removes a model from the registry.  Normally this should only be done
+    !*FD glide_finalise is called on the model, and is done automatically by
+    !*FD that function
+    type(glide_global_type) :: model
+
+    if (model%model_id < 1 .or. model%model_id > max_models) then
+        call write_log("Attempting to deregister a non-allocated model", GM_WARNING) 
+    else
+        registered_models(model%model_id)%p => null()
+        model%model_id = 0
+    end if
+  end subroutine
+
+  subroutine glide_finalise_all(crash_arg)
+    !*FD Finalises all models in the model registry
+    logical, optional :: crash_arg
+    
+    logical :: crash
+    integer :: i
+
+    if (present(crash_arg)) then
+        crash = crash_arg
+    else
+        crash = .false.
+    end if
+
+    do i = 1,max_models
+        if (associated(registered_models(i)%p)) then
+            call glide_finalise(registered_models(i)%p, crash)
+        end if
+    end do 
+  end subroutine
+
+  subroutine glide_finalise(model,crash)
+    !*FD finalise GLIDE model instance
+    use glimmer_ncio
+    use glide_io
+    use profile
+    implicit none
+    type(glide_global_type) :: model        !*FD model instance
+    logical, optional :: crash              !*FD set to true if the model died unexpectedly
+    character(len=100) :: message
+
+    ! force last write if crashed
+    if (present(crash)) then
+       if (crash) then
+          call glide_io_writeall(model,model,.true.)
+       end if
+    end if
+
+    call closeall_in(model)
+    call closeall_out(model)
+   
+    ! *tjb** added; finalization of LANL incremental remapping subroutine for thickness evolution
+    if (model%options%whichevol== EVOL_INC_REMAP ) then
+        call horizontal_remap_final(model%remap_wk)
+    endif 
+
+   ! *sfp* added for summer modeling school
+    if (model%options%whichevol== EVOL_FO_UPWIND ) then
+        call fo_upwind_advect_final()
+    endif
+
+    ! *mb* added; finalization of Basal Proc module
+    if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
+        model%options%which_bmod == BAS_PROC_FASTCALC) then
+        call Basal_Proc_final (model%basalproc)
+    end if  
+
+    call glide_deallocarr(model)
+    call deregister_model(model)
+
+    ! write some statistics
+    call write_log('Some Stats')
+    write(message,*) 'Maximum temperature iterations: ',model%temper%niter
+    call write_log(message)
+
+    ! close profile
+#ifdef PROFILING
+    call profile_close(model%profile)
+#endif
+
+  end subroutine glide_finalise
+end module glide_start_stop
