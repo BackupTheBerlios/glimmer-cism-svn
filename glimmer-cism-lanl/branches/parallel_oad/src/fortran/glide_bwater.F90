@@ -7,7 +7,6 @@ contains
 
     use glimmer_global, only : dp 
     use glimmer_paramets, only : thk0
-    use glide_thck
     use glide_grids, only: stagvarb
 
     implicit none

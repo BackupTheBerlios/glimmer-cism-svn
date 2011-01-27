@@ -179,10 +179,8 @@ contains
 
     use glimmer_utils,  only : tridiag
     use glimmer_global, only : dp
-    use glimmer_paramets, only : thk0
-    use glimmer_physcon, only: shci, coni
-    use glide_velo
-    use glide_thck
+    use glimmer_paramets, only : thk0, tim0
+    use glimmer_physcon, only: shci, coni, rhoi
     use glide_mask
     use glide_bwater
     use glide_temp_utils
@@ -443,7 +441,7 @@ contains
     ! compute matrix elements for the tridiagonal solve
 
     use glimmer_global, only : dp
-    use glimmer_paramets, only : thk0
+    use glimmer_paramets, only : thk0, tim0
     use glimmer_physcon,  only : rhoi, grav, coni
     use glide_temp_utils, only: calcpmptb
 

@@ -50,7 +50,6 @@ module glide_thck
 
   use glide_types
   use glide_velo_higher
-  use glimmer_sparse
   use glimmer_sparse_type
   use glide_grids
 
@@ -518,9 +517,6 @@ contains
       sumd(5) = - (sumd(1) + sumd(2) + sumd(3) + sumd(4))
     end subroutine findsums
   end subroutine thck_evolve
-
-
-
 
 !---------------------------------------------------------------
 
