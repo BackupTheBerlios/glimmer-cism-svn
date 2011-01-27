@@ -45,6 +45,7 @@
 #endif
 
 #include "glide_mask.inc"
+#include "glide_mymods.inc"
 
 module glide
   !*FD the top-level GLIDE module
@@ -65,11 +66,14 @@ contains
   subroutine glide_config(model,config)
     !*FD read glide configuration from file and print it to the log
     use glide_setup
-    use isostasy
     use glimmer_ncparams
     use glimmer_config
-    use glimmer_map_init
+    use glimmer_map_init, only: glimmap_readconfig
     use glimmer_filenames
+#ifndef DISABLE_ISOS
+    use isostasy
+#endif
+
     implicit none
     type(glide_global_type) :: model        !*FD model instance
     type(ConfigSection), pointer :: config  !*FD structure holding sections of configuration file
@@ -81,9 +85,13 @@ contains
     call glide_printconfig(model)
     ! Read alternate sigma levels from config file, if necessary
     call glide_read_sigma(model,config)
+
+#ifndef DISABLE_ISOS
     ! read isostasy configuration file
     call isos_readconfig(model%isos,config)
     call isos_printconfig(model%isos)
+#endif
+
     ! read mapping from config file
     ! **** Use of dew and dns here is an ugly fudge that
     ! **** allows the use of old [GLINT projection] config section
@@ -107,17 +115,19 @@ contains
     !*FD initialise GLIDE model instance
     use glide_setup
     use glimmer_ncio
-    use glide_velo
-    use glide_velo_higher
-    use glide_thck
-    use glide_temp
+    use glide_velo, only: init_velo
+    use glide_thck, only: init_thck
     use glissade_temp
+    use glide_temp_utils, only: calcflwa
     use glimmer_log
     use glimmer_scales
     use glide_mask
-    use isostasy
     use glimmer_map_init
+
+#ifndef DISABLE_EVOL
+    use glide_temp
     use glide_ground
+    use glide_velo_higher, only: init_velo_hom_pattyn
 
     ! *sfp** added
     use glam_strs2, only : glam_velo_fordsiapstr_init
@@ -128,11 +138,16 @@ contains
 
     !*mb* added 
     use glam_Basal_Proc, only : Basal_Proc_init
+#endif
+
+#ifndef DISABLE_ISOS
+    use isostasy
+#endif
 
     implicit none
     type(glide_global_type) :: model        !*FD model instance
 
-    integer :: i,j
+    integer :: i,j,k
 
     call write_log(glimmer_version)
 
@@ -172,8 +187,10 @@ contains
     ! Write projection info to log
     call glimmap_printproj(model%projection)
 
+#ifndef DISABLE_ISOS
     ! handle relaxed/equilibrium topo
     ! Initialise isostasy first
+
     call init_isostasy(model)
     select case(model%options%whichrelaxed)
     case(1) ! Supplied topography is relaxed
@@ -181,7 +198,7 @@ contains
     case(2) ! Supplied topography is in equilibrium
        call isos_relaxed(model)
     end select
-
+#endif  /* DISABLE_ISOS */
 
     ! open all output files
     call openall_out(model)
@@ -194,19 +211,27 @@ contains
     if (model%options%whichtemp == TEMP_REMAP_ADV) then
        call glissade_init_temp(model)
     else
+#ifdef DISABLE_EVOL
+       write(50,*) 'Abort code, no glide_init_temp'
+       call flush(50)
+       stop
+#else
        call glide_init_temp(model)
+#endif
     endif
 
     call init_thck(model)
 
+    if (model%options%gthf.gt.0) then
+       call init_lithot(model)
+    end if
+
+#ifndef DISABLE_EVOL
     call glide_initialise_backstress(model%geometry%thck,&
                                      model%climate%backstressmap,&
                                      model%climate%backstress, &
                                      model%climate%stressin, &
                                      model%climate%stressout)
-    if (model%options%gthf.gt.0) then
-       call init_lithot(model)
-    end if
 
     if (model%options%which_ho_diagnostic == HO_DIAG_PATTYN_UNSTAGGERED .or. &
         model%options%which_ho_diagnostic == HO_DIAG_PATTYN_STAGGERED) then
@@ -258,6 +283,7 @@ contains
         call Basal_Proc_init (model%general%ewn, model%general%nsn,model%basalproc,     &
                               model%numerics%ntem)
     end if      
+#endif
 
     ! initialise ice age
     ! Currently the ice age is only computed for remapping transport
@@ -265,8 +291,30 @@ contains
     model%geometry%age(:,:,:) = 0._dp
  
     if (model%options%hotstart.ne.1) then
+
        ! initialise Glen's flow parameter A using an isothermal temperature distribution
-       call glide_temp_driver(model,0)
+       ! (setting column to surface air temperature)
+
+       if (model%options%whichtemp == TEMP_REMAP_ADV) then
+
+          do k = 1, model%general%upn-1
+             model%temper%temp(k,:,:) = dmin1(0.0d0,dble(model%climate%artm(:,:)))
+          end do
+
+          call calcflwa(model%numerics%sigma,        &
+                        model%numerics%thklim,       &
+                        model%temper%flwa,           &
+                        model%temper%temp(:,1:model%general%ewn,1:model%general%nsn), &
+                        model%geometry%thck,         &
+                        model%paramets%flow_factor,  &
+                        model%paramets%default_flwa, &
+                        model%options%whichflwa)
+
+       else
+#ifndef DISABLE_EVOL
+          call glide_temp_driver(model,0)
+#endif
+       endif
     end if
 
     ! calculate mask
@@ -301,17 +349,20 @@ contains
     !*FD Performs first part of time-step of an ice model instance.
     !*FD calculate velocity and temperature
     use glimmer_global, only : rk
-    use glide_thck
-    use glide_velo
+    use glide_velo, only: calc_btrc
     use glide_setup
-    use glide_temp
     use glissade_temp
     use glide_mask
+    use glide_thck, only: geometry_derivs
     use glide_thckmask
     use glide_grids
 
+#ifndef DISABLE_EVOL
+    use glide_temp
+
     ! *mb* added for basal proc module  
     use glam_Basal_Proc, only : Basal_Proc_driver
+#endif
 
     implicit none
 
@@ -375,8 +426,9 @@ contains
 
          ! standard Glide driver, including temperature advection
 
+#ifndef DISABLE_EVOL
          call glide_temp_driver(model, model%options%whichtemp)
-
+#endif
        endif
 
        model%temper%newtemps = .true.
@@ -394,6 +446,7 @@ contains
     ! ------------------------------------------------------------------------ 
     ! Calculate basal shear strength from Basal Proc module, if necessary
     ! ------------------------------------------------------------------------    
+#ifndef DISABLE_EVOL
     if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
         model%options%which_bmod == BAS_PROC_FASTCALC) then
         call Basal_Proc_driver (model%general%ewn,model%general%nsn,model%general%upn,       &
@@ -401,21 +454,21 @@ contains
                                 model%velocity_hom%vvel(model%general%upn,:,:), &
                                 model%options%which_bmod,model%temper%bmlt,model%basalproc)
     end if
+#endif
 
   end subroutine glide_tstep_p1
-
 
   subroutine glide_tstep_p2(model,no_write)
     !*FD Performs second part of time-step of an ice model instance.
     !*FD write data and move ice
+    use glide_setup
+    use glide_mask
+
+#ifndef DISABLE_EVOL
     use glide_thck
     use glide_velo
     use glide_ground
-    use glide_setup
     use glide_temp
-    use glide_mask
-    use isostasy
-
     ! *sfp** driver module/subroutines for Payne/Price HO dynamics and LANL inc. remapping for dH/dt 
     ! Modeled after similar routines in "glide_thck"
     use glam, only: inc_remap_driver
@@ -425,6 +478,11 @@ contains
 
     ! *sfp* added so that stress tensor is populated w/ HO stress fields
     use stress_hom, only: glide_stress
+#endif
+
+#ifndef DISABLE_ISOS
+    use isostasy
+#endif
 
     implicit none
 
@@ -444,6 +502,7 @@ contains
 
     if (.not. nw) call glide_io_writeall(model,model)
 
+#ifndef DISABLE_EVOL
     ! ------------------------------------------------------------------------ 
     ! Calculate flow evolution by various different methods
     ! ------------------------------------------------------------------------ 
@@ -476,6 +535,7 @@ contains
        call fo_upwind_advect_driver( model )
  
     end select
+
 #ifdef PROFILING
     call glide_prof_stop(model,model%glide_prof%ice_evo)
 #endif
@@ -536,6 +596,7 @@ contains
     call calc_iareaf_iareag(model%numerics%dew,model%numerics%dns, &
                             model%geometry%iarea, model%geometry%thkmask, &
                             model%geometry%iareaf, model%geometry%iareag)
+#endif  /* DISABLE_EVOL  */
 
     ! ------------------------------------------------------------------------
     ! update ice/water load if necessary
@@ -543,6 +604,8 @@ contains
 #ifdef PROFILING
     call glide_prof_start(model,model%glide_prof%isos_water)
 #endif
+
+#ifndef DISABLE_ISOS
     if (model%isos%do_isos) then
        if (model%numerics%time.ge.model%isos%next_calc) then
           model%isos%next_calc = model%isos%next_calc + model%isos%period
@@ -550,20 +613,28 @@ contains
           model%isos%new_load = .true.
        end if
     end if
+#endif  /* DISABLE_ISOS  */
+
 #ifdef PROFILING
     call glide_prof_stop(model,model%glide_prof%isos_water)
 #endif
     
+#ifndef DISABLE_EVOL
     ! basal shear stress calculations
     call calc_basal_shear(model)
+#endif
 
   end subroutine glide_tstep_p2
 
   subroutine glide_tstep_p3(model)
     !*FD Performs third part of time-step of an ice model instance:
     !*FD calculate isostatic adjustment and upper and lower ice surface
-    use isostasy
+
     use glide_setup
+#ifndef DISABLE_ISOS
+    use isostasy
+#endif
+
     implicit none
     type(glide_global_type) :: model        !*FD model instance
     
@@ -573,9 +644,13 @@ contains
 #ifdef PROFILING
     call glide_prof_start(model,model%glide_prof%isos)
 #endif
+
+#ifndef DISABLE_ISOS
     if (model%isos%do_isos) then
        call isos_isostasy(model)
     end if
+#endif
+
 #ifdef PROFILING
     call glide_prof_stop(model,model%glide_prof%isos)
 #endif
@@ -592,6 +667,8 @@ contains
   end subroutine glide_tstep_p3
 
   !-------------------------------------------------------------------
+
+#ifndef DISABLE_RESTARTS
 
   subroutine glide_write_mod_rst(rfile)
 
@@ -697,5 +774,7 @@ contains
 #endif
 
   end subroutine glide_read_restart
+
+#endif   /* DISABLE_RESTARTS */
 
 end module glide

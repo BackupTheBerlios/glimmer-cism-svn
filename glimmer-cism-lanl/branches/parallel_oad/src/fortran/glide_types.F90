@@ -44,6 +44,8 @@
 #include "config.inc"
 #endif
 
+#include "glide_mymods.inc"
+
 module glide_types
 
   !*FD Holds type definitions for the derived types used by each 
@@ -59,17 +61,22 @@ module glide_types
   !*FD Note that this \emph{is} now where the defaults are defined for these
   !*FD variables.
  
-  use glimmer_sparse
   use glimmer_sparse_type
   use glimmer_global
   use glimmer_ncdf
-  use isostasy_types
   use profile
   use glimmer_coordinates
   use glimmer_map_types, pi_dummy=>pi
 
+!lipscomb - could remove reference to isostasy types, but would need to move
+!           relx to another derived type
+  use isostasy_types  
+
   !These modules define internal workspace types.  We are including them so that they can appear in glide_types.
+
+#ifndef DISABLE_EVOL
   use remap_glamutils
+#endif
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -82,9 +89,7 @@ module glide_types
     integer :: upn = 1  !*FD The number of vertical levels in the model.
 
     type(coordsystem_type) :: ice_grid  !*FD coordinate system of the ice grid
-    type(coordsystem_type) :: velo_grid !*FD coordinate system of the velocity grid
-
-    
+    type(coordsystem_type) :: velo_grid !*FD coordinate system of the velocity grid    
 
     real(sp), dimension(:),pointer :: x0 => null() !original x0 grid 
     real(sp), dimension(:),pointer :: y0 => null() !original y0 grid
@@ -243,7 +248,6 @@ module glide_types
 
     !*FD Thickness evolution method:
     !*FD \begin{description}
-    !*FD \item[-1] evolution of temperature only, through vert diff only (for Open AD test case) 
     !*FD \item[0] Pseudo-diffusion approach 
     !*FD \item[2] Diffusion approach (also calculates velocities)
     !*FD \item[3] Incremental remapping
@@ -937,10 +941,12 @@ module glide_types
     type(glimmap_proj) :: projection
     type(profile_type)   :: profile
     type(glide_prof_type) :: glide_prof
-    type(isos_type)      :: isos
     type(glide_grnd)     :: ground
-    
+    type(isos_type)      :: isos
+
+#ifndef DISABLE_EVOL
     type(remap_glamutils_workspace) :: remap_wk
+#endif
 
 end type glide_global_type
 

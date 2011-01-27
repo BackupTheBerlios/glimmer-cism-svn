@@ -44,10 +44,14 @@
 #include "config.inc"
 #endif
 
+#include "glide_mymods.inc"
+
 module glide_stop
 
   use glide_types
   use glimmer_log
+
+#ifndef DISABLE_EVOL
   use remap_glamutils
 
   ! *sfp* added for summer modeling school
@@ -55,6 +59,7 @@ module glide_stop
 
   ! *mb* added
   use glam_Basal_Proc, only : Basal_Proc_final
+#endif
 
   implicit none
   !*FD module containing finalisation of glide
@@ -146,6 +151,7 @@ contains
     call closeall_in(model)
     call closeall_out(model)
    
+#ifndef DISABLE_EVOL
     ! *tjb** added; finalization of LANL incremental remapping subroutine for thickness evolution
     if (model%options%whichevol== EVOL_INC_REMAP ) then
         call horizontal_remap_final(model%remap_wk)
@@ -161,6 +167,7 @@ contains
         model%options%which_bmod == BAS_PROC_FASTCALC) then
         call Basal_Proc_final (model%basalproc)
     end if  
+#endif   /* DISABLE_EVOL */
 
     call glide_deallocarr(model)
     call deregister_model(model)

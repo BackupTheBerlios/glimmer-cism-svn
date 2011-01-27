@@ -44,6 +44,8 @@
 #include "config.inc"
 #endif
 
+#include "glide_mymods.inc"
+
 module glide_velo
 
   !*FD Contains routines which handle various aspects of velocity in the model,
@@ -117,6 +119,9 @@ contains
    
 
   end subroutine init_velo
+
+#ifndef DISABLE_EVOL
+
 #if 0
   subroutine velo_compute_strain_rates(strain_zx, strain_zy, 
                                        stagthck, dusrfdew, dusrfdns, sigma, 
@@ -894,6 +899,22 @@ contains
 
 !------------------------------------------------------------------------------------------
 
+  subroutine calc_basal_shear(model)
+    !*FD calculate basal shear stress: tau_{x,y} = -ro_i*g*H*d(H+h)/d{x,y}
+    use glimmer_physcon, only : rhoi,grav
+    implicit none
+    type(glide_global_type) :: model        !*FD model instance
+
+
+    model%velocity%tau_x = -rhoi*grav*model%geomderv%stagthck
+    model%velocity%tau_y = model%velocity%tau_x * model%geomderv%dusrfdns
+    model%velocity%tau_x = model%velocity%tau_x * model%geomderv%dusrfdew
+  end subroutine calc_basal_shear
+
+#endif /* DISABLE_EVOL */
+
+!------------------------------------------------------------------------------------------
+
   subroutine calc_btrc(model,flag,btrc)
     !*FD Calculate the value of $B$ used for basal sliding calculations.
     use glimmer_global, only : dp 
@@ -1007,17 +1028,5 @@ contains
     end select
 
   end subroutine calc_btrc
-
-  subroutine calc_basal_shear(model)
-    !*FD calculate basal shear stress: tau_{x,y} = -ro_i*g*H*d(H+h)/d{x,y}
-    use glimmer_physcon, only : rhoi,grav
-    implicit none
-    type(glide_global_type) :: model        !*FD model instance
-
-
-    model%velocity%tau_x = -rhoi*grav*model%geomderv%stagthck
-    model%velocity%tau_y = model%velocity%tau_x * model%geomderv%dusrfdns
-    model%velocity%tau_x = model%velocity%tau_x * model%geomderv%dusrfdew
-  end subroutine calc_basal_shear
 
 end module glide_velo

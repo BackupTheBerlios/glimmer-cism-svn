@@ -46,21 +46,28 @@
 
 #include "glide_nan.inc"
 
+#include "glide_mymods.inc"
+
 module glide_thck
 
   use glide_types
-  use glide_velo_higher
   use glimmer_sparse_type
   use glide_grids
+  use glide_deriv
+
+#ifndef DISABLE_EVOL
+  use glimmer_sparse
+  use glide_velo_higher
+  use xls
+#endif
 
   !DEBUG ONLY, these should be deleted eventually
   use glide_stop
-  use xls
   use glide_io
+
   private
   public :: init_thck, thck_nonlin_evolve, thck_lin_evolve, timeders, &
-            stagleapthck, geometry_derivs, &
-            geometry_derivs_unstag 
+            stagleapthck, geometry_derivs, geometry_derivs_unstag 
 
 #ifdef DEBUG_PICARD
   ! debugging Picard iteration
@@ -102,6 +109,7 @@ contains
   end subroutine init_thck
 
 !---------------------------------------------------------------------------------
+#ifndef DISABLE_EVOL
 
   subroutine thck_lin_evolve(model,newtemps)
 
@@ -518,6 +526,8 @@ contains
     end subroutine findsums
   end subroutine thck_evolve
 
+#endif   /*  DISABLE_EVOL */
+
 !---------------------------------------------------------------
 
   subroutine geometry_derivs(model)
@@ -599,10 +609,11 @@ contains
      !Fields allow us to upwind derivatives at the ice sheet lateral boundaries
      !so that we're not differencing out of the domain
      real(dp), dimension(model%general%ewn, model%general%nsn) :: direction_x, direction_y
-
+#ifndef DISABLE_EVOL
      call upwind_from_mask(model%geometry%thkmask, direction_x, direction_y)
      call write_xls("direction_x_unstag.txt", direction_x)
      call write_xls("direction_y_unstag.txt", direction_y)
+#endif
      !Compute first derivatives of geometry
      call df_field_2d(model%geometry%usrf, model%numerics%dew, model%numerics%dns, &
                       model%geomderv%dusrfdew_unstag, model%geomderv%dusrfdns_unstag, &
@@ -628,6 +639,8 @@ contains
   end subroutine
 
 !---------------------------------------------------------------------------------
+
+#ifndef DISABLE_EVOL
 
   subroutine timeders(thckwk,ipvr,opvr,mask,time,which)
 
@@ -916,6 +929,8 @@ contains
     b(:) = 1.+b(:)
 
   end subroutine adi_tri
+
+#endif  /* DISABLE_EVOL */
 
 end module glide_thck
 
