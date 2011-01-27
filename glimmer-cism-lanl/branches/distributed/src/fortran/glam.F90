@@ -48,6 +48,26 @@ module glam
         ! This driver is called from "glide_velo_higher.F90"
         call run_ho_diagnostic(model)   ! in glide_velo_higher.F90
 
+#ifdef JEFFTEST
+        ! JEFF Test code to confirm that distributed_gather and distributed_scatter are indeed inverses.
+        call distributed_gather_var(model%velocity_hom%efvs, gathered_efvs)
+        call distributed_scatter_var(model%velocity_hom%efvs, gathered_efvs, .false.)
+        call distributed_gather_var(model%velocity_hom%efvs, gathered_efvs2)
+
+        ! ANY True if any value is true (LOGICAL)
+        if (main_task) then
+	        if (ANY((gathered_efvs(:,:,:) - gathered_efvs2(:,:,:)) /= 0.0)) then
+	           write(*,*) "Something isn't right.  Gather/Scatter are not inverses."
+	           call parallel_stop(__FILE__, __LINE__)
+	        endif
+        endif
+
+        deallocate(gathered_efvs)
+        deallocate(gathered_efvs2)
+#endif
+
+        call parallel_barrier  ! Other procs hang out here waiting for test to complete on main_task.
+
         ! JEFF Glue Code to serialize
         ! Glue code to gather the distributed variables back to main_task processor.
         ! These are outputs from run_ho_diagnostic and are gathered presuming they will be used

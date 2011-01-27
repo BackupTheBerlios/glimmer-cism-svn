@@ -27,6 +27,7 @@ module parallel
   ! JEFF Declarations for undistributed variables on main_task.
   ! Later move to separate module?  These are only temporary until code is completely distributed.
   real(8),dimension(:,:,:),allocatable :: gathered_efvs  ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:,:),allocatable :: gathered_efvs2  ! Variable for testing that scatter/gather are inverses
   real(8),dimension(:,:,:),allocatable :: gathered_uvel  ! Output var from glam_velo_fordsiapstr(), used often
   real(8),dimension(:,:,:),allocatable :: gathered_vvel  ! Output var from glam_velo_fordsiapstr(), used often
   real(8),dimension(:,:),allocatable :: gathered_uflx    ! Output var from glam_velo_fordsiapstr(), used often
@@ -136,6 +137,8 @@ module parallel
 
   interface parallel_halo
      module procedure parallel_halo_integer_2d
+     module procedure parallel_halo_logical_2d
+     module procedure parallel_halo_real4_2d
      module procedure parallel_halo_real8_2d
      module procedure parallel_halo_real8_3d
   end interface
@@ -1932,7 +1935,7 @@ contains
     ! automatic deallocation
   end subroutine
 
-  subroutine distributed_scatter_var_real8_3d(values, global_values)
+  subroutine distributed_scatter_var_real8_3d(values, global_values, deallocflag)
     ! JEFF Scatter a variable on the main_task node back to the distributed
     ! values = local portion of distributed variable
     ! global_values = reference to allocateable array into which the main_task holds the variable.
@@ -1941,6 +1944,8 @@ contains
     implicit none
     real(8),dimension(:,:,:),intent(inout) :: values  ! populated from values on main_task
     real(8),dimension(:,:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+    logical,optional :: deallocflag
+    logical :: deallocmem
 
     integer :: i,ierror,j,k
     integer,dimension(4) :: mybounds
@@ -1948,6 +1953,12 @@ contains
     integer,dimension(:,:),allocatable :: bounds
     real(8),dimension(:),allocatable :: sendbuf
     real(8),dimension(:,:,:),allocatable :: recvbuf
+
+    if (present(deallocflag)) then
+       deallocmem = deallocflag
+    else
+       deallocmem = .true.
+    endif
 
     ! begin
     mybounds(1) = ewlb+lhalo
@@ -1986,7 +1997,7 @@ contains
          recvbuf,size(recvbuf),mpi_real8,main_rank,comm,ierror)
     values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo) = recvbuf(:,:,:)
 
-    deallocate(global_values)
+    if (deallocmem) deallocate(global_values)
     ! automatic deallocation
   end subroutine
 
@@ -2224,8 +2235,10 @@ contains
     if (size(a,1)==local_ewn-1.and.size(a,2)==local_nsn-1) return
 
     ! unknown grid
-    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) &
+    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) then
+         write(*,*) "Unknown Grid: Size a=(", size(a,1), ",", size(a,2), ") and local_ewn and local_nsn = ", local_ewn, ",", local_nsn
          call parallel_stop(__FILE__,__LINE__)
+    endif
 
     ! unstaggered grid
     call mpi_irecv(wrecv,size(wrecv),mpi_integer,west,west,&
@@ -2259,6 +2272,114 @@ contains
     a(:,:lhalo) = nrecv(:,:)
   end subroutine
 
+  subroutine parallel_halo_logical_2d(a)
+    use mpi
+    implicit none
+    logical,dimension(:,:) :: a
+
+    integer :: erequest,ierror,nrequest,srequest,wrequest
+    logical,dimension(lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
+    logical,dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
+    logical,dimension(local_ewn,lhalo) :: nrecv,ssend
+    logical,dimension(local_ewn,uhalo) :: nsend,srecv
+
+    ! begin
+
+    ! staggered grid
+    if (size(a,1)==local_ewn-1.and.size(a,2)==local_nsn-1) return
+
+    ! unknown grid
+    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) then
+         write(*,*) "Unknown Grid: Size a=(", size(a,1), ",", size(a,2), ") and local_ewn and local_nsn = ", local_ewn, ",", local_nsn
+         call parallel_stop(__FILE__,__LINE__)
+    endif
+
+    ! unstaggered grid
+    call mpi_irecv(wrecv,size(wrecv),mpi_logical,west,west,&
+         comm,wrequest,ierror)
+    call mpi_irecv(erecv,size(erecv),mpi_logical,east,east,&
+         comm,erequest,ierror)
+    call mpi_irecv(srecv,size(srecv),mpi_logical,south,south,&
+         comm,srequest,ierror)
+    call mpi_irecv(nrecv,size(nrecv),mpi_logical,north,north,&
+         comm,nrequest,ierror)
+
+    esend(:,:) = a(1+lhalo:1+lhalo+uhalo-1,1+lhalo:local_nsn-uhalo)
+    call mpi_send(esend,size(esend),mpi_logical,east,this_rank,comm,ierror)
+    wsend(:,:) = &
+         a(local_ewn-lhalo-uhalo+1:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_send(wsend,size(wsend),mpi_logical,west,this_rank,comm,ierror)
+
+    call mpi_wait(wrequest,mpi_status_ignore,ierror)
+    a(local_ewn-uhalo+1:,1+lhalo:local_nsn-uhalo) = wrecv(:,:)
+    call mpi_wait(erequest,mpi_status_ignore,ierror)
+    a(:lhalo,1+lhalo:local_nsn-uhalo) = erecv(:,:)
+
+    nsend(:,:) = a(:,1+lhalo:1+lhalo+uhalo-1)
+    call mpi_send(nsend,size(nsend),mpi_logical,north,this_rank,comm,ierror)
+    ssend(:,:) = a(:,local_nsn-lhalo-uhalo+1:local_nsn-uhalo)
+    call mpi_send(ssend,size(ssend),mpi_logical,south,this_rank,comm,ierror)
+
+    call mpi_wait(srequest,mpi_status_ignore,ierror)
+    a(:,local_nsn-uhalo+1:) = srecv(:,:)
+    call mpi_wait(nrequest,mpi_status_ignore,ierror)
+    a(:,:lhalo) = nrecv(:,:)
+  end subroutine
+
+  subroutine parallel_halo_real4_2d(a)
+    use mpi
+    implicit none
+    real(4),dimension(:,:) :: a
+
+    integer :: erequest,ierror,nrequest,srequest,wrequest
+    real(4),dimension(lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
+    real(4),dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
+    real(4),dimension(local_ewn,lhalo) :: nrecv,ssend
+    real(4),dimension(local_ewn,uhalo) :: nsend,srecv
+
+    ! begin
+
+    ! staggered grid
+    if (size(a,1)==local_ewn-1.and.size(a,2)==local_nsn-1) return
+
+    ! unknown grid
+    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) then
+         write(*,*) "Unknown Grid: Size a=(", size(a,1), ",", size(a,2), ") and local_ewn and local_nsn = ", local_ewn, ",", local_nsn
+         call parallel_stop(__FILE__,__LINE__)
+    endif
+
+    ! unstaggered grid
+    call mpi_irecv(wrecv,size(wrecv),mpi_real4,west,west,&
+         comm,wrequest,ierror)
+    call mpi_irecv(erecv,size(erecv),mpi_real4,east,east,&
+         comm,erequest,ierror)
+    call mpi_irecv(srecv,size(srecv),mpi_real4,south,south,&
+         comm,srequest,ierror)
+    call mpi_irecv(nrecv,size(nrecv),mpi_real4,north,north,&
+         comm,nrequest,ierror)
+
+    esend(:,:) = a(1+lhalo:1+lhalo+uhalo-1,1+lhalo:local_nsn-uhalo)
+    call mpi_send(esend,size(esend),mpi_real4,east,this_rank,comm,ierror)
+    wsend(:,:) = &
+         a(local_ewn-lhalo-uhalo+1:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_send(wsend,size(wsend),mpi_real4,west,this_rank,comm,ierror)
+
+    call mpi_wait(wrequest,mpi_status_ignore,ierror)
+    a(local_ewn-uhalo+1:,1+lhalo:local_nsn-uhalo) = wrecv(:,:)
+    call mpi_wait(erequest,mpi_status_ignore,ierror)
+    a(:lhalo,1+lhalo:local_nsn-uhalo) = erecv(:,:)
+
+    nsend(:,:) = a(:,1+lhalo:1+lhalo+uhalo-1)
+    call mpi_send(nsend,size(nsend),mpi_real4,north,this_rank,comm,ierror)
+    ssend(:,:) = a(:,local_nsn-lhalo-uhalo+1:local_nsn-uhalo)
+    call mpi_send(ssend,size(ssend),mpi_real4,south,this_rank,comm,ierror)
+
+    call mpi_wait(srequest,mpi_status_ignore,ierror)
+    a(:,local_nsn-uhalo+1:) = srecv(:,:)
+    call mpi_wait(nrequest,mpi_status_ignore,ierror)
+    a(:,:lhalo) = nrecv(:,:)
+  end subroutine
+
   subroutine parallel_halo_real8_2d(a)
     use mpi
     implicit none
@@ -2276,8 +2397,10 @@ contains
     if (size(a,1)==local_ewn-1.and.size(a,2)==local_nsn-1) return
 
     ! unknown grid
-    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) &
+    if (size(a,1)/=local_ewn.or.size(a,2)/=local_nsn) then
+         write(*,*) "Unknown Grid: Size a=(", size(a,1), ",", size(a,2), ") and local_ewn and local_nsn = ", local_ewn, ",", local_nsn
          call parallel_stop(__FILE__,__LINE__)
+    endif
 
     ! unstaggered grid
     call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
@@ -2328,8 +2451,10 @@ contains
     if (size(a,2)==local_ewn-1.and.size(a,3)==local_nsn-1) return
 
     ! unknown grid
-    if (size(a,2)/=local_ewn.or.size(a,3)/=local_nsn) &
+    if (size(a,2)/=local_ewn.or.size(a,3)/=local_nsn) then
+         write(*,*) "Unknown Grid: Size a=(", size(a,1), ",", size(a,2), ",", size(a,3), ") and local_ewn and local_nsn = ", local_ewn, ",", local_nsn
          call parallel_stop(__FILE__,__LINE__)
+    endif
 
     ! unstaggered grid
     call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
@@ -2361,6 +2486,57 @@ contains
     a(:,:,local_nsn-uhalo+1:) = srecv(:,:,:)
     call mpi_wait(nrequest,mpi_status_ignore,ierror)
     a(:,:,:lhalo) = nrecv(:,:,:)
+  end subroutine
+
+  subroutine parallel_halo_temperature(a)
+    !JEFF This routine is for updating the halo for the variable model%temper%temp.
+    ! This variable is two larger in each dimension, because of the current advection code.
+    ! Per Bill L, we will remove this difference when we update the remapping code.
+    use mpi
+    implicit none
+    real(8),dimension(:,:,:) :: a
+
+    integer :: erequest,ierror,one,nrequest,srequest,wrequest
+    real(8),dimension(size(a,1),lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
+    real(8),dimension(size(a,1),uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
+    real(8),dimension(size(a,1),local_ewn,lhalo) :: nrecv,ssend
+    real(8),dimension(size(a,1),local_ewn,uhalo) :: nsend,srecv
+
+    ! begin
+    call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,&
+         comm,wrequest,ierror)
+    call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,&
+         comm,erequest,ierror)
+    call mpi_irecv(srecv,size(srecv),mpi_real8,south,south,&
+         comm,srequest,ierror)
+    call mpi_irecv(nrecv,size(nrecv),mpi_real8,north,north,&
+         comm,nrequest,ierror)
+
+    esend(:,:,:) = a(:,1+lhalo:1+lhalo+uhalo-1,1+lhalo:local_nsn-uhalo)
+    call mpi_send(esend,size(esend),mpi_real8,east,this_rank,comm,ierror)
+    wsend(:,:,:) = &
+         a(:,local_ewn-lhalo-uhalo+1:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    call mpi_send(wsend,size(wsend),mpi_real8,west,this_rank,comm,ierror)
+
+    call mpi_wait(wrequest,mpi_status_ignore,ierror)
+    !JEFF Put an upper bound on middle index to prevent overrunning index
+    a(:,local_ewn-uhalo+1:local_ewn-uhalo+2,1+lhalo:local_nsn-uhalo) = wrecv(:,:,:)
+    call mpi_wait(erequest,mpi_status_ignore,ierror)
+    !JEFF Change middle index to put halo into correct place for temperature.
+    a(:,2:lhalo+1,1+lhalo:local_nsn-uhalo) = erecv(:,:,:)
+
+    !JEFF Change middle to move one index further in
+    nsend(:,:,:) = a(:,2:local_ewn+1,1+lhalo:1+lhalo+uhalo-1)
+    call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
+    ssend(:,:,:) = a(:,:,local_nsn-lhalo-uhalo+1:local_nsn-uhalo)
+    call mpi_send(ssend,size(ssend),mpi_real8,south,this_rank,comm,ierror)
+
+    call mpi_wait(srequest,mpi_status_ignore,ierror)
+    !JEFF Limit last index to size of halo and middle to one index further in
+    a(:,2:local_ewn+1,local_nsn-uhalo+1:local_nsn) = srecv(:,:,:)
+    call mpi_wait(nrequest,mpi_status_ignore,ierror)
+    !JEFF Change middle to move one index further in
+    a(:,2:local_ewn+1,:lhalo) = nrecv(:,:,:)
   end subroutine
 
   function parallel_halo_verify_integer_2d(a)
