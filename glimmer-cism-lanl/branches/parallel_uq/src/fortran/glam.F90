@@ -10,7 +10,7 @@ module glam
     ! documentation)
 
     use glide_types
-    use glimmer_paramets, only : vis0, vis0_glam
+    use glimmer_paramets, only : vis0
     use glimmer_physcon, only :
     use glide_mask
 

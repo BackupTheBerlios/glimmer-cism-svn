@@ -14,7 +14,7 @@ module glide_velo_higher
 
     !globals
     use glimmer_global, only : dp
-    use glimmer_paramets, only : vis0, vis0_glam, vel0, len0
+    use glimmer_paramets, only : vis0, tau0_glam, vel0, len0
 
 !use glimmer_physcon, only: gn  !*sfp* 'gn' now run time param for UQ work 
     use glimmer_runtimeparams, only: gn
@@ -34,6 +34,8 @@ module glide_velo_higher
     real(dp), parameter :: SHTUNE   = 1.D-16
     integer,  parameter :: UPSTREAM = 0
     integer,  parameter :: MANIFOLD = 1
+
+    real(dp) :: vis0_glam
 
 contains
         
@@ -184,6 +186,8 @@ contains
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
 
            if ( model%options%which_ho_nonlinear == HO_NONLIN_PICARD ) then ! Picard (standard solver)
+
+            vis0_glam = tau0_glam**(-gn) * (vel0/len0) ! rate factor scale in GLAM ( Pa^-3 s^-1 )
 
             call glam_velo_fordsiapstr( model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &

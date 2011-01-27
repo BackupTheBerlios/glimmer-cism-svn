@@ -75,7 +75,6 @@ module glimmer_paramets
   real(dp), parameter :: tau0_glam = rhoi*grav*thk0                   ! stress scale in GLAM ( Pa )  
 
 !  real(dp), parameter :: vis0_glam = tau0_glam**(-gn) * (vel0/len0)   ! rate factor scale in GLAM ( Pa^-3 s^-1 )
-  real(dp), parameter :: vis0_glam = tau0_glam**(-3) * (vel0/len0)
 
   real(dp), parameter :: evs0 = tau0_glam * (vel0/len0)               ! eff. visc. scale in GLAM ( Pa s )
 

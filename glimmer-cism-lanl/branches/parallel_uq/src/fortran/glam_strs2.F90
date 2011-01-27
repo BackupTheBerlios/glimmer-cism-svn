@@ -23,7 +23,9 @@ use glimmer_paramets, only : dp
 use glimmer_physcon,  only : rhoi, rhoo, grav, pi, scyr     !*sfp* 'gn' is now a run time option
 use glimmer_runtimeparams,  only : gn
 
-use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, evs0, tau0_glam
+!use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, evs0, tau0_glam
+use glimmer_paramets, only : thk0, len0, vel0, vis0, tau0_glam, tim0, evs0, tau0_glam
+
 use glimmer_log,      only : write_log
 use glide_mask
 use glimmer_sparse_type
@@ -116,6 +118,8 @@ implicit none
   real (kind = dp) :: linearSolveTime = 0
   real (kind = dp) :: totalLinearSolveTime = 0 ! total linear solve time
 
+  real (kind = dp) :: vis0_glam
+
 
 !***********************************************************************
 
@@ -190,6 +194,8 @@ subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
     velbcvect(:,:,:) = 0.0d0
 
     flwafact = 0.0_dp
+
+    vis0_glam = tau0_glam**(-gn) * (vel0/len0) ! rate factor scale in GLAM ( Pa^-3 s^-1 )
 
      ! define constants used in various FD calculations associated with the 
      ! subroutine 'findcoefst'   
