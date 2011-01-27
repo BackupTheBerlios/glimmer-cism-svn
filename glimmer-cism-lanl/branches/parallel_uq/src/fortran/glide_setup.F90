@@ -127,7 +127,7 @@ contains
   subroutine glide_scale_params(model)
     !*FD scale parameters
     use glide_types
-    use glimmer_physcon,  only: scyr, gn
+    use glimmer_physcon,  only: scyr
     use glimmer_paramets, only: thk0,tim0,len0, vel0, vis0, acc0!, evs0
     implicit none
     type(glide_global_type)  :: model !*FD model instance
@@ -735,6 +735,10 @@ contains
     call GetValue(section,'default_flwa',model%paramets%default_flwa)
     call GetValue(section,'hydro_time',model%paramets%hydtim)
     call GetValue(section,'basal_tract',temp,5)
+    !*sfp* added these as run time options for UQ problem (moved from module physcon)
+    call GetValue(section,'stress_exp',model%paramets%gn_runtime)
+    call GetValue(section,'flwa_q_warm',model%paramets%actenh_runtime)
+    call GetValue(section,'flwa_q_cold',model%paramets%actenl_runtime)
     if (associated(temp)) then
        model%paramets%btrac_const=temp(1)
        deallocate(temp)

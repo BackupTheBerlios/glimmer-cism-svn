@@ -871,6 +871,11 @@ module glide_types
                                   ! 0 if no drainage = 0.0d0 * tim0 / scyr
     real(dp) :: bwat_smooth = 0.01d0 ! basal water field smoothing strength
     real(dp) :: default_flwa = 1.0d-16 !Glen's A to use in isothermal case (would change to e.g. 4.6e-18 in EISMINT-ROSS case)
+
+    !*SFP* the following were moved here from physcon for specification at runtime
+    real(dp) :: gn_runtime = 3.0              !*FD The power dependency of Glenn's flow law.
+    real(dp) :: actenh_runtime = 139.0d3      !*FD Activation energy in Glenn's flow law for $T^{*}\geq263$K. (J mol$^{-1}$)
+    real(dp) :: actenl_runtime = 60.0d3       !*FD Activation energy in Glenn's flow law for $T^{*}<263$K. (J mol$^{-1}$)
   end type glide_paramets
 
   !++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

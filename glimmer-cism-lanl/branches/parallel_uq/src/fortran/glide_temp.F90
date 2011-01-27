@@ -99,14 +99,20 @@ contains
   subroutine glide_init_temp(model)
 
     !*FD initialise temperature module
-    use glimmer_physcon, only : rhoi, shci, coni, scyr, grav, gn, lhci, rhow
+
+! use glimmer_physcon, only : gn, rhoi, shci, coni, scyr, grav, lhci, rhow  !*sfp* 'gn' now run time param (for UQ work)
+    use glimmer_physcon, only : rhoi, shci, coni, scyr, grav, lhci, rhow
+    use glimmer_runtimeparams, only : gn 
+
     use glimmer_paramets, only : tim0, thk0, acc0, len0, vis0, vel0, tau0_glam
     use glimmer_global, only : dp 
     use glimmer_log
     implicit none
     type(glide_global_type),intent(inout) :: model       !*FD Ice model parameters.
 
-    integer, parameter :: p1 = gn + 1  
+!    integer, parameter :: p1 = gn + 1  
+    real(dp) :: p1 
+
     integer up
     real(dp) :: estimate
 
@@ -143,6 +149,8 @@ contains
     model%tempwk%advconst(2) = HORIZ_ADV*model%numerics%dttem / (16.0d0 * model%numerics%dns)
 
     model%tempwk%dups = 0.0d0
+
+    p1 = gn + 1.0
 
     do up = 2, model%general%upn-1
        model%tempwk%dups(up,1) = 1.d0/((model%numerics%sigma(up+1) - model%numerics%sigma(up-1)) * &

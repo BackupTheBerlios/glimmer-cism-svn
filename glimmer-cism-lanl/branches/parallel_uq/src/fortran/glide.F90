@@ -118,16 +118,11 @@ contains
     use isostasy
     use glimmer_map_init
     use glide_ground
-
-    ! *sfp** added
     use glam_strs2, only : glam_velo_fordsiapstr_init
     use remap_glamutils, only : horizontal_remap_init
-
-    ! *sfp** added for summer modeling school
     use fo_upwind_advect, only : fo_upwind_advect_init
-
-    !*mb* added 
     use glam_Basal_Proc, only : Basal_Proc_init
+    use glimmer_runtimeparams, only : init_runtimeparams
 
     implicit none
     type(glide_global_type) :: model        !*FD model instance
@@ -135,6 +130,9 @@ contains
     integer :: i,j
 
     call write_log(glimmer_version)
+
+    ! initialise values of run time params specified for UQ work
+    call init_runtimeparams( model%paramets%gn_runtime, model%paramets%actenl_runtime, model%paramets%actenh_runtime )
 
     ! initialise scales
     call glimmer_init_scales
@@ -221,7 +219,7 @@ contains
         call glam_velo_fordsiapstr_init(model%general%ewn,    model%general%nsn,  &
                                         model%general%upn,                        &
                                         model%numerics%dew,   model%numerics%dns, &
-                                        model%numerics%sigma)
+                                        model%numerics%sigma )
     end if
 
     ! *sfp** added; initialization of LANL incremental remapping subroutine for thickness evolution

@@ -52,23 +52,43 @@ module glide_velo
 
   use glide_types
   use glimmer_global, only : dp
-  use glimmer_physcon, only : rhoi, grav, gn
+
+!  use glimmer_physcon, only : rhoi, grav, gn   !*sfp* 'gn' now stored in separate module
+  use glimmer_physcon, only : rhoi, grav
+  use glimmer_runtimeparams, only : gn 
+
   use glimmer_paramets, only : thk0, len0, vis0, vel0, acc0
 
   private vertintg, patebudd
 
   ! some private parameters
-  integer, private, parameter :: p1 = gn+1
-  integer, private, parameter :: p2 = gn-1
-  integer, private, parameter :: p3 = 2*gn+1
-  integer, private, parameter :: p4 = gn+2
-  real(dp),private, parameter :: c = -2.0d0*vis0*(rhoi*grav)**gn*thk0**p3/(8.0d0*vel0*len0**gn)
+!  integer, private, parameter :: p1 = gn+1
+!  integer, private, parameter :: p2 = gn-1
+!  integer, private, parameter :: p3 = 2*gn+1
+!  integer, private, parameter :: p4 = gn+2
+!  real(dp),private, parameter :: c = -2.0d0*vis0*(rhoi*grav)**gn*thk0**p3/(8.0d0*vel0*len0**gn)
+
+!  real(dp) :: p1 = gn+1
+!  real(dp) :: p2 = gn-1
+!  real(dp) :: p3 = 2*gn+1
+!  real(dp) :: p4 = gn+2
+!  real(dp) :: c = -2.0d0*vis0*(rhoi*grav)**gn*thk0**p3/(8.0d0*vel0*len0**gn)
+
+  real(dp) :: p1 
+  real(dp) :: p2 
+  real(dp) :: p3 
+  real(dp) :: p4 
+  real(dp) :: c 
 
 contains
 
   subroutine init_velo(model)
     !*FD initialise velocity module
-    use glimmer_physcon, only : arrmll, arrmlh, gascon, actenl, actenh, scyr, pi 
+
+! use glimmer_physcon, only : arrmll, arrmlh, gascon, actenl, actenh, scyr, pi  !*sfp* act energies now run time params 
+    use glimmer_physcon, only : arrmll, arrmlh, gascon, scyr, pi 
+    use glimmer_runtimeparams, only : actenl, actenh
+
     implicit none
     type(glide_global_type) :: model
 
@@ -462,6 +482,11 @@ contains
 
     upn=size(sigma) ; ewn=size(ubas,1) ; nsn=size(ubas,2)
 
+    p1 = gn+1
+    p2 = gn-1
+    p3 = 2*gn+1
+    p4 = gn+2
+    c = -2.0d0*vis0*(rhoi*grav)**gn*thk0**p3/(8.0d0*vel0*len0**gn)
 
     !------------------------------------------------------------------------------------
 

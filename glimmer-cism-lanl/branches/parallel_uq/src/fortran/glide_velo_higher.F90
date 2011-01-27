@@ -14,8 +14,10 @@ module glide_velo_higher
 
     !globals
     use glimmer_global, only : dp
-    use glimmer_paramets, only : vis0, vis0_glam 
-    use glimmer_physcon, only: gn
+    use glimmer_paramets, only : vis0, vis0_glam, vel0, len0
+
+!use glimmer_physcon, only: gn  !*sfp* 'gn' now run time param for UQ work 
+    use glimmer_runtimeparams, only: gn
 
     !Other modules that this needs to call out to
     use glide_types
@@ -32,6 +34,7 @@ module glide_velo_higher
     real(dp), parameter :: SHTUNE   = 1.D-16
     integer,  parameter :: UPSTREAM = 0
     integer,  parameter :: MANIFOLD = 1
+
 contains
         
     subroutine init_velo_hom_pattyn(model)

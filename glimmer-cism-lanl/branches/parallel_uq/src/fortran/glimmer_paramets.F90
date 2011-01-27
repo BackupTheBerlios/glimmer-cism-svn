@@ -47,7 +47,10 @@
 module glimmer_paramets
 
   use glimmer_global, only : sp, dp
-  use glimmer_physcon, only : scyr, rhoi, grav, gn
+
+!  use glimmer_physcon, only : scyr, rhoi, grav, gn  !*sfp* 'gn' now run time param for UQ work
+  use glimmer_physcon, only : scyr, rhoi, grav
+  use glimmer_runtimeparams, only : gn
 
   implicit none; save
 
@@ -70,7 +73,10 @@ module glimmer_paramets
 
   ! *sfp* defined these to convert scales to values used by GLAM
   real(dp), parameter :: tau0_glam = rhoi*grav*thk0                   ! stress scale in GLAM ( Pa )  
-  real(dp), parameter :: vis0_glam = tau0_glam**(-gn) * (vel0/len0)   ! rate factor scale in GLAM ( Pa^-3 s^-1 )
+
+!  real(dp), parameter :: vis0_glam = tau0_glam**(-gn) * (vel0/len0)   ! rate factor scale in GLAM ( Pa^-3 s^-1 )
+  real(dp), parameter :: vis0_glam = tau0_glam**(-3) * (vel0/len0)
+
   real(dp), parameter :: evs0 = tau0_glam * (vel0/len0)               ! eff. visc. scale in GLAM ( Pa s )
 
 

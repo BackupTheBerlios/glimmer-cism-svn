@@ -48,7 +48,11 @@ contains
     !*FD equal to the topographic height, or sea-level, whichever is higher.
 
     use glimmer_global, only : dp, sp
-    use glimmer_physcon, only : rhoi, rhoo, grav, gn
+
+!    use glimmer_physcon, only : rhoi, rhoo, grav, gn
+    use glimmer_physcon, only : rhoi, rhoo, grav        !*sfp* 'gn' is now runtime option (for UQ work)
+    use glimmer_runtimeparams, only : gn
+
     use glide_vertint, only : vertint_output2d
     use glimmer_paramets, only: thk0
     use glide_mask
@@ -87,7 +91,7 @@ contains
 
     real(sp), dimension(:,:), intent(inout) :: backstress
     real(sp) :: tempanmly
-    real(dp), intent(in) ::  dew,dns
+    real(dp), intent(in) ::  dew, dns
     integer, intent(in) ::  nsn,ewn
     real(dp),dimension(:,:),intent(in)    :: usrf    !*FD usrf
     logical, dimension(:,:), intent(in)   :: backstressmap !*FD map of the

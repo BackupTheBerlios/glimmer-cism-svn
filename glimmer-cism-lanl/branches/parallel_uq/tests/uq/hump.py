@@ -70,6 +70,9 @@ artm = numpy.zeros([1,ny,nx],dtype='float32')
 acab = numpy.zeros([1,ny,nx],dtype='float32')
 bheatflx = numpy.zeros([1,ny,nx],dtype='float32')
 
+#thk[:] = 50.0 
+bheatflx[:] = -0.055
+
 # Calculate the thickness of the (ellipsoidal) hump of ice
 for i in range(nx):
   x = float(i-nx/2)/nx
@@ -77,11 +80,10 @@ for i in range(nx):
     y = float(j-ny/2)/ny
     r_squared = x*x+y*y
     if r_squared < 0.125:
-      thk[0,j,i] = 2000.0 * sqrt(0.125 - r_squared)
-      artm[0,j,i:] = -20.0 * sqrt(0.125 - r_squared)
-      acab[0,j,i] = 0.25 * sqrt(0.125 - r_squared)
+      thk[0,j,i] = 2000.0 * sqrt( 0.125 - r_squared )
+      artm[0,j,i] = -1.0 * ( 20.0 * sqrt( 0.5 - r_squared ) )
+      acab[0,j,i] = 0.25 * sqrt( 0.5 - r_squared )
 
-bheatflx[:] = -0.055
 
 # Create the required variables in the netCDF file.
 netCDFfile.createVariable('thk', 'f',('time','y1','x1'))[:] = thk

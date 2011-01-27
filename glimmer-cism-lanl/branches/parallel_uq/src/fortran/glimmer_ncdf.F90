@@ -441,7 +441,11 @@ contains
 
   subroutine glimmer_init_scales
     !*FD calculate scale factors (can't have non-integer powers)
-    use glimmer_physcon, only : scyr, gn
+
+!    use glimmer_physcon, only : scyr, gn  !*sfp* 'gn' now run time param for UQ work
+    use glimmer_physcon, only : scyr
+    use glimmer_runtimeparams, only : gn
+
     use glimmer_paramets, only : thk0, tim0, vel0, vis0, len0, acc0, tau0_glam
     implicit none
 

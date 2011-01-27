@@ -67,7 +67,9 @@ contains
     !  (1:upn on an unstaggered vertical grid, or 1:upn-1 on a staggered vertical grid).
     
     use glimmer_global, only : dp
-    use glimmer_physcon, only : gn
+
+!    use glimmer_physcon, only : gn  !*sfp* 'gn' now run time param (for UQ work)
+    use glimmer_runtimeparams, only : gn
 
     implicit none
 
@@ -76,7 +78,9 @@ contains
     real(dp), dimension(:,:,:), intent(in) :: flwa, efvs
     integer, intent(in) :: whichdisp
 
-    integer, parameter :: p1 = gn + 1  
+!    integer, parameter :: p1 = gn + 1  
+    real(dp) :: p1 
+
     integer :: ew, ns
     integer :: iew, ins    !*sfp* for HO and SSA dissip. calc.
 
@@ -86,6 +90,7 @@ contains
     ! for internal work, so not clear if it is necessary to declare/allocate them elsewhere 
     real(dp) :: c4                         
     real (kind = dp), dimension(model%general%upn) :: c5     
+
 
     select case( whichdisp ) 
 
@@ -97,6 +102,8 @@ contains
     ! 2. works best for eismint divide (symmetry) but 1 likely to be better for full expts
 
     model%tempwk%dissip(:,:,:) = 0.0d0
+
+    p1 = gn + 1.0
 
     do ns = 2, model%general%nsn-1
        do ew = 2, model%general%ewn-1
@@ -300,6 +307,7 @@ contains
     !*FD using one of three possible methods.
 
     use glimmer_physcon
+    use glimmer_runtimeparams, only : actenh, actenl    !*sfp* these are no longer in physcon module!!
     use glimmer_paramets, only : thk0, vis0
 
     implicit none

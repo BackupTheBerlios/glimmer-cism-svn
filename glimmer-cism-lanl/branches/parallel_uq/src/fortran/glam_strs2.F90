@@ -1,4 +1,4 @@
- 
+
 ! "glam_strs2.F90"
 !
 ! 3d velocity calculation based on Blatter/Pattyn, 1st-order equations, by Tony Payne (Univ.
@@ -18,7 +18,11 @@ module glam_strs2
 !***********************************************************************
 
 use glimmer_paramets, only : dp
-use glimmer_physcon,  only : gn, rhoi, rhoo, grav, pi, scyr
+
+!use glimmer_physcon,  only : gn, rhoi, rhoo, grav, pi, scyr
+use glimmer_physcon,  only : rhoi, rhoo, grav, pi, scyr     !*sfp* 'gn' is now a run time option
+use glimmer_runtimeparams,  only : gn
+
 use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, evs0, tau0_glam
 use glimmer_log,      only : write_log
 use glide_mask
@@ -122,7 +126,7 @@ contains
 
 subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
                                        dew,   dns,           &
-                                       sigma)
+                                       sigma )
 
     ! Allocate arrays and initialize variables.
     implicit none
@@ -1067,10 +1071,6 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
   ! This is the factor 1/4(X0/H0)^2 in front of the term ((dv/dz)^2+(du/dz)^2) 
   real (kind = dp), parameter :: f1 = 0.25_dp * (len0 / thk0)**2
 
-  select case(whichefvs)
-
-  case(0)       ! calculate eff. visc. using eff. strain rate
-
  
   if (1 == counter) then
 
@@ -1106,6 +1106,11 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
      end if   ! present(flwa_vstag)
 
   endif       ! counter
+
+
+  select case(whichefvs)
+
+  case(0)       ! calculate eff. visc. using eff. strain rate
 
   do ns = 2,nsn-1
       do ew = 2,ewn-1
@@ -1188,7 +1193,16 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
   case(1)       ! set the eff visc to some const value 
 
-    efvs = 1.0_dp
+!    efvs = 1.0_dp
+  do ns = 2,nsn-1
+      do ew = 2,ewn-1
+       if (thck(ew,ns) > 0.0_dp) then
+        efvs(1:upn-1,ew,ns) = 0.5_dp * flwa(1:upn-1,ew,ns)**(-1.0_dp) 
+        else
+           efvs(:,ew,ns) = effstrminsq ! if the point is associated w/ no ice, set to min value
+       end if
+      end do
+  end do
 
   end select
 

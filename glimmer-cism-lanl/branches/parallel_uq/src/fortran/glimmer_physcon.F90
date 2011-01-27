@@ -71,7 +71,8 @@ module glimmer_physcon
 
   real(dp),parameter :: grav = 9.81d0            !*FD The acceleration due to gravity (m s$^{-2}$)
 
-  integer, parameter :: gn = 3                   !*FD The power dependency of Glenn's flow law.
+!*sfp* now in config file as runtime option
+!  integer, parameter :: gn = 3                   !*FD The power dependency of Glenn's flow law.
 
   real(dp),parameter :: arrmlh = 1.733d3         !*FD Constant of proportionality in Arrhenius relation
                                                  !*FD in \texttt{patebudd}, for $T^{*}\geq263$K.
@@ -80,8 +81,12 @@ module glimmer_physcon
                                                  !*FD in \texttt{patebudd}, for $T^{*}<263$K.
                                                  !*FD (Pa$^{-3}$ s$^{-1}$) 
   real(dp),parameter :: gascon = 8.314d0         !*FD The gas ideal constant $R$ (J mol$^{-1}$ K$^{-1}$)
-  real(dp),parameter :: actenh = 139.0d3         !*FD Activation energy in Glenn's flow law for $T^{*}\geq263$K. (J mol$^{-1}$)
-  real(dp),parameter :: actenl = 60.0d3          !*FD Activation energy in Glenn's flow law for $T^{*}<263$K. (J mol$^{-1}$)
+
+!*sfp* now in config file as runtime option
+!  real(dp),parameter :: actenh = 139.0d3         !*FD Activation energy in Glenn's flow law for $T^{*}\geq263$K. (J mol$^{-1}$)
+
+!*sfp* now in config file as runtime option
+!  real(dp),parameter :: actenl = 60.0d3          !*FD Activation energy in Glenn's flow law for $T^{*}<263$K. (J mol$^{-1}$)
 
   real(dp),parameter :: shci = 2009.0d0          !*FD Specific heat capacity of ice (J kg$^{-1}$ K$^{-1}$)
   real(dp),parameter :: lhci = 335.0d3           !*FD Latent heat of melting of ice (J kg$^{-1}$) 
