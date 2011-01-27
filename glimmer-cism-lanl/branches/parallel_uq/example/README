@@ -1,0 +1,10 @@
+This directory contains a very simple example program demonstrating how
+a climate driver for the ice sheet model can be written.
+
+In order to be able to use glide you need a f95 compiler. Set the 
+environment variable FC to point to your f95 compiler. You also
+need to set the variable GLIMMER_PREFIX to where glimmer is installed.
+Finally you might need to set the variables FCFLAGS and LDFLAGS so
+that the compiler and linker can find the netCDF library, e.g.
+FCFLAGS=-I/path/to/netcdf/include
+LDFLAGS=-L/path/to/netcdf/lib
