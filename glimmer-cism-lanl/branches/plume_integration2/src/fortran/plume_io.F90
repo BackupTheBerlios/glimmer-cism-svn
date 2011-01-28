@@ -71,7 +71,8 @@ module plume_io
   integer :: bmelt_varid,btemp_varid,bsalt_varid
   integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
-  integer :: debug_varid,debug2_varid
+  integer :: debug_varid,debug2_varid,debug3_varid
+  integer :: train_varid
   integer :: gwave_speed_varid, gwave_crit_factor_varid
 
 contains
@@ -685,7 +686,7 @@ contains
     call check( nf90_put_att(nc_id, entr_varid, 'positive', 'increasing plume thickness') )
     call check( nf90_put_att(nc_id, entr_varid, 'long_name', 'entrainment velocity') )
     call check( nf90_put_att(nc_id, entr_varid, 'standard_name', 'entrainment velocity') )
-    call check( nf90_put_att(nc_id, entr_varid, 'units', 'meters/sec') )
+    call check( nf90_put_att(nc_id, entr_varid, 'units', 'meters/year') )
 
     call io_append_output('Creating variable jcs')
     call check( nf90_def_var(nc_id,'jcs',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcs_varid) )
@@ -716,6 +717,17 @@ contains
     call check( nf90_def_var(nc_id,'debug',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),debug_varid))
     call io_append_output('Creating variable debug2')
     call check( nf90_def_var(nc_id,'debug2',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),debug2_varid))
+    call io_append_output('Creating variable debug3')
+    call check( nf90_def_var(nc_id,'debug3',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),debug3_varid))
+
+
+    call io_append_output('Creating variable train')
+    call check( nf90_def_var(nc_id,'train',         NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),train_varid))
+    call check( nf90_put_att(nc_id, train_varid, 'positive', 'increasing plume thickness') )
+    call check( nf90_put_att(nc_id, train_varid, 'standard_name', 'train velocity') )
+    call check( nf90_put_att(nc_id, train_varid, 'units', 'meters/year') )
+    call check( nf90_put_att(nc_id, train_varid, 'long_name', 'entrainment/dtrainment velocity') )
+
 
     call io_append_output('Creating variable gwave_speed')
     call check( nf90_def_var(nc_id,'gwave_speed', NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),gwave_speed_varid))
@@ -862,7 +874,7 @@ contains
     call check(nf90_put_var(nc_id, rhop_varid, rhop, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, temp_varid, temp, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, salt_varid, salt, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, entr_varid, entr, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, entr_varid, entr*sec_per_year, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcs_varid, jcs, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcw_varid, jcw, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcd_u_varid, jcd_u, (/1,1,time_counter/)))
@@ -871,6 +883,9 @@ contains
 
     call check(nf90_put_var(nc_id, debug_varid, debug, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, debug2_varid, debug2, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, debug3_varid, debug3, (/1,1,time_counter/)))
+
+    call check(nf90_put_var(nc_id, train_varid, train*sec_per_year, (/1,1,time_counter/)))
 
     call check(nf90_put_var(nc_id, gwave_speed_varid, gwave_speed, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, gwave_crit_factor_varid, gwave_crit_factor, (/1,1,time_counter/)))

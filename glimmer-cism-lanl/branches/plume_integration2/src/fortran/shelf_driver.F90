@@ -265,7 +265,7 @@ program shelf_driver
 
      time = time + model%numerics%tinc
      ice_ntimestep = ice_ntimestep + 1
-     print '(a,e8.2,a,i,a)', &
+     print '(a,e8.2,a,i12,a)', &
            'Completed ice timestep at t == ',time, &
 	   '(step ', ice_ntimestep ,' )'
 

@@ -13,7 +13,7 @@
 #include <string.h>
 #include <fcntl.h>
 
-FCALLSCSUB3(gc_writestats,GF_WRITESTATS,gf_writestats,STRING,STRING,DOUBLE)
+FCALLSCSUB3(gc_writestats,GF_WRITESTATS,gf_writestats_,STRING,STRING,DOUBLE)
 
 //On some setups, GLIMMER_FCFLAGS isn't being defined correctly.
 //This should work as a stopgap measure until the problem is found

@@ -82,7 +82,11 @@ module plume_global
   logical :: mixlayer,in_glimmer,restart,nonlin,horturb,entrain,basmelt,frazil
   logical :: rholinear,thermobar,intrace,vardrag,topedit,tangle,negfrz
   logical :: use_min_plume_thickness, use_periodic_forcing
-  integer :: entype
+  integer :: entype     
+  ! parameters related to the Zilitinkevich and Mironov mix-layer thickness scheme
+  ! for entrainment
+  real(kind=kdp) :: C_s, C_n, C_i, alpha, beta
+
   integer :: plume_southern_bc
 
   ! restart data filename
@@ -93,6 +97,7 @@ module plume_global
   real(kind=kdp) :: ah,kh,dzincr,temptop,tempbot,saltbot,salttop
   real(kind=kdp) :: tgrad,sgrad,wcdep,gldep,ifdep,rho0,rhoi
   real(kind=kdp) :: plume_min_thickness, entr_time_const
+  real(kind=kdp) :: u_star_offset
   real(kind=kdp) :: cdb,cdbvar,ef,cl
   real(kind=kdp) :: phi ! latitude
   real(kind=kdp) :: radian,f	
@@ -143,7 +148,8 @@ module plume_global
   real(kind=kdp),private :: systim
 
 
-  real(kind=kdp),allocatable,dimension(:,:) :: debug,debug2
+  real(kind=kdp),allocatable,dimension(:,:) :: debug,debug2,debug3
+  real(kind=kdp),allocatable,dimension(:,:) :: train
 
 contains
 
@@ -183,7 +189,8 @@ contains
 
     allocate (tint(m,n))
 
-    allocate (debug(m,n),debug2(m,n))
+    allocate (debug(m,n),debug2(m,n),debug3(m,n))
+    allocate (train(m,n))
 
   end subroutine allocate_arrays
 
@@ -204,7 +211,9 @@ contains
     deallocate(gwave_speed,gwave_crit_factor)
     deallocate(tint)
 
-    deallocate(debug,debug2)
+    deallocate(debug,debug2,debug3)
+    deallocate(train)
+
 
   end subroutine deallocate_arrays
 

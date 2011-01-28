@@ -68,7 +68,7 @@ program iswplume
 
   ! main loop 
 
-  do istep = 1,get_nsteps()
+  do istep = 1,nsteps
 
      call plume_runstep()
 

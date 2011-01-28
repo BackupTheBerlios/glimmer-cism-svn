@@ -15,19 +15,20 @@ module plume
   ! paul holland and daniel feltham, 2006
   ! (journal of physical oceanography, 36, 2312)
 
+  ! coupling to glimmer-cism glacier model by carl gladish
+  ! 2009 - 2011
+
   ! model axes in code are 
   !   x/i/m - east (parallel to isobaths of ice shelf base, perp. to inflow)
   !   y/k/n - north (perp. to isobaths of ice shelf base, parallel to inflow)
   !   z     - upwards from the sea bed (defined as gldep+wcdep)
-
 
   use plume_global
   use plume_functions
   use plume_context
   use plume_io
 
-
-  use omp_lib
+!  use omp_lib
 
   implicit none
 
@@ -36,9 +37,9 @@ module plume
 
   ! except for functions mentioned here
   public :: plume_initialise,plume_runstep,plume_finalise,plume_iterate
-  public :: get_nsteps
+  public :: nsteps
 
-  ! private module variables
+  ! module variables
 
   integer :: iwetmin,iwetmax,kwetmin,kwetmax,ikcplus
   integer :: icalcan,kcalcan,icalcen,kcalcen
@@ -46,7 +47,7 @@ module plume
   logical :: sepflag
 
   integer :: varoutrat
-  integer :: nsteps
+  integer :: nsteps, global_time_step_count = 0
   integer :: last_output_step = -1, last_lnot_step = -1
 
 
@@ -64,6 +65,8 @@ module plume
 
   real(kind=kdp) :: negdep ! total of negative depths (error diagnostic)
 
+  ! rows in which buoyancy forcing is applied to generate gravity waves
+  ! (in the case where use_periodic_forcing == .true.)
   integer,parameter :: klast=20,kfirst=2
 
 contains
@@ -94,7 +97,6 @@ contains
     !in set parameters from namelist file
     call set_parameters(nl_filename,varoutrat,labtim, &
          tottim,outtim,fouttim,louttim,snottim,lnottim)
-
     ! allocate memory for global arrays, based on grid size parameters     
     call allocate_arrays()
 
@@ -273,7 +275,8 @@ contains
     real(kind=kdp) :: min_run_time_sec,max_run_time_sec
     character(len=512) :: log_message
 
-    integer :: time_step_count = 0
+    integer :: local_time_step_count !number of steps executed in this plume_iterate call
+    local_time_step_count = 0
 
     ! convert lower surface depth into height of basal surface and interface
     ! surface, storing results in plume's global variable
@@ -312,6 +315,7 @@ contains
                 (run_plume_to_steady .and. &
                 (subcycling_time .le. max_run_time_sec)))
 
+          
           call plume_runstep()
 
           ! calculate max error
@@ -326,7 +330,7 @@ contains
                (5.d-1*(sv(2:m_grid-1,1:n_grid-2)+ &
                sv(2:m_grid-1,2:n_grid-1))) ** 2.d0 )
 
-          if (time_step_count > 0) then                              
+          if (local_time_step_count > 0) then                              
 
              rel_speed_change_array = abs(speed - speed_old) / &
                   (abs(speed_old)+epsilon(1.d0))
@@ -335,11 +339,11 @@ contains
 
           max_rel_speed_change = maxval(rel_speed_change_array)
 
-          where (rel_speed_change_array > plume_speed_stopping_tol)
-             debug = log(rel_speed_change_array / plume_speed_stopping_tol)
-          elsewhere
-             debug = 0.d0
-          end where
+!          where (rel_speed_change_array > plume_speed_stopping_tol)
+!             debug = log(rel_speed_change_array / plume_speed_stopping_tol)
+!          elsewhere
+!             debug = 0.d0
+!          end where
 
           if (subcycling_time >= min_run_time_sec .and. &
                (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
@@ -366,12 +370,13 @@ contains
           end if
 
           if (write_all_states .and. &
-               (mod(time_step_count,write_every_n) == 0)) then
+               (mod(local_time_step_count,write_every_n) == 0)) then
              call plume_netcdf_write_vars(time*3600.0d0*24.0d0*365.25d0 + &
                   subcycling_time)
           end if
 
-          time_step_count = time_step_count + 1
+          local_time_step_count = local_time_step_count + 1
+          global_time_step_count = global_time_step_count + 1
           subcycling_time = subcycling_time + dt
           bmelt_old = bmelt
           speed_old = speed
@@ -423,6 +428,7 @@ contains
     ! scalar
     ! rho_calc
     ! outflow_bound_tsdc
+    ! ZM_entrainment_correction
     ! filter_waves
     ! gwaves
 
@@ -431,6 +437,7 @@ contains
     implicit none
 
     real(kind=kdp),dimension(m_grid,n_grid) :: long_waves,short_waves, as, bs
+    integer :: k
 
     if (runtim .ge. dtswtim) then
        dt = dt2
@@ -454,19 +461,18 @@ contains
     ! --------------------
     ! calculate velocities
     ! --------------------
-
     call momentum(icalcan,kcalcan,icalcen,kcalcen)
 
     ! set velocity components on the open boundaries if the plume 
     ! has reached that far
-
     call outflow_bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
 
     ! ---------------------------------------------------
     ! evaluate continuity equation for interface position
     ! ---------------------------------------------------
+
     call continuity(icalcan,kcalcan,icalcen,kcalcen)
- 
+
     call outflow_bound_bmelt_entr(icalcan,icalcen,kcalcan,kcalcen)
 
     ! interface and scalars passed forward on open boundary
@@ -475,7 +481,6 @@ contains
     ! ----------------------------------------------------------
     ! update plume thickness, wet/dry boundaries, and velocities
     ! ----------------------------------------------------------
-
     call update(iwetmin,iwetmax,kwetmin,kwetmax,&
          icalcan,icalcen,kcalcan,kcalcen,negdep)
 
@@ -491,6 +496,7 @@ contains
     ! ---------------------------------------------------------------
     ! solve transport equations for temperature, salinity, and frazil
     ! ---------------------------------------------------------------
+
     call scalar(icalcan,kcalcan,icalcen,kcalcen)             
 
     ! -----------------------------------
@@ -502,9 +508,17 @@ contains
 
     call outflow_bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
 
-    call filter_waves(pdep, jcs, short_waves, long_waves, as, bs)
+    if (entype == 5) then
+       call ZM_entrainment_correction(icalcan, icalcen, kcalcan, kcalcen)
+    end if
 
-    debug2 = short_waves
+!    call filter_waves(pdep, jcs, short_waves, long_waves, as, bs)
+
+!    debug2 = short_waves
+    do k=kcalcan,kcalcen
+       debug2(:,k) = sum(bmelt(:,k))/( m_grid - 6 ) * 3600.d0*24.d0*365.25d0
+    end do
+
 
     call gwaves(icalcan, icalcen, kcalcan, kcalcen)
 
@@ -518,6 +532,7 @@ contains
     ! write long step output 
     if ((int(floor(runtim/lnottim)) > last_lnot_step)) then
        last_lnot_step = int(floor(runtim/lnottim))
+
        call io_write_long_step_output(icalcan,icalcen,kcalcan,kcalcen,&
             varoutrat,negdep)
        call io_write_calculated_time(runtim, int(runtim/dt))
@@ -528,6 +543,7 @@ contains
          ((runtim.ge.fouttim).and.(runtim.le.louttim)) .and. &
          .not.(in_glimmer)) then
        last_output_step = int(floor(runtim/outtim))
+
        call io_write_surface_output(runtim,labtim)
     end if
 
@@ -540,9 +556,6 @@ contains
 
   end subroutine plume_finalise
 
-  integer function get_nsteps()
-    get_nsteps = nsteps
-  end function get_nsteps
 
   ! *************************************************************************
   ! ********* private (not callable outside this module) helper subroutines *
@@ -564,7 +577,7 @@ contains
 
     ! local variables
     integer :: l
-    integer :: infloain,infloein,knfloain,knfloein
+    real(kind=kdp) :: infloain,infloein,knfloain,knfloein
     real(kind=kdp) :: cseedfix,cinffix	
 
     namelist /plume_nml/ &
@@ -577,6 +590,9 @@ contains
          ,  horturb &
          ,  entrain &
          ,  entype &
+         ,  C_s &
+         ,  C_n &
+         ,  C_i &
          ,  basmelt &
          ,  rholinear &
          ,  thermobar &
@@ -605,6 +621,7 @@ contains
          ,  ifdep &
          ,  wcdep &
          ,  plume_min_thickness &
+         ,  u_star_offset &
          ,  entr_time_const &
          ,  context &
          ,  bathtype &
@@ -669,6 +686,14 @@ contains
     ! 2 - fractional kochergin formulation (using ef)
     ! 3 - halved pedersen formulation
     ! 4 - halved and modified pedersen formulation
+    ! 5 - ZM 2001 diagnosed mixed-layer thickness
+
+    C_n = 0.5d0
+    C_i = 20.d0
+    C_s = 10.d0
+    alpha = -3.87d-5
+    beta = 7.86d-4
+
     basmelt     = .true.  ! include direct basal melting and freezing
     rholinear   = .true.  ! use linear equation of state instead of unesco
     thermobar   = .false. ! thermobaricity included (code needs checking)
@@ -700,6 +725,7 @@ contains
     ifdep = 285.d0     ! thickness of ice shelf at ice front (or plateau)
     wcdep = 1600.d0    ! depth of water column beneath grounding line 
     plume_min_thickness = 1.d0 ! artificially determined minimum plume thickness
+    u_star_offset = 0.d0       ! source of turbulent kinetic energy for entraining
     entr_time_const = dt1      ! relaxation time (in seconds) for plume thickness to attain minimum
     plume_southern_bc = 0    !use the d/dy = 0 version of southern outflow boundary by default
 
@@ -864,6 +890,7 @@ contains
     dcr    = edepth  ! critical min plume depth
     septol = 1.0d-2  ! smallest plume-ambient density anomaly tolerated before
                      ! plume separation is flagged
+    septol = 0.0d0		 
     small = epsilon(1.d0) !1.0d-15  ! smallest number
 
     ! +++++++++++++++++++++
@@ -1011,6 +1038,8 @@ contains
     jcw = 0
     jcd_u = 1 !initial velocity of 0.d0 is valid
     jcd_v = 1
+    jcd_u = 0
+    jcd_v = 0
     jcd_fl = 0       
     jcd_negdep = 0
     jcd_fseed = 0
@@ -1071,6 +1100,7 @@ contains
 
     debug = 0.d0
     debug2 = 0.d0
+    debug3 = 0.d0
 
     if (intrace) then
        intrin = 0
@@ -1098,12 +1128,14 @@ contains
           bpos = bpos_ext
           if (.not. use_min_plume_thickness) then
              call topog_depth_inflow_set(.not. use_min_plume_thickness .and. .not. mixlayer)
+
           end if
         end if
 
     elseif (restart) then	
        !not in glimmer and doing a restart
     else
+
        if (bathtype.gt.0) then
           call topog_depth_inflow_set(.not. use_min_plume_thickness .and. .not. mixlayer)
        else
@@ -1544,7 +1576,7 @@ contains
     real(kind=kdp) :: rich,sm,arg, phase, extra_entr
     real(kind=kdp) :: dragrt,prden,scden,gambt,gambs,tfreezeb,tfreezei,c1,c2,c3
     real(kind=kdp) :: deltam(m_grid,n_grid),delta(m_grid,n_grid),iold(m_grid,n_grid)
-    real(kind=kdp) :: fppntot,ucrit,ucl
+    real(kind=kdp) :: fppntot,ucrit,ucl,ustar
 
     ! this may be used as a mechanism to generate a positive 
     ! minimum entrainment rate.  Change to a number > 0.d0
@@ -1574,8 +1606,8 @@ contains
           !     with positive thickness should be physically valid speeds
 
           if (any(jcd_u(i-1:i,k) == 0) .or. any(jcd_v(i,k-1:k) == 0)) then
-             print *, 'using invalid velocity at', i,k
-             stop 1
+!             print *, 'using invalid velocity at', i,k
+!             stop 1
           end if
           tt = 5.0d-1*dy(k)*rdyv(k)
           vmid = tt*sv(i,k-1) + (1.d0-tt)*sv(i,k) 
@@ -1632,6 +1664,17 @@ contains
                    entr(i,k) = 3.6d-2*(bspeed(i,k)+bspeed_min)*dsin(1.0d-3)
                 end if
 
+                if (entype == 5) then
+                   ! This is the entrainment scheme described in Zilitinkevich and
+                   ! Mironv's 1996 paper where the mixed layer thickness is 
+                   ! diagnosed directly using local vertical variables only.  The 
+                   ! thickness is adjusted a posteriori (at the end of the current
+                   ! time step), so we take entrainment to be zero here and make the
+                   ! appropriate adjustments to plume depth, transport, heat, and salt
+                   ! later.
+                   entr(i,k) = 0.d0 
+                end if
+
              end if
 
              deltam(i,k) = deltam(i,k) + entr(i,k)
@@ -1652,12 +1695,10 @@ contains
              if (pdepc(i,k).gt.mdepth) then         
 
                 dragrt = dsqrt(drag(i,k))
-
+                ustar = sqrt((dragrt*bspeed(i,k))**2.d0 + 1.d0*u_star_offset**2.d0)
                 ! find turbulent exchange coefficients
-                gambt = (dragrt*bspeed(i,k))/ &
-                      (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + prden)
-                gambs = (dragrt*bspeed(i,k))/ &
-                      (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + scden)
+                gambt = ustar/(2.12d0*dlog(ustar*pdepc(i,k)/nu0) + prden)
+                gambs = ustar/(2.12d0*dlog(ustar*pdepc(i,k)/nu0) + scden)
 
                 ! calculate freezing point of plume at shelf base,
                 ! decide if melt (mflag = 1) 
@@ -1676,7 +1717,7 @@ contains
 
                 ! calculate melt rate
                 bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
-
+!		bmelt(i,k) = 0.d0
 
                 !! multiply by 10 if freezing
                 !              if (mflag.eq.0) then
@@ -1738,7 +1779,6 @@ contains
           if (use_min_plume_thickness) then
 
             thk_def(i,k) = max(0.d0,plume_min_thickness - (pdepc(i,k)+delta(i,k)))
-             
             if (thk_def(i,k) > 0.d0) then
 
                 ! make up for thickness deficiency by increasing entrainment
@@ -1746,7 +1786,12 @@ contains
 
                 entr(i,k)  = entr(i,k)  +  thk_def(i,k) / entr_time_const  
 	        delta(i,k) = delta(i,k) +  thk_def(i,k) / entr_time_const * dt
-	                
+	              
+                if (entype == 5) then
+                   ! set entrainment back to 0, since we don't want to set it here
+                   entr(i,k) = 0.d0
+                end if
+
             end if
 
              !this is for output purposes so we can see what percentage of the thicknes
@@ -1790,6 +1835,197 @@ contains
 
   end subroutine continuity
 
+  subroutine ZM_1996_thickness(i,k,h,h_formula, h_f, h_B)
+
+    integer,intent(in) :: i,k
+    real(kind=kdp),intent(out) :: h,h_formula,h_f,h_B
+
+    ! local variables
+    real(kind=kdp) :: speed, u_star, N, B_s
+    real(kind=kdp) :: a,b,c
+
+    !Solving the equation
+    !  (fh/ (C_n*u_star) )^2 + (-h * B_s / (C_s * u_star ^3)) 
+    !       + (Nh/(C_i * u_star)) = 1
+
+    ! where f is Coriolis param
+    !       h is the mixed layer thickness to be determined
+    !       u_star = sqrt( drag stress )
+    !       B_s = buoyancy source = g*m' * (alpha*T_b + beta*S_b)
+    !         N = buoyancy freq = sqrt(-g*(rho_plume-rho_amb)/(rho0*plume_thickness))
+
+    speed = sqrt( ((su(i-1,k)+su(i,k))**2.d0)/4.d0 + ((sv(i,k-1)+sv(i,k))**2.d0)/4.d0 + small)
+    u_star = speed * sqrt( drag(i,k) )
+    u_star = sqrt(u_star**2.d0 + u_star_offset**2.d0)
+    debug3(i,k) = u_star
+
+    if (rhop(i,k) < rhoamb(i,k)) then
+       N = sqrt(-grav*(rhop(i,k)-rhoamb(i,k))/(rho0*pdep(i,k)))
+    else
+       N = 0.d0
+    end if
+
+    if (bmelt(i,k) > 0.d0) then
+       B_s = grav * bmelt(i,k)* (alpha*btemp(i,k) + beta*bsalt(i,k) )
+    else
+       B_s = 0.d0
+    end if
+
+    h_f = C_n*u_star/f
+    h_B = (B_s/(C_s*u_star**3) + N / (C_i * u_star)) ** (-1.d0)
+
+    a = (f/(C_n)) ** 2.d0
+    b = (B_s/(C_s * u_star) + (N*u_star)/(C_i))
+    c = -u_star**2.d0
+
+    if (abs(f) > small) then
+       h = (-b + sqrt(b**2.d0 - 4.d0*a*c))/(2.d0*a)
+    else
+       if (b > 0.d0) then
+          h = -c/b
+       else
+          h = 0.d0
+       end if
+
+    end if
+    h_formula = h
+    ! ensure that the layer has at least the minimum thickness
+    h = max(h, plume_min_thickness)
+!    h = min(h, 500.d0)
+
+  end subroutine ZM_1996_thickness
+
+  subroutine ZM_entrainment_correction(icalcan, icalcen, kcalcan, kcalcen)
+
+    implicit none
+
+    integer, intent(inout) :: icalcan,kcalcan,icalcen,kcalcen
+
+    !local variables
+    integer :: i,k
+    real(kind=kdp) :: ZM_h, delta_thk, pressure, ttt
+    real(kind=kdp) :: utrain, vtrain, pdepu, pdepv, train_avg
+    real(kind=kdp) :: h_f, h_B, h_formula
+
+    if (entype == 5) then
+
+       ! this code should only execute if we are running the ZM entrainment scheme
+
+       do i=icalcan,icalcen
+          do k=kcalcan, kcalcen
+
+             ! calculate the correct mixed-layer thickness according to
+             ! Zilitinkevich and Mironov 1996, and adjust the entrainment
+             ! rate to produce the required thickness.
+
+             if (jcs(i,k) == 0) cycle
+
+             call ZM_1996_thickness(i,k,ZM_h, h_formula, h_f, h_B)
+
+	     debug(i,k)  = h_formula
+             !debug2(i,k) = h_f
+             debug3(i,k) = h_f
+             
+             thk_def(i,k) = ZM_h - pdep(i,k)
+
+             ! We use the known thickness change to infer the necessary 
+             ! detrainment/entrainment rate
+
+             if (global_time_step_count > 0) then
+                train(i,k) = thk_def(i,k) / entr_time_const
+             end if
+
+             ! adjust the plume thickness and interface position, 
+             delta_thk = train(i,k) * dt
+             pdep(i,k) = pdep(i,k) + delta_thk
+             ipos(i,k) = bpos(i,k) - pdep(i,k)
+
+             if (delta_thk > 0.d0) then
+
+                ! entraining case
+
+                ! update the average temperature,salt and density
+                temp(i,k) = temp(i,k) + & 
+                     delta_thk * (atemp(i,k) - temp(i,k))/(pdep(i,k)+dcr)
+                salt(i,k) = salt(i,k) + &
+                     delta_thk * (asalt(i,k) - salt(i,k))/(pdep(i,k)+dcr)
+
+                if (rholinear) then
+                   rhop(i,k) = rho_func_linear(temp(i,k),salt(i,k))
+                else
+                   if (thermobar) then
+                      pressure = 1.0d-1*(wcdep + gldep - ipos(i,k))
+                      ttt = tinsitu_func(temp(i,k),salt(i,k),pressure)
+                      rhop(i,k) =rho_func_nonlinear(ttt,salt(i,k),pressure)
+                   else
+                      rhop(i,k) =  &
+                           rho_func_nonlinear(temp(i,k),salt(i,k),0.d0)
+                   end if
+                end if
+
+                tempa(i,k) = temp(i,k)
+                salta(i,k) = salt(i,k)
+
+             else ! (delta_thk < 0.0)
+
+                ! detraining case
+
+                ! temp and salt and rhop do not change since we are leaving behind a 
+                ! layer of fluid with the current plume water properties
+
+                ! Neither does the plume speed change.
+                continue
+
+             end if
+
+          end do
+       end do
+
+       ! adjust the speed and transport variables after the thickness have all been 
+       ! adjusted
+       do i=icalcan,(icalcen-1)
+          do k=kcalcan,(kcalcen-1)
+
+             ! entrainment/detrainment rates on the u grid and v grid
+             utrain = 0.5d0*(train(i,k) + train(i+1,k)) 
+             vtrain = 0.5d0*(train(i,k) + train(i,k+1))
+
+             ! new plume depths on the u-grid and v-grid
+             pdepu = 0.5d0*(pdep(i,k) + pdep(i+1,k))
+             pdepv = 0.5d0*(pdep(i,k) + pdep(i,k+1))
+
+             if (all(jcs(i:(i+1),k) == 1))  then
+                if (utrain .ge. 0.d0) then
+                   ! entraining at u-grid location
+                   ! in entraining case, the introduced fluid has no momentum, so we do
+                   ! not change the transport variables, but we need to update the
+                   ! speeds since the thickness has increased
+                   su(i,k) =   utrans(i,k) / pdepu
+                else 
+                   ! detraining at u-grid location
+                   ! the transports change, since we are losing fluid
+                   utrans(i,k) = utrans(i,k) * pdepu/(pdepu+abs(utrain*dt))
+                   utransa(i,k) = utrans(i,k)
+                end if
+             end if
+
+             if (all(jcs(i,k:(k+1)) == 1)) then
+                if (vtrain .ge. 0.d0) then
+                   ! entraining at v-grid location
+                   sv(i,k) =   vtrans(i,k) / pdepv
+                else 
+                   ! detraining at v-grid location
+                   vtrans(i,k) = vtrans(i,k) * pdepv/(pdepv+abs(vtrain*dt))
+                   vtransa(i,k) = vtrans(i,k)
+                end if
+             end if
+
+          end do
+       end do
+
+    end if
+
+  end subroutine ZM_entrainment_correction
 
   subroutine momentum(icalcan,kcalcan,icalcen,kcalcen)
 
@@ -1809,7 +2045,7 @@ contains
     integer(kind=kdp) :: idel,kdel,iidx,kkdy,ihilf,khilf
 
     real(kind=kdp) :: one,termnl,termnl2,corx
-    real(kind=kdp) :: redgu,slorho,islope
+    real(kind=kdp) :: redgu,slorho,islope,detrain
     real(kind=kdp) :: pdepu,zu,zum,arfac,tt,uu
     real(kind=kdp) :: vmid,umid
     real(kind=kdp) :: speed,tbotm,rhoa,tu,salu
@@ -1848,6 +2084,9 @@ contains
 
     debug = 0.d0
     debug2 = 0.d0
+    debug3 = 0.d0
+
+    train = 0.d0
 
     !$omp parallel default(none) &
     !$omp private(costang,thickratio, &
@@ -1888,7 +2127,7 @@ contains
           slorho = 0.d0
           islope = 0.d0
           redgu = 0.d0  
-
+          detrain = 0.d0
 
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           ! skip u-component if western or eastern cell is dry land
@@ -1942,8 +2181,8 @@ contains
              tt = 5.0d-1 
              uu = 5.0d-1*dy(k)*rdyv(k)
              if (any(jcd_v(i:i+1,k-1:k)==0)) then
-                print *, 'using invalid sv at i,k', i,k
-                stop 1
+!                print *, 'using invalid sv at i,k', i,k
+!                stop 1
              end if
              vmid = tt*uu       *(sv(i,k-1) + sv(i+1,k-1)) +  &
                     tt*(1.d0-uu)*(sv(i,k)   + sv(i+1,k))
@@ -2168,10 +2407,11 @@ contains
                 hordif = pdepu*((tlate-tlatw)*rdx(i) + (tlatn-tlats)*rdyv(k))
 
              end if
+             
 
              ! final
              !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-             utrans(i,k) = (utransa(i,k)+corx+islope+slorho+termnl+termnl2+hordif)*tbotm
+             utrans(i,k) = (utransa(i,k)+corx+islope+slorho+termnl+termnl2+hordif+detrain)*tbotm
 
           end if
 
@@ -2186,7 +2426,7 @@ contains
           slorho = 0.d0
           islope = 0.d0
           redgv = 0.d0
-
+          detrain = 0.d0
  
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           ! skip v-component if southern or northern cell is dry land
@@ -2413,10 +2653,11 @@ contains
              hordif = pdepv*((tlate-tlatw)*rdxu(i) + (tlatn-tlats)*rdy(k))
 
           end if
+          
           !          
           ! final
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          vtrans(i,k) = (vtransa(i,k)+cory+islope+slorho+termnl+termnl2+hordif)*tbotm
+          vtrans(i,k) = (vtransa(i,k)+cory+islope+slorho+termnl+termnl2+hordif+detrain)*tbotm
 
 	  end if
        end do
@@ -2546,8 +2787,8 @@ contains
                                (pdep(i,domain_kmin) + pdep(i+1,domain_kmin))
            end do
            do i = domain_imin,domain_imax
-              sv(i,domain_kmin) = sv(i,domain_kmin+1)
-              vtrans(i,domain_kmin) =  sv(i,domain_kmin+1)* &
+              sv(i,domain_kmin) = min(0.d0, sv(i,domain_kmin+1)) !enforce negative
+              vtrans(i,domain_kmin) =  min(0.d0, sv(i,domain_kmin+1)) * &
                            5.d-1*(pdep(i,domain_kmin)+pdep(i,domain_kmin+1))
            end do
 
@@ -2789,7 +3030,6 @@ contains
        select case(plume_southern_bc)
 
        case (0)
-
            bmelt(:,domain_kmin) = bmelt(:,domain_kmin+1)
            entr(:,domain_kmin) = entr(:,domain_kmin+1)
         
@@ -3156,6 +3396,7 @@ contains
                   i,' k=',k
              write(11,*) 'error: negative depth ',error,' at i=', &
                   i,' k=',k
+             print *, 'pdep', pdep(i,k),'ipos',iconti
              stop 1
           end if
 
@@ -3168,7 +3409,10 @@ contains
           ! find newly wet area
           if (pdepold .eq. 0.d0 .and. pdep(i,k) .gt. 0.d0) then
              jcd_fl(i,k) = 1 
-             print *, i,k
+!             print *, i,k
+          else
+
+
           end if
 
           ! find wetted area boundaries (main update of jcw)
@@ -3211,6 +3455,10 @@ contains
              su(i,k) = utrans(i,k)/dunew
              jcd_u(i,k) = 1
           endif
+	  if (depinf(i,k) > 0.d0) then
+	     su(i,k) = utrans(i,k)/depinf(i,k)
+	     jcd_u(i,k) = 1
+	  end if
 
         end if
 
@@ -3225,6 +3473,10 @@ contains
              sv(i,k) = vtrans(i,k)/dvnew
              jcd_v(i,k) = 1
           endif
+	  if (depinf(i,k) > 0.d0) then
+	     sv(i,k) = vtrans(i,k)/depinf(i,k)
+	     jcd_v(i,k) = 1
+	  end if
 	end if
 
        end do
@@ -3272,7 +3524,7 @@ contains
     real(kind=kdp) :: dragrt,prden,scden,gambt,gambs,tfreezeb,tfreezei,c1,c2,c3
     real(kind=kdp) :: gamct,gamcs,ucrit,ucl
     real(kind=kdp) :: fmelttot,wturb,mfac1,mfac2,gi,gim1,mi,mip1
-    real(kind=kdp) :: amb_depth
+    real(kind=kdp) :: amb_depth, ustar
 
     one = 1.d0
     prden = 12.5d0*pr**(2.d0/3.d0) - 9.d0
@@ -3287,7 +3539,7 @@ contains
              ! newly-wet cell
              if (use_min_plume_thickness) then
                 print *, 'should not execute this'
-!                stop 1
+                stop 1
              end if
              slon = dmax1(0.d0,ipos(i,k)-ipos(i,k+1))*jcw(i,k+1)
              sloe = dmax1(0.d0,ipos(i,k)-ipos(i+1,k))*jcw(i+1,k)
@@ -3417,10 +3669,14 @@ contains
 
                 end if
 
-                deltat(i,k) = deltat(i,k)  &
-                   + dt*entr(i,k)*(atemp(i,k) - tempa(i,k))/pdepcp(i,k)
-                deltas(i,k) =  deltas(i,k) &
-	           + dt*entr(i,k)*(asalt(i,k)-salta(i,k))/pdepcp(i,k)
+                if (entype .ne. 5) then
+
+                   deltat(i,k) = deltat(i,k)  &
+                        + dt*entr(i,k)*(atemp(i,k) - tempa(i,k))/pdepcp(i,k)
+                   deltas(i,k) =  deltas(i,k) &
+                        + dt*entr(i,k)*(asalt(i,k)-salta(i,k))/pdepcp(i,k)
+
+                end if
 
              endif
           end do
@@ -3610,12 +3866,12 @@ contains
 
              if (pdepc(i,k).gt.mdepth) then         
                 dragrt = dsqrt(drag(i,k))
-
+                ustar = sqrt((dragrt*bspeed(i,k))**2.d0 + 1.d0*u_star_offset**2.d0)
                 ! find turbulent exchange coefficients
-                gambt = (dragrt*bspeed(i,k))/ &
-                     (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + prden)             
-                gambs = (dragrt*bspeed(i,k))/ &
-                     (2.12d0*dlog((dragrt*bspeed(i,k)*pdepc(i,k))/nu0) + scden)
+                gambt = ustar/ &
+                     (2.12d0*dlog(ustar*pdepc(i,k)/nu0) + prden)             
+                gambs = ustar/ &
+                     (2.12d0*dlog(ustar*pdepc(i,k)/nu0) + scden)
 
                 ! calculate freezing point of plume at shelf base,
                 ! decide if melt (mflag = 1) 
@@ -3637,6 +3893,7 @@ contains
 
                 ! calculate melt rate
                 bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
+!		bmelt(i,k) = 0.d0
 
                 !! multiply by 10 if freezing
                 !              if (mflag.eq.0) then

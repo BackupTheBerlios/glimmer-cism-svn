@@ -832,6 +832,8 @@ function mindcrshstr(pt,whichresid,vel,counter,start_umc,cvg_accel,small_vel,res
   ! **cvg*** Dropped the Payne and Hindmarsch UMC, now using a strategy from DeSmedt, Pattyn,
   !  and De Goen, J. Glaciology 2010
 
+  ! **cvg*** Jan 2011, putting back in the UMC
+
   implicit none
 
   real (kind = dp), intent(in), dimension(:,:,:) :: vel
@@ -844,25 +846,30 @@ function mindcrshstr(pt,whichresid,vel,counter,start_umc,cvg_accel,small_vel,res
 
   real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: mindcrshstr
 
-  real (kind = dp), parameter :: small = 1.0e-16_dp
+  real (kind = dp), parameter :: small = epsilon(1.d0) !1.0e-16_dp
 
-  real (kind=dp) in_prod, len_new, len_old, mean_rel_diff, sig_rel_diff
+  real (kind=dp) :: in_prod, len_new, len_old, mean_rel_diff, sig_rel_diff
   real (kind=dp) :: theta
   real (kind = dp), intrinsic :: abs, acos
   
   integer, dimension(2), save :: new = 1, old = 2
+  logical, dimension(2), save :: performed_umc = .false.
+
   integer :: locat(3)
   
   integer :: nr
   integer,      dimension(size(vel,1),size(vel,2),size(vel,3)) :: vel_ne_0
   real(kind=dp),dimension(size(vel,1),size(vel,2),size(vel,3)) :: rel_diff
 
+  logical,parameter :: hindmarch_payne_umc = .true.
+  logical,parameter  :: deschmedt_scheme = .false.
+
   if (counter == 1) then
     usav(:,:,:,pt) = 0.0d0
     corr(:,:,:,:,:) = 0.0d0
   end if
 
-  corr(:,:,:,new(pt),pt) = vel - usav(:,:,:,pt)           
+  corr(:,:,:,new(pt),pt) = vel - usav(:,:,:,pt)  
 
   if (counter >= start_umc) then
   
@@ -872,17 +879,45 @@ function mindcrshstr(pt,whichresid,vel,counter,start_umc,cvg_accel,small_vel,res
  
     theta = acos( in_prod / (len_new * len_old + small) )
     
-    if (theta  < (1.0/8.0)*pi) then
-    	mindcrshstr = usav(:,:,:,pt) + cvg_accel * corr(:,:,:,new(pt),pt)
-   else if(theta < (19.0/20.0)*pi) then
-   	mindcrshstr = vel
-   else 
-   	mindcrshstr = usav(:,:,:,pt) + (1.0/cvg_accel) * corr(:,:,:,new(pt),pt)
-   end if
+    if (hindmarch_payne_umc) then
+
+       if (performed_umc(pt)) then
+          ! did the umc last iteration, don't repeat it
+          performed_umc(pt) = .false.
+          mindcrshstr = vel
+       else
+          if (theta > (5.d0/6.d0)*pi) then
+             performed_umc(pt) = .true.    
+             print *, 'performing UMC for vel', pt
+             mindcrshstr = usav(:,:,:,pt) + (len_old/ &
+                  sqrt(sum( &
+                  (corr(:,:,:,old(pt),pt) - corr(:,:,:,new(pt),pt)) * &
+                  (corr(:,:,:,old(pt),pt) - corr(:,:,:,new(pt),pt))))) * &
+                  corr(:,:,:,new(pt),pt)
+          else
+             mindcrshstr = vel
+          end if
+       end if
+
+    elseif (deschmedt_scheme) then
+
+       if (theta  < (1.d0/8.d0)*pi) then
+          mindcrshstr = usav(:,:,:,pt) + cvg_accel * corr(:,:,:,new(pt),pt)
+       else if(theta < (19.0/20.0)*pi) then
+          mindcrshstr = vel
+       else 
+          mindcrshstr = usav(:,:,:,pt) + (1.0/cvg_accel) * corr(:,:,:,new(pt),pt)
+       end if
+
+    else
+
+       mindcrshstr = vel
+
+    endif 
 
   else 
 
-    mindcrshstr = vel;
+     mindcrshstr = vel;
     
   end if
 
@@ -896,8 +931,8 @@ function mindcrshstr(pt,whichresid,vel,counter,start_umc,cvg_accel,small_vel,res
   if (counter == 1) then
    	usav_avg = 1.0_dp
   else
-	usav_avg(1) = sum( abs(usav(:,:,:,1)) ) / size(vel)  ! a transport velocity scale from prev iter
-	usav_avg(2) = sum( abs(usav(:,:,:,2)) ) / size(vel)  ! a transport velocity scale from prev iter
+	usav_avg(1) = sum( abs(usav(:,:,:,1)) ) / size(vel)  ! transport vel scale from prev iter
+	usav_avg(2) = sum( abs(usav(:,:,:,2)) ) / size(vel)  ! transport vel scale from prev iter
   end if
 
 !  print *, 'usav_avg(1)',usav_avg(1),'usav_avg(2)',usav_avg(2)
