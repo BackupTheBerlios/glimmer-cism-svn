@@ -622,14 +622,15 @@ contains
     real :: upstream_thk, if_thk, upstream_vel,inflow_a
     real :: chan_depth,otopg,ltopg,acab_per_year
     real,dimension(:),allocatable :: rand_row
+    logical :: noslip
 
     real :: tmp
     real :: rand_amp
 
     character (len=512) :: linear_shelf_params = "<fname> <nx> <ny> <n_level> <hx> <hy> <upstream_thk> &
-       & <upstream_vel> <inflow_a> <ifpos> <ifthk> <ocean_depth> <kinbcw>"
+       & <upstream_vel> <inflow_a> <ifpos> <ifthk> <ocean_depth> <kinbcw> [<noslip>]"
 
-    if (command_argument_count() /= 14) then
+    if (command_argument_count() < 14) then
        write(*,*)"Incorrect number of parameters. Linear shelf requires: &
             &  ",trim(linear_shelf_params)
        stop 1
@@ -687,6 +688,14 @@ contains
     read(argstr,'(i5)') kinbcw
     write(*,*) 'kinbc_width',kinbcw
 
+    if (command_argument_count() == 15) then
+       call get_command_argument(15,argstr)
+       read(argstr, '(l1)') noslip
+    else
+	noslip = .false.
+    end if
+    write(*,*) 'noslip', noslip
+
     allocate(xs(nx),ys(ny),level(n_level),xstag(nx-1),ystag(ny-1))
     allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
     allocate(uvelhom(nx-1,ny-1,n_level), vvelhom(nx-1,ny-1,n_level))
@@ -718,11 +727,19 @@ contains
     ! define kinbcmask
     kinbcmask = 0
     kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
-    
+    if (noslip) then		    
+       kinbcmask(1:(1+zero_buf),:) = 1
+       kinbcmask((nx-1-zero_buf):(nx-1),:) = 1
+    end if
+
     uvelhom = 0.d0
     vvelhom = 0.d0
 
-    vvelhom(:,ny-kinbcw:ny-1,:) = upstream_vel
+    if (noslip) then
+       vvelhom(2:(nx-2),(ny-kinbcw):ny,:) = upstream_vel
+    else
+        vvelhom(:,ny-kinbcw:ny-1,:) = upstream_vel
+    end if
 
     do j=ny-kinbcw-10,ny
        do i=1+zero_buf,nx-zero_buf

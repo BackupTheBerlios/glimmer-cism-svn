@@ -22,7 +22,8 @@ program nc_regrid
 
   ! first two old x values, and old y values
   real(kind=dp),dimension(2) :: x1_old,y1_old
-
+  real(kind=dp) :: k_perturb, amp_perturb, inflow_a
+  integer :: perturb_ramp
 
   !data arrays
   real(kind=dp),dimension(:),allocatable :: levels
@@ -47,12 +48,13 @@ subroutine main()
                                     &<thk_n_margin> <thk_s_margin> &
                                     &<thk_w_margin> <thk_e_margin> &
                                     &<kin_n_margin> <kin_s_margin> &
-                                    &<kin_w_margin> <kin_e_margin> "
+                                    &<kin_w_margin> <kin_e_margin> &
+                                    &<inflow_a> <k_perturb> &
+				    &<amp_perturb> <perturb_ramp>"
 
   character(len=128) :: argstr
 
-
-  if (command_argument_count() /= 17) then
+  if (command_argument_count() /= 21) then
      write(*,*) "Usage: ", trim(gen_usage)
      stop 1
   end if
@@ -125,6 +127,22 @@ subroutine main()
   read(argstr,'(i5)') kin_e_margin
   write(*,*)'kin_e_margin', kin_e_margin
 
+  call get_command_argument(18,argstr)
+  read(argstr,'(f18.12)') inflow_a
+  write(*,*)'inflow_a', inflow_a
+
+  call get_command_argument(19,argstr)
+  read(argstr,'(f18.12)') k_perturb
+  write(*,*)'k_perturb',k_perturb
+
+  call get_command_argument(20,argstr)
+  read(argstr,'(f18.12)') amp_perturb
+  write(*,*) 'amp_perturb', amp_perturb
+
+  call get_command_argument(21,argstr)
+  read(argstr,'(i5)') perturb_ramp
+  write(*,*) 'perturb_ramp', perturb_ramp
+
   call read_old_nc_file() 
 
   allocate(xs_new(nx_new),ys_new(ny_new))
@@ -143,6 +161,40 @@ subroutine main()
              uvelhom_new,vvelhom_new,temp_new)
 
 end subroutine main
+
+subroutine perturb_north_rows(data, &
+                              nx, ny, &
+                              w_marg, e_marg, n_rows, &
+			      inflow_a, &
+                              k, amp, ramp_len)
+  
+  real(kind=dp),dimension(:,:),intent(inout) :: data
+  integer, intent(in) :: nx,ny
+  integer :: w_marg, e_marg, n_rows
+  integer :: ramp_len
+  real(kind=dp), intent(in) :: k, amp, inflow_a
+  real(kind=dp),parameter :: pi = 3.1415926535897
+
+  !local variables
+  integer :: i,j
+  real(kind=dp) :: thk_perturb
+
+
+  do i=w_marg+1,nx-e_marg
+     do j=ny-(n_rows+ramp_len)+1,ny
+        thk_perturb = amp * sin(2*pi*k*(i-w_marg-1.d0)/(nx-e_marg-w_marg-1.d0))
+	thk_perturb = thk_perturb + inflow_a * (xs_new(i)-xs_new((nx-1)/2+1))**2.0
+
+        if (j <= (ny-n_rows)) then
+           !inside domain, ramping down
+           thk_perturb = thk_perturb * (j-(ny-(n_rows+ramp_len)+1.d0))/ramp_len
+        end if
+        data(i,j) = data(i,j) + thk_perturb
+        
+     end do
+  end do
+
+end subroutine perturb_north_rows
 
 subroutine write_real_margins(data_old,data_new, &
                          test_sign, threshold, &
@@ -360,16 +412,21 @@ subroutine define_new_data()
   integer :: i,j
   real(kind=dp),dimension(nx_new-1,ny_new-1) :: kinbcmask_new_real
 
-  hx_new = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
-                    (nx_new - thk_w_margin - thk_e_margin - 1)
-  hy_new = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
-                    (ny_new - thk_s_margin - thk_n_margin - 1)
+  if (nx_old == nx_new .and. ny_old == ny_new) then
+     hx_new = hx_old
+     hy_new = hy_old
+  else
+    hx_new = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
+                      (nx_new - thk_w_margin - thk_e_margin - 1)
+    hy_new = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
+                        (ny_new - thk_s_margin - thk_n_margin - 1)
 
 !  hx_new_kin = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
 !                        (nx_new - thk_w_margin - thk_e_margin - 1)
 !  hy_new_kin = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
 !                        (ny_new - thk_s_margin - thk_n_margin - 1)
-
+  end if
+			 
   !now populate the dimension variables
   xs_new = (/ ( x1_old(1) + (i-1)*hx_new,i=1,nx_new ) /)
   ys_new = (/ ( y1_old(1) + (j-1)*hy_new,j=1,ny_new ) /)
@@ -384,6 +441,15 @@ subroutine define_new_data()
   vvelhom_new = 0.0d0
   temp_new = 0.0d0
 
+  if (nx_new == nx_old .and. ny_new == ny_old) then
+     print *, 'skipping interpolation'
+     topog_new = topog_old
+     thck_new = thck_old
+     kinbcmask_new = kinbcmask_old
+     uvelhom_new = uvelhom_old
+     vvelhom_new = vvelhom_old
+     temp_new = temp_old
+  else
   call write_real_margins(topog_old,topog_new, +1.0d0, 0.0d0,&
                           nx_old, nx_new,ny_old, ny_new, &
 	                  top_n_margin,top_s_margin,top_w_margin,top_e_margin)
@@ -402,7 +468,6 @@ subroutine define_new_data()
                           nx_old-1, nx_new-1, ny_old-1, ny_new-1, &
 			  kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin)
   kinbcmask_new = int(kinbcmask_new_real)
-
 
   do j=1,nlevel
      call write_real_margins(uvelhom_old(:,:,j),uvelhom_new(:,:,j), 1.0d0, 0.0d0,&
@@ -427,6 +492,11 @@ subroutine define_new_data()
                          ny_old, ny_new, 0,0,0,0)
 
   end do
+  end if
+
+  call perturb_north_rows(thck_new, nx_new, ny_new, &
+                          thk_w_margin, thk_e_margin,kin_n_margin, &
+                  	  inflow_a,k_perturb, amp_perturb,perturb_ramp)
 
 end subroutine define_new_data
 
