@@ -71,21 +71,20 @@ acab = numpy.zeros([1,ny,nx],dtype='float32')
 bheatflx = numpy.zeros([1,ny,nx],dtype='float32')
 beta = numpy.zeros([1,ny-1,nx-1],dtype='float32')
 
-thk[:] = 50.0 
+thk[:] = 75.0 
 bheatflx[:] = -0.055
 beta[:] = 10000.0 
 
 # Calculate the thickness of the (ellipsoidal) hump of ice
-for i in range(nx):
-  x = float(i-nx/2)/nx
-  for j in range(ny):
-    y = float(j-ny/2)/ny
+for i in range(nx-1):
+  x = float(i-(nx-1)/2)/(nx-1)
+  for j in range(ny-1):
+    y = float(j-(ny-1)/2)/(ny-1)
     r_squared = (x*x+y*y)
 
-    if r_squared < 0.125:
+    if r_squared < 0.120:
       thk[0,j,i] = 1000.0 * sqrt( 1.0 - 8.25*r_squared )
 
-#    artm[0,j,i] = -20.0 * ( 1.0 - 12.0*r_squared )
     artm[0,j,i] = 10.0 -20.0/900.0 * thk[0,j,i]               
     acab[0,j,i] = -0.05 * artm[0,j,i] 
 

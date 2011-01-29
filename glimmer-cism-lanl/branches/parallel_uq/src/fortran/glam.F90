@@ -100,7 +100,8 @@ module glam
 
            call horizontal_remap_out (model%remap_wk,     model%geometry%thck,            &
                                       model%climate%acab, model%numerics%dt,              &
-                                      model%temper%temp(1:model%general%upn-1,:,:) )
+                                      model%numerics%thklim )
+
 
         else  ! Use IR to transport thickness only
 
@@ -126,7 +127,9 @@ module glam
         ! (This subroutine lives in module remap_glamutils)
 
            call horizontal_remap_out (model%remap_wk,     model%geometry%thck,                 &
-                                      model%climate%acab, model%numerics%dt )
+                                      model%climate%acab, model%numerics%dt,                   & 
+                                      model%numerics%thklim,                                   & 
+                                      model%temper%temp(1:model%general%upn-1,:,:) )
 
         endif   ! whichtemp
 
