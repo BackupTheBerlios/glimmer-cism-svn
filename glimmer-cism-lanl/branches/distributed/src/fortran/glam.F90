@@ -14,8 +14,12 @@ module glam
     use glimmer_physcon, only :
     use glide_mask
 
+!whl - to do - remove these two modules, replace by glissade_transport and glissade_remap
     use remap_advection, only: horizontal_remap
     use remap_glamutils
+
+    use glissade_transport, only: glissade_transport_driver,  &
+                                  nghost_transport, ntracer_transport
 
     use glide_velo_higher
     use glide_thck
@@ -26,6 +30,9 @@ module glam
     public :: inc_remap_driver
 
     ! NOTE: Relevant initializtion routines are in the init section of "glide.F90" 
+
+!whl - temporary; remove later
+    logical, parameter :: old_remapping = .true.  ! if true, then revert to older remapping scheme
 
     contains
 
@@ -38,10 +45,17 @@ module glam
 
         integer :: k    ! layer index
 
+!whl - debug
+        integer :: i, j
+        integer, parameter :: idiag=10, jdiag=10
+
         ! Compute the new geometry derivatives for this time step
 
         call geometry_derivs(model)
         call geometry_derivs_unstag(model)
+
+        print *, ' '
+        print *, 'time = ', model%numerics%time
 
         ! Compute higher-order ice velocities
 
@@ -91,13 +105,20 @@ module glam
         call distributed_gather_var(model%climate%acab, gathered_acab)
         call distributed_gather_var(model%temper%temp, gathered_temp)
 
-        ! Put output from inc. remapping code back into format that model wants.
-        ! (This subroutine lives in module remap_glamutils)
 
-        if (main_task) then
+!whl - Note to Jeff - Introduced a choice here between old and new remapping schemes.
+!      The old scheme requires gathering data to the main processor.
+!      The new scheme is better designed for distributed parallelism.
+!      Old remapping scheme to be removed after the new scheme has been implemented in parallel and tested.
+
+        if (old_remapping) then
+
+           if (main_task) then
+
 	        ! Use incremental remapping algorithm to evolve the ice thickness
 	        ! (and optionally, temperature and other tracers)
-	        if (model%options%whichtemp == TEMP_REMAP_ADV) then   ! Use IR to advect temperature
+
+	        if (model%options%whichtemp == TEMP_REMAP_ADV) then   ! Use IR to advect thickness, temperature
 	                                                              ! (and other tracers, if present)
 
 	           ! Put relevant model variables into a format that inc. remapping code wants.
@@ -212,9 +233,85 @@ module glam
 
 
 	        endif   ! whichtemp
-        endif    ! main_task
 
-        call parallel_barrier   ! Other tasks hold here until main_task completes
+           endif    ! main_task
+
+           call parallel_barrier   ! Other tasks hold here until main_task completes
+
+!whl - Note to Jeff - Here is the code used to call the new remapping scheme
+!      (To be modified for distributed parallelism)
+
+        else   ! new remapping scheme
+
+!whl - Note to Jeff - Add halo updates here for thck, temp, uvel and vvel.
+!                     If nhalo >= 2, then no halo updates should be needed inside glissade_transport_driver.
+
+           ! Halo updates for thickness and tracers.
+
+!           call ice_HaloUpdate (thck,             halo_info,     &
+!                                field_loc_center, field_type_scalar)
+
+!           call ice_HaloUpdate (temp,             halo_info,     &
+!                                field_loc_center, field_type_scalar)
+
+!           call ice_HaloUpdate (uvel,               halo_info,     &
+!                                field_loc_NEcorner, field_type_vector)
+
+!           call ice_HaloUpdate (vvel,               halo_info,     &
+!                                field_loc_NEcorner, field_type_vector)
+
+           if (model%options%whichtemp == TEMP_REMAP_ADV) then  ! Use IR to transport thickness, temperature
+                                                                ! (and other tracers, if present)
+
+              call glissade_transport_driver(model%numerics%dt * tim0,                             &  
+                                             model%numerics%dew * len0, model%numerics%dns * len0, &
+                                             model%general%ewn,         model%general%nsn,         &
+                                             model%general%upn-1,       model%numerics%sigma,      &
+                                             nghost_transport,          ntracer_transport,         &
+                                             model%velocity_hom%uvel(:,:,:) * vel0,                &
+                                             model%velocity_hom%vvel(:,:,:) * vel0,                &
+                                             model%geometry%thck(:,:),                             &
+                                             model%temper%temp(1:model%general%upn-1,:,:) )
+
+           else  ! Use IR to transport thickness only
+                 ! Note: In glissade_transport_driver, the ice thickness is transported layer by layer,
+                 !       which is inefficient if no tracers are being transported.  (It would be more
+                 !       efficient to transport thickness in one layer only, using a vertically
+                 !       averaged velocity.)  But this option probably will not be used in practice;
+                 !       it is left in the code just to ensure backward compatibility with an
+                 !       older remapping scheme for transporting thickness only.
+
+              call glissade_transport_driver(model%numerics%dt * tim0,                             &  
+                                             model%numerics%dew * len0, model%numerics%dns * len0, &
+                                             model%general%ewn,         model%general%nsn,         &
+                                             model%general%upn-1,       model%numerics%sigma,      &
+                                             nghost_transport,          1,                         &
+                                             model%velocity_hom%uvel(:,:,:) * vel0,                &
+                                             model%velocity_hom%vvel(:,:,:) * vel0,                &
+                                             model%geometry%thck(:,:))
+
+           endif  ! whichtemp
+
+!whl - Note to Jeff - Do we want to do any halo updates after the transport is done?
+
+        endif  ! old v. new remapping
+
+!whl - for testing - remove later
+!        i = idiag
+!        j = jdiag
+!        write(50,*) ' '
+!        write(50,*), 'After remap_out, i, j, thck =', i, j, model%geometry%thck(i,j)
+!        write(50,*) ' '
+!        write(50,*), 'Temps:'
+!        do k = 1, model%general%upn
+!          write(50,*) k, model%temper%temp(k,i,j)
+!        enddo
+!        write(50,*) ' '
+!        write(50,*) 'Full thickness field, E half:'
+!        do j = model%general%nsn, 1, -1
+!          write(50,'(16f10.6)') model%geometry%thck(1:16,j)
+!        enddo
+
     end subroutine inc_remap_driver
 
         ! NOTE finalization routine, to be written for PP HO core needs to be written (e.g.

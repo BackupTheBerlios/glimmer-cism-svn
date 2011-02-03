@@ -75,21 +75,25 @@ contains
     type(ConfigSection), pointer :: config  !*FD structure holding sections of configuration file
 
     type(ConfigSection), pointer :: ncconfig
-   
+
     ! read configuration file
     call glide_readconfig(model,config)
     call glide_printconfig(model)
+
     ! Read alternate sigma levels from config file, if necessary
     call glide_read_sigma(model,config)
+
     ! read isostasy configuration file
     call isos_readconfig(model%isos,config)
     call isos_printconfig(model%isos)
+
     ! read mapping from config file
     ! **** Use of dew and dns here is an ugly fudge that
     ! **** allows the use of old [GLINT projection] config section
     ! **** for backwards compatibility. It will be deleted soon.
     ! **** (You have been warned!)
     ! **** N.B. Here, dew and dns are unscaled - i.e. real distances in m
+
     call glimmap_readconfig(model%projection,config, &
          model%numerics%dew, &
          model%numerics%dns)
@@ -101,6 +105,7 @@ contains
        call ConfigRead(process_path(model%funits%ncfile),ncconfig)
     end if
     call glimmer_nc_readparams(model,ncconfig)
+
   end subroutine glide_config
 
   subroutine glide_initialise(model)
@@ -122,6 +127,8 @@ contains
 
     ! *sfp** added
     use glam_strs2, only : glam_velo_fordsiapstr_init
+
+!whl - remap_glamutiles to be removed
     use remap_glamutils, only : horizontal_remap_init
 
     ! *sfp** added for summer modeling school
@@ -229,10 +236,13 @@ contains
                                         model%numerics%sigma)
     end if
 
+!whl - Subroutine horizontal_remap_init is not needed for the new remapping scheme.
+
     ! *sfp** added; initialization of LANL incremental remapping subroutine for thickness evolution
     if (model%options%whichevol== EVOL_INC_REMAP ) then
 
         if (model%options%whichtemp == TEMP_REMAP_ADV) then ! Use IR to advect temperature
+
 #ifdef JEFFORIG
            call horizontal_remap_init( model%remap_wk,    &
                                        model%numerics%dew, model%numerics%dns,  &
