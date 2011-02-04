@@ -36,6 +36,46 @@ module parallel
   ! global IDs
   integer,parameter :: ProcsEW = 1
 
+  ! JEFF Declarations for undistributed variables on main_task.
+  ! Later move to separate module?  These are only temporary until code is completely distributed.
+  real(8),dimension(:,:,:),allocatable :: gathered_efvs  ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:,:),allocatable :: gathered_efvs2  ! Variable for testing that scatter/gather are inverses
+  real(8),dimension(:,:,:),allocatable :: gathered_uvel  ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:,:),allocatable :: gathered_vvel  ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:),allocatable :: gathered_uflx    ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:),allocatable :: gathered_vflx    ! Output var from glam_velo_fordsiapstr(), used often
+  real(8),dimension(:,:,:),allocatable :: gathered_velnorm  ! Variable calculated in run_ho_diagnostic(), is this used?
+  real(8),dimension(:,:),allocatable :: gathered_thck    ! Used in horizontal_remap_in()
+  real(8),dimension(:,:),allocatable :: gathered_stagthck ! Used in horizontal_remap_in()
+  real(4),dimension(:,:),allocatable :: gathered_acab    ! Used in horizontal_remap_in()
+  real(8),dimension(:,:,:),allocatable :: gathered_temp  ! Used in horizontal_remap_in()
+  real(8),dimension(:,:),allocatable :: gathered_dusrfdew  ! Used in glide_stress()
+  real(8),dimension(:,:),allocatable :: gathered_dusrfdns  ! Used in glide_stress()
+  real(8),dimension(:,:),allocatable :: gathered_dthckdew  ! Used in glide_stress()
+  real(8),dimension(:,:),allocatable :: gathered_dthckdns  ! Used in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauxx   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauyy   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauxy   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauscalar   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauxz   ! Calculated in glide_stress()
+  real(8),dimension(:,:,:),allocatable :: gathered_tauyz   ! Calculated in glide_stress()
+  real(8),dimension(:,:),allocatable :: gathered_topg  ! Bedrock topology, Used in glide_set_mask()
+  integer,dimension(:,:),allocatable :: gathered_thkmask  ! Calculated in glide_set_mask()
+  real(8),dimension(:,:),allocatable :: gathered_marine_bc_normal  ! Calculated in glide_marine_margin_normal()
+  real(8),dimension(:,:,:),allocatable :: gathered_surfvel   ! Used in calc_gline_flux()
+  real(8),dimension(:,:),allocatable :: gathered_gline_flux   ! Calculated in calc_gline_flux()
+  real(8),dimension(:,:),allocatable :: gathered_ubas   ! Used in calc_gline_flux()
+  real(8),dimension(:,:),allocatable :: gathered_vbas   ! Used in calc_gline_flux()
+  real(8),dimension(:,:),allocatable :: gathered_relx   ! Used in glide_marinlim()
+  real(8),dimension(:,:,:),allocatable :: gathered_flwa   ! Used in glide_marinlim()
+  real(4),dimension(:,:),allocatable :: gathered_calving   ! Used in glide_marinlim()
+  real(4),dimension(:,:),allocatable :: gathered_backstress   ! Used in glide_marinlim()
+  real(8),dimension(:,:),allocatable :: gathered_usrf   ! Used in glide_marinlim()
+  logical,dimension(:,:),allocatable :: gathered_backstressmap ! Used in glide_marinlim()
+  real(8),dimension(:,:),allocatable :: gathered_tau_x   ! Calculated in calc_basal_shear()
+  real(8),dimension(:,:),allocatable :: gathered_tau_y   ! Calculated in calc_basal_shear()
+  real(8),dimension(:,:),allocatable :: gathered_lsrf   ! Used in glide_marinlim()
+
   integer,parameter :: staggered_lhalo = lhalo
   integer,parameter :: staggered_uhalo = 0
 
@@ -47,8 +87,35 @@ module parallel
      module procedure broadcast_real8_1d
   end interface
 
+  interface distributed_gather_var
+     module procedure distributed_gather_var_integer_2d
+     module procedure distributed_gather_var_logical_2d
+     module procedure distributed_gather_var_real4_2d
+     module procedure distributed_gather_var_real4_3d
+     module procedure distributed_gather_var_real8_2d
+     module procedure distributed_gather_var_real8_3d
+  end interface
+
+  interface distributed_print
+     ! Gathers a distributed variable and writes to file
+     module procedure distributed_print_integer_2d
+     module procedure distributed_print_real8_2d
+     module procedure distributed_print_real8_3d
+  end interface
+
+  interface distributed_scatter_var
+     module procedure distributed_scatter_var_integer_2d
+     module procedure distributed_scatter_var_logical_2d
+     module procedure distributed_scatter_var_real4_2d
+     module procedure distributed_scatter_var_real4_3d
+     module procedure distributed_scatter_var_real8_2d
+     module procedure distributed_scatter_var_real8_3d
+  end interface
+
   interface parallel_halo
      module procedure parallel_halo_integer_2d
+     module procedure parallel_halo_logical_2d
+     module procedure parallel_halo_real4_2d
      module procedure parallel_halo_real8_2d
      module procedure parallel_halo_real8_3d
   end interface
@@ -112,6 +179,118 @@ contains
     endif 
   end subroutine
 
+  subroutine distributed_gather_var_integer_2d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    implicit none
+    integer,dimension(:,:),intent(in) :: values
+    integer,dimension(:,:),allocatable,intent(inout) :: global_values
+
+    if (allocated(global_values)) then
+       deallocate(global_values)
+    endif
+
+    allocate(global_values(size(values,1), size(values,2)))
+
+    global_values(:,:) = values(:,:)
+  end subroutine
+
+  subroutine distributed_gather_var_logical_2d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    implicit none
+    logical,dimension(:,:),intent(in) :: values
+    logical,dimension(:,:),allocatable,intent(inout) :: global_values
+
+    if (allocated(global_values)) then
+       deallocate(global_values)
+    endif
+
+    allocate(global_values(size(values,1), size(values,2)))
+
+    global_values(:,:) = values(:,:)
+  end subroutine
+
+  subroutine distributed_gather_var_real4_2d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    real(4),dimension(:,:),intent(in) :: values
+    real(4),dimension(:,:),allocatable,intent(inout) :: global_values
+
+    if (allocated(global_values)) then
+       deallocate(global_values)
+    endif
+
+    allocate(global_values(size(values,1), size(values,2)))
+
+    global_values(:,:) = values(:,:)
+  end subroutine
+
+  subroutine distributed_gather_var_real4_3d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    real(4),dimension(:,:,:),intent(in) :: values
+    real(4),dimension(:,:,:),allocatable,intent(inout) :: global_values
+
+    if (allocated(global_values)) then
+       deallocate(global_values)
+    endif
+
+    allocate(global_values(size(values,1), size(values,2), size(values,3)))
+
+    global_values(:,:,:) = values(:,:,:)
+  end subroutine
+
+  subroutine distributed_gather_var_real8_2d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    real(8),dimension(:,:),intent(in) :: values
+    real(8),dimension(:,:),allocatable,intent(inout) :: global_values
+
+    if (allocated(global_values)) then
+       deallocate(global_values)
+    endif
+
+    allocate(global_values(size(values,1), size(values,2)))
+
+    global_values(:,:) = values(:,:)
+  end subroutine
+
+  subroutine distributed_gather_var_real8_3d(values, global_values)
+    ! JEFF Gather a distributed variable back to main_task node
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task will store the variable.
+    ! If global_values is allocated, then it will be deallocated and reallocated.  It will be unused on other nodes.
+    use mpi
+    implicit none
+    real(8),dimension(:,:,:),intent(in) :: values
+    real(8),dimension(:,:,:),allocatable,intent(inout) :: global_values
+
+    if (allocated(global_values)) then
+       deallocate(global_values)
+    endif
+
+    allocate(global_values(size(values,1), size(values,2), size(values,3)))
+
+    global_values(:,:,:) = values(:,:,:)
+  end subroutine
+
   subroutine distributed_grid(ewn,nsn)
     implicit none
     integer :: ewn,nsn
@@ -146,6 +325,197 @@ contains
     endif 
   end function
 
+  subroutine distributed_print_integer_2d(name,values)
+    implicit none
+    character(*) :: name
+    integer,dimension(:,:) :: values
+
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+
+    write(ts,'(i3.3)') tasks
+    open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+    if (size(values,1)<local_ewn) then
+       do j = lbound(values,2),ubound(values,2)
+          do i = lbound(values,1),ubound(values,1)
+             write(u,*) j,i,values(i,j)
+          end do
+          write(u,'()')
+       end do
+    else
+       do j = lbound(values,2),ubound(values,2)
+          do i = lbound(values,1),ubound(values,1)
+             write(u,*) j,i,values(i,j)
+          end do
+          write(u,'()')
+       end do
+    end if
+    close(u)
+  end subroutine
+
+  subroutine distributed_print_real8_2d(name,values)
+    implicit none
+    character(*) :: name
+    real(8),dimension(:,:) :: values
+
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+
+    write(ts,'(i3.3)') tasks
+    open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+    if (size(values,1)<local_ewn) then
+       do j = lbound(values,2),ubound(values,2)
+          do i = lbound(values,1),ubound(values,1)
+             write(u,*) j,i,values(i,j)
+          end do
+          write(u,'()')
+       end do
+    else
+       do j = lbound(values,2),ubound(values,2)
+          do i = lbound(values,1),ubound(values,1)
+             write(u,*) j,i,values(i,j)
+          end do
+          write(u,'()')
+       end do
+    end if
+    close(u)
+  end subroutine
+
+  subroutine distributed_print_real8_3d(name,values)
+    implicit none
+    character(*) :: name
+    real(8),dimension(:,:,:) :: values
+
+    integer,parameter :: u = 33
+    character(3) :: ts
+    integer :: i,ierror,j,k
+
+    write(ts,'(i3.3)') tasks
+    open(unit=u,file=name//ts//".txt",form="formatted",status="replace")
+    if (size(values,2)<local_ewn) then
+       do j = lbound(values,3),ubound(values,3)
+          do i = lbound(values,2),ubound(values,2)
+             write(u,'(2i6,100g15.5e3)') j,i,values(:,i,j)
+          end do
+          write(u,'()')
+       end do
+    else
+       do j = lbound(values,3),ubound(values,3)
+          do i = lbound(values,2),ubound(values,2)
+             write(u,'(2i6,100g15.5e3)') j,i,values(:,i,j)
+          end do
+          write(u,'()')
+       end do
+    end if
+    close(u)
+  end subroutine
+
+  subroutine distributed_scatter_var_integer_2d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    integer,dimension(:,:),intent(inout) :: values  ! populated from values on main_task
+    integer,dimension(:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    values(:,:) = global_values(:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_logical_2d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    logical,dimension(:,:),intent(inout) :: values  ! populated from values on main_task
+    logical,dimension(:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    values(:,:) = global_values(:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_real4_2d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    real(4),dimension(:,:),intent(inout) :: values  ! populated from values on main_task
+    real(4),dimension(:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    values(:,:) = global_values(:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_real4_3d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    real(4),dimension(:,:,:),intent(inout) :: values  ! populated from values on main_task
+    real(4),dimension(:,:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    values(:,:,:) = global_values(:,:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_real8_2d(values, global_values)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    use mpi
+    implicit none
+    real(8),dimension(:,:),intent(inout) :: values  ! populated from values on main_task
+    real(8),dimension(:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+
+    values(:,:) = global_values(:,:)
+
+    deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
+  subroutine distributed_scatter_var_real8_3d(values, global_values, deallocflag)
+    ! JEFF Scatter a variable on the main_task node back to the distributed
+    ! values = local portion of distributed variable
+    ! global_values = reference to allocateable array into which the main_task holds the variable.
+    ! global_values is deallocated at the end.
+    implicit none
+    real(8),dimension(:,:,:),intent(inout) :: values  ! populated from values on main_task
+    real(8),dimension(:,:,:),allocatable,intent(inout) :: global_values  ! only used on main_task
+    logical,optional :: deallocflag
+    logical :: deallocmem
+
+    if (present(deallocflag)) then
+       deallocmem = deallocflag
+    else
+       deallocmem = .true.
+    endif
+
+    ! begin
+    values(:,:,:) = global_values(:,:,:)
+
+    if (deallocmem) deallocate(global_values)
+    ! automatic deallocation
+  end subroutine
+
   subroutine global_sum(x,y)
     implicit none
     real(8) :: x,y
@@ -168,7 +538,9 @@ contains
     implicit none
 
     if (tasks >= 2) then
-       call not_parallel(__FILE__, __LINE__)
+       ! call not_parallel(__FILE__, __LINE__)
+       ! parallel_barrier is called in serial portion of distributed.
+       ! In parallel_single mode this is ignorable
     endif 
   end subroutine
 
@@ -228,6 +600,24 @@ contains
 	endif 
   end subroutine
 
+  subroutine parallel_halo_logical_2d(a)
+    implicit none
+    logical,dimension(:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif
+  end subroutine
+
+  subroutine parallel_halo_real4_2d(a)
+    implicit none
+    real(4),dimension(:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif
+  end subroutine
+
   subroutine parallel_halo_real8_2d(a)
     implicit none
     real(8),dimension(:,:) :: a
@@ -244,6 +634,18 @@ contains
     if (tasks >= 2) then
 		! Do nothing
 	endif 
+  end subroutine
+
+  subroutine parallel_halo_temperature(a)
+    !JEFF This routine is for updating the halo for the variable model%temper%temp.
+    ! This variable is two larger in each dimension, because of the current advection code.
+    ! Per Bill L, we will remove this difference when we update the remapping code.
+    implicit none
+    real(8),dimension(:,:,:) :: a
+
+    if (tasks >= 2) then
+		! Do nothing
+	endif
   end subroutine
 
   function parallel_halo_verify_integer_2d(a)
