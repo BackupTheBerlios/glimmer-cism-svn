@@ -218,7 +218,11 @@ extern "C" {
 
   void matvecwithtrilinos_(double* x, double* answer) {
     const Epetra_Map& map = interface->getRowMap(); 
-    Teuchos::RCP<Epetra_Vector> epetra_x = interface->getPartitionedVec(x);
+
+    Teuchos::RCP<Epetra_Vector> epetra_x;
+    if (returnGlobalVec) epetra_x  = interface->getPartitionedVec(x);
+    else                 epetra_x  = Teuchos::rcp(new Epetra_Vector(View, map, x));
+
     Epetra_Vector y(map);
     interface->getOperator()->Multiply(false, *epetra_x, y);
 
