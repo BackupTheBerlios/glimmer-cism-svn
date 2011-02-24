@@ -11,7 +11,7 @@
 #include "config.inc"
 
 !GlobalIDs are for distributed TRILINOS variable IDs
-#define globalIDs
+! #define globalIDs
 
 !***********************************************************************
 
@@ -725,7 +725,7 @@ subroutine JFNK                 (model,umask,tstep)
   type(c_ptr)                      :: c_ptr_to_object
 
 !KJE for NOX
-  integer(c_int) ,value :: xk_size
+  integer(c_int) :: xk_size
   real (kind = dp), dimension(:), allocatable :: xk_1, xk_1_plus
   real (kind = dp), dimension(:), allocatable :: vectx
   integer ,dimension(:) ,allocatable :: gx_flag, g_flag
@@ -3041,7 +3041,8 @@ subroutine bodyset(ew,  ns,  up,           &
      ! which results from moving them from the LHS over to the RHS, is explicit and 
      ! hast NOT been moved inside of "croshorizmin" (as is the case for the analogous
      ! boundary condition routines).
-     rhsd(distributed_globalID_to_localindex(locplusup)) = thisdusrfdx(ew,ns) - sum(croshorizmain(pt,up,local_efvs) * local_othervel)
+     rhsd(distributed_globalID_to_localindex(locplusup)) = thisdusrfdx(ew,ns) - &
+                                         sum(croshorizmain(pt,up,local_efvs) * local_othervel)
 
      if( nonlinear == HO_NONLIN_JFNK .and. calcoffdiag )then
          storeoffdiag = .true.
