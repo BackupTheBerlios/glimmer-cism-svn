@@ -530,7 +530,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 !    print *, 'L2 with/without ghost (k)= ', counter, &
 !              sqrt(DOT_PRODUCT(F,F)), L2norm
 !    if (counter .le. 2) NL_target = NL_tol * L2norm
-    if (counter == 1) NL_target = NL_tol * L2norm
+!    if (counter == 1) NL_target = NL_tol * L2norm
+    if (counter == 1) NL_target = 1.0d-4 
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
@@ -3907,7 +3908,7 @@ subroutine calcbetasquared (whichbabc,               &
 
     case(4)    ! frozen (u=v=0) ice-bed interface
 
-      betasquared = 1.0d10
+      betasquared = 1.0d8 
 
     case(5)    ! use value passed in externally from CISM (NOTE not dimensional when passed in) 
 

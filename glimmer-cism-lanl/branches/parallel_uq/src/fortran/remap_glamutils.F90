@@ -327,8 +327,8 @@ module remap_glamutils
     !Apply accumulation
     thck = thck + acab*dt
 
-    where( thck < (9.0/thk0) )
-        thck = 9.0 / thk0
+    where( thck < (99.0/thk0) )
+        thck = 99.0 / thk0
     end where
 
 !whl - to do - Allow ice to expand into places where it did not originally exist.

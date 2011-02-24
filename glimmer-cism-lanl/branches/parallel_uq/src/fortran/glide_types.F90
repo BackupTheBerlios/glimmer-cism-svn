@@ -720,8 +720,7 @@ module glide_types
     real(sp) :: nvel   =    1.0   !*FD velocity time step (multiplier of main time step)
     real(dp) :: alpha  =    0.5d0 !*FD richard suggests 1.5 - was a parameter in original
     real(dp) :: alphas =    0.5d0 !*FD was a parameter in the original
-!    real(dp) :: thklim =  100.0   
-    real(dp) :: thklim =  10.0   
+    real(dp) :: thklim =  100.0   
     real(dp) :: mlimit = -200.0d0
     real(dp) :: calving_fraction = 0.8d0
     real(dp) :: dew    =   20.0d3

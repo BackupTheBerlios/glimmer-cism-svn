@@ -125,11 +125,11 @@ program simple_glide
      call glide_tstep_p3(model)
      ! override masking stuff for now
 
-     tstep_count = tstep_count + 1
-     if (mod(tstep_count, model%numerics%ndiag) == 0) then
-        call glide_write_diag(model, time, model%numerics%idiag, &
-                                           model%numerics%jdiag )
-     endif
+!     tstep_count = tstep_count + 1
+!     if (mod(tstep_count, model%numerics%ndiag) == 0) then
+!        call glide_write_diag(model, time, model%numerics%idiag, &
+!                                           model%numerics%jdiag )
+!     endif
 
      time = time + model%numerics%tinc
 

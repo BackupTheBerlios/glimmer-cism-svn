@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# This script runs an experiment with an ice "hump".
+# This script runs an experiment with an ice "dome".
 # Files are written in the "output" subdirectory.
 # The script performs the following three steps:
 # 1. Create a netCDF input file for Glimmer.
@@ -13,15 +13,15 @@ from math import sqrt
 from ConfigParser import ConfigParser
 
 # Check to see if a config file was specified on the command line.
-# If not, hump.config is used.
+# If not, dome.config is used.
 if len(sys.argv) > 1:
   if sys.argv[1][0] == '-': # The filename can't begin with a hyphen
-    print '\nUsage:  python hump.py [FILE.CONFIG]\n'
+    print '\nUsage:  python dome.py [FILE.CONFIG]\n'
     sys.exit(0)
   else:
     configfile = sys.argv[1]
 else:
-  configfile = 'hump.config'
+  configfile = 'dome.config'
 
 # Check to see if #procs specified, relevant when running the code in parallel. 
 # If not, serial run (#procs==1) is performed. To run in parallel, the configure
@@ -71,11 +71,10 @@ acab = numpy.zeros([1,ny,nx],dtype='float32')
 bheatflx = numpy.zeros([1,ny,nx],dtype='float32')
 beta = numpy.zeros([1,ny-1,nx-1],dtype='float32')
 
-thk[:] = 75.0 
+thk[:] = 0.0 
 bheatflx[:] = -0.055
-beta[:] = 10000.0 
 
-# Calculate the thickness of the (ellipsoidal) hump of ice
+# Calculate the thickness of the (ellipsoidal) dome of ice
 for i in range(nx-1):
   x = float(i-(nx-1)/2)/(nx-1)
   for j in range(ny-1):
@@ -84,9 +83,20 @@ for i in range(nx-1):
 
     if r_squared < 0.120:
       thk[0,j,i] = 1000.0 * sqrt( 1.0 - 8.25*r_squared )
+      artm[0,j,i] = 10.0 -20.0/900.0 * thk[0,j,i]               
+      acab[0,j,i] = -0.05 * ( 10.0 -20.0/900.0 * thk[0,j,i] )
 
-    artm[0,j,i] = 10.0 -20.0/900.0 * thk[0,j,i]               
-    acab[0,j,i] = -0.05 * artm[0,j,i] 
+    else:
+      artm[0,j,i] = 8.0              
+      acab[0,j,i] = -7.0                                     
+
+beta[:] = 100.0   # constant B^2 
+
+for i in range(nx-2):
+  for j in range(ny-2):
+      beta[0,j,i] = 100*( thk[0,j,i]+thk[0,j,i+1]+thk[0,j+1,i]+thk[0,j+1,i+1] )/4
+
+#beta[:] = 10000.0   # constant B^2 
 
 
 # Create the required variables in the netCDF file.
