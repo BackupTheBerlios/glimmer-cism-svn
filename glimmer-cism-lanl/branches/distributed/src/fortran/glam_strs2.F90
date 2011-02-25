@@ -11,7 +11,7 @@
 #include "config.inc"
 
 !GlobalIDs are for distributed TRILINOS variable IDs
-! #define globalIDs
+#define globalIDs
 
 !***********************************************************************
 
@@ -19,7 +19,7 @@ module glam_strs2
 
 !***********************************************************************
 
-use ,intrinsic :: iso_c_binding
+use iso_c_binding
 use glimmer_paramets, only : dp
 use glimmer_physcon,  only : gn, rhoi, rhoo, grav, pi, scyr
 use glimmer_paramets, only : thk0, len0, vel0, vis0, vis0_glam, tim0, evs0, tau0_glam
@@ -706,7 +706,7 @@ subroutine JFNK                 (model,umask,tstep)
 
   use parallel
 
-  use ,intrinsic :: iso_c_binding 
+  use iso_c_binding 
   use glide_types, only : glide_global_type, pass_through
 
   implicit none
@@ -787,21 +787,21 @@ subroutine JFNK                 (model,umask,tstep)
 
 !  interface
 !    subroutine noxsolve(vectorSize,vector,v_container) bind(C,name='noxsolve')
-!      use ,intrinsic :: iso_c_binding
+!      use iso_c_binding
 !          integer(c_int)                :: vectorSize
 !          real(c_double)  ,dimension(*) :: vector
 !          type(c_ptr)                   :: v_container
 !      end subroutine noxsolve
 !
 !    subroutine noxinit(vectorSize,vector,comm,v_container) bind(C,name='noxinit')
-!      use ,intrinsic :: iso_c_binding
+!      use iso_c_binding
 !          integer(c_int)                :: vectorSize,comm
 !          real(c_double)  ,dimension(*) :: vector
 !          type(c_ptr)                   :: v_container
 !      end subroutine noxinit
 !
 !      subroutine noxfinish() bind(C,name='noxfinish')
-!       use ,intrinsic :: iso_c_binding
+!       use iso_c_binding
 !      end subroutine noxfinish
 !  end interface
 
@@ -1878,7 +1878,7 @@ end subroutine apply_precond_nox
   ! Recall that x=[v,u]
   ! xtp is both vtp and utp in one vector
 
-  use ,intrinsic :: iso_c_binding  
+  use iso_c_binding  
   use glide_types ,only : glide_global_type, pass_through
 
   implicit none
@@ -5182,7 +5182,7 @@ end function scalebasalbc
 subroutine init_resid_type(resid_object, model, uindx, umask, &
      d2thckdewdns, d2usrfdewdns, pcgsize, gx_flag, matrixA, matrixC, L2norm, ewn, nsn)
   
-  use ,intrinsic :: iso_c_binding 
+  use iso_c_binding 
   use glide_types, only : glide_global_type, pass_through
   use glimmer_sparse_type, only : sparse_matrix_type
   

@@ -1040,6 +1040,17 @@ contains
     if (north<0) north = north+tasks
     south = this_rank+ewtasks
     if (south>=tasks) south = south-tasks
+
+    ! Check that haven't split up the problem too much
+    if ((local_nsn - lhalo - uhalo) .lt. (lhalo + uhalo + 1)) then
+        write(*,*) "NS halos overlap on processor ", this_rank
+        call parallel_stop(__FILE__, __LINE__)
+    endif
+
+    if ((local_ewn  - lhalo - uhalo) .lt. (lhalo + uhalo + 1)) then
+        write(*,*) "EW halos overlap on processor ", this_rank
+        call parallel_stop(__FILE__, __LINE__)
+    endif
   end subroutine
 
   function distributed_owner(ew,ewn,ns,nsn)
