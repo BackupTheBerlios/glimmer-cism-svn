@@ -84,18 +84,18 @@ vvelhom = numpy.zeros([1,nz,ny-1,nx-1],dtype='float32')
 
 thk[0,4:-2,2:-2] = 500.  # *SFP* changed to be in line w/ EISMINT-shelf tests 3&4 
 beta[0,:,:] = 0 
-kbc[0,ny-3:,:]  = 1
+kbc[0,ny-4:,:]  = 1
 acab[:] = 0.25
 
 #if not periodic_ew:    *SFP* removed periodic option
-kbc[0,:,:2] = 1
-kbc[0,:,nx-3:] = 1
+kbc[0,:,:3] = 1
+kbc[0,:,nx-4:] = 1
 
 #vvelhom[0,:,ny-3:,:] = -1000.0     % const vel profile at upstream end (for testing)
 
 for i in range(nx-2):
   x = float( i ) / (nx-2) - 0.5  
-  vvelhom[0,:,ny-3:,i] = -1.5e3 * 1/(2*3.141592654*0.125) * numpy.exp( -x**2 / (2*0.125**2) )
+  vvelhom[0,:,ny-4:,i] = -1.5e3 * 1/(2*3.141592654*0.125) * numpy.exp( -x**2 / (2*0.125**2) )
 
 #for i in range(nx-1):
 #  x = float(i-(nx-1)/2)/(nx-1)
