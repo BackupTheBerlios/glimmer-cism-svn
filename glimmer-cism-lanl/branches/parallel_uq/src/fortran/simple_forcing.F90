@@ -187,10 +187,27 @@ contains
        return
     end if
     
-    call GetSection(config,section,'ISMIP-HOM-A')
+    ! *SFP* standard higher-order tests
+    call GetSection(config,section,'DOME-TEST')
     if (associated(section)) then
         return
     end if
+
+    call GetSection(config,section,'ISMIP-HOM-TEST')
+    if (associated(section)) then
+        return
+    end if
+
+    call GetSection(config,section,'SHELF-TEST') 
+    if (associated(section)) then 
+        return
+    end if
+
+    call GetSection(config,section,'ROSS-TEST') 
+    if (associated(section)) then 
+        return
+    end if
+
 
     !mismip tests
     call GetSection(config,section,'MISMIP-1')
@@ -211,6 +228,7 @@ contains
        end if
        return
     end if
+
     !exact verification
     call GetSection(config,section,'EXACT')
     if (associated(section)) then
@@ -224,6 +242,7 @@ contains
        end if
        return
     end if
+
     call write_log('No EISMINT forcing selected',GM_FATAL)
   end subroutine simple_readconfig
 

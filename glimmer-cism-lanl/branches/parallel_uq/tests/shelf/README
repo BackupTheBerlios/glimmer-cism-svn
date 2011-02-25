@@ -6,18 +6,20 @@ experiments.
 Confined Shelf Experiment
 =========================
 
+Note that this test case has been slightly altered from its previous form. 
+That is, the setup is now consistent with tests 3 & 4 from the more "simple"
+(i.e. not Ross) EISMINT-shelf test cases. More info on these can be found at:
+http://homepages.vub.ac.be/~phuybrec/eismint/iceshelf.html
+
 To run the confined shelf experiment, enter the following on a terminal 
 command line:
 
-python confined-shelf.py filename.config
+python confined-shelf.py confined-shelf.config
 
 This will run the script using the configuration file that you specify.
-There are two configuration files, "confined-shelf.PBJ.config" and
-"confined-shelf.PP.config" in this directory.  The first ("PBJ") uses the
-Pattyn/Bocek/Johnson implementation of the higher-order approximation while the
-second ("PP") uses the Payne/Price implementation.  If you want to run the 
-experiment using a different configuration file you can include that filename 
-as the command line argument.
+Unlike in previous releases, there is only one configuration file which uses
+the Payne/Price higher-order dynamical core (the Pattyn/Bocek/Johnson higher-
+order core, while still present in the code, is no longer supported).
 
 The script performs the following three steps:
 1. Create a netCDF input file for Glimmer.
@@ -26,9 +28,8 @@ The script performs the following three steps:
 
 The netCDF files are written in the "output" subdirectory. This is controlled
 by a parameter in the configuration file so if you use your own configuration
-file the output may be written elsewhere.  Unless someone changed them since I 
-wrote this, "confined-shelf.PBJ.config" and "confined-shelf.PP.config" each 
-include the lines:
+file the output may be written elsewhere. The file "confined-shelf.config"  
+includes the lines:
 
 [CF input]
 name = output/confined-shelf.nc
@@ -60,15 +61,12 @@ Circular Shelf Experiment
 To run the circular shelf experiment, enter the following on a terminal 
 command line:
 
-python circular-shelf.py filename.config
+python circular-shelf.py circular-shelf.config
 
 This will run the script using the configuration file that you specify.
-There are two configuration files, "circular-shelf.PBJ.config" and
-"circular-shelf.PP.config" in this directory.  The first ("PBJ") uses the
-Pattyn/Bocek/Johnson implementation of the higher-order approximation while the
-second ("PP") uses the Payne/Price implementation.  If you want to run the 
-experiment using a different configuration file you can include that filename 
-as the command line argument.
+Unlike in previous releases, there is only one configuration file which uses
+the Payne/Price higher-order dynamical core (the Pattyn/Bocek/Johnson higher-
+order core, while still present in the code, is no longer supported).
 
 In addition to specifying a configuration file, you can also specify one or 
 more of the following options on the command line:
@@ -89,7 +87,7 @@ a flat top).
 
 To summarize, the syntax for running the circular shelf experiment is:
 
-python circular-shelf.py filename.config [-b|--smooth-beta] [-d|--dirichlet-center] [-s|--sloped]
+python circular-shelf.py circular-shelf.config [-b|--smooth-beta] [-d|--dirichlet-center] [-s|--sloped]
 
 The script performs the following three steps:
 1. Create a netCDF input file for Glimmer.
@@ -98,9 +96,8 @@ The script performs the following three steps:
 
 The netCDF files are written in the "output" subdirectory. This is controlled
 by a parameter in the configuration file so if you use your own configuration
-file the output may be written elsewhere.  Unless someone changed them since I 
-wrote this, "circular-shelf.PBJ.config" and "circular-shelf.PP.config" each 
-include the lines:
+file the output may be written elsewhere. The file "circular-shelf.config"
+includes the lines:
 
 [CF input]
 name = output/circular-shelf.nc
@@ -126,3 +123,5 @@ use a configuration file that specifies netCDF files (with names ending ".nc")
 are to be written in the current directory, they will get moved to the "scratch"
 subdirectory after they are written.
 
+
+(last edited on 2-3-11 by SFP)

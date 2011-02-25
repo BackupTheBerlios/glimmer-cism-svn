@@ -187,18 +187,15 @@ module remap_glamutils
 
     else                ! one layer only
 
-    ! if thickness > limit, then remap it, if not, set it to const value < limit
-       where( thck > thklim )
-           wk%thck_ir(:,:,1) = thck(:,:)*thk0
-       elsewhere
-           wk%thck_ir(:,:,1) = 0.0d0
-       end where
+!       where( thck > thklim )
+!           wk%thck_ir(:,:,1) = thck(:,:)*thk0
+!       elsewhere
+!           wk%thck_ir(:,:,1) = 0.0d0
+!       end where
 
-    ! ... or, fill entire remapping array w/ entire thickness field
-!       wk%thck_ir(:,:,1) = thck(:,:)*thk0
+       wk%thck_ir(:,:,1) = thck(:,:)*thk0
 
-!       where( stagthck > 0.0_dp )
-       where( stagthck > thklim )
+       where( stagthck > 0.0_dp )
            wk%uvel_ir(:,:,1) = uflx/stagthck * vel0
            wk%vvel_ir(:,:,1) = vflx/stagthck * vel0
        elsewhere
@@ -258,7 +255,8 @@ module remap_glamutils
     subroutine horizontal_remap_out( wk,     thck,   &
                                      acab,   dt,     &
                                      thklim, temp,   &
-                                     age )
+                                     age)
+
     ! *sfp** take output from inc. remapping and put back in GLAM format
 
     implicit none
@@ -279,7 +277,7 @@ module remap_glamutils
 
     if (wk%upn_ir > 1) then
 
-       !thck(:,:) = 0.d0
+       thck(:,:) = 0.d0
        do k = 1, wk%upn_ir
           do j = 1, wk%nsn_ir
           do i = 1, wk%ewn_ir
@@ -326,10 +324,6 @@ module remap_glamutils
 
     !Apply accumulation
     thck = thck + acab*dt
-
-    where( thck < (99.0/thk0) )
-        thck = 99.0 / thk0
-    end where
 
 !whl - to do - Allow ice to expand into places where it did not originally exist.
  
