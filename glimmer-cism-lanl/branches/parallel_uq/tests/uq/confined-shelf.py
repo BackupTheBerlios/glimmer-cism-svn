@@ -99,15 +99,8 @@ kbc[0,:,nx-4:] = 1
 
 for i in range(nx-2):
   x = float( i ) / (nx-2) - 0.5  
-  vvelhom[0,:,ny-4:,i] = -1.5e3 * 1/(2*3.141592654*0.125) * numpy.exp( -x**2 / (2*0.125**2) )
-
-#for i in range(nx-1):
-#  x = float(i-(nx-1)/2)/(nx-1)
-#  for j in range(ny-1):
-#    y = float(j-(ny-1)/2)/(ny-1)
-#    r_squared = (x*x+y*y)
-#    thk[0,j,i] = 1000.0 * sqrt( 1.0 - 8.25*r_squared )
-
+  #vvelhom[0,:,ny-4:,i] = -1.5e3 * 1/(2*3.141592654*0.125) * numpy.exp( -x**2 / (2*0.125**2) )
+  vvelhom[0,:,ny-4,i] = -1.5e3 * 1/(2*3.141592654*0.125) * numpy.exp( -x**2 / (2*0.125**2) )
 
 # Create the required variables in the netCDF file.
 netCDFfile.createVariable('thk',      'f',('time','y1','x1'))[:] = thk.tolist()
