@@ -84,10 +84,14 @@ vvelhom = numpy.zeros([1,nz,ny-1,nx-1],dtype='float32')
 
 thk[0,4:-2,2:-2] = 500.  # *SFP* changed to be in line w/ EISMINT-shelf tests 3&4 
 beta[0,:,:] = 0 
-kbc[0,ny-4:,:]  = 1
+
 acab[:] = 0.25
+acab[0,ny-3:,:]  = 0    # zero out accum at edges to avoid buildup where u=0
+acab[0,:,:3] = 0
+acab[0,:,nx-3:] = 0
 
 #if not periodic_ew:    *SFP* removed periodic option
+kbc[0,ny-4:,:]  = 1
 kbc[0,:,:3] = 1
 kbc[0,:,nx-4:] = 1
 
