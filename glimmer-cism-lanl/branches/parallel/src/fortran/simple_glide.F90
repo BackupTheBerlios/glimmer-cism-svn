@@ -66,7 +66,7 @@ program simple_glide
 #include <f90papi.h>
 #endif
 
-#ifdef HAVE_MPI
+#ifdef _MPI
 #include <mpif.h>
 
   integer npes,ierr,iam,lengthofconfigname
@@ -90,7 +90,7 @@ program simple_glide
   ret = gptlstart ('total')
 #endif
 
-#ifdef HAVE_MPI
+#ifdef _MPI
  call MPI_Init(ierr)
  call MPI_Comm_size(MPI_COMM_WORLD,npes,ierr)
  call MPI_Comm_rank(MPI_COMM_WORLD,iam,ierr)
@@ -168,7 +168,7 @@ program simple_glide
   call glimmer_writestats(commandline_resultsname,commandline_configname,t2-t1)
   call close_log
 
-#ifdef HAVE_MPI
+#ifdef _MPI
  call MPI_Finalize(ierr)
 #endif
 

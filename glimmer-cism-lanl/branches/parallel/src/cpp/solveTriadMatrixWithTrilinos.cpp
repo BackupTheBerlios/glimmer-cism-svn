@@ -1,6 +1,6 @@
 #include "Teuchos_ConfigDefs.hpp"
 
-#ifdef HAVE_MPI
+#ifdef _MPI
 #include "mpi.h"
 #include "Epetra_MpiComm.h"
 #else
@@ -37,7 +37,7 @@ extern "C" {
 
     try{
     
-#ifdef HAVE_MPI
+#ifdef _MPI
     Epetra_MpiComm Comm(MPI_COMM_WORLD);
 #else
     Epetra_SerialComm Comm;
@@ -51,7 +51,7 @@ extern "C" {
     int *MyGlobalElements = new int[NumMyElements];
     RowMap.MyGlobalElements(&MyGlobalElements[0]);
 
-#ifdef HAVE_MPI
+#ifdef _MPI
     int nPEs;
     MPI_Comm_size(MPI_COMM_WORLD, &nPEs);
 #endif

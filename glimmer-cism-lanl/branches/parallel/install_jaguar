@@ -16,4 +16,4 @@ NETCDF_LIBS="-lnetcdff -lnetcdf" \
 LIBS="-lhdf5_hl -lhdf5 -lz" \
 --with-netcdf=/opt/cray/netcdf/4.0.1.1/netcdf-pgi \
 --with-trilinos=/sw/xt5/trilinos/10.4.0/cnl2.2_pgi10.3.0 \
---with-lapack=-lsci --with-blas=-lsci
+--with-lapack=-lsci --with-blas=-lsci --enable-mpi

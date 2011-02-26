@@ -26,7 +26,7 @@ extern "C" {
   // to set up the problem.
   //================================================================
   void inittrilinos_(int& bandwidth, int& mySize, int* myIndicies) {
-#ifdef HAVE_MPI
+#ifdef _MPI
     Epetra_MpiComm comm(MPI_COMM_WORLD);
 #else
     Epetra_SerialComm comm;

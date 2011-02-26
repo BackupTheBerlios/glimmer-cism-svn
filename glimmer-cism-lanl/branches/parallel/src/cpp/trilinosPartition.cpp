@@ -1,6 +1,6 @@
 #include <iostream>
 #include "Epetra_LocalMap.h"
-#ifdef HAVE_MPI
+#ifdef _MPI
   #include "Epetra_MpiComm.h"
 #else
   #include "Epetra_SerialComm.h"
@@ -21,7 +21,7 @@ extern "C" {
   // since the PDE code will pick the partitioning.
 
   void dopartition_(int& matrixSize, int& mySize) {
-#ifdef HAVE_MPI
+#ifdef _MPI
     Epetra_MpiComm comm(MPI_COMM_WORLD);
 #else
     Epetra_SerialComm comm;

@@ -5,7 +5,7 @@
 #include "Epetra_Comm.h"
 #include "Epetra_Map.h"
 #include "Epetra_LocalMap.h"
-#ifdef HAVE_MPI
+#ifdef _MPI
 #include "mpi.h"
 #include "Epetra_MpiComm.h"
 #else
