@@ -32,8 +32,13 @@
 
 extern "C" {
 
+#ifdef _xlC_
+  void solvetriadmatrixwithtrilinos(int& nnz, int& order, int* row, 
+              int* col, double* val, double* rhs, double* solution) {
+#else
   void solvetriadmatrixwithtrilinos_(int& nnz, int& order, int* row, 
               int* col, double* val, double* rhs, double* solution) {
+#endif
 
     try{
     

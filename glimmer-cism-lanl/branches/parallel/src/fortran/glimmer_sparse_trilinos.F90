@@ -43,7 +43,7 @@ contains
     subroutine check_trilinos()
 #ifndef TRILINOS
       call write_log('Trilinos functionality was called, but the code'// &
-                     ' is not compiled with -DTRILINOS ',GM_FATAL);
+                     ' is not compiled with TRILINOS using -DTRILINOS ',GM_FATAL);
 #endif
     end subroutine
 

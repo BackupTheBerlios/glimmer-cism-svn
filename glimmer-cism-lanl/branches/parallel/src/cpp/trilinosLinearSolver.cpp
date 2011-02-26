@@ -25,7 +25,13 @@ extern "C" {
   // RN_20091215: This needs to be called only once in the beginning
   // to set up the problem.
   //================================================================
+
+#ifdef _xlC_
+  void inittrilinos(int& bandwidth, int& mySize, int* myIndicies) {
+#else
   void inittrilinos_(int& bandwidth, int& mySize, int* myIndicies) {
+#endif
+
 #ifdef _MPI
     Epetra_MpiComm comm(MPI_COMM_WORLD);
 #else
@@ -42,7 +48,11 @@ extern "C" {
   //============================================================
   // RN_20091118: This is to update the matrix with new entries.
   //============================================================
+#ifdef _xlC_
+  void putintotrilinosmatrix(int& rowInd, int& colInd, double& val) {
+#else
   void putintotrilinosmatrix_(int& rowInd, int& colInd, double& val) {
+#endif
 
     const Epetra_Map& map = interface->getRowMap();
     // If this row is not owned on this processor, then do nothing
@@ -106,7 +116,11 @@ extern "C" {
   //========================================================
   // RN_20091118: This is to make calls to Trilinos solvers.
   //========================================================
+#ifdef _xlC_
+  void solvewithtrilinos(double* rhs, double* answer, double& elapsedTime) {
+#else
   void solvewithtrilinos_(double* rhs, double* answer, double& elapsedTime) {
+#endif
     //cout << " ======================================" << endl;
     //cout << " IN SOLVE()" << endl;
 
@@ -203,7 +217,11 @@ extern "C" {
     //cout << " ======================================" << endl;
   }
 
+#ifdef _xlC_
+  void savetrilinosmatrix(int* i) {
+#else
   void savetrilinosmatrix_(int* i) {
+#endif
     if (!interface->isSparsitySet()) interface->finalizeSparsity();
     if (*i==0)
       savedMatrix_A = Teuchos::rcp(new Epetra_CrsMatrix(*(interface->getOperator())));
@@ -213,7 +231,11 @@ extern "C" {
       assert(false);
   }
 
+#ifdef _xlC_
+  void restoretrilinosmatrix(int* i) {
+#else
   void restoretrilinosmatrix_(int* i) {
+#endif
     if (*i==0)
       interface->updateOperator(savedMatrix_A); 
     else if (*i==1)
@@ -222,7 +244,11 @@ extern "C" {
       assert(false);
   }
 
+#ifdef _xlC_
+  void matvecwithtrilinos(double* x, double* answer) {
+#else
   void matvecwithtrilinos_(double* x, double* answer) {
+#endif
     const Epetra_Map& map = interface->getRowMap(); 
     Teuchos::RCP<Epetra_Vector> epetra_x = interface->getPartitionedVec(x);
     Epetra_Vector y(map);

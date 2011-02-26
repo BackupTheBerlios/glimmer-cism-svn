@@ -52,7 +52,9 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_writestats.F90 writestats.c writestats.h
 nodist_libglimmer_a_SOURCES = glimmer_vers.F90
 if TRILINOS
-CALLTRILINOS_LIB = ../cpp/libcalltrilinos.a
+include ../../Makefile.export
+#ALL_TRILINOS_LIBS = ../cpp/libcalltrilinos.a  $(Trilinos_LIBRARIES)  $(Trilinos_TPL_LIBRARIES)  -lstdc++
+ALL_TRILINOS_LIBS = ../cpp/libcalltrilinos.a  $(Trilinos_LIBRARIES)  $(Trilinos_TPL_LIBRARIES)  
 endif TRILINOS
 
 libglide_a_SOURCES = glide.F90 glide_setup.F90 glide_types.F90 glide_temp.F90 \
@@ -94,18 +96,18 @@ endif PARDISO
 
 eismint3_glide_SOURCES = eismint3_glide.F90
 eismint3_glide_LDADD = libclimate.a libglide.a libglimmer.a \
-                       SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) 
+                       SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) 
 simple_glide_SOURCES = simple_glide.F90 
 simple_glide_LDADD = libclimate.a libglide.a libglimmer.a \
-                     SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+                     SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 eis_glide_SOURCES = eis_glide.F90
-eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 spin_glide_SOURCES = spin_glide.F90
-spin_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB)
+spin_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(ALL_TRILINOS_LIBS)
 glint_example_SOURCES = glint_example.F90
-glint_example_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+glint_example_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 glex_ebm_SOURCES = glex_ebm.F90
-glex_ebm_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+glex_ebm_LDADD = libglint.a libglide.a libglimmer.a SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 nc2config_SOURCES = nc2config.F90
 nc2config_LDADD = libglimmer.a $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 
@@ -114,7 +116,7 @@ test_setup_SOURCES = test_setup.F90
 test_setup_LDADD = libglide.a libglimmer.a $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 test_ts_SOURCES = glimmer_ts.F90 glimmer_log.F90 test_ts.F90
 test_lithot_SOURCES = test_lithot.F90
-test_lithot_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
+test_lithot_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 test_integrate_SOURCES = test_integrate.F90 glimmer_global.F90 \
                          glimmer_physcon.F90 glimmer_integrate.F90
 test_commandline_SOURCES = test_commandline.F90 glimmer_commandline.F90
@@ -122,10 +124,10 @@ test_writestats_SOURCES = test_writestats.F90 glimmer_writestats.F90 writestats.
 
 glimmer_unittest_SOURCES = unittest_framework.F90 unittest.F90 unittest_glide_deriv.F90 \
                            unittest_ice3d_lib.F90 unittest_pbc.F90
-glimmer_unittest_LDADD = libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB)
+glimmer_unittest_LDADD = libglide.a libglimmer.a SLAP_library/libslap.a $(ALL_TRILINOS_LIBS)
 
 glide_thermal_equib_SOURCES = thermal_equib.F90 
-glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(CALLTRILINOS_LIB)
+glide_thermal_equib_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(ALL_TRILINOS_LIBS)
 
 ALL_SRC=$(test_integrage_SOURCES) $(test_lithot_SOURCES) $(test_ts_SOURCES) $(test_setup_SOURCES) \
         $(test_config_SOURCES) $(nc2config_SOURCES) $(glex_ebm_SOURCES) $(glint_example_SOURCES) \

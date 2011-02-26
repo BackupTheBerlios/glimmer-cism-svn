@@ -124,8 +124,6 @@ contains
        call write_log('Cannot open configuration file '//trim(fname),GM_FATAL)
     end if
     
-write(*,*), 'filename: ', fname
-
     unit=99
     open(unit,file=trim(fname),status='old')
     ios=0

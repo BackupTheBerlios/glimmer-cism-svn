@@ -25,7 +25,7 @@ else:
 
 # Check to see if #procs specified, relevant when running the code in parallel. 
 # If not, serial run (#procs==1) is performed. To run in parallel, the configure
-# file must be specifed, but the nu,ber of processors does not
+# file must be specifed, but the number of processors does not
 if len(sys.argv) > 2:
     nprocs = sys.argv[2]
 else:

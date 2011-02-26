@@ -41,8 +41,9 @@ FCFLAGS=$glimmer_FCFLAGS
 FFLAGS=$glimmer_FFLAGS
 AC_LANG(Fortran)
 AC_FC_SRCEXT(f90)
+AC_FC_LIBRARY_LDFLAGS
 AX_F90_MODULE_FLAG
-EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
+#EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
 
 # checking for f2003 command line parser
 AC_MSG_CHECKING([for f2003 command line parser])
@@ -82,6 +83,12 @@ if test "$fs" != "" ; then
   f95v="gfortran"
   f95_preprocessor="-x f95-cpp-input"
   CFORTRAN_CFLAGS=-DpgiFortran
+fi
+# testing for AIX xlf
+f95string=`$FC -v 2>&1`
+fs=`echo $f95string |$EGREP "aix"`
+if test "$fs" != "" ; then
+  f95v="AIX IBM xlf"
 fi
 # testing for Portland group
 f95string=`$FC -V 2>&1`
@@ -302,44 +309,44 @@ AC_MSG_CHECKING([whether mpi is enabled])
 AC_ARG_ENABLE(mpi, AS_HELP_STRING([--enable-mpi],[Build with _MPI flag]),
 [case "${enableval}" in
  yes)  AC_DEFINE(_MPI,1,[Define to 1 if you want to enable extra profiling])
+f95string=`$FC -v 2>&1`
+fs=`echo $f95string |$EGREP "aix"`
+if test "$fs" != "" ; then
+       FCFLAGS="$FCFLAGS -WF,-D_MPI $MPI_COMPILE_FLAGS"
+       CXXFLAGS="$CXXFLAGS -D_xlC_ -D_MPI $MPI_COMPILE_FLAGS"
+else
        FCFLAGS="$FCFLAGS -D_MPI $MPI_COMPILE_FLAGS"
        CXXFLAGS="$CXXFLAGS -D_MPI $MPI_COMPILE_FLAGS"
+fi
        LDFLAGS="$LDFLAGS $MPI_LD_FLAGS" 
 #       LIBS="$LIBS -lmpi"
-       EPETRA_LIBRARIES="-llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lFEApp -lsacado -lModeLaplace -lanasaziepetra -lanasazi -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -lgaleri -laztecoo -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos"
+#       EPETRA_LIBRARIES="-llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lFEApp -lsacado -lModeLaplace -lanasaziepetra -lanasazi -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -lgaleri -laztecoo -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos"
        AC_MSG_RESULT([yes]);;	
- no)   EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
+ no)#   EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
         AC_MSG_RESULT([no]);;
  *) AC_MSG_ERROR(bad value ${enableval} for --enable-mpi) ;;
 esac],[AC_MSG_RESULT([no])])
 if test "$ac_cv_trilinos_prefix" != ""; then
         AC_MSG_RESULT([Using Trilinos to solve sparse linear systems, (located at $ac_cv_trilinos_prefix)])
 
-            if test "$ac_cv_haveblas" == 0; then
-                AC_MSG_ERROR([
-Using Trilinos requires use of an external BLAS library.  
-Please use the --with-blas flag and try again.
-If you are not sure what to do here but have BLAS installed in a standard location, try --with-blas=-lblas])
-            fi
-
-            if test "$ac_cv_havelapack" == 0; then
-                AC_MSG_ERROR([
-Using Trilinos requires use of an external LAPACK library.  
-Please use the --with-blas flag and try again.
-If you are not sure what to do here but have LAPACK installed in a standard location, try --with-lapack=-llapack])
-            fi
-
             TRILINOS_PREFIX="$ac_cv_trilinos_prefix"
+            AC_SUBST(TRILINOS_PREFIX)
+
             #AC_MSG_CHECKING(for Trilinos Test)
+f95string=`$FC -v 2>&1`
+fs=`echo $f95string |$EGREP "aix"`
+if test "$fs" != "" ; then
+            FCFLAGS="$FCFLAGS -WF,-DTRILINOS"
+else
             FCFLAGS="$FCFLAGS -DTRILINOS"
+fi
             CXXFLAGS="$CXXFLAGS $CPPFLAGS -DTRILINOS -I$ac_cv_trilinos_prefix/include"
             LDFLAGS="$LDFLAGS -L$ac_cv_trilinos_prefix/lib" 
             #  Jaguar LIBS list
-	    LIBS="$LIBS -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lkomplex -lifpack -lpamgen_extras -lpamgen -lamesos -lgaleri -laztecoo -ldpliris -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lshards -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lparmetis -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lmetis -lmpichcxx -lstd -lC"
+	    #LIBS="$LIBS -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lkomplex -lifpack -lpamgen_extras -lpamgen -lamesos -lgaleri -laztecoo -ldpliris -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lshards -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lparmetis -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lmetis -lmpichcxx -lstd -lC"
             #  Coyote LIBS list
             #EPETRA_LIBRARIES should be read from trilinos_build_path/include/Makefile.export.NOX
             #for now, setting in enable_mpi option
-	    #LIBS="$LIBS $EPETRA_LIBRARIES -lstdc++"
 fi
 
 AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
@@ -419,5 +426,5 @@ fi
 AC_SUBST(GLIMMER_CVS_VERS)
 AM_CONDITIONAL([HAVE_CVS],[test "$have_cvs_entries" == "yes"])
 
-AC_CONFIG_FILES([Makefile m4macros/Makefile src/Makefile src/python/Makefile src/cpp/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile])
+AC_CONFIG_FILES([Makefile Makefile.export m4macros/Makefile src/Makefile src/python/Makefile src/cpp/Makefile src/fortran/Makefile src/fortran/SLAP_library/Makefile])
 AC_OUTPUT([glimmer-config src/fortran/glimmer_vers.F90.in])

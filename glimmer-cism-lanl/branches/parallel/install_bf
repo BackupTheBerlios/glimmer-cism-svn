@@ -1,0 +1,21 @@
+# install script for Jaguar systems  2/21/11 KJE
+# before running:
+
+#  (a) module load svn-1.5 trilinos/10.6.2 python netcdf4/1.1
+#  (b) don't forget to use 'gmake' and not 'make' to build!
+#  (c) note: need -D_xlC_ macro in CXX option to have proper underscore behavior in C++ ftns 
+#     this should be fixed in configure.in
+#
+./configure \
+--prefix=$HOME/parallel \
+FC="mpxlf90_r -O2 -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
+F90="mpxlf90_r -O2 -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
+F77="mpxlf_r -O2  -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
+CC="mpcc_r -O2 -qcpluscmt" \
+CXX="mpCC_r -O2" \
+LIBS="-lC_r" \
+--with-trilinos=/contrib/trilinos/10.6.2 \
+--with-netcdf=/contrib/netcdf-3.6.2 \
+--with-lapack=-lessl \
+--with-blas=-lblas  \
+--enable-mpi

@@ -1,4 +1,4 @@
- 
+! 
 ! "glam_strs2.F90"
 !
 ! 3d velocity calculation based on Blatter/Pattyn, 1st-order equations, by Tony Payne (Univ.

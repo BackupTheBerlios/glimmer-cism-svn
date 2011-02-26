@@ -20,7 +20,12 @@ extern "C" {
   // These function will not be needed with a distributed glimmer
   // since the PDE code will pick the partitioning.
 
+#ifdef _xlC_
+  void dopartition(int& matrixSize, int& mySize) {
+#else
   void dopartition_(int& matrixSize, int& mySize) {
+#endif
+
 #ifdef _MPI
     Epetra_MpiComm comm(MPI_COMM_WORLD);
 #else
@@ -32,7 +37,11 @@ extern "C" {
     cout << "Trilinos Partition: doPartition has mySize = " << mySize << endl;
   }
 
+#ifdef _xlC_
+  void getpartition(int& mySize, int* myIndicies) {
+#else
   void getpartition_(int& mySize, int* myIndicies) {
+#endif
 
       // Copy indices into array to send back to glimmer
       partitionMap->MyGlobalElements(myIndicies);
