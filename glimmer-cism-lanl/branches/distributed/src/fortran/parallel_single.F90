@@ -1,5 +1,29 @@
 module parallel
+#ifdef __PGI
+  use netcdf,&
+       distributed_get_var=>nf90_get_var,&
+       distributed_put_var=>nf90_put_var,&
+       parallel_close=>nf90_close,&
+       parallel_create=>nf90_create,&
+       parallel_def_dim=>nf90_def_dim,&
+       parallel_def_var=>nf90_def_var,&
+       parallel_enddef=>nf90_enddef,&
+       parallel_get_att=>nf90_get_att,&
+       parallel_get_var=>nf90_get_var,&
+       parallel_inq_attname=>nf90_inq_attname,&
+       parallel_inq_dimid=>nf90_inq_dimid,&
+       parallel_inq_varid=>nf90_inq_varid,&
+       parallel_inquire=>nf90_inquire,&
+       parallel_inquire_dimension=>nf90_inquire_dimension,&
+       parallel_inquire_variable=>nf90_inquire_variable,&
+       parallel_put_att=>nf90_put_att,&
+       parallel_put_var=>nf90_put_var,&
+       parallel_open=>nf90_open,&
+       parallel_redef=>nf90_redef,&
+       parallel_sync=>nf90_sync
+#else
   use netcdf
+#endif
 
   implicit none
 
@@ -77,6 +101,7 @@ module parallel
      module procedure distributed_gather_var_real8_3d
   end interface
 
+#ifndef __PGI
   interface distributed_get_var
      module procedure distributed_get_var_integer_2d
      module procedure distributed_get_var_real4_1d
@@ -84,6 +109,7 @@ module parallel
      module procedure distributed_get_var_real8_2d
      module procedure distributed_get_var_real8_3d
   end interface
+#endif
 
   interface distributed_print
      ! Gathers a distributed variable and writes to file
@@ -92,6 +118,7 @@ module parallel
      module procedure distributed_print_real8_3d
   end interface
 
+#ifndef __PGI
   interface distributed_put_var
      module procedure distributed_put_var_integer_2d
      module procedure distributed_put_var_real4_1d
@@ -100,12 +127,16 @@ module parallel
      module procedure distributed_put_var_real8_3d
      module procedure parallel_put_var_real8
   end interface
+#endif
 
+#ifndef __PGI
   interface parallel_def_var
      module procedure parallel_def_var_dimids
      module procedure parallel_def_var_nodimids
   end interface
+#endif
 
+#ifndef __PGI
   interface parallel_get_att
      module procedure parallel_get_att_character
      module procedure parallel_get_att_real4
@@ -113,6 +144,7 @@ module parallel
      module procedure parallel_get_att_real8
      module procedure parallel_get_att_real8_1d
   end interface
+#endif
 
   interface distributed_scatter_var
      module procedure distributed_scatter_var_integer_2d
@@ -123,10 +155,12 @@ module parallel
      module procedure distributed_scatter_var_real8_3d
   end interface
 
+#ifndef __PGI
   interface parallel_get_var
      module procedure parallel_get_var_integer_1d
      module procedure parallel_get_var_real4_1d
   end interface
+#endif
 
   interface parallel_halo
      module procedure parallel_halo_integer_2d
@@ -148,6 +182,7 @@ module parallel
      module procedure parallel_print_real8_3d
   end interface
 
+#ifndef __PGI
   interface parallel_put_att
      module procedure parallel_put_att_character
      module procedure parallel_put_att_real4
@@ -155,11 +190,14 @@ module parallel
      module procedure parallel_put_att_real8
      module procedure parallel_put_att_real8_1d
   end interface
+#endif
 
+#ifndef __PGI
   interface parallel_put_var
      module procedure parallel_put_var_real4
      module procedure parallel_put_var_real8_1d
   end interface
+#endif
 
 contains
 
@@ -204,6 +242,7 @@ contains
     real(8),dimension(:) :: a
   end subroutine
 
+#ifndef __PGI
   function distributed_get_var_integer_2d(ncid,varid,values,start)
     implicit none
     integer :: distributed_get_var_integer_2d,ncid,varid
@@ -258,6 +297,7 @@ contains
     ! if (main_task)
     distributed_get_var_real8_3d = nf90_get_var(ncid,varid,values(:,:,:),start)
   end function
+#endif
 
   subroutine distributed_gather_var_integer_2d(values, global_values)
     ! JEFF Gather a distributed variable back to main_task node
@@ -493,6 +533,7 @@ contains
     close(u)
   end subroutine
 
+#ifndef __PGI
   function distributed_put_var_integer_2d(ncid,varid,values,start)
     implicit none
     integer :: distributed_put_var_integer_2d,ncid,varid
@@ -546,6 +587,7 @@ contains
     if (main_task) distributed_put_var_real8_3d = nf90_put_var(ncid,varid,values,start)
     call broadcast(distributed_put_var_real8_3d)
   end function
+#endif
 
   subroutine distributed_scatter_var_integer_2d(values, global_values)
     ! JEFF Scatter a variable on the main_task node back to the distributed
@@ -687,6 +729,7 @@ contains
     parallel_boundary = (ew==1.or.ew==ewn.or.ns==1.or.ns==nsn)
   end function
 
+#ifndef __PGI
   function parallel_close(ncid)
     implicit none
     integer :: ncid,parallel_close
@@ -694,7 +737,9 @@ contains
     if (main_task) parallel_close = nf90_close(ncid)
     call broadcast(parallel_close)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_create(path,cmode,ncid)
     implicit none
     integer :: cmode,ncid,parallel_create
@@ -704,7 +749,9 @@ contains
     call broadcast(parallel_create)
     call broadcast(ncid)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_def_dim(ncid,name,len,dimid)
     use netcdf
     implicit none
@@ -715,7 +762,9 @@ contains
     call broadcast(parallel_def_dim)
     call broadcast(dimid)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_def_var_dimids(ncid,name,xtype,dimids,varid)
     implicit none
     integer :: ncid,parallel_def_var_dimids,varid,xtype
@@ -738,7 +787,9 @@ contains
     call broadcast(parallel_def_var_nodimids)
     call broadcast(varid)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_enddef(ncid)
     implicit none
     integer :: ncid,parallel_enddef
@@ -746,6 +797,7 @@ contains
     if (main_task) parallel_enddef = nf90_enddef(ncid)
     call broadcast(parallel_enddef)
   end function
+#endif
 
   subroutine parallel_finalise
     use mpi
@@ -755,6 +807,7 @@ contains
     call mpi_finalize(ierror)
   end subroutine
 
+#ifndef __PGI
   function parallel_get_att_character(ncid,varid,name,values)
     implicit none
     integer :: ncid,parallel_get_att_character,varid
@@ -805,7 +858,9 @@ contains
     if (main_task) parallel_get_att_real8_1d = &
          nf90_get_att(ncid,varid,name,values)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_get_var_integer_1d(ncid,varid,values)
     implicit none
     integer :: ncid,parallel_get_var_integer_1d,varid
@@ -823,6 +878,7 @@ contains
     if (main_task) parallel_get_var_real4_1d = &
          nf90_get_var(ncid,varid,values)
   end function
+#endif
 
   function parallel_globalID(locns, locew, upstride)
     ! Returns a unique ID for a given row and column reference that is identical across all processors.
@@ -973,6 +1029,7 @@ contains
     close(u)
   end subroutine
 
+#ifndef __PGI
   function parallel_inq_attname(ncid,varid,attnum,name)
     implicit none
     integer :: attnum,ncid,parallel_inq_attname,varid
@@ -983,7 +1040,9 @@ contains
     call broadcast(parallel_inq_attname)
     call broadcast(name)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_inq_dimid(ncid,name,dimid)
     implicit none
     integer :: dimid,ncid,parallel_inq_dimid
@@ -993,7 +1052,9 @@ contains
     call broadcast(parallel_inq_dimid)
     call broadcast(dimid)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_inq_varid(ncid,name,varid)
     implicit none
     integer :: ncid,parallel_inq_varid,varid
@@ -1003,7 +1064,9 @@ contains
     call broadcast(parallel_inq_varid)
     call broadcast(varid)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_inquire(ncid,nvariables)
     implicit none
     integer :: ncid,parallel_inquire,nvariables
@@ -1012,7 +1075,9 @@ contains
     call broadcast(parallel_inquire)
     call broadcast(nvariables)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_inquire_dimension(ncid,dimid,name,len)
     implicit none
     integer :: dimid,ncid,parallel_inquire_dimension
@@ -1037,7 +1102,9 @@ contains
        len = l
     end if
   end function
+#endif
 
+#ifndef __PGI
   function parallel_inquire_variable(ncid,varid,name,ndims,dimids,natts)
     implicit none
     integer :: ncid,parallel_inquire_variable,varid
@@ -1073,7 +1140,9 @@ contains
        natts = na
     end if
   end function
+#endif
 
+#ifndef __PGI
   function parallel_open(path,mode,ncid)
     implicit none
     integer :: mode,ncid,parallel_open
@@ -1082,6 +1151,7 @@ contains
     if (main_task) parallel_open = nf90_open(path,mode,ncid)
     call broadcast(parallel_open)
   end function
+#endif
 
   subroutine parallel_print_real8_2d(name,a)
     implicit none
@@ -1119,6 +1189,7 @@ contains
     close(u)
   end subroutine
 
+#ifndef __PGI
   function parallel_put_att_character(ncid,varid,name,values)
     implicit none
     integer :: ncid,parallel_put_att_character,varid
@@ -1167,7 +1238,9 @@ contains
     if (main_task) parallel_put_att_real8_1d = nf90_put_att(ncid,varid,name,values)
     call broadcast(parallel_put_att_real8_1d)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_put_var_real4(ncid,varid,values,start)
     implicit none
     integer :: ncid,parallel_put_var_real4,varid
@@ -1205,7 +1278,9 @@ contains
     end if
     call broadcast(parallel_put_var_real8_1d)
   end function
+#endif
 
+#ifndef __PGI
   function parallel_redef(ncid)
     implicit none
     integer :: ncid,parallel_redef
@@ -1213,6 +1288,7 @@ contains
     if (main_task) parallel_redef = nf90_redef(ncid)
     call broadcast(parallel_redef)
   end function
+#endif
 
   function parallel_reduce_sum(x)
     ! Sum x across all of the nodes.
@@ -1259,6 +1335,7 @@ contains
     ! write(0,*) "RUNNING in parallel_single mode, so STOP IGNORED."
   end subroutine
 
+#ifndef __PGI
   function parallel_sync(ncid)
     implicit none
     integer :: ncid,parallel_sync
@@ -1266,6 +1343,7 @@ contains
     if (main_task) parallel_sync = nf90_sync(ncid)
     call broadcast(parallel_sync)
   end function
+#endif
 
   subroutine parallel_temp_halo(a)
     implicit none

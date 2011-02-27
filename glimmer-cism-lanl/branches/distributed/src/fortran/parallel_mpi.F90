@@ -1041,7 +1041,8 @@ contains
     south = this_rank+ewtasks
     if (south>=tasks) south = south-tasks
 
-    ! Check that haven't split up the problem too much
+    ! Check that haven't split up the problem too much.  Idea is that do not want halos overlapping in either dimension.
+    ! local_* - lhalo - uhalo is the actual number of non-halo cells on a processor.
     if ((local_nsn - lhalo - uhalo) .lt. (lhalo + uhalo + 1)) then
         write(*,*) "NS halos overlap on processor ", this_rank
         call parallel_stop(__FILE__, __LINE__)
