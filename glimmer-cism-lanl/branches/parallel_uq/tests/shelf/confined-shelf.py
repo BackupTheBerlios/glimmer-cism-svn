@@ -7,8 +7,6 @@
 # 3. Move any additional files written by Glimmer to the "scratch" subdirectory.
 # Written by Glen Granzow at the University of Montana on April 8, 2010
 
-# Slight alterations by SFP on 2-3-11 for Glimmer-CISM 2.0 relase
-
 import sys, os, glob, shutil, numpy
 from netCDF import *
 from ConfigParser import ConfigParser
@@ -57,67 +55,36 @@ netCDFfile.createVariable('y1','f',('y1',))[:] = y.tolist()
 netCDFfile.createVariable('x0','f',('x0',))[:] = (dx/2 + x[:-1]).tolist()
 netCDFfile.createVariable('y0','f',('y0',))[:] = (dy/2 + y[:-1]).tolist()
 
-# *SFP* this has been changed so that the default value for 'flwa' is the same 
-# as in the EISMINT-shelf test documentation, tests 3 & 4, found at:
-# http://homepages.vub.ac.be/~phuybrec/eismint/iceshelf.html
+# Check to make sure that the flow law parameter in the config file is correct.
+default_flwa = float(parser.get('parameters','default_flwa'))
+if default_flwa != 4.6e-18:
+  print 'WARNING: The parameter default_flwa in',configfile,'should be 4.6e-18'
+  print '         Currently it is',default_flwa
 
-## Check to make sure that the flow law parameter in the config file is correct.
-#default_flwa = float(parser.get('parameters','default_flwa'))
-#if default_flwa != 4.6e-18:
-#  print 'WARNING: The parameter default_flwa in',configfile,'should be 4.6e-18'
-#  print '         Currently it is',default_flwa
-
-# *SFP* removed periodic option
 # Determine from the config file whether periodic boundary conditions are to be
 # imposed in the x direction.  
-#periodic_ew = int(parser.get('options','periodic_ew'))
+periodic_ew = int(parser.get('options','periodic_ew'))
 
 # Calculate values for the required variables.
-thk  = numpy.zeros([1,ny,nx],dtype='float32')
-beta = numpy.empty([1,ny-1,nx-1],dtype='float32')
-kbc  = numpy.zeros([1,ny-1,nx-1],dtype='int')
-acab = numpy.zeros([1,ny,nx],dtype='float32') 
-zero = numpy.zeros([1,nz,ny-1,nx-1],dtype='float32')
-
-uvelhom = numpy.zeros([1,nz,ny-1,nx-1],dtype='float32')
-vvelhom = numpy.zeros([1,nz,ny-1,nx-1],dtype='float32')
-
-thk[0,4:-2,2:-2] = 500.  # *SFP* changed to be in line w/ EISMINT-shelf tests 3&4 
-beta[0,:,:] = 0 
-kbc[0,ny-3:,:]  = 1
-acab[:] = 0.25
-
-#if not periodic_ew:    *SFP* removed periodic option
-kbc[0,:,:2] = 1
-kbc[0,:,nx-3:] = 1
-
-#vvelhom[0,:,ny-3:,:] = -1000.0     % const vel profile at upstream end (for testing)
-
-for i in range(nx-2):
-  x = float( i ) / (nx-2) - 0.5  
-  vvelhom[0,:,ny-3:,i] = -1.5e3 * 1/(2*3.141592654*0.125) * numpy.exp( -x**2 / (2*0.125**2) )
-
-#for i in range(nx-1):
-#  x = float(i-(nx-1)/2)/(nx-1)
-#  for j in range(ny-1):
-#    y = float(j-(ny-1)/2)/(ny-1)
-#    r_squared = (x*x+y*y)
-#    thk[0,j,i] = 1000.0 * sqrt( 1.0 - 8.25*r_squared )
-
+thk  = numpy.zeros([ny,nx],dtype='float32')
+beta = numpy.empty([ny-1,nx-1],dtype='float32')
+kbc  = numpy.zeros([ny,nx],dtype='int')
+zero = numpy.zeros([nz,ny-1,nx-1],dtype='float32')
+thk[4:-2,2:-2] = 1000
+#beta[2:nx-2,2:ny-2] = 0
+beta[2:nx-2,2:ny-2] = 1.0e-6
+kbc[ny-3:,:]  = 1
+if not periodic_ew:
+  kbc[:,:3] = 1
+  kbc[:,nx-3:] = 1
 
 # Create the required variables in the netCDF file.
 netCDFfile.createVariable('thk',      'f',('time','y1','x1'))[:] = thk.tolist()
-netCDFfile.createVariable('acab',     'f',('time','y1','x1'))[:] = acab.tolist()
-netCDFfile.createVariable('kinbcmask','i',('time','y0','x0'))[:] = kbc.tolist()
+netCDFfile.createVariable('kinbcmask','i',('time','y1','x1'))[:] = kbc.tolist()
 netCDFfile.createVariable('topg',     'f',('time','y1','x1'))[:] = ny*[nx*[-2000]]
 netCDFfile.createVariable('beta',     'f',('time','y0','x0'))[:] = beta.tolist()
-
-#netCDFfile.createVariable('uvelhom',  'f',('time','level','y0','x0'))[:] = zero.tolist()
-#netCDFfile.createVariable('vvelhom',  'f',('time','level','y0','x0'))[:] = zero.tolist()
 netCDFfile.createVariable('uvelhom',  'f',('time','level','y0','x0'))[:] = zero.tolist()
-netCDFfile.createVariable('vvelhom',  'f',('time','level','y0','x0'))[:] = vvelhom.tolist()
-
-
+netCDFfile.createVariable('vvelhom',  'f',('time','level','y0','x0'))[:] = zero.tolist()
 
 netCDFfile.close()
 
@@ -133,3 +100,5 @@ for files in glob.glob('*.txt')+glob.glob('*.log')+glob.glob('*.nc'):
     os.remove(os.path.join('scratch',files))
 # Move the new files to scratch
   shutil.move(files,'scratch')
+
+
