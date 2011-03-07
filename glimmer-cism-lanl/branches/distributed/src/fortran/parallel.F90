@@ -1008,7 +1008,7 @@ contains
     comm = mpi_comm_world
     call mpi_comm_size(comm,tasks,ierror)
     call mpi_comm_rank(comm,this_rank,ierror)
-    main_task = (this_rank==main_rank)
+    main_task = .true. !JEFF For parallel_single, each node duplicates all of the calculations.
   end subroutine
 
   subroutine parallel_print_integer_2d(name,a)

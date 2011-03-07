@@ -11,7 +11,7 @@
 #include "config.inc"
 
 !GlobalIDs are for distributed TRILINOS variable IDs
-#define globalIDs
+! #define globalIDs
 
 !***********************************************************************
 
@@ -2606,7 +2606,9 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 #ifdef globalIDs
   loc_array = getdistributedlocationarray(ewn, nsn, upn, mask)
 #else
-  call not_parallel(__FILE__, __LINE__)
+  !JEFF - Want some way to notify user that cannot run without GlobalIDs when running distributed.  
+  !JEFF - But this method of not_parallel is just annoying.
+  !call not_parallel(__FILE__, __LINE__)
   loc_array = getlocationarray(ewn, nsn, upn, mask)
 #endif
 !  !!!!!!!!! useful for debugging !!!!!!!!!!!!!!
