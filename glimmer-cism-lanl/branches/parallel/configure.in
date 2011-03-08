@@ -43,7 +43,7 @@ AC_LANG(Fortran)
 AC_FC_SRCEXT(f90)
 AC_FC_LIBRARY_LDFLAGS
 AX_F90_MODULE_FLAG
-EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
+#EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
 
 # checking for f2003 command line parser
 AC_MSG_CHECKING([for f2003 command line parser])
@@ -320,7 +320,7 @@ else
 fi
        LDFLAGS="$LDFLAGS $MPI_LD_FLAGS" 
 #       LIBS="$LIBS -lmpi"
-       EPETRA_LIBRARIES="-llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lFEApp -lsacado -lModeLaplace -lanasaziepetra -lanasazi -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -lgaleri -laztecoo -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos"
+#       EPETRA_LIBRARIES="-llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lFEApp -lsacado -lModeLaplace -lanasaziepetra -lanasazi -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -lgaleri -laztecoo -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos"
        AC_MSG_RESULT([yes]);;	
  no)#   EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
         AC_MSG_RESULT([no]);;

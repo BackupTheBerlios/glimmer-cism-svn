@@ -52,7 +52,7 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_commandline.F90 \
                        glimmer_writestats.F90 writestats.c writestats.h
 nodist_libglimmer_a_SOURCES = glimmer_vers.F90
 if TRILINOS
-include ../../Makefile.export
+#include ../../Makefile.export
 #ALL_TRILINOS_LIBS = ../cpp/libcalltrilinos.a  $(Trilinos_LIBRARIES)  $(Trilinos_TPL_LIBRARIES)  -lstdc++
 ALL_TRILINOS_LIBS = ../cpp/libcalltrilinos.a  $(Trilinos_LIBRARIES)  $(Trilinos_TPL_LIBRARIES)  
 endif TRILINOS
