@@ -179,9 +179,13 @@ if __name__ == '__main__':
 
       if not options.format_only:
 
-#       Run Glimmer
+#       Run Glimmer 
         print 'Running',options.executable,'for experiment',experiment.upper(),'with domain size',size,'km'
+        # serial run
         exitCode = os.system('echo '+filename+'.config'+' | '+options.executable)
+        # parallel run
+#        exitCode = os.system('mpirun -np6 ./simple_glide '+filename+'.config')
+#        exitCode = os.system('aprun -n6 ./simple_glide '+filename+'.config')
 
         if exitCode == 0:
 #         Extract the output data for comparison to the other models

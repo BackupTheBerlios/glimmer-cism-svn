@@ -320,7 +320,7 @@ else
 fi
        LDFLAGS="$LDFLAGS $MPI_LD_FLAGS" 
 #       LIBS="$LIBS -lmpi"
-#       EPETRA_LIBRARIES="-llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lFEApp -lsacado -lModeLaplace -lanasaziepetra -lanasazi -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -lgaleri -laztecoo -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos"
+       EPETRA_LIBRARIES="-llocathyra -llocaepetra -lloca -lnoxthyra -lnoxepetra -lnox -lFEApp -lsacado -lModeLaplace -lanasaziepetra -lanasazi -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lifpack -lamesos -lgaleri -laztecoo -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos"
        AC_MSG_RESULT([yes]);;	
  no)#   EPETRA_LIBRARIES="-llocaepetra -lloca -lnoxepetra -lnox -lstratimikos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelos -lml -lifpack -lamesos -laztecoo -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltriutils -lepetra -lrtop -lteuchos"
         AC_MSG_RESULT([no]);;
@@ -358,10 +358,10 @@ fi
             LDFLAGS="$LDFLAGS -L$ac_cv_trilinos_prefix/lib" 
             #  Jaguar LIBS list
 	    LIBS="$LIBS -lstratimikos -lstratimikosbelos -lstratimikosaztecoo -lstratimikosamesos -lstratimikosml -lstratimikosifpack -lbelosepetra -lbelos -lml -lkomplex -lifpack -lpamgen_extras -lpamgen -lamesos -lgaleri -laztecoo -ldpliris -lisorropia -lthyraepetraext -lthyraepetra -lthyra -lepetraext -ltpetra -ltriutils -lshards -lzoltan -lepetra -lkokkoslinalg -lkokkosnodeapi -lkokkos -lrtop -lteuchos -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lparmetis -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib -lmetis -lmpichcxx -lstd -lC"
-            #  Coyote LIBS list
+            #  LANL LIBS list
             #EPETRA_LIBRARIES should be read from trilinos_build_path/include/Makefile.export.NOX
             #for now, setting in enable_mpi option
-        #LIBS="$LIBS $EPETRA_LIBRARIES -lstdc++"
+#        LIBS="$LIBS $EPETRA_LIBRARIES -lstdc++"
 fi
 
 AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
