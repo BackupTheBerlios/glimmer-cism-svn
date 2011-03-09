@@ -361,6 +361,7 @@ fi
             #  Coyote LIBS list
             #EPETRA_LIBRARIES should be read from trilinos_build_path/include/Makefile.export.NOX
             #for now, setting in enable_mpi option
+        #LIBS="$LIBS $EPETRA_LIBRARIES -lstdc++"
 fi
 
 AM_CONDITIONAL(UMFPACK, test "$ac_cv_umfpack_prefix" != "")
