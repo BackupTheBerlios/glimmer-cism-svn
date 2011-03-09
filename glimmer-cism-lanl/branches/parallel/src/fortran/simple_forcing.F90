@@ -208,6 +208,10 @@ contains
         return
     end if
 
+    call GetSection(config,section,'STREAM-TEST') 
+    if (associated(section)) then 
+        return
+    end if
 
     !mismip tests
     call GetSection(config,section,'MISMIP-1')
