@@ -8,12 +8,12 @@
 #
 ./configure \
 --prefix=$HOME/parallel \
-FC="mpxlf90_r -O2 -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
-F90="mpxlf90_r -O2 -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
-F77="mpxlf_r -O2  -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
+FC="mpxlf90_r -O2 -qmaxmem=-1 -g -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
+F90="mpxlf90_r -O2 -qmaxmem=-1 -g -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
+F77="mpxlf_r -O2  -qmaxmem=-1 -g -qsuffix=cpp=F90 -qalias_size=107374182 -WF,-C!" \
 CC="mpcc_r -O2 -qcpluscmt" \
-CXX="mpCC_r -O2" \
-LIBS="-lC_r" \
+CXX="mpCC_r -O2 -g -qrtti=all -qmaxmem=-1 -g" \
+LIBS="-lC_r -lxlf90_r" \
 --with-trilinos=/contrib/trilinos/10.6.2 \
 --with-netcdf=/contrib/netcdf-3.6.2 \
 --with-lapack=-lessl \

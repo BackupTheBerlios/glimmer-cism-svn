@@ -70,7 +70,7 @@ extern "C" {
 	assert(ierr >= 0);
       }
     }
-
+    
     ierr = A.FillComplete();
     assert(ierr == 0);
     
@@ -140,8 +140,6 @@ extern "C" {
     //    A.Multiply(false, x, temp);
     //    temp.Update(-1, b, 1);
     //    temp.Norm2(&residualNorm);
-
-    //    cout << "Residual Norm: " << residualNorm << endl;
 
     Epetra_LocalMap localMap(order, 0, Comm);
     Epetra_Vector xExtra(localMap); // local vector in each processor

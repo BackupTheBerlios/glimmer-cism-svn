@@ -384,8 +384,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics solver'
   print *, ' '
-!  print *, 'iter #     uvel resid         vvel resid       target resid'
-  print *, 'iter #     resid (L2 norm)       target resid'
+  print *, 'iter #     uvel resid         vvel resid       target resid'
+!  print *, 'iter #     resid (L2 norm)       target resid'
   print *, ' '
 
   ! ****************************************************************************************
@@ -398,8 +398,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
 
-  do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
-  !do while ( maxval(resid) > minres .and. counter < cmax)   ! standard residual calculation
+  !do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
+  do while ( maxval(resid) > minres .and. counter < cmax)   ! standard residual calculation
   !do while ( resid(1) > minres .and. counter < cmax)        ! standard residual (for 1d solutions where d*/dy=0) 
 
     ! calc effective viscosity using previously calc vel. field
