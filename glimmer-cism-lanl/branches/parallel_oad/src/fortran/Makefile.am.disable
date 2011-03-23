@@ -1,5 +1,5 @@
 SUBDIRS = SLAP_library
-##RESTART_STEM=glimmer_rst
+RESTART_STEM=glimmer_rst
 ##RESTART_INC_INS=$(RESTART_STEM)_body.inc.in $(RESTART_STEM)_head.inc.in
 ##RESTART_INCS=$(RESTART_INC_INS:.inc.in=.inc)
 ##RESTART_COMMON=glimmer_restart_common.F90 glimmer_restart_pointarr.F90 \
@@ -193,8 +193,8 @@ glide_io.F90:	glide_vars.def ncdf_template.F90.in
 ##		cp $< $@
 ##$(RESTART_CODE:.F90=.o): $(RESTART_COMMON:.F90=.o)
 ##else
-##$(RESTART_STEM)_body.inc $(RESTART_STEM)_head.inc: Makefile
-##		echo '! Dummy include file - restarts not enabled' > $@
+$(RESTART_STEM)_body.inc $(RESTART_STEM)_head.inc: Makefile
+		echo '! Dummy include file - restarts not enabled' > $@
 ##endif
 
 # handling CVS versioning
