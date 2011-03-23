@@ -29,6 +29,8 @@ module = {}
 
 AVERAGE_SUFFIX = 'tavg'
 
+lineLength=80
+
 def dimid(name):
     return '%s_dimid'%name
 
@@ -273,7 +275,13 @@ class PrintNC_template(PrintVars):
         hotvar = ''
         for v in hotvars:
             hotvar = hotvar + ' %s '%v
-        self.stream.write("  character(len=*),private,parameter :: hotvars = '%s'\n"%hotvar)
+        self.stream.write("  character(len=*),private,parameter :: hotvars = &\n")
+        self.stream.write("'&\n")
+        for i in range(1,len(hotvar)/(lineLength-2)+1):
+            self.stream.write("&"+hotvar[(i-1)*(lineLength-2):(i)*(lineLength-2)]+"&\n")
+        if len(hotvar)%(lineLength-2):
+            self.stream.write("&"+hotvar[-(len(hotvar)%(lineLength-2)):]+"&\n")
+        self.stream.write("&'\n")
         
     def print_vardef(self,var):
         """Write single variable block to stream for ncdf_file."""
