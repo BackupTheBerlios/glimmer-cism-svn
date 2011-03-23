@@ -268,7 +268,7 @@ contains
 
              call glissade_findvtri( model, ew,   ns,             &
                                      subd,  diag, supd, rhsd,     &            
-                                     GLIDE_IS_FLOAT(model%geometry%thkmask(ew,ns)), &
+             GLIDE_IS_FLOAT(model%geometry%thkmask(ew,ns)), &
                                      model%options%which_bmelt )
                 
              prevtemp_stag(:) = model%temper%temp(:,ew,ns)
