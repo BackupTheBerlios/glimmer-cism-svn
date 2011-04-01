@@ -73,8 +73,6 @@ contains
                     else
                         opvr(ew,ns) = 0
                     end if
-                !The following cases relate to Anne LeBroque's fix for nunataks
-                !ew,ns cell is ice free:
                 else if (ipvr(ew,ns) <= thklim/thk0 .and. &
                    ((usrf(ew,ns) >= usrf(ew+1,ns) .and. ipvr(ew+1,ns) >= thklim/thk0) &
                     .or. (usrf(ew,ns) >= usrf(ew,ns+1) .and. ipvr(ew,ns+1) >= thklim/thk0))) then
