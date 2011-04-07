@@ -47,7 +47,7 @@
 program simple_glide
   !*FD This is a simple GLIDE test driver. It can be used to run
   !*FD the EISMINT test cases
-  use glimmer_global, only:rk
+  use glimmer_global, only:rk, dp
   use glide
   use simple_forcing
   use glimmer_log
