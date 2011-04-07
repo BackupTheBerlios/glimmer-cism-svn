@@ -298,7 +298,7 @@ contains
        if (model%options%whichtemp == TEMP_REMAP_ADV) then
 
           do k = 1, model%general%upn-1
-             model%temper%temp(k,:,:) = dmin1(0.0d0,dble(model%climate%artm(:,:)))
+             model%temper%temp(k,:,:) = min(0.0d0,dble(model%climate%artm(:,:)))
           end do
 
           call calcflwa(model%numerics%sigma,        &
