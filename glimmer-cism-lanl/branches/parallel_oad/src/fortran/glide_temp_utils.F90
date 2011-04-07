@@ -247,7 +247,7 @@ contains
 
     call calcpmpt(pmptemp,thck,sigma)
 
-    temp = dmin1(temp,pmptemp)
+    temp = min(temp,pmptemp)
 
     if (bwat > 0.0d0) temp(upn) = pmptemp(upn)
 
@@ -338,7 +338,7 @@ contains
     real(dp), parameter :: contemp = -5.0d0
     real(dp) :: default_flwa
     real(dp),dimension(4) :: arrfact
-    integer :: ew,ns,up,ewn,nsn,upn
+    integer :: ew,ns,up,ewn,nsn,upn, loopify
 
     real(dp), dimension(size(sigma)) :: tempcor
 
@@ -366,9 +366,11 @@ contains
             
 
             ! Calculate the corrected temperature
+             do loopify=1,size(sigma)
 
-            tempcor(:) = min(0.0d0, temp(:,ew,ns) + thck(ew,ns) * fact * sigma(:))
-            tempcor(:) = max(-50.0d0, tempcor(:))
+            tempcor(loopify) = min(0.0d0, temp(loopify,ew,ns) + thck(ew,ns) * fact * sigma(loopify))
+            tempcor(loopify) = max(-50.0d0, tempcor(loopify))
+            end do
 
             ! Calculate Glenn's A
 
