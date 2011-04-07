@@ -198,7 +198,7 @@ contains
     ! Internal variables
     !------------------------------------------------------------------------------------
 
-    integer :: ew, ns, up, upn
+    integer :: ew, ns, up, upn, loopify
     character(len=100) :: message
 
     ! These arrays have the same size as the vertical dimension of temperature:
@@ -369,9 +369,13 @@ contains
        do ew = 1,model%general%ewn
 
           if (GLIDE_IS_THIN(model%geometry%thkmask(ew,ns))) then
-             model%temper%temp(:,ew,ns) = min(0.0d0, dble(model%climate%artm(ew,ns)))
+             do loopify=1,size(model%temper%temp,1)
+                model%temper%temp(loopify,ew,ns) = min(0.0d0, dble(model%climate%artm(ew,ns)))
+             end do
           else if (model%geometry%thkmask(ew,ns) < 0) then
-             model%temper%temp(:,ew,ns) = min(0.0d0, dble(model%climate%artm(ew,ns)))
+             do loopify=1,size(model%temper%temp,1)
+                model%temper%temp(loopify,ew,ns) = min(0.0d0, dble(model%climate%artm(ew,ns)))
+             end do
           !else if (model%geometry%thkmask(ew,ns) < -1) then
           !   model%temper%temp(:,ew,ns) = 0.0d0
           end if
