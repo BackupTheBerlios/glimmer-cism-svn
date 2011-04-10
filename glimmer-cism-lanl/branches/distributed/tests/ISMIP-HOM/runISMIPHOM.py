@@ -11,6 +11,8 @@
 # See the accompanying README file for more information.
 # To see all command line options run: python runISMIPHOM.py --help
 # Written March 2, 2010 by Glen Granzow at the University of Montana.
+# Update for the distributed branch (parallel option) on Jaguar 
+# April 6, 2011 by Kate Evans at Oak Ridge Nat'l Lab
 
 # OptionParser callback that splits a comma-separated list.
 def appendToList(option,str_opt,value,parser):
@@ -21,6 +23,7 @@ def appendToList(option,str_opt,value,parser):
 
 defaultExperiments = ['a']      # ['a','b','c','d']
 defaultSizes = ['10','20','40'] # ['5','10','20','40','80','160']
+defaultProcs = ['0'] # ['12']
 
 if __name__ == '__main__':
   import os
@@ -39,12 +42,14 @@ if __name__ == '__main__':
   parser.add_option('-v','--vert-grid-size',dest='vertical_grid_size',type='int',help='(overrides upn in ishom.a.config)')
   parser.add_option('-d','--diagnostic-scheme',dest='diagnostic_scheme',help='(overrides ishom.a.config)')
   parser.add_option('-r','--run',dest='executable',default='simple_glide',help='Set path to the GLIMMER executable (defaults to simple_glide)')
+  parser.add_option('-n','--procs',dest='procs',help='Set the number of processors to run simple_glide. (default is 0, serial run, setting j=1 means MPI on but only 1 processor)')
   parser.add_option('-p','--prefix',dest='prefix',default='glm1',help='Prefix to use for model output files (defaults to glm1)')
   parser.add_option('-f','--format-only',dest='format_only',action='store_true',help='Generate the config and NetCDF input files only')
   options, args = parser.parse_args()
 # If the user didn't specify a list of experiments or domain sizes, run the whole suite
   if options.experiments == None: options.experiments = defaultExperiments
   if options.sizes == None: options.sizes = defaultSizes
+  if options.procs == None: options.procs = defaultProcs
 
 # Loop over the experiments requested on the command line
   for experiment in options.experiments:
@@ -181,7 +186,12 @@ if __name__ == '__main__':
 
 #       Run Glimmer
         print 'Running',options.executable,'for experiment',experiment.upper(),'with domain size',size,'km'
+#       Serially
+      if options.procs == '0': 
         exitCode = os.system('echo '+filename+'.config'+' | '+options.executable)
+      else:
+# In parallel, right now can only handle aprun command
+        exitCode = os.system('time aprun -n'+options.procs+' '+options.executable+' '+filename+'.config')
 
         if exitCode == 0:
 #         Extract the output data for comparison to the other models

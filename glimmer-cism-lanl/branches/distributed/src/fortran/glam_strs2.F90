@@ -274,7 +274,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 100                  ! max no. of iterations
+  integer, parameter :: cmax = 1000                  ! max no. of iterations
   integer :: counter, linit               ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -427,7 +427,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
   ! do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
-  do while ( maxval(resid) > minres .and. counter < cmax)
+   do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
     ! calc effective viscosity using previously calc vel. field
@@ -767,7 +767,7 @@ subroutine JFNK                 (model,umask,tstep)
   real (kind = dp), parameter :: NL_tol = 1.0d-06
 
   integer, parameter :: img = 20, img1 = img+1
-  integer :: kmax = 100
+  integer :: kmax = 1000
   character(len=100) :: message
 
 !*sfp* needed to incorporate generic wrapper to solver
@@ -972,10 +972,10 @@ subroutine JFNK                 (model,umask,tstep)
 
 ! UNCOMMENT these lines to switch to NOX's JFNK
 ! AGS: To Do:  send in distributed xk_1, or myIndices array, for distributed nox
-!  call noxinit(xk_size, xk_1, 1, c_ptr_to_object)
-!  call noxsolve(xk_size, xk_1, c_ptr_to_object)
-!  call noxfinish()
-!  kmax = 0     ! turn off native JFNK below
+  call noxinit(xk_size, xk_1, 1, c_ptr_to_object)
+  call noxsolve(xk_size, xk_1, c_ptr_to_object)
+  call noxfinish()
+  kmax = 0     ! turn off native JFNK below
 !==============================================================================
 ! calculate F(u^k-1,v^k-1)
 !==============================================================================

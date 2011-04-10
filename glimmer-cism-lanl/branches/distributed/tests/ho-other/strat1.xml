@@ -37,6 +37,9 @@
         </ParameterList>
         -->
       </ParameterList>
+      <ParameterList name="VerboseObject">
+       <Parameter name="Verbosity Level" type="string" value="low"/>
+      </ParameterList>
     </ParameterList>
   </ParameterList>
   <Parameter name="Preconditioner Type" type="string" value="Ifpack"/>

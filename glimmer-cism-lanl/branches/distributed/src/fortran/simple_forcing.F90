@@ -187,7 +187,7 @@ contains
        return
     end if
     
-    call GetSection(config,section,'ISMIP-HOM-A')
+    call GetSection(config,section,'ISMIP-HOM-TEST')
     if (associated(section)) then
         return
     end if

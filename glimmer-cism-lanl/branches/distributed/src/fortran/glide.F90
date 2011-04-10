@@ -487,7 +487,7 @@ contains
     select case(model%options%whichevol)
     case(EVOL_PSEUDO_DIFF) ! Use precalculated uflx, vflx -----------------------------------
 
-       call parallel_stop(__FILE__,__LINE__)
+       call not_parallel(__FILE__,__LINE__)
        call thck_lin_evolve(model,model%temper%newtemps)
 
     case(EVOL_ADI) ! Use explicit leap frog method with uflx,vflx -------------------

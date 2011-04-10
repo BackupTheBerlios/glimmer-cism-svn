@@ -271,8 +271,7 @@ contains
     case(1) ! Do full temperature solution ---------------------------------------------
 
        ! JEFF - Concerned about halos and these derivatives.
-       ! Changed to stop which is ignored for parallel_single case.
-       call parallel_stop(__FILE__, __LINE__)
+       call not_parallel(__FILE__, __LINE__)
 
        ! Calculate time-derivatives of thickness and upper surface elevation ------------
 

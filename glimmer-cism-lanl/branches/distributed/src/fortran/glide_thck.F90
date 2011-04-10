@@ -584,7 +584,7 @@ contains
       !TODO: Turn this on and off conditionally based on whether the computation
       !is requred
       
-      !Compute seond derivatives
+      !Compute second derivatives
       !TODO: maybe turn this on and off conditionally?
       call d2f_field_stag(model%geometry%usrf, model%numerics%dew, model%numerics%dns, &
                           model%geomderv%d2usrfdew2, model%geomderv%d2usrfdns2, &
