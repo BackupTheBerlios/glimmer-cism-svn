@@ -54,8 +54,12 @@ module glam
         ! This driver is called from "glide_velo_higher.F90"
         call run_ho_diagnostic(model)
 
+        ! store the old thickness in the field thck_t for just a moment
+        model%geometry%thck_t = model%geometry%thck 
+        
         ! put relevant model variables into a format that inc. remapping code wants
         ! (this subroutine lives in "remap_glamutils.F90")
+
         call horizontal_remap_in(model%remap_wk, model%numerics%dt,                               &
                                   model%geometry%thck,&
 !                                 model%geometry%thck(1:model%general%ewn-1,1:model%general%nsn-1),&
@@ -83,6 +87,21 @@ module glam
                                    model%climate%acab,model%temper%bmlt, model%numerics%dt, &
                                    model%options%periodic_ew, model%options%periodic_ns)
 
+
+        ! now calculate the relative change in thickness
+
+        where (model%geometry%thck_t > 0.d0)
+           model%geometry%thck_t = (model%geometry%thck - model%geometry%thck_t) / & 
+                (model%geometry%thck_t * get_tinc(model))
+        elsewhere
+           model%geometry%thck_t = 0.d0
+        end where
+        
+        !the outer edges of thickness are not valid, due to remapping scheme
+        model%geometry%thck_t(:,1) = 0.d0
+        model%geometry%thck_t(:,model%general%nsn) = 0.d0
+        model%geometry%thck_t(1,:) = 0.d0
+        model%geometry%thck_t(model%general%ewn,:) = 0.d0
 
     end subroutine inc_remap_driver 
 

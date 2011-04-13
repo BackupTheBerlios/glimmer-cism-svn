@@ -77,6 +77,8 @@ contains
         integer :: totpts
         real(sp), dimension(model%general%ewn-1, model%general%nsn-1) :: stagmassb
 
+        integer :: ns, ew
+
         !TEMPORARY arrays, these should at some point be placed in Model
         !probably
         integer, dimension(model%general%ewn-1, model%general%nsn-1)  :: geom_mask_stag
@@ -202,6 +204,64 @@ contains
                                         model%velocity_hom%uvel, model%velocity_hom%vvel,           &
                                         model%velocity_hom%uflx, model%velocity_hom%vflx,           &
                                         model%velocity_hom%efvs )
+
+        ! diagnose the flux divergences
+	do ew = 2,model%general%ewn-1
+	   do ns = 2,model%general%nsn-1
+
+	     if (not(GLIDE_HAS_ICE(model%geometry%thkmask(ew,ns)))) cycle
+	     if (all(GLIDE_IS_DIRICHLET_BOUNDARY( &
+	                          model%geometry%thkmask((ew-1):ew,(ns-1):ns)))) cycle
+
+             model%velocity_hom%uflx_conv(ew,ns) = &
+		  -1.d0* &
+	          (0.5d0*model%velocity_hom%uflx(ew  ,ns  ) &
+	         + 0.5d0*model%velocity_hom%uflx(ew  ,ns-1)&
+ 	         - 0.5d0*model%velocity_hom%uflx(ew-1,ns  )& 
+	         - 0.5d0*model%velocity_hom%uflx(ew-1,ns-1)) / &
+	        model%numerics%dew
+
+!	     if (GLIDE_IS_OCEAN(model%geometry%thkmask(ew,ns+1))) then
+!	        !vflx_conv is invalid on ocean-facing calving cells
+!		model%velocity_hom%vflx_conv(ew,ns) = 0.d0
+!	        model%velocity_hom%flx_conv(ew,ns) = 0.d0
+!	     else
+
+	     model%velocity_hom%vflx_conv(ew,ns) = &
+		 -1.d0 * &
+	          (0.5d0*model%velocity_hom%vflx(ew  ,ns)   &
+	         - 0.5d0*model%velocity_hom%vflx(ew  ,ns-1) &
+                 + 0.5d0*model%velocity_hom%vflx(ew-1,ns  ) &
+	         - 0.5d0*model%velocity_hom%vflx(ew-1,ns-1))/ &
+	        model%numerics%dns
+	   
+             model%velocity_hom%flx_conv(ew,ns) = &
+	           model%velocity_hom%uflx_conv(ew,ns) + &
+ 	           model%velocity_hom%vflx_conv(ew,ns)
+
+         end do
+      end do
+
+         else if (model%options%which_ho_diagnostic == HO_DIAG_PLUG) then
+            ! impose no zonal velocity
+            model%velocity_hom%uvel = 0.d0
+
+            ! north-south velocity is set to be equal to the velocity of the
+            ! northern edge
+            model%velocity_hom%vvel = model%velocity_hom%vvel(1, &
+                                                              model%general%ewn / 2 ,&
+                                                              model%general%nsn-1 )
+            model%velocity_hom%uflx = 0.d0
+
+            do ns = 1,model%general%nsn-1
+               do ew = 1,model%general%ewn-1 
+                  model%velocity_hom%vflx(ew,ns) = vertintg(model%general%upn,&
+                                                            model%numerics%sigma, &
+                                                            model%velocity_hom%vvel(:,ew,ns)* &
+                                                            model%geomderv%stagthck(ew,ns))
+               end do
+            end do
+            
          end if
         !Compute the velocity norm - this is independant of the methods used to compute the u and v components so
         !we put it out here
@@ -209,6 +269,31 @@ contains
         model%velocity_hom%is_velocity_valid = .true.
         
     end subroutine
+
+    function vertintg(upn, sigma, in) 
+ 
+      implicit none 
+ 
+      integer, intent(in) :: upn
+      real (kind = dp), dimension(:), intent(in) :: sigma
+      real (kind = dp), dimension(:), intent(in) :: in 
+      real (kind = dp) :: vertintg 
+      real(kind=dp),dimension(upn) :: dups
+
+      integer :: up 
+
+      dups = (/ (sigma(up+1) - sigma(up), up=1,upn-1), 0.0d0 /) 
+      vertintg = 0.0d0 
+
+      do up = upn-1, 1, -1 
+         vertintg = vertintg + sum(in(up:up+1)) * dups(up) 
+      end do
+ 
+      vertintg = vertintg / 2.0d0 
+ 
+      return 
+ 
+    end function vertintg
 
     subroutine velo_hom_pattyn(ewn, nsn, upn, dew, dns, sigma, &
                                thck, usrf, lsrf, dthckdew, dthckdns, dusrfdew, dusrfdns, &

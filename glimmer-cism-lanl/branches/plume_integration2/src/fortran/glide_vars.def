@@ -118,14 +118,14 @@ coordinates:   lon lat
 dimensions:    time, y0, x0
 units:         meter2/year
 long_name:     flux in x direction
-data:          data%velocity%uflx
+data:          data%velocity_hom%uflx
 factor:        scale2d_f2
 
 [vflx]
 dimensions:    time, y0, x0
 units:         meter2/year
 long_name:     flux in x direction
-data:          data%velocity%vflx
+data:          data%velocity_hom%vflx
 factor:        scale2d_f2
 
 [diffu]
@@ -201,6 +201,25 @@ factor:        thk0
 standard_name: land_ice_thickness
 hot:           1
 coordinates:   lon lat
+
+[stagthk]
+dimensions:    time, y0, x0
+units:         meter
+long_name:     ice thickness staggered
+data:          data%geomderv%stagthck
+factor:        thk0
+standard_name: land_ice_thickness_staggered
+hot:           1
+coordinates:   lon lat
+
+[thk_t]
+dimensions:    time, y1, x1
+units:         1/year
+long_name:     logarithmic time derivative of thickness
+data:          data%geometry%thck_t
+standard_name: land_ice_thickness_t_log_deriv
+coordinates:   lon lat
+hot:           1
 
 [calving]
 dimensions:    time, y1, x1
@@ -558,3 +577,26 @@ long_name:    grounding line flux
 data:         data%ground%gline_flux
 coordinates:  lon lat
 
+[uflx_conv]
+dimensions:   time, y1, x1
+units:        meter/year
+long_name:    flux convergence in x direction
+data:         data%velocity_hom%uflx_conv
+coordinates:  lon lat
+factor:       scale2d_f10
+
+[vflx_conv]
+dimensions:   time, y1, x1
+units:        meter/year
+long_name:    flux convergence in y direction
+data:         data%velocity_hom%vflx_conv
+coordinates:  lon lat
+factor:       scale2d_f10
+
+[flx_conv]
+dimensions:   time, y1, x1
+units:        meter/year
+long_name:    total flux convergence
+data:         data%velocity_hom%flx_conv
+coordinates:  lon lat
+factor:       scale2d_f10
