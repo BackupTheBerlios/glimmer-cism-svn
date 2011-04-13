@@ -22,8 +22,12 @@ program nc_regrid
 
   ! first two old x values, and old y values
   real(kind=dp),dimension(2) :: x1_old,y1_old
-  real(kind=dp) :: k_perturb, amp_perturb, inflow_a
-  integer :: perturb_ramp
+  real(kind=dp) :: inflow_a
+  real(kind=dp) :: vvelhom_new_val = 0.d0
+  integer :: num_perturbs  ! this is the number of perturbations to apply
+  real(kind=dp),dimension(:),allocatable :: k_perturbs, amp_perturbs
+  integer,dimension(:),allocatable :: perturb_ramps
+
 
   !data arrays
   real(kind=dp),dimension(:),allocatable :: levels
@@ -49,14 +53,25 @@ subroutine main()
                                     &<thk_w_margin> <thk_e_margin> &
                                     &<kin_n_margin> <kin_s_margin> &
                                     &<kin_w_margin> <kin_e_margin> &
-                                    &<inflow_a> <k_perturb> &
-				    &<amp_perturb> <perturb_ramp>"
+                                    &<inflow_a> <vvelhom_new> [<k_perturb>, &
+				    &<amp_perturb> <perturb_ramp>]*"
 
-  character(len=128) :: argstr
+  character(len=512) :: argstr
+  integer :: n
+  integer,parameter :: n_baseargs = 19
 
-  if (command_argument_count() /= 21) then
+  if (command_argument_count() < n_baseargs) then
      write(*,*) "Usage: ", trim(gen_usage)
      stop 1
+  end if
+
+  if (mod(command_argument_count() - n_baseargs,3) /= 0) then
+     write(*,*) "Usage: ", trim(gen_usage)
+     stop 1
+  else
+     num_perturbs = (command_argument_count() - n_baseargs) / 3
+     allocate(k_perturbs(num_perturbs),amp_perturbs(num_perturbs))
+     allocate(perturb_ramps(num_perturbs))
   end if
 
   call get_command_argument(1,argstr)
@@ -132,16 +147,24 @@ subroutine main()
   write(*,*)'inflow_a', inflow_a
 
   call get_command_argument(19,argstr)
-  read(argstr,'(f18.12)') k_perturb
-  write(*,*)'k_perturb',k_perturb
+  read(argstr,'(f18.12)') vvelhom_new_val
+  write(*,*)'vvelhom_new_val', vvelhom_new_val
 
-  call get_command_argument(20,argstr)
-  read(argstr,'(f18.12)') amp_perturb
-  write(*,*) 'amp_perturb', amp_perturb
+  do n=1,num_perturbs
 
-  call get_command_argument(21,argstr)
-  read(argstr,'(i5)') perturb_ramp
-  write(*,*) 'perturb_ramp', perturb_ramp
+     call get_command_argument(n_baseargs +(n-1)*3 + 1,argstr)
+     read(argstr,'(f18.12)') k_perturbs(n)
+     write(*,*)'k_perturb',n,k_perturbs(n)
+
+     call get_command_argument(n_baseargs +(n-1)*3 + 2,argstr)
+     read(argstr,'(f18.12)') amp_perturbs(n)
+     write(*,*) 'amp_perturb',n, amp_perturbs(n)
+
+     call get_command_argument(n_baseargs +(n-1)*3 + 3,argstr)
+     read(argstr,'(i5)') perturb_ramps(n)
+     write(*,*) 'perturb_ramp',n, perturb_ramps(n)
+
+  end do
 
   call read_old_nc_file() 
 
@@ -159,42 +182,65 @@ subroutine main()
   deallocate(xs_new,ys_new,xstag_new,ystag_new,&
              thck_new,topog_new,kinbcmask_new, &
              uvelhom_new,vvelhom_new,temp_new)
+  deallocate(amp_perturbs,k_perturbs)
+  deallocate(perturb_ramps)
 
 end subroutine main
 
-subroutine perturb_north_rows(data, &
-                              nx, ny, &
-                              w_marg, e_marg, n_rows, &
-			      inflow_a, &
-                              k, amp, ramp_len)
-  
+subroutine perturb_rows(data, &
+     nx, ny, &
+     w_marg, e_marg, gl_rows, &
+     inflow_a, &
+     k_perturbs, amp_perturbs, ramp_lens,n_perturbs)
+
   real(kind=dp),dimension(:,:),intent(inout) :: data
   integer, intent(in) :: nx,ny
-  integer :: w_marg, e_marg, n_rows
-  integer :: ramp_len
-  real(kind=dp), intent(in) :: k, amp, inflow_a
+  integer,intent(in) :: w_marg, e_marg
+  integer, intent(in) :: gl_rows
+  integer,dimension(:),intent(in) :: ramp_lens
+  integer :: n_perturbs
+  real(kind=dp),dimension(:),intent(in) :: k_perturbs, amp_perturbs
+  real(kind=dp) :: inflow_a
   real(kind=dp),parameter :: pi = 3.1415926535897
 
   !local variables
-  integer :: i,j
+  integer :: i,j,k
   real(kind=dp) :: thk_perturb
+  integer :: last_row
 
+  do k=1,n_perturbs
+     if (ramp_lens(k) > 0) then
+        !last_row = ny-(n_rows+ramp_lens(k))+1
+        last_row = gl_rows+ramp_lens(k)
+     else
+        last_row = ny-4
+     end if
 
-  do i=w_marg+1,nx-e_marg
-     do j=ny-(n_rows+ramp_len)+1,ny
-        thk_perturb = amp * sin(2*pi*k*(i-w_marg-1.d0)/(nx-e_marg-w_marg-1.d0))
-	thk_perturb = thk_perturb + inflow_a * (xs_new(i)-xs_new((nx-1)/2+1))**2.0
+     do i=w_marg+1,nx-e_marg
+        do j=1,last_row
+           thk_perturb = amp_perturbs(k) * &
+                cos(2*pi*k_perturbs(k)*(i-w_marg-1.d0)/(nx-e_marg-w_marg-1.d0))
+           if (k < 2) then
+              thk_perturb = thk_perturb + &
+                   inflow_a * (xs_new(i)-xs_new((nx-1)/2+1))**2.0
+           end if
 
-        if (j <= (ny-n_rows)) then
-           !inside domain, ramping down
-           thk_perturb = thk_perturb * (j-(ny-(n_rows+ramp_len)+1.d0))/ramp_len
-        end if
-        data(i,j) = data(i,j) + thk_perturb
-        
+           if (ramp_lens(k) > 0) then
+              if (j > gl_rows) then
+                 !inside domain, ramping down
+                 thk_perturb = thk_perturb * (last_row-j)/ramp_lens(k)
+!              thk_perturb = thk_perturb * (j-(ny-(n_rows+ramp_lens(k))+1.d0))/ramp_lens(k)
+              end if
+           end if
+
+           data(i,j) = data(i,j) + thk_perturb
+
+        end do
      end do
+
   end do
 
-end subroutine perturb_north_rows
+end subroutine perturb_rows
 
 subroutine write_real_margins(data_old,data_new, &
                          test_sign, threshold, &
@@ -449,7 +495,22 @@ subroutine define_new_data()
      uvelhom_new = uvelhom_old
      vvelhom_new = vvelhom_old
      temp_new = temp_old
+ 
+     if ( vvelhom_new_val .ne. 0.d0) then
+	     where( vvelhom_old .ne. 0.d0)
+		vvelhom_new = vvelhom_new_val
+             elsewhere
+	        vvelhom_new = 0.d0
+             end where
+     end if
+
   else
+
+  if (vvelhom_new_val .ne. 0.d0) then
+	write(*,*) 'Have not implemented setting new velocity for new grid sizes'
+	stop 1
+  end if
+ 
   call write_real_margins(topog_old,topog_new, +1.0d0, 0.0d0,&
                           nx_old, nx_new,ny_old, ny_new, &
 	                  top_n_margin,top_s_margin,top_w_margin,top_e_margin)
@@ -494,9 +555,9 @@ subroutine define_new_data()
   end do
   end if
 
-  call perturb_north_rows(thck_new, nx_new, ny_new, &
-                          thk_w_margin, thk_e_margin,kin_n_margin, &
-                  	  inflow_a,k_perturb, amp_perturb,perturb_ramp)
+  call perturb_rows(thck_new, nx_new, ny_new, &
+                          thk_w_margin, thk_e_margin,kin_s_margin, & !note use of kin_s
+                  	  inflow_a,k_perturbs, amp_perturbs,perturb_ramps,num_perturbs)
 
 end subroutine define_new_data
 

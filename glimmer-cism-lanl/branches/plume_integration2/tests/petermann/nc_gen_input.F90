@@ -10,7 +10,7 @@ program nc_gen_input
 
   character(len=512) :: gen_usage = "nc_gen_input <type_code> &
        &nc_filename [params] &
-       &<type_code> = [cs|ts|gs|ss]"
+       &<type_code> = [cs|ts|gs|ss|ls]"
 
   character(len=512) :: conf_shelf_params = "<fname> <nx> <ny> <hx> <hy> &
        &<slope_start_pos> <grounded_ice_thk> &
@@ -102,6 +102,9 @@ contains
     real :: upstream_vel
     real :: otopg,ltopg
     real :: cutoff_usrf,rhoi_rhow,central_amp
+
+    print *,'Needs to be checked in case of northward ice flow'
+    stop 1
 
     if (command_argument_count() /= 16) then
        write(*,*)"Incorrect number of parameters. Ghost shelf requires:  ",trim(ghost_shelf_params)
@@ -270,6 +273,9 @@ contains
     real :: chan_depth,otopg,ltopg
     logical :: ns_switch
 
+    print *,'Needs to be checked in case of northward ice flow'
+    stop 1
+
     if (command_argument_count() /= 17) then
        write(*,*)"Incorrect number of parameters. Confined shelf requires:  ",trim(conf_shelf_params)
        stop 1
@@ -432,7 +438,7 @@ contains
 
     ! local variables
     integer :: i,j
-    integer :: ifpos,kinbcw
+    integer :: ifpos,glpos,kinbcw
     integer,parameter :: zero_buf = 1
     real :: hx,hy
     real :: rhoi, rhoo, glen_A
@@ -552,32 +558,39 @@ contains
     !define thickness
 
     thck = 0.0
-    thck(1+zero_buf:nx-zero_buf,(ny-kinbcw):ny) = upstream_thk 
-    
+!    thck(1+zero_buf:nx-zero_buf,(ny-kinbcw):ny) = upstream_thk 
+    thck(1+zero_buf:nx-zero_buf,1:kinbcw) = upstream_thk 
+
     k = (rhoi*g*0.25*(1.0-rhoi/rhoo))**3.0
 
-    if (acab_per_year .eq. 0.0) then
+!    glpos= ny-kinbcw + 1
+    glpos = kinbcw
 
-       do j=ifpos,(ny-kinbcw + 1)       
-          tmp = upstream_vel ** 4.0 - 4.0 * glen_A * k * &
-               (upstream_thk*upstream_vel)**3.0 * &
-               (ny - kinbcw + 1 - j)*hy
+    if (acab_per_year .eq. 0.d0) then
+
+!       do j=ifpos,glpos
+       do j=glpos+1,ifpos
+          tmp = upstream_vel ** 4.0 + 4.0 * glen_A * k * &
+               (upstream_thk*abs(upstream_vel))**3.0 * &
+               (j-glpos)*hy
+
           tmp = tmp ** 0.25  
+
           thck(1+zero_buf:nx-zero_buf,j) = abs(upstream_vel*upstream_thk) / tmp
           call random_number(rand_row)
           thck(1+zero_buf:nx-zero_buf,j) = thck(1+zero_buf:nx-zero_buf,j) * &
 	                                   (1+rand_amp*(0.5-rand_row))
        end do
-
     else
 
-      do j=ifpos,(ny-kinbcw)
-         tmp = upstream_vel ** 4.0 - (glen_A/acab_per_year)*k* &
-              ((upstream_vel*upstream_thk)**4.0 - (upstream_vel*upstream_thk - &
-                                                   acab_per_year*(ny-kinbcw+1-j)*hy)**4.0)
+!      do j=ifpos,(ny-kinbcw)
+      do j=glpos+1,ifpos
+         tmp = (upstream_vel) ** 4.0 - (glen_A/acab_per_year)*k* &
+              ((upstream_vel*upstream_thk)**4.0 - (upstream_vel*upstream_thk + &
+                                                   acab_per_year*(j-glpos)*hy)**4.0)
          tmp = tmp ** 0.25
-         thck(1+zero_buf:nx-zero_buf,j) = abs(upstream_vel*upstream_thk - &
-                                          acab_per_year*(ny-kinbcw+1-j)*hy)/tmp
+         thck(1+zero_buf:nx-zero_buf,j) = abs(upstream_vel*upstream_thk + &
+                                          acab_per_year*(j-glpos)*hy)/tmp
          call random_number(rand_row)
          thck(1+zero_buf:nx-zero_buf,j) = thck(1+zero_buf:nx-zero_buf,j)* &
                                           (1+rand_amp*(0.5-rand_row))
@@ -586,23 +599,27 @@ contains
 
     end if
 
+
     do i=1,nx
-    	do j=ifpos,(ny-kinbcw-1)
+    	do j=glpos,ifpos
 		chan_depth = 0.5 * chan_amp &
-	                  * (1-exp( real(j-(ny-kinbcw))*hy/chan_init_length))&
+	                  * (1-exp(-real(j-glpos)*hy/chan_init_length)) &
         	          * (1-cos((real(i-1)/real(nx-1))*2*pi*kx))
              	thck(i,j) = thck(i,j) - chan_depth
-          end do
-       end do
+        end do
+    end do
+    thck(:,1) = thck(:,2)
 
     ! define kinbcmask
     kinbcmask = 0
-    kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
-    
+!    kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
+    kinbcmask(:,1:2) = 1 !south edge
+
     uvelhom = 0.0
     vvelhom = 0.0
 
-    vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
+!    vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
+    vvelhom(:,1:2,:) = upstream_vel
 
     call write_nc_file(.true.)
 
@@ -716,17 +733,21 @@ contains
     topog = -abs(otopg)
     
     !define thickness
-
     thck = 0.0
-    thck(1+zero_buf:(nx-zero_buf),(ny-kinbcw):ny) = upstream_thk 
+!    thck(1+zero_buf:(nx-zero_buf),(ny-kinbcw):ny) = upstream_thk 
+    thck(1+zero_buf:(nx-zero_buf),1:kinbcw) = upstream_thk 
     
-    do j=ifpos,(ny-kinbcw)
-       thck(1+zero_buf:(nx-zero_buf),j) = if_thk + real(j-ifpos)/(ny-kinbcw+1-ifpos) * (upstream_thk-if_thk)
+!    do j=ifpos,(ny-kinbcw)
+    do j=(kinbcw+1),ifpos
+       thck(1+zero_buf:(nx-zero_buf),j) = if_thk +  &
+!              real(j-ifpos)/(ny-kinbcw+1-ifpos) * (upstream_thk-if_thk)
+            real(ifpos-j)/(ifpos-kinbcw) * (upstream_thk-if_thk)
     end do
 
     ! define kinbcmask
     kinbcmask = 0
-    kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
+!    kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
+    kinbcmask(:,1:kinbcw) = 1 !south edge
     if (noslip) then		    
        kinbcmask(1:(1+zero_buf),:) = 1
        kinbcmask((nx-1-zero_buf):(nx-1),:) = 1
@@ -736,17 +757,23 @@ contains
     vvelhom = 0.d0
 
     if (noslip) then
-       vvelhom(2:(nx-2),(ny-kinbcw):ny,:) = upstream_vel
+       !vvelhom(2:(nx-2),(ny-kinbcw):ny,:) = upstream_vel
+       !vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
+       vvelhom(:,1:kinbcw,:) = upstream_vel
     else
-        vvelhom(:,ny-kinbcw:ny-1,:) = upstream_vel
+       !vvelhom(:,ny-kinbcw:ny-1,:) = upstream_vel
+       vvelhom(:,1:kinbcw,:) = upstream_vel
     end if
 
-    do j=ny-kinbcw-10,ny
+    !do j=ny-kinbcw-10,ny
+    do j=2,min(10,ny)
        do i=1+zero_buf,nx-zero_buf
-          thck(i,j) = thck(i,j) + real(j-(ny-kinbcw-10))/real(ny-(ny-kinbcw-10)) & 
+!          thck(i,j) = thck(i,j) + real(j-(ny-kinbcw-10))/real(ny-(ny-kinbcw-10)) & 
+          thck(i,j) = thck(i,j) + real(10-j)/real(10-2) & 
                                   *inflow_a * (xs(i)-xs((nx-1)/2+1))*(xs(i)-xs((nx-1)/2+1))
        end do
     end do
+    thck(:,1) = thck(:,2) 
 
     call write_nc_file(.true.)
 
@@ -769,6 +796,9 @@ contains
          &<center_thk> <icefront_pos> &
          &<icefront_thk> <otopg> <ltopg> &
          &<kx> <chan_amp> <chan_init_l> <kinbcw>"
+
+    print *, 'this needs to be checked in case of northward ice flow'
+    stop 1
 
     if (command_argument_count() /= 15) then
        write(*,*)"Incorrect number of parameters. Two-sided shelf requires: ",&

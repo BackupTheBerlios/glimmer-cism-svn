@@ -3,6 +3,7 @@ import os
 import subprocess
 import pickle
 import copy
+import re
 
 class defaultdict(dict):
 
@@ -15,8 +16,6 @@ class defaultdict(dict):
             self[k] = copy.copy(self._defaultVal)
         return dict.__getitem__(self,k)            
 
-            
-            
 class FortranConversionException(Exception):
     def __init__(self, param_name):
         Exception.__init__(self,'Error converting key %s' % param_name)
@@ -56,6 +55,8 @@ class PlumeNamelist(object):
                      'entrain' : True,
                      'entype' : 1,
                      'C_i' : 20.0,
+                     'C_n' : 100.0,
+                     'C_s' : 100.0,
                      'basmelt' : True,
                      'rholinear' : True,
                      'thermobar' : False,
@@ -65,6 +66,7 @@ class PlumeNamelist(object):
                      'tangle' : False, 
                      'negfrz' : False,
                      'use_min_plume_thickness' : True,
+                     'use_neutral_salinity' : False,
                      'depinffix' : 0.0,
                      'plume_southern_bc' : 0,       # 0 means d/dy = 0
                                                     # 1 means linear extrapolation
@@ -83,6 +85,7 @@ class PlumeNamelist(object):
                      'ifdep' : 0.0,
                      'wcdep' : 1000.0,
                      'plume_min_thickness' : 10.0,
+                     'u_star_offset' : 0.0,
                      'infloain' : 0.0,
                      'infloein' : 0.0,
                      'knfloain' : 0.0,
@@ -163,15 +166,18 @@ class GCConfig(object):
                         'log_level' : 6,
                                        },
           'Petermann shelf' :
-                   {  'air_temperature' : -5,     # Temp assigned to ice in isothermal case
+                   {  'air_temperature' : -15,     # Temp assigned to ice in isothermal case
                       'accumulation_rate' : 0.0,   # In meters per year
                       'eustatic_sea_level' : 0.0, # Height of sea level relative to initial height
                       'check_for_steady': True,
-                      'thk_steady_tol' : 1.0e-5,  #relative change in thickess,
+                      'thk_steady_tol' : 1.0e-2,  #relative change in thickess,
                                                   # below which we assume the shelf is steady
+                      'mean_thk_steady_tol' : 1.0e-6,#steadiness requires ave value of
+                                                     # |d/dt (ln thk)| less  than this
+                                          
                       },
           'options' :
-            {'flow_law' : None,     # flow_law = 2 means constant A
+            {'flow_law' : 0,     # flow_law = 2 means constant A
                                               #          = 0 means calculate A from temperature
                                               # model%options%whichflwa
              'evolution' : 3,    # evolution = 0 means pseudo-diffusion
@@ -295,7 +301,7 @@ class GCConfig(object):
           'boundary condition params' :
               {'use_lateral_stress_bc' : True,
                'use_plastic_bnd_cond' : False,
-               'tau_xy_0' : 50.0e3,
+               'tau_xy_0' : None,
                'use_shelf_bc_1' : False,
                'use_sticky_wall' : False, # create a 'sticky spot' along wall or not
                'sticky_length' : 0,
@@ -312,17 +318,15 @@ class GCConfig(object):
                          'time' : None      #which time slice to read input data from
                          },
           'CF output' : { 'variables' : ' '.join(['lsurf','usurf',
-                                                  'thk','bmlt',
-                                                  'acab',
+                                                  'thk','thk_t','bmlt',
+                                                  'uflx_conv','vflx_conv','flx_conv',
                                                   'uvelhom',
                                                   'vvelhom',
                                                   #uvelhom_srf',
                                                   #'vvelhom_srf',
                                                   'thkmask','topg',
-                                                  'kinbcmask',
                                                   'temp',
                                                   'efvs',
-                                                  'flwa',
                                                   'tau_hom_xx','tau_hom_yy',
                                                   'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
                           ### NB: there is a (250) character limit on line length!!!
@@ -419,12 +423,11 @@ class _BaseJob(object):
 
     def __init__(self):
         ''' A virtual class that defines the basic interface for a job.
-        It has the public functions: assertCanStage, stage, serialize, run.
+        It has the public functions: assertCanStage, resolve, stage, serialize, run.
         '''
         self._name = None
-        self._jobDir = None
         self._driver = 'shelf_driver'
-        
+
         self.completed = False
         self.started = False
         self.timeStop = 0.0
@@ -435,27 +438,75 @@ class _BaseJob(object):
         self.errorMessage = ''
         
         #any constants that should basically never change
-        self.kinbcw = 2
-        self.plume_landw = 2
-        self.ice_zero_thk_buf = 1
+        self.kinbcw = 2   #width of band on which ice vel is specified
+        self.plume_landw = 2 #width of land cell padding for plume grid
+        self.ice_zero_thk_buf = 1 # width of zero thickness on sides of ice domain
+        
         self.total_side_buf = self.ice_zero_thk_buf
         self.total_side_buf_east = self.total_side_buf
         self.total_side_buf_west = self.total_side_buf
 
+        self._pnl = PlumeNamelist()
+        self._gcconfig = GCConfig()
 
-    def _setJobDir(self,jd):
-        jd = os.path.expandvars(jd)
+        #self.plume and self.gc are used to directly specify parameter values that
+        # should override the values already in self._pnl and self._gcconfig
+        self.plume = {}
+        self.gc = defaultdict({})
+
+    def _getJobDir(self):
+        jd = os.path.join(os.path.expandvars('$GC_JOBS'),self.name)
         if (not(os.path.exists(jd))):
             os.makedirs(jd)
-            #raise Exception("Directory %s does not exist" % jd)
-        self._jobDir = os.path.abspath(jd)
-        
-    def _getJobDir(self):
-        if (self._jobDir is None):
-            raise Exception("Jobdir was not specified")
-        return self._jobDir
-    jobDir = property(fset=_setJobDir,fget=_getJobDir)
-
+        return os.path.abspath(jd)
+    def _get_input_cmds_log(self):
+        return os.path.join(self.jobDir,'input_cmds.log')
+    def _getserialfile(self):
+        return os.path.join(self.jobDir,'%s.gcpl' % self.name)
+    def _getUnderlyingJob(self):
+        raise Exception('must override this method')
+    def _setname(self,n):
+        self._name = n
+    def _getname(self):
+        if (self._name is None):
+            raise Exception("self.name is not defined")
+        return self._name
+    def _assertName(self):
+        if (self._name is None):
+            raise Exception("Name not defined yet")
+    def _get_inputfile(self):
+        self._assertName()
+        return os.path.join(self.jobDir,'%s.in.nc' % self.name)
+    def _get_outputfile(self):
+        self._assertName()
+        return os.path.join(self.jobDir,"%s.out.nc" % self.name)
+    def _get_gc_config_file(self):
+        self._assertName()
+        return os.path.join(self.jobDir,"%s.config" % self.name)
+    def _get_plume_nl_file(self):
+        self._assertName()
+        return os.path.join(self.jobDir,"%s.nl" % self.name)
+    def _get_plume_outputfile(self):
+        self._assertName()
+        return os.path.join(self.jobDir,"plume.%s.out.nc" % self.name)
+    def _get_use_plume(self):
+        if ('options' in self.gc):
+            if ('use_plume' in self.gc['options']):
+                return (self.gc['options']['use_plume'] == 1)
+        return (self._gcconfig.vals['options']['use_plume'] == 1)
+                
+    name = property(fset=_setname,fget=_getname)
+    jobDir = property(fget=_getJobDir)
+    underlyingJob = property(fget=_getUnderlyingJob)
+    serialFile = property(fget=_getserialfile)
+    outputfile = property(fget=_get_outputfile)
+    inputfile = property(fget=_get_inputfile)
+    gc_config_file = property(fget=_get_gc_config_file)
+    input_cmds_log = property(fget=_get_input_cmds_log)
+    plume_output_file = property(fget=_get_plume_outputfile)
+    plume_nl_file = property(fget=_get_plume_nl_file)
+    use_plume = property(fget=_get_use_plume)
+    
     def assertCanStage(self):
         '''Check that all the fields of this job have
         been assigned a value.'''
@@ -468,149 +519,14 @@ class _BaseJob(object):
         if len(notFound):
             raise Exception("Failed to find values for %s" % ','.join(notFound))
 
-    def stage(self,genInput=True):
+    def resolve(self,gc={},plume={}):
         raise Exception("must override")
-
-    def run(self):
-        raise Exception("must override")
-
-    def _getserialfile(self):
-        return os.path.join(self.jobDir,
-                            '%s.gcpl' % self.name)
-
-    serialFile = property(fget=_getserialfile)
-
-    def _getStartJob(self):
-        return self
-    startJob = property(fget=_getStartJob)
     
-    def serialize(self):
-        if (self.name is None):
-            raise Exception("No name was assigned to this job")
+    def stage(self,genInput=False):
 
-        try:
-            self.jobDir
-        except Exception:
-            self.jobDir = os.path.join(os.path.expandvars('$GC_JOBS'),
-                                       self.name)
-            
-        if (not( os.path.lexists(self.jobDir))):
-            os.mkdir(self.jobDir)
-        try:
-            f = open(self.serialFile, 'w')
-        except:
-            raise Exception("Couldn't create file %s to store serialized job" % self.serialFile)
-        try:
-            pickle.dump(self, f)
-        finally:
-            f.close()
-
-    def _setname(self,n):
-        self._name = n
-        jd = os.path.join(os.path.expandvars('$GC_JOBS'),
-                          n)
-        if (not(os.path.exists(jd))):
-            os.makedirs(jd)
-        self.jobDir = jd
+        if (genInput):
+            raise Exception("Don't know how to genInput in _BaseJob")
         
-    def _getname(self):
-        if (self._name is None):
-            raise Exception("self.name is not defined")
-        return self._name
-    name = property(fset=_setname,fget=_getname)
-
-    def _assertName(self):
-        if (self.name is None):
-            raise Exception("Name not defined yet")
-
-    def get_inputfile(self):
-        self._assertName()
-        return os.path.join(self.jobDir,
-                            '%s.in.nc' % self.name)
-    inputfile = property(fget=get_inputfile) 
-
-    def get_outputfile(self):
-        self._assertName()
-        return os.path.join(self.jobDir,
-                            "%s.out.nc" % self.name)
-    outputfile = property(fget=get_outputfile)
-    
-    def get_gc_config_file(self):
-        self._assertName()
-        return os.path.join(self.jobDir,
-                            "%s.config" % self.name)
-    gc_config_file = property(fget=get_gc_config_file)
-
-    def get_plume_nl_file(self):
-        self._assertName()
-        return os.path.join(self.jobDir,
-                            "%s.nl" % self.name)
-    plume_nl_file = property(fget=get_plume_nl_file)
-
-    def get_plume_outputfile(self):
-        self._assertName()
-        return os.path.join(self.jobDir,
-                            "plume.%s.out.nc" % self.name)
-    plume_output_file = property(fget=get_plume_outputfile)
-
-    def run(self,overwrite=False):
-        if (not(overwrite) and \
-            os.path.exists(self.outputfile)):
-            raise Exception("Outputfile %s already exists" %
-                            self.outputfile)
-    
-        
-        pwd = os.path.abspath(os.curdir)
-        os.chdir(self.jobDir)
-        cmd = [self._driver, self.gc_config_file]
-        _check_calls([cmd])
-        os.chdir(pwd)
-
-
-    
-class _AtomicJob(_BaseJob):
-    ''' To define an _AtomicJob:
-    j = _AtomicJob()
-    j.name = 'whatever'
-    j.jobDir = 'whereever'
-    
-    #can use
-    j.plume['dt1'] = 10.0
-    j.plume['salttop'] = 34.5
-    ...
-    
-    #check if staging will work
-    j.assertCanStage()
-
-    # write out the job to a file in the jobDir
-    j.serialize() 
-
-    Note, that when j.run() is called, it will invoke j.resolve(),
-    in which values in j.plume and j.gc override values provided  using 'shortcut'
-    properties like j.plume_const_bmlt
-
-    '''
-    def __init__(self):
-        _BaseJob.__init__(self)
-
-
-        
-        self._pnl = PlumeNamelist()
-        self._gcconfig = GCConfig()
-
-        #self.plume and self.gc are used to directly specify parameter values that
-        # should override the values already in self._pnl and self._gcconfig
-        self.plume = {}
-        self.gc = defaultdict({})
-        
-    def _genInputCmds(self):
-        #generate the netcdf input command, assuming that this 
-        #job has already been resolve'ed
-        raise Exception("must override")
-        
-
-    def stage(self,genInput=True):
-
         #update the config dictionaries
         for (section_name,section_data) in self.gc.items():
             if (not (section_name in self._gcconfig.vals)):
@@ -644,20 +560,66 @@ class _AtomicJob(_BaseJob):
         finally:
             g.close()
             
-        if (genInput):
-            #figure out what command is needed to generate the netcdf input file
-            cmds = self._genInputCmds()
-            # and then do it
-            _check_calls(cmds)
 
+    def serialize(self):
 
-class _GenInputJob(_AtomicJob):
+        try:
+            f = open(self.serialFile, 'w')
+        except:
+            raise Exception("Couldn't create file %s to store serialized job" % self.serialFile)
+        try:
+            pickle.dump(self, f)
+        finally:
+            f.close()
 
+    def run(self,overwrite=False):
+        if (not(overwrite) and \
+            os.path.exists(self.outputfile)):
+            raise Exception("Outputfile %s already exists" %
+                            self.outputfile)
+
+        if (overwrite):
+            os.chmod(self.jobDir,0770)
+        
+        pwd = os.path.abspath(os.curdir)
+        os.chdir(self.jobDir)
+        cmd = [self._driver, self.gc_config_file]
+        try:
+            _check_calls([cmd], self.input_cmds_log)
+            #os.chmod(self.jobDir,0550)
+            
+        finally:
+            os.chdir(pwd)
+
+    
+class _GenInputJob(_BaseJob):
+    ''' To define a _GenInputJob:
+    j = _GenInputJob()
+    j.name = 'whatever'
+    j.jobDir = 'whereever'
+    
+    #can use
+    j.plume['dt1'] = 10.0
+    j.plume['salttop'] = 34.5
+    ...
+    
+    #check if staging will work
+    j.assertCanStage()
+
+    # write out the job to a file in the jobDir
+    j.serialize() 
+
+    Note, that when j.run() is called, it will invoke j.resolve(),
+    in which values in j.plume and j.gc override values provided  using 'shortcut'
+    properties like j.plume_const_bmlt
+
+    '''
     def __init__(self):
-        _AtomicJob.__init__(self)
+        _BaseJob.__init__(self)
 
         #fields with default values
-        self.ifpos = 5
+        #self.ifpos = 5
+        self.ifpos = self.plume_landw + self.n - 4
         self.rhoi = 910.0
         self.rhoo = 1028.0
         self.kx = 0.0
@@ -681,10 +643,45 @@ class _GenInputJob(_AtomicJob):
         self.default_flwa = None
         self.uniform_acab = None
         self.randthk = None
-        self.use_plume = None
 
+    def _genInputCmds(self):
+        #generate the netcdf input command, assuming that this 
+        #job has already been resolve'ed
+        raise Exception("must override")
+        
+
+    def _getifpos(self):
+        if (self.n is None):
+            raise Exception('n is not defined yet')
+        else:
+            return self.n - 4
+    ifpos = property(fget=_getifpos)
+    def _getglpos(self):
+        if (self.n is None):
+            raise Exception('n is not defined yet')
+        else:
+            return 2
+    glpos = property(fget=_getglpos)
+        
+    def stage(self,genInput=True):
+        _BaseJob.stage(self,genInput=False)
+        if (genInput):
+            #figure out what command is needed to generate the netcdf input file
+            cmds = self._genInputCmds()
+            # and then do it
+            _check_calls(cmds, self.input_cmds_log)
         
     def resolve(self,gc_override={},plume_override={}):
+
+        self.gc['CF output'].update({'name' : self.outputfile})
+        self.gc['CF input'].update({'name' : self.inputfile,
+                                    'time' : 1 })
+        self.gc['CF default'].update({'title' : self.name })
+        
+        self.gc['plume'].update( {'plume_nl_file' : self.plume_nl_file,
+                                  'plume_output_file' : self.plume_output_file,
+                                  'plume_output_prefix' : self.name } )
+        
         self.plume['hx'] = self.hx
         self.plume['hy'] = self.hy
         self.plume['gldep'] = self.upthk
@@ -692,43 +689,36 @@ class _GenInputJob(_AtomicJob):
         self.plume['n_grid'] = self.n + (1*self.plume_landw)
         self.plume['dt1'] = self.plume_dt
 
-    
         self.gc['options'].update({    'temperature' : 0, #isothermal
-                                                   'use_plume' : self.use_plume,
-                                                   'hotstart' : 0,
-                                                   })
+                                       'use_plume' : self.use_plume,
+                                       'hotstart' : 0,
+                                       })
         self.gc['parameters'].update({ 'default_flwa' : self.default_flwa,
                                                   })
         self.gc['CF output'].update({'frequency' : self.ice_dt,
-                                                 'name' : self.outputfile,
-                                                 'start' : self.tstart,
-                                                 'stop' : self.tend,
-                                                })
-        self.gc['CF input'].update({'name' : self.inputfile,
-                                                'time' : 1,
-                                               })
-        self.gc['CF default'].update({'title' : self.name,
-                                                 })
+                                     'start' : self.tstart,
+                                     'stop' : self.tend,
+                                     })
+
         self.gc['time'].update({ 'dt' : self.ice_dt,
                                             'tend' : self.tend,
                                             'tstart' : self.tstart,
                                             })
         self.gc['grid'].update({'dew' : self.hx,
-                                           'dns' : self.hy,
-                                           'ewn' : self.m,
-                                           'nsn' : self.n,
-                                           'upn' : self.nlevel
-
-                                           })
+                                'dns' : self.hy,
+                                'ewn' : self.m,
+                                'nsn' : self.n,
+                                'upn' : self.nlevel
+                                
+                                })
 
         self.gc['plume'].update(
             {'plume_imax' : self.m + 2*(self.plume_landw) - self.total_side_buf_east,
              'plume_imin' : 1+                              self.total_side_buf_west,
-             'plume_kmin' : self.ifpos,
-             'plume_kmax' : self.n + self.plume_landw,
-             'plume_nl_file' : self.plume_nl_file,
-             'plume_output_file' : self.plume_output_file,
-             'plume_output_prefix' : self.name,
+             #'plume_kmin' : self.ifpos,
+             #'plume_kmax' : self.n + self.plume_landw,
+             'plume_kmin' : 1,
+             'plume_kmax' : self.ifpos,
              })
 
 
@@ -749,13 +739,17 @@ class LinearShelfJob(_GenInputJob):
     def _genInputCmds(self):
         cmd = ['nc_gen_input']
         cmd.extend(['ls', self.inputfile,
-                    int(self.m), int(self.n), int(self.nlevel), float(self.hx), float(self.hy),
+                    int(self.m), int(self.n), int(self.nlevel),
+                    float(self.hx), float(self.hy),
                     float(self.upthk), float(self.upvel),
                     float(self.inflow_a), int(self.ifpos), float(self.ifthk),
-                    float(self.otopg), int(self.kinbcw),self.noslip])
+                    float(self.otopg), int(self.kinbcw), self.noslip])
         cmd = [_fortran_style('nc_gen_input', c) for c in cmd]
         return [cmd]
 
+    def _getUnderlyingJob(self):
+        return self
+    
 class SandersonShelfJob(LinearShelfJob):
 
     def __init__(self):
@@ -766,10 +760,11 @@ class SandersonShelfJob(LinearShelfJob):
 
     def resolve(self,gc_override={},plume_override={}):
         
-        shelf_length = (self.n-self.kinbcw-(self.ifpos-1))*self.hy
+        #shelf_length = (self.n-self.kinbcw-(self.ifpos-1))*self.hy
+        shelf_length = (self.ifpos-(self.kinbcw-1))*self.hy
         widthY = (self.m- 2*1)*self.hx/2.0
         g = 9.81
-        slope = 2*self.tauxy0/ (self.rhoi*g*widthY*(1-self.rhoi/self.rhoo))
+        slope = 2*abs(self.tauxy0)/(self.rhoi*g*widthY*(1-self.rhoi/self.rhoo))
         self.ifthk = self.upthk - slope*shelf_length
 
         self.gc.update(  {'boundary condition params' : {'tau_xy_0' : self.tauxy0,
@@ -795,273 +790,195 @@ class SteadyShelfJob(_GenInputJob):
         return [cmd]
 
 
-ssj = SteadyShelfJob()
-ssj.name = 'test'
-jd = os.path.join(os.path.expandvars('$GC_JOBS'),
-                          'test')
-if (not(os.path.lexists(jd))):
-    os.mkdir(jd)
-ssj.jobDir = jd
-
-ssj.m = 20
-ssj.n = 20
-ssj.upvel = -1000.0
-ssj.upthk = 600.0
-ssj.use_plume = 1
-ssj.plume_dt = 60.0
-ssj.ice_dt = 0.1
-ssj.default_flwa = 1.0e-16
-ssj.uniform_acab = 0.0
-ssj.nlevel = 3
-ssj.tend = 100.0
-ssj.tstart = 0.0
-ssj.hx = 1000.0
-ssj.hy = 1000.0
-ssj.otopg = -1200.0
-ssj.randthk = 0.0
-ssj.plume ={'saltbot' : 34.5,
-            'salttop' : 34.5,
-            'temptop' : 0.0,
-            'tempbot' : 0.0,
-            'phi'   : 0.0,
-            }
-ssj.gc ={'options' : {'flow_law' : 0,
-                      },
-         }
-            
-
-class FixedBasalMeltJob(LinearShelfJob):
-
-    def __init__(self):
-        
-        LinearShelfJob.__init__(self)
-        self.use_plume = 1
-        self.plume_dt = 1.0
-        self.plume = {'entr_time_const' : 0.0,
-                      'phi' : 0.0,
-                      'salttop' : 0.0,
-                      'saltbot' : 0.0,
-                      'tempbot' : 0.0,
-                      'temptop' : 0.0,
-                      'tiuniform' : 0.0,
-                      'restart' : True,
-                      }
-        self.gc.update( {'plume' : { 'plume_const_bmlt' : False,
-                                     'plume_initial_bmlt' : True,
-                                     },
-                         } )
-        
-    def _getPlumeInputFile(self):
-        return os.path.join(self.jobDir,
-                            'plume_input.out.nc')
-    plume_input = property(fget=_getPlumeInputFile)
-
-    def resolve(self,gc_override={},plume_override={}):
-        LinearShelfJob.resolve(self,gc_override,plume_override)
-        self.plume.update( {'restart_data_filename' : '"%s"' % self.plume_input} )
-        
-    def _genInputCmds(self):
-        cmd1 = ['nc_gen_plume']
-        cmd1.extend(['fb', self.plume_input,
-                    int(self.m+4), int(self.n+2), float(self.hx), float(self.hy)])
-        cmd1 = [_fortran_style('nc_gen_plume', c) for c in cmd1]
-        
-        cmd2 = LinearShelfJob._genInputCmds(self)
-        cmd2 = [[_fortran_style('nc_gen_plume', c) for c in cmd] for cmd in cmd2]
-
-        cmds = [cmd1]
-        cmds.extend( cmd2 )
-        return cmds
-
-    
 class RestartIceJob(_BaseJob):
     
-    def __init__(self,initJobName,initJobDir=None):
+    def __init__(self,initJobName,initJobDir=None,newName=None):
         _BaseJob.__init__(self)
 
-        initJobFile = os.path.join(os.path.expandvars('$GC_JOBS'),
-                                      initJobName,
-                                      '%s.gcpl' % initJobName)
-
-        f = open(initJobFile,'r')
-        try:
-            self.initJob = pickle.load(f)
-        finally:
-            f.close()
-
+        #first locate the initial job directory
         if (initJobDir is None):
             _initJobDir = os.path.join(os.path.expandvars('$GC_JOBS'),
                                        initJobName)
         else:
             _initJobDir = initJobDir
-        _initJobName = self.initJob.name
+            
+        initJobFile = os.path.join(_initJobDir,
+                                   '%s.gcpl' % initJobName)
+        f = open(initJobFile,'r')
+        try:
+            self._initJob = pickle.load(f)
+        finally:
+            f.close()
+        
+        _initJobName = self._initJob.name
 
-        self.initJobInputNcFile = os.path.join(_initJobDir,
-                                        os.path.basename(self.initJob.outputfile))
+        self._initJobInputNcFile = os.path.join(_initJobDir,
+                                               os.path.basename(self._initJob.outputfile))
 
         # figure out new name for this job
-        
-        if (len(_initJobName.split('_restart_')) > 1):
-            newindex = int(_initJobName.split('_restart_')[1])+1
-            self.name = "%s_restart_%s" % (_initJobName.split('_restart_')[0],newindex)
+        if (newName is None):
+            if (len(_initJobName.split('_restart_')) > 1):
+                try:
+                    newindex = int(_initJobName.split('_restart_')[1])+1
+                    self.name = "%s_restart_%s" % (_initJobName.split('_restart_')[0],newindex)
+                except ValueError:
+                    self.name = _initJobName
+            else:
+                self.name = "%s_restart_%s" % (_initJobName, 1)
         else:
-            self.name = "%s_restart_%s" % (_initJobName, 1)
+            self.name = newName
 
         #parse the output of the old job to figure out the last time and index
-        p = subprocess.Popen(['ncdump','-v', 'time', self.initJobInputNcFile],stdout=subprocess.PIPE)
+        p = subprocess.Popen(['ncdump','-v', 'time', self._initJobInputNcFile],stdout=subprocess.PIPE)
         times = p.stdout.read()
 
         self._inputNcTimeIndex = int(times.split('(')[1].split('currently')[0].strip())
         self.tstart = float(times.split('time =')[-1].split()[-3])
+        self.tend = self._initJob._gcconfig.vals['time']['tend'] # default value
         
-#        self._gcconfig = self.initJob._gcconfig
-#        self._pnl = self.initJob._pnl
-#        self.gc = self.initJob.gc
-#        self.plume = self.initJob.plume
-#        self._jobDir = None
-        self.tend = None
-        self.doPlumeRestart = True
         self.gc = defaultdict({})
         self.plume = {}
-            
-    def _setJobDir(self,jd):
-        realDir = os.path.expandvars(jd)
-        if (not(os.path.lexists(realDir))):
-            raise Exception("jobDir %s does not exist" % realDir)
-        else:
-            self.initJob.jobDir = realDir
-            self._jobDir = realDir
-    def _getJobDir(self):
-        if (self._jobDir is None):
-            self._jobDir = os.path.join(os.path.expandvars('$GC_JOBS'),
-                                        self.name)
-            if (not(os.path.exists(self._jobDir))):
-                os.makedirs(self._jobDir)
-        return self._jobDir
-    jobDir = property(fget=_getJobDir,fset=_setJobDir)
 
-    def _setm(self,m):
-        self.initJob.m = m
-    def _getm(self):
-        return self.initJob.m
-    m = property(fget=_getm,fset=_setm)
+        self.doPlumeRestart = True
+        self.newJob = copy.copy(self._initJob)
+        self.newJob.name = self.name
+        
+        self._plume_restart_file = os.path.join(self.jobDir,
+                                                'last_time.%s' %
+                                                os.path.basename(self._initJob.plume_output_file))
+        
+    def _getUnderlyingJob(self):
+        return self.newJob.underlyingJob
+    underlyingJob = property(fget=_getUnderlyingJob)
 
-    def _setn(self,n):
-        self.initJob.n = n
-    def _getn(self):
-        return self.initJob.n
-    n = property(fget=_getn,fset=_setn)
+    def _get_m(self):
+        return self.newJob.m
+    m = property(fget=_get_m)
 
-#    def _settstart(self,t):
-#        self.initJob.tstart = t
-#    def _gettstart(self):
-#        return self.initJob.tstart
-#    tstart = property(fset=_settstart,fget=_gettstart)
-
-#    def _settend(self,t):
-#        self.initJob.tend = t
-#    def _gettend(self):
-#        return self.initJob.tend
-#    tend = property(fset=_settend,fget=_gettend)
-
-    def _getstartJob(self):
-        return self.initJob.startJob
-    startJob = property(fget=_getstartJob)
-    
-#!    def _setuse_plume(self,u):
-#!        self.initJob.use_plume = u
-#!    def _getuse_plume(self):
-#!        return self.initJob.use_plume
-#!    use_plume = property(fset=_setuse_plume,fget=_getuse_plume)
-
-#!    def _setplumedict(self, pd):
-#!        self.initJob.plume.update(pd)
-#!    def _getplumedict(self):
-#!        return self.initJob.plume
-#!    plume = property(fset=_setplumedict,fget=_getplumedict)
-
-#!    def _setgcdict(self, gcd):
-#!        self.initJob.gc.update(gcd)
-#!    def _getgcdict(self):
-#!        return self.initJob.gc
-#!    gc = property(fset=_setgcdict,fget=_getgcdict)
+    def _get_n(self):
+        return self.newJob.n
+    n = property(fget=_get_n)
     
     def resolve(self,gc_override={},plume_override={}):
         #resolve the contained job
-
         self.gc['time']['tstart'] = self.tstart
-        self.gc['time']['tend']   = self.tend
         self.gc['CF output']['start'] = self.tstart
-        self.gc['CF output']['stop'] = self.tend
 
-#        if (self.doPlumeRestart):
-#            self.plume['restart'] = True
-#            self.plume['restart_data_filename']  = self.initJob.plume_output_file
-#        else:
-        self.plume['restart'] = False
-        self.plume['restart_data_filename'] = ''
+        self.gc['CF output']['stop'] = self.tend
+        self.gc['time']['tend'] =     self.tend
         
+        if ('doPlumeRestart' in self.__dict__):
+            if (self.doPlumeRestart):
+                self.plume['restart'] = True
+                try:
+                    self.plume['restart_data_filename'] = '"%s"' % self._plume_restart_file
+                except:
+                    pass
+            else:
+                self.plume['restart'] = False
+        else:
+            self.plume['restart'] = False
+            
         for k in gc_override.keys():
             self.gc[k].update(gc_override[k])
 
         self.plume.update(plume_override)
-        self.initJob.resolve(self.gc,self.plume)
+
+        self.newJob.name = self.name
+        self.underlyingJob.name = self.name
+
+        self.newJob.resolve(self.gc,self.plume)
 
     def assertCanStage(self):
-        self.initJob.assertCanStage()
+        self.newJob.assertCanStage()
         _BaseJob.assertCanStage(self)
 
-#    def run(self,overwrite=False):
-#        self.initJob.run(overwrite)
-
-    def stage(self, genInput=True):
+    def stage(self,genInput=True):
 
         self.assertCanStage()
-        self.initJob.name = self.name
-        self.initJob.stage(genInput=False)
+        self.newJob.stage(genInput=False)
         if (genInput):
-            cmd = self._genInput()
-            _check_calls([cmd])
-
-    def _genInput(self):
+            cmds = self._genInputCmds()
+            _check_calls(cmds, self.input_cmds_log)
+    
+    def _genInputCmds(self):
         cmd =['nc_regrid']
-        cmd.extend([self.initJobInputNcFile,
+        cmd.extend([self._initJobInputNcFile,
                     self.inputfile,
                     self._inputNcTimeIndex,
                     self.m,self.n,
                     0,0,0,0, 
-                    0,4,1,1,
-                    self.initJob.kinbcw, 4,0,0,
-                    0.0, 0.0, 0.0, 0])             
-        cmd = [_fortran_style('nc_regrid', c) for c in cmd]
-        return cmd
+#                    0,4,1,1,
+#                    self.newJob.kinbcw, 4,0,0,
+                    4,2,1,1,
+                    0,self.newJob.kinbcw,0,0,
+                    0.0,           0.0])             
+        cmd1 = [_fortran_style('nc_regrid', c) for c in cmd]
+        
+        cmds = [cmd1]
+
+        if (self.doPlumeRestart):
+            cmd2 = ['nc_last_time_slice.py', self._initJob.plume_output_file,
+                    '-o%s' % self._plume_restart_file.strip()]
+            cmds.append(cmd2)
+        return cmds
 
 class IntroGLPerturbJob(RestartIceJob):
 
-    def __init__(self, initJobname):
-        RestartIceJob.__init__(self,initJobname)
+    def __init__(self, initJobName, initJobDir=None, newJobName=None):
+        RestartIceJob.__init__(self,initJobName,initJobDir,newJobName)
         
         self.k = None
         self.amp = None
         self.ramp_len = None
         self.inflow_a = None
         
-    def _genInput(self):
+    def _genInputCmds(self):
 
         cmd = ['nc_regrid']
-        cmd.extend([self.initJobInputNcFile,
+        cmd.extend([self._initJobInputNcFile,
                     self.inputfile,
                     self._inputNcTimeIndex,
                     self.m,self.n,
                     0,0,0,0, 
-                    0,4,1,1,
-                    2,4,1,1,
+                    4,2,1,1,
+                    0,2,0,0,
                     self.inflow_a,
                     self.k, self.amp, self.ramp_len])
         
-        cmd = [_fortran_style('nc_pertrub_gl',c) for c in cmd]
+        cmd = [_fortran_style('nc_perturb_gl',c) for c in cmd]
 
-        return cmd
+        return [cmd]
+
+class ListPerturbJob(RestartIceJob):
+
+    def __init__(self, initJobName, initJobDir=None, newJobName=None):
+        RestartIceJob.__init__(self,initJobName,initJobDir,newJobName)
+
+        #perturb_list should have the form of a list of triples
+        self.perturb_list = []
+        self.inflow_a = None
+        self.vvelhom_new_val = None
+        
+    def _genInputCmds(self):
+
+        cmd = ['nc_regrid']
+        cmd.extend([self._initJobInputNcFile,
+                    self.inputfile,
+                    self._inputNcTimeIndex,
+                    self.m,self.n,
+                    0,0,0,0, 
+                    4,2,1,1,
+                    0,2,0,0,
+                    self.inflow_a,
+                    self.vvelhom_new_val*1.0,
+                    ])
+        for (k,amp,len) in  self.perturb_list:
+            cmd.extend([k,amp,len])
+        
+        cmd = [_fortran_style('nc_perturb_gl',c) for c in cmd]
+
+        return [cmd]
 
 class RegridIceJob(RestartIceJob):
 
@@ -1071,27 +988,206 @@ class RegridIceJob(RestartIceJob):
         self.new_n = new_n
         
     def _genInput(self):
-        
+
         cmd =['nc_regrid']
         cmd.extend([self.inputNcFile,
-                    self.initJob.inputfile,
+                    self._initJob.inputfile,
                     self._inputNcTimeIndex,
                     self.new_m,self.new_n,
                     0,0,0,0,
-                    2,4,1,1,  #n,s,e,w thickness buffers
-                    self.initJob.kinbcw, 0,0,0,
-                    0.0,0.0,0.0,0])             
+                    #2,4,1,1,  #n,s,e,w thickness buffers
+                    4,2,1,1,
+                    #self.newJob.kinbcw, 0,0,0,
+                    0,2,0,0,
+                    0.0,0.0])             
         cmd = [_fortran_style('nc_regrid', c) for c in cmd]
         return cmd
     
-class CheckpointJob(_BaseJob):
-    pass
+class FixedBasalMeltJob(RestartIceJob):
 
-def _check_calls(cmds):
+    def __init__(self,initJobName):
+        RestartIceJob.__init__(self,initJobName)
+
+        self.underlyingJob.gc['options']['use_plume'] = 1
+        self.plume_dt = 1.0
+        self.plume.update( {'entr_time_const' : 600.0,
+                            'phi' : 0.0,
+                            'salttop' : 0.0,
+                            'saltbot' : 0.0,
+                            'tempbot' : 0.0,
+                            'temptop' : 0.0,
+                            'tiuniform' : 0.0,
+                            'restart' : True,
+                            'restart_data_filename' : '"%s"' % self.plume_input,
+                            })
+                      
+        self.gc.update( {'plume' : { 'plume_const_bmlt' : False,
+                                     'plume_initial_bmlt' : True,
+                                     },
+                         } )
+
+        
+    def _getPlumeInputFile(self):
+        return os.path.join(self.jobDir,
+                            'plume_input.out.nc')
+    plume_input = property(fget=_getPlumeInputFile)
+
+#    def resolve(self,gc_override={},plume_override={}):
+#        self.gc.update(gc_override)
+#        self.plume.update(plume_override)
+#        self.plume.update( {'restart_data_filename' : '"%s"' % self.plume_input,
+#                            'restart' : True,
+#                            } )
+
+#        RestartIceJob.resolve(self,self.gc,self.plume)
+        
+    def _genPlumeInputCmd(self):
+        cmd1 = ['nc_gen_plume']
+        cmd1.extend(['fb', self.plume_input,
+                    int(self.newJob.m+4),
+                    int(self.newJob.n+2),
+                     float(self.newJob.hx),
+                     float(self.newJob.hy)])
+        cmd1 = [_fortran_style('nc_gen_plume', c) for c in cmd1]
+        
+        #cmd2 = LinearShelfJob._genInputCmds(self)
+        #cmd2 = [[_fortran_style('nc_gen_plume', c) for c in cmd] for cmd in cmd2]
+
+        #cmds = [cmd1]
+        #cmds.extend( cmd2 )
+        #return cmds
+        return cmd1
+
+    def stage(self,genInput=True):
+        RestartIceJob.stage(self,genInput)
+        cmd = self._genPlumeInputCmd()
+        _check_calls([cmd], self.input_cmds_log)
+        
+def _check_calls(cmds,logfile=None):
+
+    if (logfile is not None):
+        f = open(logfile,'a')
+        try:
+            f.write('\n')
+            f.write('\n\n'.join([' '.join(cmd) for cmd in cmds]))
+            f.write('\n\n')
+            
+        finally:
+            f.close()
+
     for cmd in cmds:
+
         retcode = subprocess.call(cmd)
         if (retcode != 0):
             raise Exception("Error running:\n       %s" % ' '.join(cmd))
     
     
             
+class FromFilesJob(_BaseJob):
+
+    def __init__(self,jobDir):
+        _BaseJob.__init__(self)
+
+        if (not(os.path.exists(jobDir))):
+            jobDir2 = os.path.join(os.path.expandvars('$GC_JOBS'),
+                                   jobDir)
+            if (not(os.path.exists(jobDir2))):
+                raise Exception("Can not find %s" % jobDir)
+            else:
+                jobDir = jobDir2
+
+        config_files = [x for x in os.listdir(jobDir) if
+                        (x.endswith('.config') and not('captured' in x))]
+
+        if (len(config_files) != 1):
+            raise Exception("Did not find a unique .config file")
+
+
+        self.name = config_files[0].split('.config')[0]
+
+        # parse the .config file
+        f_config = open(os.path.join(jobDir,config_files[0]),'r').read()
+
+        sections = re.findall('\\[([a-z,A-Z,0-9,_,\s]*)\\]([0-9,.,_,+,\-,\s,a-z,A-Z,=,/]*)',f_config)
+
+        d = {}
+        
+        for section in sections:
+            heading = section[0]
+            d[heading] = {}
+            
+            body = section[1]
+            kvpairs = re.findall('([^\n]+=[^\n]+)',body)
+            for kvp in kvpairs:
+                k = kvp.split('=')[0].strip()
+                v = kvp.split('=')[1].strip()
+                try:
+                    v = int(v)
+                except:
+                    try:
+                        v = real(v)
+                    except:
+                        pass
+                d[heading][k] = v
+
+        for k in d.keys():
+            self._gcconfig.vals[k].update(d[k])
+
+        if (self.use_plume):
+            # now parse the nl file
+            nl_fname =os.path.join(self.jobDir,
+                                   config_files[0].split('.config')[0]+'.nl')
+            if (not os.path.exists(nl_fname)):
+                raise Exception("Could not find expected namelist file %s" % nl_fname)
+
+            nl_file = open(nl_fname,'r').read()
+
+            kvpairs = re.findall('([^\n]+)=([^\n]+)',nl_file)
+            for (k,v) in kvpairs:
+                v = v.strip()
+                try:
+                    v = int(v)
+                except:
+                    try:
+                        v = real(v)
+                    except:
+                        pass
+
+                self._pnl.vals[k.strip()] = v
+
+    def _genInputCmds(self):
+        return []
+
+    def _get_m(self):
+        return int(self._gcconfig.vals['grid']['ewn'])
+    m = property(fget=_get_m)
+
+    def _get_n(self):
+        return int(self._gcconfig.vals['grid']['nsn'])
+    n = property(fget=_get_n)
+
+    def _get_underlyingJob(self):
+        return self
+    underlyingJob = property(fget=_get_underlyingJob)
+    
+    def resolve(self,gc_override={},plume_override={}):
+
+        self.gc['CF output'].update({'name' : self.outputfile})
+        self.gc['CF input'].update({'name' : self.inputfile,
+                                    'time' : 1 })
+        self.gc['CF default'].update({'title' : self.name })
+        
+        self.gc['plume'].update( {'plume_nl_file' : self.plume_nl_file,
+                                  'plume_output_file' : self.plume_output_file,
+                                  'plume_output_prefix' : self.name } )
+        
+        for k in gc_override.keys():
+            self.gc[k].update(gc_override[k])
+        self.plume.update(plume_override)
+        
+    def stage(self, genInput=False):
+        if (genInput):
+            raise Exception("can not generate input")
+
+        _BaseJob.stage(self,genInput=False)
+
