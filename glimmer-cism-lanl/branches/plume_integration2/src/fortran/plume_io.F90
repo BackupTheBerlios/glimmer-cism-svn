@@ -1,3 +1,4 @@
+
 module plume_io
 
   !all subroutines that perform io for the model
@@ -66,8 +67,9 @@ module plume_io
   integer :: nc_id,time_counter
   integer :: time_dimid,x_dimid,y_dimid
   integer :: x_varid,y_varid,time_varid
-  integer :: u_varid,v_varid,su_varid,sv_varid
+  integer :: u_varid,v_varid,su_varid,sv_varid,speed_varid
   integer :: pdep_varid,bpos_varid,ipos_varid
+  integer :: sep_varid
   integer :: bmelt_varid,btemp_varid,bsalt_varid
   integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
@@ -624,11 +626,22 @@ contains
     call check( nf90_put_att(nc_id, sv_varid, 'standard_name', 'meridional velocity') )
     call check( nf90_put_att(nc_id, sv_varid, 'units', 'meters/second') )
 
+    call io_append_output('Creating variable speed')
+    call check( nf90_def_var(nc_id,'speed',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),speed_varid) )
+    call check( nf90_put_att(nc_id, speed_varid, 'long_name', 'plume speed') )
+    call check( nf90_put_att(nc_id, speed_varid, 'standard_name', 'plume speed') )
+    call check( nf90_put_att(nc_id, speed_varid, 'units', 'meters/second') )
+
     call io_append_output('Creating variable pdep')
     call check( nf90_def_var(nc_id,'pdep',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),pdep_varid) )
     call check( nf90_put_att(nc_id, pdep_varid, 'long_name', 'plume depth') )
     call check( nf90_put_att(nc_id, pdep_varid, 'standard_name', 'plume depth') )
     call check( nf90_put_att(nc_id, pdep_varid, 'units', 'meters') )
+
+!    call io_append_output('Creating variable separated')
+!    call check( nf90_def_var(nc_id,'separated',NF90_INT,(/x_dimid,y_dimid,time_dimid/),sep_varid) )
+!    call check( nf90_put_att(nc_id, sep_varid, 'long_name', 'separated flag') )
+!    call check( nf90_put_att(nc_id, sep_varid, 'standard_name', 'separated flag') )
 
     call io_append_output('Creating variable bpos')
     call check( nf90_def_var(nc_id,'bpos',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),bpos_varid) )
@@ -687,26 +700,26 @@ contains
     call check( nf90_put_att(nc_id, entr_varid, 'long_name', 'entrainment velocity') )
     call check( nf90_put_att(nc_id, entr_varid, 'standard_name', 'entrainment velocity') )
     call check( nf90_put_att(nc_id, entr_varid, 'units', 'meters/year') )
+	
+!    call io_append_output('Creating variable jcs')
+!    call check( nf90_def_var(nc_id,'jcs',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcs_varid) )
+!    call check( nf90_put_att(nc_id, jcs_varid, 'long_name', 'ocean mask') )
+!    call check( nf90_put_att(nc_id, jcs_varid, 'standard_name', 'ocean mask') )
 
-    call io_append_output('Creating variable jcs')
-    call check( nf90_def_var(nc_id,'jcs',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcs_varid) )
-    call check( nf90_put_att(nc_id, jcs_varid, 'long_name', 'ocean mask') )
-    call check( nf90_put_att(nc_id, jcs_varid, 'standard_name', 'ocean mask') )
+!    call io_append_output('Creating variable jcw')
+!    call check( nf90_def_var(nc_id,'jcw',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcw_varid) )
+!    call check( nf90_put_att(nc_id, jcw_varid, 'long_name', 'wet mask') )
+!    call check( nf90_put_att(nc_id, jcw_varid, 'standard_name', 'wet mask') )
 
-    call io_append_output('Creating variable jcw')
-    call check( nf90_def_var(nc_id,'jcw',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcw_varid) )
-    call check( nf90_put_att(nc_id, jcw_varid, 'long_name', 'wet mask') )
-    call check( nf90_put_att(nc_id, jcw_varid, 'standard_name', 'wet mask') )
+!    call io_append_output('Creating variable jcd_u')
+!    call check( nf90_def_var(nc_id,'jcd_u',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_u_varid) )
+!    call check( nf90_put_att(nc_id, jcd_u_varid, 'long_name', 'u mask') )
+!    call check( nf90_put_att(nc_id, jcd_u_varid, 'standard_name', 'u mask') )
 
-    call io_append_output('Creating variable jcd_u')
-    call check( nf90_def_var(nc_id,'jcd_u',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_u_varid) )
-    call check( nf90_put_att(nc_id, jcd_u_varid, 'long_name', 'u mask') )
-    call check( nf90_put_att(nc_id, jcd_u_varid, 'standard_name', 'u mask') )
-
-    call io_append_output('Creating variable jcd_v')
-    call check( nf90_def_var(nc_id,'jcd_v',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_v_varid) )
-    call check( nf90_put_att(nc_id, jcd_v_varid, 'long_name', 'v mask') )
-    call check( nf90_put_att(nc_id, jcd_v_varid, 'standard_name', 'v mask') )
+!    call io_append_output('Creating variable jcd_v')
+!    call check( nf90_def_var(nc_id,'jcd_v',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_v_varid) )
+!    call check( nf90_put_att(nc_id, jcd_v_varid, 'long_name', 'v mask') )
+!    call check( nf90_put_att(nc_id, jcd_v_varid, 'standard_name', 'v mask') )
 
     call io_append_output('Creating variable artf_entr_frac')
     call check( nf90_def_var(nc_id,'artf_entr_frac',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),artf_entr_frac_varid))
@@ -734,15 +747,15 @@ contains
     call io_append_output('Creating variable gwave_crit_factor')
     call check( nf90_def_var(nc_id,'gwave_crit_factor',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),gwave_crit_factor_varid))
 
-    call io_append_output('Creating variable jcd_negdep')
-    call check( nf90_def_var(nc_id,'jcd_negdep',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_negdep_varid) )
-    call check( nf90_put_att(nc_id, jcd_negdep_varid, 'long_name', 'negative depth mask') )
-    call check( nf90_put_att(nc_id, jcd_negdep_varid, 'standard_name', 'negative depth mask') )
+!    call io_append_output('Creating variable jcd_negdep')
+!    call check( nf90_def_var(nc_id,'jcd_negdep',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_negdep_varid) )
+!    call check( nf90_put_att(nc_id, jcd_negdep_varid, 'long_name', 'negative depth mask') )
+!    call check( nf90_put_att(nc_id, jcd_negdep_varid, 'standard_name', 'negative depth mask') )
 
-    call io_append_output('Creating variable jcd_fl')
-    call check( nf90_def_var(nc_id,'jcd_fl',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_fl_varid) )
-    call check( nf90_put_att(nc_id, jcd_fl_varid, 'long_name', 'flooded mask') )
-    call check( nf90_put_att(nc_id, jcd_fl_varid, 'standard_name', 'flooded mask') )
+!    call io_append_output('Creating variable jcd_fl')
+!    call check( nf90_def_var(nc_id,'jcd_fl',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcd_fl_varid) )
+ !   call check( nf90_put_att(nc_id, jcd_fl_varid, 'long_name', 'flooded mask') )
+ !   call check( nf90_put_att(nc_id, jcd_fl_varid, 'standard_name', 'flooded mask') )
 
     call check( nf90_enddef(nc_id) )
 
@@ -865,7 +878,9 @@ contains
     call check(nf90_put_var(nc_id, v_varid, vtrans, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, su_varid, su, (/1,1,time_counter/)))     
     call check(nf90_put_var(nc_id, sv_varid, sv, (/1,1,time_counter/)))     
+    call check(nf90_put_var(nc_id, speed_varid, sqrt(su*su+sv*sv), (/1,1,time_counter/)))     
     call check(nf90_put_var(nc_id, pdep_varid, pdep, (/1,1,time_counter/)))
+!    call check(nf90_put_var(nc_id, sep_varid, separated, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, ipos_varid, ipos, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, bpos_varid, bpos, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, btemp_varid, btemp, (/1,1,time_counter/)))
@@ -875,10 +890,10 @@ contains
     call check(nf90_put_var(nc_id, temp_varid, temp, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, salt_varid, salt, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, entr_varid, entr*sec_per_year, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, jcs_varid, jcs, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, jcw_varid, jcw, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, jcd_u_varid, jcd_u, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, jcd_v_varid, jcd_v, (/1,1,time_counter/)))
+!    call check(nf90_put_var(nc_id, jcs_varid, jcs, (/1,1,time_counter/)))
+!    call check(nf90_put_var(nc_id, jcw_varid, jcw, (/1,1,time_counter/)))
+!    call check(nf90_put_var(nc_id, jcd_u_varid, jcd_u, (/1,1,time_counter/)))
+!    call check(nf90_put_var(nc_id, jcd_v_varid, jcd_v, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, artf_entr_frac_varid, artf_entr_frac, (/1,1,time_counter/)))
 
     call check(nf90_put_var(nc_id, debug_varid, debug, (/1,1,time_counter/)))
@@ -890,8 +905,8 @@ contains
     call check(nf90_put_var(nc_id, gwave_speed_varid, gwave_speed, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, gwave_crit_factor_varid, gwave_crit_factor, (/1,1,time_counter/)))
 
-    call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
-    call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))
+ !   call check(nf90_put_var(nc_id, jcd_fl_varid, jcd_fl, (/1,1,time_counter/)))
+ !   call check(nf90_put_var(nc_id, jcd_negdep_varid, jcd_negdep, (/1,1,time_counter/)))
 
     call check(nf90_sync(nc_id))
 

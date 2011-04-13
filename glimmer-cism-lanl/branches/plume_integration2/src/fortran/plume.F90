@@ -28,7 +28,7 @@ module plume
   use plume_context
   use plume_io
 
-!  use omp_lib
+  use omp_lib
 
   implicit none
 
@@ -61,6 +61,7 @@ module plume
        snottim, & ! short note time interval
        lnottim, & ! long note time interval
        runtim,  & ! accumulated simulation time 
+       coupletim, & ! time acculumated in current call to plume_iterate
        labtim     ! time interval in days used to name output files
 
   real(kind=kdp) :: negdep ! total of negative depths (error diagnostic)
@@ -170,6 +171,7 @@ contains
     ! initialise time, total of negative depths, and separation and negative
     ! frazil warning counters
     runtim = 0.d0
+    coupletim = 0.d0
     negdep = 0.d0
     sepflag = .false.
     do l=1,nice
@@ -277,6 +279,7 @@ contains
 
     integer :: local_time_step_count !number of steps executed in this plume_iterate call
     local_time_step_count = 0
+    coupletim = 0.d0
 
     ! convert lower surface depth into height of basal surface and interface
     ! surface, storing results in plume's global variable
@@ -339,11 +342,11 @@ contains
 
           max_rel_speed_change = maxval(rel_speed_change_array)
 
-!          where (rel_speed_change_array > plume_speed_stopping_tol)
-!             debug = log(rel_speed_change_array / plume_speed_stopping_tol)
-!          elsewhere
-!             debug = 0.d0
-!          end where
+          where (rel_speed_change_array > plume_speed_stopping_tol)
+             debug = log(rel_speed_change_array / plume_speed_stopping_tol)
+          elsewhere
+             debug = 0.d0
+          end where
 
           if (subcycling_time >= min_run_time_sec .and. &
                (max_rel_bmelt_change/prev_rel_change < 1.d-1)) then
@@ -448,6 +451,7 @@ contains
     ! update time in seconds
 
     runtim = runtim + dt
+    coupletim = coupletim + dt
 
     ! find indices of current wetted area
 
@@ -526,7 +530,8 @@ contains
 
     if (mod(runtim,snottim).eq.0) then
        sepflag = .false.
-       call io_write_calculated_time(runtim,int(runtim/dt))
+       !call io_write_calculated_time(runtim,int(runtim/dt))
+       call io_write_calculated_time(coupletim,int(coupletim/dt))
     end if
 
     ! write long step output 
@@ -535,7 +540,8 @@ contains
 
        call io_write_long_step_output(icalcan,icalcen,kcalcan,kcalcen,&
             varoutrat,negdep)
-       call io_write_calculated_time(runtim, int(runtim/dt))
+       !call io_write_calculated_time(runtim, int(runtim/dt))
+       call io_write_calculated_time(coupletim,int(coupletim/dt))
     end if
 
     ! write state to file
@@ -602,6 +608,7 @@ contains
          ,  tangle &
          ,  negfrz &
          ,  use_min_plume_thickness &
+         ,  use_neutral_salinity &
          ,  plume_southern_bc &
          ,  use_periodic_forcing &
          ,  forcing_period &
@@ -671,6 +678,7 @@ contains
     ! set switches 
     ! ------------
     use_min_plume_thickness = .false.
+    use_neutral_salinity = .false.
     use_periodic_forcing = .false.
     mixlayer    = .false. ! model a mixed-layer, rather than a plume
     ! (i.e. whole domain is given initial thickness)
@@ -806,7 +814,7 @@ contains
     ! set ambient fluid properties
     ! ----------------------------
     namb = 302           ! increments in ambient water column (minimum +2)
-    dzincr = 10.d0       ! depth of each increment 
+    dzincr = (gldep+wcdep)/(namb-2)       ! depth of each increment 
     ! (so total (namb - 2)*dzincr = gldep + wcdep)
     salttop = 34.500d0   ! sea surface salinity 
     saltbot = 34.950d0   ! sea bed salinity (gldep + wcdep)
@@ -976,7 +984,7 @@ contains
     end if
 
     ! determine ambient fluid gradients
-
+    dzincr = (gldep+wcdep)/(namb-2)       ! depth of each increment 
     sgrad = (saltbot - salttop)/(gldep + wcdep) ! rate of s change with depth
     tgrad = (tempbot - temptop)/(gldep + wcdep) ! rate of t change with depth
 
@@ -1025,7 +1033,7 @@ contains
     gwave_speed = 0.d0
     gwave_crit_factor = 0.d0
     su = 0.d0
-    sv = 0.d0
+    sv = 0.0d0
     u0 = 0.d0
     v0 = 0.d0
     u0a = 0.d0
@@ -1034,6 +1042,7 @@ contains
     pdep = 0.d0
     ipos = 0.d0
     bpos = 0.d0
+    separated = 0
     jcs = 0
     jcw = 0
     jcd_u = 1 !initial velocity of 0.d0 is valid
@@ -1046,6 +1055,7 @@ contains
     ctot = 0.d0
     tfreeze = 0.d0
     entr = 0.d0
+    artf_entr_frac = 0.d0
     thk_def = 0.d0
     atemp = 0.d0
     asalt = 0.d0
@@ -1367,7 +1377,14 @@ contains
     depth = (/ (0.d0 + i*dzincr,i=0,(namb-1)) /)
 
     tamb = temptop + depth*tgrad
-    samb = salttop + depth*sgrad
+    if (use_neutral_salinity) then
+       ! figure out with salinity gradient 
+       ! neutralizes the given temperature gradient
+       sgrad = -alpha/beta * tgrad
+       samb = saltbot + (depth-maxval(depth))*sgrad
+    else
+       samb = salttop + depth*sgrad
+    end if
     ttt = 0.d0
 
     if (rholinear) then
@@ -1695,7 +1712,7 @@ contains
              if (pdepc(i,k).gt.mdepth) then         
 
                 dragrt = dsqrt(drag(i,k))
-                ustar = sqrt((dragrt*bspeed(i,k))**2.d0 + 1.d0*u_star_offset**2.d0)
+                ustar = dragrt*bspeed(i,k) + u_star_offset
                 ! find turbulent exchange coefficients
                 gambt = ustar/(2.12d0*dlog(ustar*pdepc(i,k)/nu0) + prden)
                 gambs = ustar/(2.12d0*dlog(ustar*pdepc(i,k)/nu0) + scden)
@@ -1716,8 +1733,12 @@ contains
                 c3 = gambs*gambt*(tfreezeb - temp(i,k))
 
                 ! calculate melt rate
-                bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
-!		bmelt(i,k) = 0.d0
+                if (separated(i,k) == 1) then
+                   bmelt(i,k) = 0.d0
+                else
+                  bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
+                end if
+		bmelt(i,k) = 0.d0
 
                 !! multiply by 10 if freezing
                 !              if (mflag.eq.0) then
@@ -1796,9 +1817,9 @@ contains
 
              !this is for output purposes so we can see what percentage of the thicknes
              !change was due to the imposed minimum thickness
-
-             artf_entr_frac(i,k) = (thk_def(i,k)/entr_time_const) / entr(i,k)
-
+            if (entr(i,k) .ne. 0.d0) then
+              artf_entr_frac(i,k) = (thk_def(i,k)/entr_time_const) / entr(i,k)
+            end if
           end if
 
           if (use_periodic_forcing .and. &
@@ -1845,7 +1866,7 @@ contains
     real(kind=kdp) :: a,b,c
 
     !Solving the equation
-    !  (fh/ (C_n*u_star) )^2 + (-h * B_s / (C_s * u_star ^3)) 
+    !  (fh/ (C_n*u_star) )^2 + (h * B_s / (C_s * u_star ^3)) 
     !       + (Nh/(C_i * u_star)) = 1
 
     ! where f is Coriolis param
@@ -1856,8 +1877,8 @@ contains
 
     speed = sqrt( ((su(i-1,k)+su(i,k))**2.d0)/4.d0 + ((sv(i,k-1)+sv(i,k))**2.d0)/4.d0 + small)
     u_star = speed * sqrt( drag(i,k) )
-    u_star = sqrt(u_star**2.d0 + u_star_offset**2.d0)
-    debug3(i,k) = u_star
+    u_star = u_star + u_star_offset
+!    debug3(i,k) = u_star
 
     if (rhop(i,k) < rhoamb(i,k)) then
        N = sqrt(-grav*(rhop(i,k)-rhoamb(i,k))/(rho0*pdep(i,k)))
@@ -1871,12 +1892,17 @@ contains
        B_s = 0.d0
     end if
 
+!    print *, C_s, C_n, C_i
     h_f = C_n*u_star/f
     h_B = (B_s/(C_s*u_star**3) + N / (C_i * u_star)) ** (-1.d0)
 
     a = (f/(C_n)) ** 2.d0
     b = (B_s/(C_s * u_star) + (N*u_star)/(C_i))
     c = -u_star**2.d0
+
+    a = 1.d0/(h_f*h_f)
+    b = 1.d0/h_B
+    c = -1.d0
 
     if (abs(f) > small) then
        h = (-b + sqrt(b**2.d0 - 4.d0*a*c))/(2.d0*a)
@@ -1889,6 +1915,8 @@ contains
 
     end if
     h_formula = h
+!    print *, h_f, h_B, h_formula
+!    stop 1
     ! ensure that the layer has at least the minimum thickness
     h = max(h, plume_min_thickness)
 !    h = min(h, 500.d0)
@@ -1922,8 +1950,8 @@ contains
 
              call ZM_1996_thickness(i,k,ZM_h, h_formula, h_f, h_B)
 
-	     debug(i,k)  = h_formula
-             !debug2(i,k) = h_f
+!	     debug(i,k)  = h_formula
+             debug2(i,k) = h_B
              debug3(i,k) = h_f
              
              thk_def(i,k) = ZM_h - pdep(i,k)
@@ -2100,7 +2128,7 @@ contains
     !$omp         tlate,tlatw,tlats,tlatn,hordif,cory,redgv, &
     !$omp         i,k,jcvfac,idel,kdel,iidx,kkdy,ihilf,khilf) &
     !$omp shared( bpos, pdep, ipos, jcw, jcd_negdep, su,sv,drag,ugriddrag,newudrag, &
-    !$omp         u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, &
+    !$omp         u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, detrain, &
     !$omp         jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs,gwave_speed, &
     !$omp 	  icalcen,icalcan,kcalcen,kcalcan , &
     !$omp         dx,dxu,rdx,rdxu,dy,dyv,rdy,rdyv,ahdx,ahdxu,ahdy,ahdyv, &
@@ -2775,6 +2803,7 @@ contains
     if (kcalcan.le.(domain_kmin+1)) then
 
        jcd_u(:,domain_kmin) = jcd_u(:,domain_kmin+1)
+       jcd_v(:,domain_kmin+1) = jcd_v(:,domain_kmin+2)
 
        select case (plume_southern_bc)
 
@@ -2849,15 +2878,15 @@ contains
        do i = domain_imin,domain_imax - 1
           jcd_u(:,domain_kmax) = jcd_u(:,domain_kmax -1)
           su(i,domain_kmax) = su(i,domain_kmax-1)
-          utrans(i,domain_kmax) = su(i,domain_kmax-1)*5.0d-1*&
+          utrans(i,domain_kmax) = su(i,domain_kmax-1)* 5.0d-1*  &
                     (pdep(i,domain_kmax) + pdep(i+1,domain_kmax))
 
        end do
        do i = domain_imin,domain_imax
            jcd_v(i,domain_kmax-1) = jcd_v(i,domain_kmax-2)
-           sv(i,domain_kmax-1) = sv(i,domain_kmax-2)
-           vtrans(i,domain_kmax-1) = sv(i,domain_kmax-2)* &
-                    (pdep(i,domain_kmax-1) + pdep(i,domain_kmax-2))
+           sv(i,domain_kmax-1) = max(0.d0, sv(i,domain_kmax-2)) !enforce positive
+           vtrans(i,domain_kmax-1) = sv(i,domain_kmax-1)* 5.d-1 * &
+                    (pdep(i,domain_kmax-1) + pdep(i,domain_kmax))
                                  !note -1/-2 since north edge of v is -1
        end do
     end if
@@ -2979,7 +3008,7 @@ contains
            jcw(i,domain_kmax) = jcw(i,domain_kmax - 1)
            jcd_fl(i,domain_kmax) = jcd_fl(i,domain_kmax - 1)
            pdep(i,domain_kmax) = pdep(i,domain_kmax - 1)
-           ipos(i,domain_kmax) = bpos(i,domain_kmax -1 ) - pdep(i,domain_kmax -1)    
+           ipos(i,domain_kmax) = bpos(i,domain_kmax) - pdep(i,domain_kmax)    
 
        end do
     end if
@@ -3443,7 +3472,8 @@ contains
 
          pdepc = bpos(i,k) - ipos(i,k)
 
-	 if (i .ne. icalcen) then
+
+	 if ((i .ne. icalcen) .and. all(jcs(i:(i+1),k) == 1)) then 
            ! u-component
            ! skip icalcen because u(icalcen) is past the edge of the valid region
            ! in the case of an open boundary on the east side
@@ -3462,7 +3492,7 @@ contains
 
         end if
 
-	if (k .ne. kcalcen) then 
+	if ((k .ne. kcalcen) .and. any(jcs(i,k:(k+1)) == 1)) then 
           ! v-component
           ! skip kcalcen, because v(kcalcen) is past the edge of the valid region
           jcd_v(i,k) = 0
@@ -3538,8 +3568,8 @@ contains
           if (jcd_fl(i,k) .eq. 1) then
              ! newly-wet cell
              if (use_min_plume_thickness) then
-                print *, 'should not execute this'
-                stop 1
+                print *, 'should not execute this jcd_fl'
+!                stop 1
              end if
              slon = dmax1(0.d0,ipos(i,k)-ipos(i,k+1))*jcw(i,k+1)
              sloe = dmax1(0.d0,ipos(i,k)-ipos(i+1,k))*jcw(i+1,k)
@@ -3866,7 +3896,7 @@ contains
 
              if (pdepc(i,k).gt.mdepth) then         
                 dragrt = dsqrt(drag(i,k))
-                ustar = sqrt((dragrt*bspeed(i,k))**2.d0 + 1.d0*u_star_offset**2.d0)
+                ustar = dragrt*bspeed(i,k) + u_star_offset
                 ! find turbulent exchange coefficients
                 gambt = ustar/ &
                      (2.12d0*dlog(ustar*pdepc(i,k)/nu0) + prden)             
@@ -3892,8 +3922,12 @@ contains
                 c3 = gambs*gambt*(tfreezeb - tempa(i,k))
 
                 ! calculate melt rate
-                bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
-!		bmelt(i,k) = 0.d0
+                if (separated(i,k) == 1) then
+                   bmelt(i,k) = 0.d0
+                else
+                  bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
+                end if
+                
 
                 !! multiply by 10 if freezing
                 !              if (mflag.eq.0) then
@@ -4326,9 +4360,12 @@ contains
 
              if ((rhoatmp + septol < rhop(i,k)).and. &
                   (.not.sepflag)) then
-                write(*,*) 'warning: plume separated at i=',i,' k=',k
-                write(11,*) 'warning: plume separated at i=',i,' k=',k
-                sepflag = .true.
+!                write(*,*) 'warning: plume separated at i=',i,' k=',k
+!                write(11,*) 'warning: plume separated at i=',i,' k=',k
+!                sepflag = .true.
+                separated(i,k) = 1
+             else
+                separated(i,k) = 0
              end if
              !           
           end if
@@ -4337,79 +4374,79 @@ contains
 
   end subroutine rho_calc
 
-  elemental real(kind=kdp) function get_rhoamb_z(z)
-
-    implicit none
-    real(kind=kdp),intent(in) :: z ! depth at which rhoamb is sought
-
-    get_rhoamb_z = rhovf(1)
-    
-  end function get_rhoamb_z
-
 !  elemental real(kind=kdp) function get_rhoamb_z(z)
 
 !    implicit none
+!    real(kind=kdp),intent(in) :: z ! depth at which rhoamb is sought
 
-!    real(kind=kdp),intent(in) :: z !depth at which rhoamb is sought
-
-!    integer :: izo,izu
-!    real(kind=kdp) :: difu,difo
-
-!    izo = int(z/dzincr) + 1
-!    izu = izo + 1
-!    difu = dble(izo)*dzincr - z
-!    difo = dzincr - difu
-!    get_rhoamb_z = (difu*rhovf(izo) + difo*rhovf(izu))/dzincr
-
+!    get_rhoamb_z = rhovf(1)
+    
 !  end function get_rhoamb_z
 
-  elemental real(kind=kdp) function get_tamb_z(z)
+  elemental real(kind=kdp) function get_rhoamb_z(z)
 
     implicit none
-    real(kind=kdp),intent(in) :: z ! depth at which tamb is sought
 
-    get_tamb_z = tamb(1)
-    
-  end function get_tamb_z
+    real(kind=kdp),intent(in) :: z !depth at which rhoamb is sought
+
+    integer :: izo,izu
+    real(kind=kdp) :: difu,difo
+
+    izo = int(z/dzincr) + 1
+    izu = izo + 1
+    difu = dble(izo)*dzincr - z
+    difo = dzincr - difu
+    get_rhoamb_z = (difu*rhovf(izo) + difo*rhovf(izu))/dzincr
+
+  end function get_rhoamb_z
 
 !  elemental real(kind=kdp) function get_tamb_z(z)
+
 !    implicit none
 !    real(kind=kdp),intent(in) :: z ! depth at which tamb is sought
 
-!    integer :: izo,izu
-!    real(kind=kdp) :: difu,difo
-
-!    izo = int(z/dzincr) + 1
-!    izu = izo + 1
-!    difu = dble(izo)*dzincr - z
-!    difo = dzincr - difu
-!    get_tamb_z = (difu*tamb(izo) + difo*tamb(izu))/dzincr
-
+!    get_tamb_z = tamb(1)
+    
 !  end function get_tamb_z
 
-  elemental real(kind=kdp) function get_samb_z(z)
-
+  elemental real(kind=kdp) function get_tamb_z(z)
     implicit none
-    real(kind=kdp),intent(in) :: z ! depth at which samb is sought
+    real(kind=kdp),intent(in) :: z ! depth at which tamb is sought
 
-    get_samb_z = samb(1)
-    
-  end function get_samb_z
+    integer :: izo,izu
+    real(kind=kdp) :: difu,difo
+
+    izo = int(z/dzincr) + 1
+    izu = izo + 1
+    difu = dble(izo)*dzincr - z
+    difo = dzincr - difu
+    get_tamb_z = (difu*tamb(izo) + difo*tamb(izu))/dzincr
+
+  end function get_tamb_z
 
 !  elemental real(kind=kdp) function get_samb_z(z)
+
 !    implicit none
-!    real(kind=kdp),intent(in) :: z
+ !   real(kind=kdp),intent(in) :: z ! depth at which samb is sought
 
-!    integer :: izo,izu
-!    real(kind=kdp) :: difu,difo
+ !   get_samb_z = samb(1)
+    
+ ! end function get_samb_z
 
-!    izo = int(z/dzincr) + 1
-!    izu = izo + 1
-!    difu = dble(izo)*dzincr - z
-!    difo = dzincr - difu
-!    get_samb_z = (difu*samb(izo) + difo*samb(izu))/dzincr	    
+  elemental real(kind=kdp) function get_samb_z(z)
+    implicit none
+    real(kind=kdp),intent(in) :: z
 
-!  end function get_samb_z
+    integer :: izo,izu
+    real(kind=kdp) :: difu,difo
+
+    izo = int(z/dzincr) + 1
+    izu = izo + 1
+    difu = dble(izo)*dzincr - z
+    difo = dzincr - difu
+    get_samb_z = (difu*samb(izo) + difo*samb(izu))/dzincr	    
+
+  end function get_samb_z
 
   elemental real(kind=kdp) function extrap3(y1,y2,y3)
   

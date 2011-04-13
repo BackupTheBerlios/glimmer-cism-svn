@@ -30,6 +30,7 @@ module plume_global
   ! at depth gldep+wcdep 
 
   real(kind=kdp),allocatable,dimension(:,:) :: pdep,ipos,bpos
+  integer, allocatable, dimension(:,:) :: separated
 
   !cell incices demarking status of cell
 
@@ -82,6 +83,7 @@ module plume_global
   logical :: mixlayer,in_glimmer,restart,nonlin,horturb,entrain,basmelt,frazil
   logical :: rholinear,thermobar,intrace,vardrag,topedit,tangle,negfrz
   logical :: use_min_plume_thickness, use_periodic_forcing
+  logical :: use_neutral_salinity
   integer :: entype     
   ! parameters related to the Zilitinkevich and Mironov mix-layer thickness scheme
   ! for entrainment
@@ -162,6 +164,7 @@ contains
     allocate (dx (m), dxu(m), rdx (m), rdxu (m))
     allocate (dy (n), dyv (n),rdy (n), rdyv (n))
     allocate (pdep(m,n),ipos(m,n),bpos(m,n))
+    allocate (separated(m,n))
     allocate (jcs(m,n),jcw(m,n),jcd_u(m,n),jcd_v(m,n),jcd_fl(m,n))
     allocate (jcd_negdep(m,n),jcd_fseed(m,n))
     allocate (c_ice(m,n,lice),ca_ice(m,n,lice),ctot(m,n),ctota(m,n))
@@ -199,6 +202,7 @@ contains
     deallocate(dx,dxu,rdx,rdxu,dy,dyv,rdy,rdyv)
     deallocate(intrin)
     deallocate(pdep,ipos,bpos)
+    deallocate(separated)
     deallocate(jcs,jcw,jcd_u,jcd_v,jcd_fl,jcd_negdep,jcd_fseed)
     deallocate(c_ice,ca_ice,ctot,ctota,tfreeze,btemp,bsalt,ctempd)
     deallocate(bmelt)
