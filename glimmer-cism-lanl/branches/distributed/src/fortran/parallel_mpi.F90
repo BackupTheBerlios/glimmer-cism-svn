@@ -243,6 +243,13 @@ contains
     call mpi_bcast(a,size(a),mpi_real8,main_rank,comm,ierror)
   end subroutine
 
+  function distributed_execution()
+     ! Returns if running distributed or not.
+     logical distributed_execution
+
+     distributed_execution = .true.
+  end function
+
   subroutine distributed_gather_var_integer_2d(values, global_values)
     ! JEFF Gather a distributed variable back to main_task node
     ! values = local portion of distributed variable
@@ -1052,6 +1059,9 @@ contains
         write(*,*) "EW halos overlap on processor ", this_rank
         call parallel_stop(__FILE__, __LINE__)
     endif
+
+    ! Print grid geometry
+    write(*,*) "Process ", this_rank, " EW = ", local_ewn, " NS = ", local_nsn
   end subroutine
 
   function distributed_owner(ew,ewn,ns,nsn)
@@ -1261,6 +1271,7 @@ contains
     end if
     allocate(sendbuf(size(values,1),mybounds(1):mybounds(2),mybounds(3):mybounds(4)))
     sendbuf(:,:,:) = values(:,1+lhalo:local_ewn-uhalo,1+lhalo:local_nsn-uhalo)
+    sendbuf(:,mybounds(1):mybounds(2),mybounds(3):mybounds(4)) = sendbuf(:,mybounds(1):mybounds(2),mybounds(3):mybounds(4))
     call mpi_gatherv(sendbuf,size(sendbuf),mpi_real8,&
          recvbuf,recvcounts,displs,mpi_real8,main_rank,comm,ierror)
     if (main_task) then
@@ -2214,6 +2225,11 @@ contains
     ! locew is local EW (col) grid index
     integer :: global_row, global_col, global_ID
     character(len=40) :: local_coord
+    ! JEFFTESTING What I'm going to try is rather than assigning from NE corner as (1,1),
+    ! subtract the calculated ID from the max available ID in order to move (1,1) to the lower left corner.
+    integer :: maxID
+
+    maxID = global_ewn * global_nsn * upstride
 
     global_row = (locns - uhalo) + this_rank/ProcsEW * own_nsn
     	! Integer division required for this_rank/ProcsEW
@@ -2224,10 +2240,10 @@ contains
 
     ! JEFF Testing Code
     ! write(local_coord, "A13,I10.1,A2,I10.1,A1") " (NS, EW) = (", locns, ", ", locew, ")"
-	! write(*,*) "Processor reference ", this_rank, local_coord, " globalID = ", global_ID
+    ! write(*,*) "Processor reference ", this_rank, local_coord, " globalID = ", global_ID
 
-	!return value
-	parallel_globalID = global_ID
+    !return value
+    parallel_globalID = global_ID
   end function
 
   subroutine parallel_halo_integer_2d(a)
@@ -2555,7 +2571,7 @@ contains
     use mpi
     implicit none
     integer,dimension(:,:) :: a
-    
+
     integer :: erequest,ierror,nrequest,srequest,wrequest
     integer,dimension(lhalo,local_nsn-lhalo-uhalo) :: erecv,wsend
     integer,dimension(uhalo,local_nsn-lhalo-uhalo) :: esend,wrecv
@@ -3181,7 +3197,7 @@ contains
     use mpi
     implicit none
     real(8),dimension(:,:) :: a
-    
+
     integer :: ierror,srequest,wrequest
     real(8),dimension(size(a,2)-lhalo-uhalo+1) :: esend,wrecv
     real(8),dimension(size(a,1)-lhalo) :: nsend,srecv
@@ -3204,6 +3220,465 @@ contains
     call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
     call mpi_wait(srequest,mpi_status_ignore,ierror)
     a(1+lhalo:,size(a,2)) = srecv(:)
+  end subroutine
+
+  subroutine staggered_1toEnd_parallel_halo(a)
+    use mpi
+    implicit none
+    real(8),dimension(:,:,:) :: a
+    integer, parameter :: minhalosize = 1, maxhalosize = 2, haloshift = 2
+
+    ! Wrote to assign halo=2 to the top edges.  Also reordered to read 1..N West to East and South to North,
+    ! because the debugger indicated this was the correct case. It was not.  So, while this got the halos correct,
+    ! it messed up the orientation.
+
+    !JEFF Implements a staggered halo update with North and Eastern processors owning the staggered rows and columns.
+    ! Remember that the grid is laid out from the NE, then the upper right corner is assigned to this_rank = 0.
+    ! It's western nbhr is task_id = 1, proceeding rowwise and starting from the eastern edge.
+    ! The eastern edge of the easternmost processors is assigned to the westernmost processor on the same row.
+    ! Likewise for the other edges.
+    ! What is required for correct calculations is vel(:,ew-1:ew,ns-1:ns), so correct info is needed from NW.
+    ! (It turns out that ns=1 is northernmost point.  Likewise, ew=1 is the easternmost point increasing westward.)
+    ! Communications DO NOT wrap around at the edges.
+
+    ! Note that a is staggered, so it is one smaller in both dimensions than unstaggered arrays.  Each processor
+    ! allocates a staggered array as one smaller in index than unstaggered.
+
+    ! Updated 4/15/11 to exchange according to the spatial layout of the processors which is different than the grid
+    ! layout.  The spatial layout has proc 0 in NW corner, increasing processors to E first, then down a row towards S.
+    ! The processors still have their north, south, east, and west processors from the grid layout, so this is confusing.
+    ! Also the owned content is always offset by 2 on the N and W edges.  The staggered edges are owned by the NW processor.
+
+    ! integer :: erequest,ierror,one,nrequest,srequest,wrequest
+    integer :: ierror,nrequest,srequest,erequest,wrequest
+    real(8),dimension(size(a,1),minhalosize,size(a,3)-minhalosize-maxhalosize) :: erecv,wsend
+    real(8),dimension(size(a,1),maxhalosize,size(a,3)-minhalosize-maxhalosize) :: esend,wrecv
+    real(8),dimension(size(a,1),size(a,2),maxhalosize) :: nrecv,ssend
+    real(8),dimension(size(a,1),size(a,2),minhalosize) :: nsend,srecv
+    integer :: ewedgebase, nsedgebase
+
+    ! begin
+
+    ! Confirm staggered array
+    if (size(a,2)/=local_ewn-1.or.size(a,3)/=local_nsn-1) then
+         write(*,*) "staggered_parallel_halo() requires staggered arrays."
+         call parallel_stop(__FILE__,__LINE__)
+    endif
+
+    ! Prepost expected receives
+
+    ! Only receive from west if interior to grid
+    if (this_rank > east) then
+        call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,comm,wrequest,ierror)
+    endif
+
+    ! Only receive from east if interior to grid
+    if (this_rank < west) then
+        call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,comm,erequest,ierror)
+    endif
+
+    ! Only receive from south if interior to grid
+    if (this_rank < south) then
+        call mpi_irecv(srecv,size(srecv),mpi_real8,south,south,comm,srequest,ierror)
+    endif
+
+    ! Only receive from north if interior to grid
+    if (this_rank > north) then
+        call mpi_irecv(nrecv,size(nrecv),mpi_real8,north,north,comm,nrequest,ierror)
+    endif
+
+    ! Only send east if interior to grid
+    if (this_rank < west) then
+        if (this_rank < south) then ! If a processor is at the bottom edge of the grid it has one fewer rows
+           nsedgebase = 1
+        else
+           nsedgebase = 2
+        endif
+
+        esend(:,:,1:size(a,3)-haloshift-nsedgebase) = &
+            a(:,size(a,2)-haloshift:size(a,2)-haloshift+(maxhalosize-1),1+haloshift:size(a,3)-nsedgebase)
+        call mpi_send(esend,size(esend),mpi_real8,east,this_rank,comm,ierror)
+    endif
+
+    ! Only send west if interior to grid
+    if (this_rank > east) then
+        if (this_rank < south) then
+           nsedgebase = 1
+        else
+           nsedgebase = 2
+        endif
+
+        wsend(:,1,1:size(a,3)-haloshift-nsedgebase) = &
+            a(:,1+haloshift,1+haloshift:size(a,3)-nsedgebase)
+        call mpi_send(wsend,size(wsend),mpi_real8,west,this_rank,comm,ierror)
+    endif
+
+    ! Only receive from west if interior to grid
+    if (this_rank > east) then
+        if (this_rank < south) then
+           nsedgebase = 1
+        else
+           nsedgebase = 2
+        endif
+
+        call mpi_wait(wrequest,mpi_status_ignore,ierror)
+        a(:,1:maxhalosize,1+haloshift:size(a,3)-nsedgebase) = &
+            wrecv(:,:,1:size(a,3)-haloshift-nsedgebase)
+    endif
+
+    ! Only receive from east if interior to grid
+    if (this_rank < west) then
+        if (this_rank < south) then
+           nsedgebase = 1
+        else
+           nsedgebase = 2
+        endif
+
+        call mpi_wait(erequest,mpi_status_ignore,ierror)
+
+        a(:,size(a,2),1+haloshift:size(a,3)-nsedgebase) = &
+            erecv(:,1,1:size(a,3)-haloshift-nsedgebase)
+    endif
+
+    ! Only send north if interior to grid
+    if (this_rank > north) then
+        nsend(:,:,1) = a(:,:,1+haloshift)
+        call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
+    endif
+
+    ! Only send south if interior to grid
+    if (this_rank < south) then
+        ssend(:,:,:) = a(:,:,size(a,3)-haloshift:size(a,3)-haloshift+(maxhalosize-1))
+        call mpi_send(ssend,size(ssend),mpi_real8,south,this_rank,comm,ierror)
+    endif
+
+    ! Only receive from south if interior to grid
+    if (this_rank < south) then
+        call mpi_wait(srequest,mpi_status_ignore,ierror)
+        a(:,:,size(a,3)) = srecv(:,:,1)
+    endif
+
+    ! Only receive from north if interior to grid
+    if (this_rank > north) then
+        call mpi_wait(nrequest,mpi_status_ignore,ierror)
+        a(:,:,1:maxhalosize) = nrecv(:,:,:)
+    endif
+  end subroutine
+
+  subroutine staggered_parallel_halo(a)
+    use mpi
+    implicit none
+    real(8),dimension(:,:,:) :: a
+    integer, parameter :: minhalosize = 1, maxhalosize = 2, haloshift = 2
+
+    !JEFF Implements a staggered halo update with North and Eastern processors owning the staggered rows and columns.
+    ! Remember that the grid is laid out from the NE, then the upper right corner is assigned to this_rank = 0.
+    ! It's western nbhr is task_id = 1, proceeding rowwise and starting from the eastern edge.
+    ! The eastern edge of the easternmost processors is assigned to the westernmost processor on the same row.
+    ! Likewise for the other edges.
+    ! What is required for correct calculations is vel(:,ew-1:ew,ns-1:ns), so correct info is needed from NW.
+    ! (It turns out that ns=1 is northernmost point.  Likewise, ew=1 is the easternmost point increasing westward.)
+    ! Communications DO NOT wrap around at the edges.
+
+    ! Note that a is staggered, so it is one smaller in both dimensions than unstaggered arrays.  Each processor
+    ! allocates a staggered array as one smaller in index than unstaggered.
+
+    ! integer :: erequest,ierror,one,nrequest,srequest,wrequest
+    integer :: ierror,nrequest,srequest,erequest,wrequest
+    real(8),dimension(size(a,1),maxhalosize,size(a,3)-minhalosize-maxhalosize) :: erecv,wsend
+    real(8),dimension(size(a,1),minhalosize,size(a,3)-minhalosize-maxhalosize) :: esend,wrecv
+    real(8),dimension(size(a,1),size(a,2),maxhalosize) :: nrecv,ssend
+    real(8),dimension(size(a,1),size(a,2),minhalosize) :: nsend,srecv
+    integer :: ewedgebase, nsedgebase
+
+    ! begin
+
+    ! Confirm staggered array
+    if (size(a,2)/=local_ewn-1.or.size(a,3)/=local_nsn-1) then
+         write(*,*) "staggered_parallel_halo() requires staggered arrays."
+         call parallel_stop(__FILE__,__LINE__)
+    endif
+
+    ! Prepost expected receives
+
+    ! Only receive from west if interior to grid
+    if (this_rank < west) then
+        call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,comm,wrequest,ierror)
+    endif
+
+    ! Only receive from east if interior to grid
+    if (this_rank > east) then
+        call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,comm,erequest,ierror)
+    endif
+
+    ! Only receive from south if interior to grid
+    if (this_rank < south) then
+        call mpi_irecv(srecv,size(srecv),mpi_real8,south,south,comm,srequest,ierror)
+    endif
+
+    ! Only receive from north if interior to grid
+    if (this_rank > north) then
+        call mpi_irecv(nrecv,size(nrecv),mpi_real8,north,north,comm,nrequest,ierror)
+    endif
+
+    ! Only send east if interior to grid
+    if (this_rank > east) then
+        if (this_rank < south) then ! If a processor is at the bottom edge of the grid it has one fewer rows
+           nsedgebase = 1
+        else
+           nsedgebase = 2
+        endif
+
+        esend(:,1,1:size(a,3)-haloshift-nsedgebase) = &
+            a(:,1+haloshift,1+haloshift:size(a,3)-nsedgebase)
+        call mpi_send(esend,size(esend),mpi_real8,east,this_rank,comm,ierror)
+    endif
+
+    ! Only send west if interior to grid
+    if (this_rank < west) then
+        if (this_rank < south) then ! If a processor is at the bottom edge of the grid it has one fewer rows
+           nsedgebase = 1
+        else
+           nsedgebase = 2
+        endif
+
+        wsend(:,:,1:size(a,3)-haloshift-nsedgebase) = &
+            a(:,size(a,2)-haloshift:size(a,2)-haloshift+(maxhalosize-1),1+haloshift:size(a,3)-nsedgebase)
+        call mpi_send(wsend,size(wsend),mpi_real8,west,this_rank,comm,ierror)
+    endif
+
+    ! Only receive from east if interior to grid
+    if (this_rank > east) then
+        if (this_rank < south) then
+           nsedgebase = 1
+        else
+           nsedgebase = 2
+        endif
+
+        call mpi_wait(erequest,mpi_status_ignore,ierror)
+        a(:,1:maxhalosize,1+haloshift:size(a,3)-nsedgebase) = &
+            erecv(:,1:maxhalosize,1:size(a,3)-haloshift-nsedgebase)
+    endif
+
+    ! Only receive from west if interior to grid
+    if (this_rank < west) then
+        if (this_rank < south) then
+           nsedgebase = 1
+        else
+           nsedgebase = 2
+        endif
+
+        call mpi_wait(wrequest,mpi_status_ignore,ierror)
+        a(:,size(a,2),1+haloshift:size(a,3)-nsedgebase) = &
+            wrecv(:,1,1:size(a,3)-haloshift-nsedgebase)
+    endif
+
+    ! Only send north if interior to grid
+    if (this_rank > north) then
+        nsend(:,:,1) = a(:,:,1+haloshift)
+        call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
+    endif
+
+    ! Only send south if interior to grid
+    if (this_rank < south) then
+        ssend(:,:,:) = a(:,:,size(a,3)-haloshift:size(a,3)-haloshift+(maxhalosize-1))
+        call mpi_send(ssend,size(ssend),mpi_real8,south,this_rank,comm,ierror)
+    endif
+
+    ! Only receive from south if interior to grid
+    if (this_rank < south) then
+        call mpi_wait(srequest,mpi_status_ignore,ierror)
+        a(:,:,size(a,3)) = srecv(:,:,1)
+    endif
+
+    ! Only receive from north if interior to grid
+    if (this_rank > north) then
+        call mpi_wait(nrequest,mpi_status_ignore,ierror)
+        a(:,:,1:maxhalosize) = nrecv(:,:,:)
+    endif
+  end subroutine
+
+  subroutine staggered_offset_parallel_halo(a)
+    use mpi
+    implicit none
+    real(8),dimension(:,:,:) :: a
+    integer, parameter :: minhalosize = 1, maxhalosize = 2, haloshift = 2
+
+    !JEFF Implements a staggered halo update with North and Eastern processors owning the staggered rows and columns.
+    ! Remember that the grid is laid out from the NE, then the upper right corner is assigned to this_rank = 0.
+    ! It's western nbhr is task_id = 1, proceeding rowwise and starting from the eastern edge.
+    ! The eastern edge of the easternmost processors is assigned to the westernmost processor on the same row.
+    ! Likewise for the other edges.
+    ! What is required for correct calculations is vel(:,ew-1:ew,ns-1:ns), so correct info is needed from NW.
+    ! (It turns out that ns=1 is northernmost point.  Likewise, ew=1 is the easternmost point increasing westward.)
+    ! Communications DO NOT wrap around at the edges.
+
+    ! Note that a is staggered, so it is one smaller in both dimensions than unstaggered arrays.  Each processor
+    ! allocates a staggered array as one smaller in index than unstaggered.
+
+    ! integer :: erequest,ierror,one,nrequest,srequest,wrequest
+    integer :: ierror,nrequest,srequest,erequest,wrequest
+    real(8),dimension(size(a,1),minhalosize,size(a,3)-minhalosize-maxhalosize) :: erecv,wsend
+    real(8),dimension(size(a,1),maxhalosize,size(a,3)-minhalosize-maxhalosize) :: esend,wrecv
+    real(8),dimension(size(a,1),size(a,2),minhalosize) :: nrecv,ssend
+    real(8),dimension(size(a,1),size(a,2),maxhalosize) :: nsend,srecv
+    integer :: ewedgebase, nsedgebase
+
+    ! begin
+
+    ! Confirm staggered array
+    if (size(a,2)/=local_ewn-1.or.size(a,3)/=local_nsn-1) then
+         write(*,*) "staggered_parallel_halo() requires staggered arrays."
+         call parallel_stop(__FILE__,__LINE__)
+    endif
+
+    ! Prepost expected receives
+
+    ! Only receive from west if interior to grid
+    if (this_rank < west) then
+        call mpi_irecv(wrecv,size(wrecv),mpi_real8,west,west,comm,wrequest,ierror)
+    endif
+
+    ! Only receive from east if interior to grid
+    if (this_rank > east) then
+        call mpi_irecv(erecv,size(erecv),mpi_real8,east,east,comm,erequest,ierror)
+    endif
+
+    ! Only receive from south if interior to grid
+    if (this_rank < south) then
+        call mpi_irecv(srecv,size(srecv),mpi_real8,south,south,comm,srequest,ierror)
+    endif
+
+    ! Only receive from north if interior to grid
+    if (this_rank > north) then
+        call mpi_irecv(nrecv,size(nrecv),mpi_real8,north,north,comm,nrequest,ierror)
+    endif
+
+    ! Only send east if interior to grid
+    if (this_rank < west) then
+        if (this_rank < south) then ! If a processor is at the bottom edge of the grid it has one fewer rows
+           nsedgebase = 0
+        else
+           nsedgebase = 1
+        endif
+
+        if (this_rank < west) then ! If a processor is at the left edge of the grid it has one fewer columns
+           ewedgebase = 0
+        else
+           ewedgebase = 1
+        endif
+
+        esend(:,:,1:size(a,3)-haloshift-nsedgebase) = &
+            a(:,ewedgebase+haloshift:ewedgebase+haloshift+maxhalosize-1,nsedgebase+haloshift:size(a,3)-haloshift)
+        call mpi_send(esend,size(esend),mpi_real8,east,this_rank,comm,ierror)
+    endif
+
+    ! Only send west if interior to grid
+    if (this_rank < west) then
+        if (this_rank < south) then
+           nsedgebase = 0
+        else
+           nsedgebase = 1
+        endif
+
+        wsend(:,1,1:size(a,3)-2*haloshift-nsedgebase+1) = &
+            a(:,size(a,2)-haloshift,nsedgebase+haloshift:size(a,3)-haloshift)
+        call mpi_send(wsend,size(wsend),mpi_real8,west,this_rank,comm,ierror)
+    endif
+
+    ! Only receive from west if interior to grid
+    if (this_rank < west) then
+        if (this_rank < south) then
+           nsedgebase = 0
+        else
+           nsedgebase = 1
+        endif
+
+        call mpi_wait(wrequest,mpi_status_ignore,ierror)
+        a(:,size(a,2)-haloshift+1:size(a,2),nsedgebase+haloshift:size(a,3)-haloshift) = &
+            wrecv(:,:,1:size(a,3)-2*haloshift-nsedgebase+1)
+    endif
+
+    ! Only receive from east if interior to grid
+    if (this_rank > east) then
+        if (this_rank < south) then
+           nsedgebase = 0
+        else
+           nsedgebase = 1
+        endif
+
+        if (this_rank < west) then
+           ewedgebase = 1
+        else
+           ewedgebase = 2
+           a(:,1,:) = -1.0E9  ! Put in a bad value in the unused column to detect if invalid use of halo
+        endif
+
+        call mpi_wait(erequest,mpi_status_ignore,ierror)
+        a(:,ewedgebase,nsedgebase+haloshift:size(a,3)-haloshift) = &
+            erecv(:,1,1:size(a,3)-2*haloshift-nsedgebase+1)
+    endif
+
+    ! Only send north if interior to grid
+    if (this_rank > north) then
+        if (this_rank < south) then
+           nsedgebase = 0
+        else
+           nsedgebase = 1
+        endif
+
+        if (this_rank < west) then
+           ewedgebase = 1
+        else
+           ewedgebase = 2
+        endif
+
+        nsend(:,ewedgebase:size(a,2),:) = a(:,ewedgebase:size(a,2),nsedgebase+haloshift:nsedgebase+haloshift+maxhalosize-1)
+        call mpi_send(nsend,size(nsend),mpi_real8,north,this_rank,comm,ierror)
+    endif
+
+    ! Only send south if interior to grid
+    if (this_rank < south) then
+        if (this_rank < west) then
+           ewedgebase = 1
+        else
+           ewedgebase = 2
+        endif
+
+        ssend(:,ewedgebase:size(a,2),1) = a(:,ewedgebase:size(a,2),size(a,3)-haloshift)
+        call mpi_send(ssend,size(ssend),mpi_real8,south,this_rank,comm,ierror)
+    endif
+
+    ! Only receive from south if interior to grid
+    if (this_rank < south) then
+        if (this_rank < west) then
+           ewedgebase = 1
+        else
+           ewedgebase = 2
+        endif
+
+        call mpi_wait(srequest,mpi_status_ignore,ierror)
+        a(:,ewedgebase:size(a,2),size(a,3)-maxhalosize+1:size(a,3)) = srecv(:,ewedgebase:size(a,2),:)
+    endif
+
+    ! Only receive from north if interior to grid
+    if (this_rank > north) then
+        if (this_rank < south) then
+           nsedgebase = 0
+        else
+           a(:,:,1) = -1.0E9  ! Put in a bad value in the unused row to detect if invalid use of halo
+           nsedgebase = 1
+        endif
+
+        if (this_rank < west) then
+           ewedgebase = 1
+        else
+           ewedgebase = 2
+        endif
+
+        call mpi_wait(nrequest,mpi_status_ignore,ierror)
+        a(:,ewedgebase:size(a,2),1+nsedgebase) = nrecv(:,ewedgebase:size(a,2),1)
+    endif
   end subroutine
 
 end module parallel

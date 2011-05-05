@@ -119,12 +119,34 @@ implicit none
   integer, allocatable, dimension(:) :: myIndices
   integer :: mySize = -1
 
+  ! JEFF: Debugging Output Variables
+  integer :: overallloop = 1
+
 !***********************************************************************
 
 contains
 
 !***********************************************************************
 
+subroutine dumpvels(name, uvel, vvel)
+    !JEFF routine to track the uvel and vvel calculations in Picard Iteration for debugging
+    !3/28/11
+    use parallel
+    implicit none
+
+    character(*) :: name
+    real (kind = dp), dimension(:,:,:), intent(inout) :: uvel, vvel  ! horiz vel components: u(z), v(z)
+
+    if (distributed_execution) then
+       if (this_rank == 0) then
+           write(*,*) name, "Proc 0 uvel & vvel (1,7:8,17:18)", uvel(1,7:8,17:18), vvel(1,7:8,17:18)
+       else
+           write(*,*) name, "Proc 1 uvel & vvel (1,7:8,2:3)", uvel(1,7:8,2:3), vvel(1,7:8,2:3)
+       endif
+    else
+       write(*,*) name, "Parallel uvel & vvel (1,5:6,15:16)", uvel(1,5:6,15:16), vvel(1,5:6,15:16)
+    endif
+end subroutine
 
 subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
                                        dew,   dns,           &
@@ -285,6 +307,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   integer :: iter, pic
   integer , dimension(:), allocatable :: g_flag ! jfl flag for ghost cells
 
+  ! variables for debugging output JEFF
+  character(3) :: loopnum
+  character(3) :: looptime
+  real (kind = dp) :: multiplier
+
   ! RN_20100125: assigning value for whatsparse, which is needed for putpcgc()
   whatsparse = whichsparse
 
@@ -328,8 +355,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-
   ! allocate space for storing temporary across-flow comp of velocity
   allocate(tvel(upn,ewn-1,nsn-1))
   tvel = 0.0_dp
@@ -346,7 +371,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   if (whatsparse == STANDALONE_TRILINOS_SOLVER) then
 #ifdef globalIDs
-     write(*,*) "Using GlobalIDs..."
+     if (main_task) write(*,*) "Using GlobalIDs..."
 	 ! JEFF: Define myIndices in terms of globalIDs
      allocate(myIndices(pcgsize(1)))  ! myIndices is an integer vector with a unique ID for each layer for ice grid points
      call distributed_create_partition(ewn, nsn, (upn + 2) , uindx, pcgsize(1), myIndices)  ! Uses uindx mask to determine ice grid points.
@@ -361,6 +386,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
      call dopartition(pcgsize(1), mySize)
      allocate(myIndices(mySize))
      call getpartition(mySize, myIndices)
+
+     if (distributed_execution) then
+         if (main_task) write(*,*) "Distributed Version cannot be run without globalIDs.  Stopping."
+         call not_parallel(__FILE__, __LINE__)  ! Fatal if running without GlobalIDs in MPI
+     endif
 
      !write(*,*) "Trilinos Generated Partition Map myIndices..."
      !write(*,*) "pcgsize = ", pcgsize(1), " mySize = ", mySize
@@ -410,12 +440,14 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 ! KJE SLAP incompatibility of main_task
   ! print some info to the screen to update on iteration progress
-  print *, ' '
-  print *, 'Running Payne/Price higher-order dynamics solver'
-  print *, ' '
-  print *, 'iter #     uvel resid         vvel resid       target resid'
-!  print *, 'iter #     resid (L2 norm)       target resid'
-  print *, ' '
+  if (main_task) then
+     print *, ' '
+     print *, 'Running Payne/Price higher-order dynamics solver'
+     print *, ' '
+     print *, 'iter #     uvel resid         vvel resid       target resid'
+  !  print *, 'iter #     resid (L2 norm)       target resid'
+     print *, ' '
+  endif
 
   ! ****************************************************************************************
   ! START of Picard iteration
@@ -430,6 +462,21 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
    do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
+#ifdef JEFFTEST
+    !JEFF Debugging Output to see what differences in final vvel and tvel.
+    write(loopnum,'(i3.3)') counter
+    write(Looptime, '(i3.3)') overallloop
+    loopnum = trim(loopnum)  ! Trying to get rid of spaces in name.
+    Looptime = trim(Looptime)
+    call distributed_print("uvel_ov"//Looptime//"_pic"//loopnum//"_tsk", uvel)
+
+    call distributed_print("vvel_ov"//Looptime//"_pic"//loopnum//"_tsk", vvel)
+
+    ! call dumpvels("Before findefvsstr", uvel, vvel)
+
+    call distributed_print("preefvs_ov"//Looptime//"_pic"//loopnum//"_tsk", efvs)
+#endif
+
     ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
                      stagsigma,  counter,    &
@@ -439,8 +486,11 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      dusrfdew,   dthckdew, &
                      dusrfdns,   dthckdns, &
                      umask)
+#ifdef JEFFTEST
+    call parallel_halo(efvs)
+    call distributed_print("efvs_ov"//Looptime//"_pic"//loopnum//"_tsk", efvs)
+#endif
 
-	! JEFF 10/25
     ! calculate coeff. for stress balance in y-direction 
     call findcoefstr(ewn,  nsn,   upn,            &
                      dew,  dns,   sigma,          &
@@ -459,6 +509,10 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      minTauf,     flwa,           &
                      beta, btraction,             &
                      counter, 0 )
+
+#ifdef JEFFTEST
+    call distributed_print("efvs_ov"//Looptime//"_pic"//loopnum//"_tsk", efvs)
+#endif
 
     !JEFF rhsd() verify
     ! write(*,*) "RHS = ", rhsd(:)
@@ -498,6 +552,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, 2, uindx, answer, tvel, ghostbvel )
+
+#ifdef JEFFTEST
+    ! call dumpvels("After tvel", uvel, vvel)
+
+    !JEFF Debugging Output to see what differences in final vvel and tvel.
+    call distributed_print("tvel_ov"//Looptime//"_pic"//loopnum//"_tsk", tvel)
+#endif
 
     ! NOTE: y-component of velocity that comes out is called "tvel", to differentiate it
     ! from the y-vel solution from the previous iteration, which is maintained as "vvel".  
@@ -539,7 +600,6 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      beta, btraction,             &
                      counter, 0 )
 
-
     ! put vels and coeffs from 3d arrays into sparse vector format
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel )
 
@@ -572,12 +632,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 ! RN_20100129: End of the block
 !==============================================================================
 
-
     uk_1 = answer ! jfl for residual calculation
-
 
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, 1, uindx, answer, uvel, ghostbvel )
+
+    ! call dumpvels("After uvel solve", uvel, vvel)
 
     ! call fraction of assembly routines, passing current vel estimates (w/o manifold
     ! correction!) to calculate consistent basal tractions
@@ -626,6 +686,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
     vvel = mindcrshstr(2,whichresid,tvel,counter,resid(2))
 
+    ! call dumpvels("After mindcrsh", uvel, vvel)
+
+    ! coordinate halos for updated uvel and vvel
+    call staggered_parallel_halo(uvel)
+    call staggered_parallel_halo(vvel)
+
 ! implement periodic boundary conditions in x (if flagged)
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     if( periodic_ns )then
@@ -642,14 +708,17 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     end if
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-!    ! output the iteration status: iteration number, max residual, and location of max residual
-!    ! (send output to the screen or to the log file, per whichever line is commented out) 
-    print '(i4,3g20.6)', counter, resid(1), resid(2), minres
-!    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
-!    !call write_log (message)
+    if (this_rank == 0) then
+        ! Can't use main_task flag because main_task is true for all processors in case of parallel_single
+	!    ! output the iteration status: iteration number, max residual, and location of max residual
+	!    ! (send output to the screen or to the log file, per whichever line is commented out)
+         print '(i4,3g20.6)', counter, resid(1), resid(2), minres
+	!    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
+	!    !call write_log (message)
 
-! KJE uncomment to match previous
-!    print '(i4,3g20.6)', counter, L2norm, NL_target
+	! KJE uncomment to match previous
+	!    print '(i4,3g20.6)', counter, L2norm, NL_target
+    endif
 
     counter = counter + 1   ! advance the iteration counter
 
@@ -695,6 +764,9 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   deallocate(matrix%row, matrix%col, matrix%val)
   deallocate(answer)
   deallocate(uk_1, vk_1, F, g_flag) ! jfl 
+
+  !JEFF Debugging output
+  overallloop = overallloop + 1
 
   return
 

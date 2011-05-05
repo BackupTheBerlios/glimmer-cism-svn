@@ -299,6 +299,13 @@ contains
   end function
 #endif
 
+  function distributed_execution()
+     ! Returns if running distributed or not.
+     logical distributed_execution
+
+     distributed_execution = .false.
+  end function
+
   subroutine distributed_gather_var_integer_2d(values, global_values)
     ! JEFF Gather a distributed variable back to main_task node
     ! values = local portion of distributed variable
@@ -432,6 +439,8 @@ contains
 		own_nsn = local_nsn-lhalo-uhalo
 		nsn = local_nsn
 !    endif
+    ! Print grid geometry
+    write(*,*) "Process ", this_rank, " EW = ", local_ewn, " NS = ", local_nsn
   end subroutine
 
   function distributed_owner(ew,ewn,ns,nsn)
@@ -1361,6 +1370,22 @@ contains
     if (tasks >= 2) then
        call not_parallel(__FILE__, __LINE__)
     endif 
+  end subroutine
+
+    subroutine staggered_parallel_halo(a)
+    implicit none
+    real(8),dimension(:,:,:) :: a
+
+    !JEFF Implements a one-sided (staggered) halo update spreading information from the NW to the SE.
+    !Remember that the grid is laid out from the NE, then the upper right corner is assigned to task_id = 1.
+    !It's western nbhr is task_id = 2, proceeding rowwise and starting from the eastern edge.
+    ! What is required for correct calculations is vel(:,ew-1:ew,ns-1:ns), so correct info is needed from NW.
+    ! (WAIT, is ns=1 northernmost or southernmost point?  If southernmost, then I need to reverse.)
+    ! Communications DO NOT wrap around at the edges.
+
+    if (tasks >= 2) then
+	! Do nothing
+    endif
   end subroutine
 
 end module parallel
