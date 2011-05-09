@@ -1,0 +1,28 @@
+﻿Glimmer-CISM Steering Committee telconf., May 4, 2011
+Agenda:
+1) update on status of merge
+2) update on status of 2.0 release and remaining tasks:
+   i) complete check of all SIA and HO test cases
+   ii) add HO tests to automated test suite?
+   iii) documentation
+           a) check existing sections on HO code and either add text or add links to web/wiki pages
+                   where equations, soln, etc. are described in more detail
+           b) check existing sections describing options and update (HO options have changed (simplified) since
+                   PB&J core is unsupported in this release)
+           c) add documentation on Trilinos (how to build, link to, call, etc.)
+3) licensing issues
+4) outline of devel. plans for next year (time permitting)
+Notes and Action items (w/ initials for responsible parties):
+- merge mostly done and 2.0 release nearly ready
+- items remaining to be done for 2.0 release include:
+        1) add “dome” and “confined shelf” test cases auto test suite (SP)
+        2) have someone familiar w/ SIA tests run/check test suite (Sarah S.?)
+        3) look at changes/bugs to sliding in current SIA core; confirm working and/or fix for 1.6         
+(beta) release and for 2.0 releases (IR)
+4) look over documentation and make sure it is consistent and adequate for 2.0 release 
+(SP and JJ)
+- LGPL license discussed as possibility for new alternative to GNU GPL. MH to talk with SH folks; AP to talk to Met office folks; WL to talk to CESM folks
+- Much discussion about how to proceed with repositories in the futures; no clear consensus at the moment but the discussion will continue. A possible coarse of action is to maintain a repo. at CESM and the Berlios (with regular updates from the latter to the former and/or vice versa). This allows anyone who wants to develop GC without CESM licensing restrictions to do so from the Berios repo. and ensures that there is always an alternate, publicly availabe repo. in addition to that at CESM.
+- Discussion about what GC becomes in the future if/when current dycore becomes redundant and/or superseded by upcoming superior “plugin” dycores (e.g. CHOMBO dycore, FEM dycores, etc.); ideally, GC will always include at least one decent “vanilla” dycore as part of the public release 
+- WL suggests having calls more often (approx. every 6 weeks); next call proposed to be on June 13, prior to CESM meeting. IR to send out email to confirm date/time.
+- We did not get to Nick and Ian’s document. How to follow up on this?
