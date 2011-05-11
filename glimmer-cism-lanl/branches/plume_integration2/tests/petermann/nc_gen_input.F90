@@ -762,7 +762,8 @@ contains
        vvelhom(:,1:kinbcw,:) = upstream_vel
     else
        !vvelhom(:,ny-kinbcw:ny-1,:) = upstream_vel
-       vvelhom(:,1:kinbcw,:) = upstream_vel
+!       vvelhom(:,1:kinbcw,:) = upstream_vel
+       vvelhom(:,:,:) = upstream_vel
     end if
 
     !do j=ny-kinbcw-10,ny

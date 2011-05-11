@@ -54,9 +54,13 @@ class PlumeNamelist(object):
                      'horturb' : True,
                      'entrain' : True,
                      'entype' : 1,
+                     'entype2' : 1,
+                     'switch_entype_n' : 0,
                      'C_i' : 20.0,
                      'C_n' : 100.0,
                      'C_s' : 100.0,
+                     'nk_m' : 0.45,
+                     'nk_n' : 0.2,
                      'basmelt' : True,
                      'rholinear' : True,
                      'thermobar' : False,
@@ -78,7 +82,8 @@ class PlumeNamelist(object):
                      'lnottim' : 100.0*365.25*86400.0, #once per 100 years
                      'dt1'     : None,
                      'm_grid' : None,
-                     'n_grid' : None,          
+                     'n_grid' : None,
+                     'namb' : 301,
                      'hx' : None,      
                      'hy' : None,
                      'gldep' : None,
@@ -86,16 +91,22 @@ class PlumeNamelist(object):
                      'wcdep' : 1000.0,
                      'plume_min_thickness' : 10.0,
                      'u_star_offset' : 0.0,
+                     'tidal_velocity' : 0.0,
                      'infloain' : 0.0,
                      'infloein' : 0.0,
                      'knfloain' : 0.0,
                      'knfloein' : 0.0,
                      'entr_time_const' : None,
+                     'detrain_time_const' : None,
                      'bsmoothit' : 0,   #iterations of smoothing
                      'salttop' : None,
                      'saltbot' : None,
                      'temptop' : None,
                      'tempbot' : None,
+                     'n_amb_ctl_pt' : 0,
+                     'amb_temp_ctl_pt' : '0.0',
+                     'amb_salt_ctl_pt' : '0.0',
+                     'amb_depth_ctl_pt': '0.0',
                      'tiuniform' : None,
                      'min_melt_depth' : 0.0,
                      'phi' : None,
@@ -302,6 +313,7 @@ class GCConfig(object):
               {'use_lateral_stress_bc' : True,
                'use_plastic_bnd_cond' : False,
                'tau_xy_0' : None,
+               'annual_percent_var' : 0.0,
                'use_shelf_bc_1' : False,
                'use_sticky_wall' : False, # create a 'sticky spot' along wall or not
                'sticky_length' : 0,
@@ -319,6 +331,7 @@ class GCConfig(object):
                          },
           'CF output' : { 'variables' : ' '.join(['lsurf','usurf',
                                                   'thk','thk_t','bmlt',
+                                                  'kinbcmask',
                                                   'uflx_conv','vflx_conv','flx_conv',
                                                   'uvelhom',
                                                   'vvelhom',
@@ -619,7 +632,8 @@ class _GenInputJob(_BaseJob):
 
         #fields with default values
         #self.ifpos = 5
-        self.ifpos = self.plume_landw + self.n - 4
+#        self.ifpos = self.plume_landw + self.n - 4
+#        self.ifpos = None
         self.rhoi = 910.0
         self.rhoo = 1028.0
         self.kx = 0.0
@@ -756,7 +770,9 @@ class SandersonShelfJob(LinearShelfJob):
         LinearShelfJob.__init__(self)
 
         self.ifthk = 0.0
+        self.annual_percent_var = 0.0
         self.tauxy0 = None
+
 
     def resolve(self,gc_override={},plume_override={}):
         
@@ -768,6 +784,7 @@ class SandersonShelfJob(LinearShelfJob):
         self.ifthk = self.upthk - slope*shelf_length
 
         self.gc.update(  {'boundary condition params' : {'tau_xy_0' : self.tauxy0,
+                                                         'annual_percent_var' : self.annual_percent_var,
                                                          },
                           } )
 
@@ -846,6 +863,8 @@ class RestartIceJob(_BaseJob):
         self._plume_restart_file = os.path.join(self.jobDir,
                                                 'last_time.%s' %
                                                 os.path.basename(self._initJob.plume_output_file))
+        self.useRunTimeLimit = False
+        self.maxRunTime = 0.0
         
     def _getUnderlyingJob(self):
         return self.newJob.underlyingJob
@@ -864,8 +883,12 @@ class RestartIceJob(_BaseJob):
         self.gc['time']['tstart'] = self.tstart
         self.gc['CF output']['start'] = self.tstart
 
-        self.gc['CF output']['stop'] = self.tend
-        self.gc['time']['tend'] =     self.tend
+        if (self.useMaxRunTimeLimit):
+            self.gc['CF output']['stop'] = self.tstart + self.maxRunTimeLimit
+            self.gc['time']['tend'] = self.tstart + self.maxRunTimeLimit
+        else:
+            self.gc['CF output']['stop'] = self.tend
+            self.gc['time']['tend'] =     self.tend
         
         if ('doPlumeRestart' in self.__dict__):
             if (self.doPlumeRestart):
@@ -955,7 +978,7 @@ class ListPerturbJob(RestartIceJob):
     def __init__(self, initJobName, initJobDir=None, newJobName=None):
         RestartIceJob.__init__(self,initJobName,initJobDir,newJobName)
 
-        #perturb_list should have the form of a list of triples
+        #perturb_list should have the form of a list of quadruples
         self.perturb_list = []
         self.inflow_a = None
         self.vvelhom_new_val = None
@@ -973,8 +996,8 @@ class ListPerturbJob(RestartIceJob):
                     self.inflow_a,
                     self.vvelhom_new_val*1.0,
                     ])
-        for (k,amp,len) in  self.perturb_list:
-            cmd.extend([k,amp,len])
+        for (k,amp,phase,len) in  self.perturb_list:
+            cmd.extend([k,amp,phase,len])
         
         cmd = [_fortran_style('nc_perturb_gl',c) for c in cmd]
 
@@ -982,26 +1005,26 @@ class ListPerturbJob(RestartIceJob):
 
 class RegridIceJob(RestartIceJob):
 
-    def __init__(self,initJobFile,initJobDir,new_m,new_n):
-        RestartIceJob.__init__(self,initJobFile,initJobDir)
+    def __init__(self,initJobFile,new_m,new_n,newName=None):
+        RestartIceJob.__init__(self,initJobFile,initJobDir=None,newName=newName)
         self.new_m = new_m
         self.new_n = new_n
         
-    def _genInput(self):
+    def _genInputCmds(self):
 
         cmd =['nc_regrid']
-        cmd.extend([self.inputNcFile,
-                    self._initJob.inputfile,
+        cmd.extend([self._initJobInputNcFile,
+                    self.inputfile,
                     self._inputNcTimeIndex,
                     self.new_m,self.new_n,
                     0,0,0,0,
                     #2,4,1,1,  #n,s,e,w thickness buffers
+                    #4,0,1,1,
                     4,2,1,1,
-                    #self.newJob.kinbcw, 0,0,0,
-                    0,2,0,0,
+                    4,2,0,0,
                     0.0,0.0])             
         cmd = [_fortran_style('nc_regrid', c) for c in cmd]
-        return cmd
+        return [cmd]
     
 class FixedBasalMeltJob(RestartIceJob):
 
