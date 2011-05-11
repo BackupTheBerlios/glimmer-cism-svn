@@ -53,8 +53,8 @@ module glimmer_config
   private :: handle_section, handle_value, InsertSection, InsertValue, dp
 
   integer, parameter :: namelen=50
-  integer, parameter :: valuelen=200
-  integer, parameter :: linelen=250
+  integer, parameter :: valuelen=1024
+  integer, parameter :: linelen=1050
 
   type ConfigValue
      character(len=namelen) :: name = ''
@@ -379,7 +379,7 @@ contains
     
     type(ConfigSection), pointer :: section
     character(*) :: tag
-    character(200) :: testtag
+    character(valuelen) :: testtag
 
     ConfigSectionHasTag=.false.
     if (ConfigSectionHasValue(section,'tag',testtag)) then

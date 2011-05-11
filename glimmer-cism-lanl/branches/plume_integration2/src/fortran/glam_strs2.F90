@@ -165,7 +165,8 @@ end subroutine glam_velo_fordsiapstr_init
 ! 'glide_velo_higher.F90'. In turn, 'run_ho_model' is called from 'inc_remap_driver' in
 ! 'glam.F90', and 'inc_remap_driver' is called from 'glide_tstep_ps' in 'glide.F90'.
 
-subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
+subroutine glam_velo_fordsiapstr(time, &
+	                         ewn,      nsn,    upn,  &
                                  dew,      dns,          &
                                  sigma,    stagsigma,    &
                                  thck,     usrf,         &
@@ -190,7 +191,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                                  efvs )
 
   implicit none
-
+  real (kind=sp), intent(in) :: time ! current time in years
   integer, intent(in) :: ewn, nsn, upn
   integer, dimension(:,:),   intent(inout)  :: umask, mask_unstag 
   ! NOTE: 'inout' status to 'umask' should be changed to 'in' at some point, 
@@ -241,6 +242,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp) :: err
   integer :: iter
 
+  print *, 'time: ', time
 
   ! calc geometric 2nd deriv. for generic input variable 'ipvr', returns 'opvr'
   call geom2ders(ewn, nsn, dew, dns, usrf, stagthck, d2usrfdew2, d2usrfdns2)
@@ -341,6 +343,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      minTauf,     flwa,           &
 		     bnd_cond_params,             &
                      bnd_cond_params%tau_xy_0 / tau0_glam, &
+		     bnd_cond_params%annual_percent_var, &
+	 	     time, &
 		     bnd_cond_params%use_lateral_stress_bc, &
 		     bnd_cond_params%use_sticky_wall, &
 		     bnd_cond_params%sticky_length, &
@@ -400,7 +404,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
                      lsrf,        topg,           &
                      minTauf,     flwa,           &
 		     bnd_cond_params,             &
-                     0.0_dp, .false.,             &
+                     0.0_dp,0.d0,time, .false.,   &
 		     bnd_cond_params%use_sticky_wall,  &
 		     bnd_cond_params%sticky_length,    &
                      beta, counter )
@@ -1024,7 +1028,10 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                        lsrf,        topg,           &
                        minTauf,     flwa,           &   
 		       bnd_cond_params,             &
-		       tau_xy_0, use_lateral_stress_bc, &
+		       tau_xy_0, &
+ 		       annual_percent_var, &
+		       time, &
+		       use_lateral_stress_bc, &
 		       use_sticky_wall, &
                        sticky_length,   &
                        beta, count )
@@ -1059,6 +1066,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
   type(glide_bnd_cond_params), intent(in) :: bnd_cond_params    
   real (kind = dp), intent(in) :: tau_xy_0             !should be non-dimensional here      
+  real (kind = dp), intent(in) :: annual_percent_var
+  real (kind =sp),  intent(in) :: time  !current time in years
   logical, intent(in) :: use_lateral_stress_bc, use_sticky_wall
   integer, intent(in) :: sticky_length
 
@@ -1421,11 +1430,13 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
               if (ew .le. (ewn-1)/2.0) then
                  call putpcgc( 1.0_dp,loc_array(ew+2,ns)+up,loc_array(ew,ns)+up)
                  call putpcgc(-1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
-                 rhsd(loc_array(ew,ns)+up) = - tau_xy_0  * (2*dew) /  efvs_usable
+                 rhsd(loc_array(ew,ns)+up) = - tau_xy_0*(1.d0 + annual_percent_var*sin(2*pi*time)) &
+                                                       * (2*dew) /  efvs_usable
               else
                  call putpcgc( 1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
                  call putpcgc(-1.0_dp,loc_array(ew-2,ns)+up,loc_array(ew,ns)+up)  
-                 rhsd(loc_array(ew,ns)+up) =   tau_xy_0  * (2*dew) /  efvs_usable
+                 rhsd(loc_array(ew,ns)+up) =   tau_xy_0*(1.d0 + annual_percent_var*sin(2*pi*time)) &
+                                                       *(2*dew) /  efvs_usable
               end if
               
 

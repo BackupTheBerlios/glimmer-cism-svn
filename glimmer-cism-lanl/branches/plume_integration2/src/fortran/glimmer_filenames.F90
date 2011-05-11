@@ -7,7 +7,7 @@ module glimmer_filenames
 
   implicit none
 
-  character(200) :: workingdir = ''
+  character(1024) :: workingdir = ''
   !*FD Working directory for all file operations. Absolute paths are unaffected
 
 contains
@@ -23,11 +23,11 @@ contains
 
   end subroutine glimmer_set_path
 
-  character(200) function process_path(path)
+  character(1024) function process_path(path)
 
     character(*),intent(in) :: path
 
-    character(200) :: alpath
+    character(1024) :: alpath
 
     alpath=adjustl(path)
 

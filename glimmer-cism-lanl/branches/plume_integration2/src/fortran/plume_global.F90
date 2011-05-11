@@ -84,7 +84,7 @@ module plume_global
   logical :: rholinear,thermobar,intrace,vardrag,topedit,tangle,negfrz
   logical :: use_min_plume_thickness, use_periodic_forcing
   logical :: use_neutral_salinity
-  integer :: entype     
+  integer :: entype,entype2,switch_entype_n     
   ! parameters related to the Zilitinkevich and Mironov mix-layer thickness scheme
   ! for entrainment
   real(kind=kdp) :: C_s, C_n, C_i, alpha, beta
@@ -98,8 +98,12 @@ module plume_global
   real(kind=kdp) :: pi,dcr,grav,dt,gdt,fdt,small,edepth,mdepth,fdepth,septol
   real(kind=kdp) :: ah,kh,dzincr,temptop,tempbot,saltbot,salttop
   real(kind=kdp) :: tgrad,sgrad,wcdep,gldep,ifdep,rho0,rhoi
-  real(kind=kdp) :: plume_min_thickness, entr_time_const
+  real(kind=kdp),dimension(64) :: amb_temp_ctl_pt, amb_salt_ctl_pt, amb_depth_ctl_pt
+  integer        :: n_amb_ctl_pt
+  real(kind=kdp) :: plume_min_thickness,plume_max_thickness,entr_time_const,detrain_time_const
+  real(kind=kdp) :: gaspar_cutoff
   real(kind=kdp) :: u_star_offset
+  real(kind=kdp) :: tidal_velocity
   real(kind=kdp) :: cdb,cdbvar,ef,cl
   real(kind=kdp) :: phi ! latitude
   real(kind=kdp) :: radian,f	
@@ -113,7 +117,9 @@ module plume_global
   real(kind=kdp),allocatable,dimension(:,:) :: rhop,temp,tempa,tins
   real(kind=kdp),allocatable,dimension(:,:) :: salt,salta,rhoamb
   real(kind=kdp),allocatable,dimension(:,:) :: entr,atemp,asalt,drag,thk_def,artf_entr_frac
-  real(kind=kdp) :: samb(lamb),tamb(lamb),rhovf(lamb)
+  real(kind=kdp),allocatable,dimension(:,:) :: local_tidal_speed
+  real(kind=kdp),allocatable,dimension(:) :: samb,tamb,rhovf
+
   real(kind=kdp) :: frzcut(lice)
 
   logical :: drflag(ldr)
@@ -153,6 +159,12 @@ module plume_global
   real(kind=kdp),allocatable,dimension(:,:) :: debug,debug2,debug3
   real(kind=kdp),allocatable,dimension(:,:) :: train
 
+  !Gaspar 1988 CMO parameters
+  real(kind=kdp) :: m1,m2,m3,m4,m5,a1,a2
+
+  !Gaspar 1988 NK parameters
+  real(kind=kdp) :: nk_m, nk_n
+
 contains
 
   subroutine allocate_arrays()
@@ -179,6 +191,7 @@ contains
     allocate (rhop(m,n),temp(m,n),tempa(m,n),tins(m,n))
     allocate (salt(m,n),salta(m,n),rhoamb(m,n))
     allocate (entr(m,n),thk_def(m,n),artf_entr_frac(m,n))
+    allocate (local_tidal_speed(m,n))
     allocate (atemp(m,n),asalt(m,n))
     allocate (drag(m,n))
 
@@ -194,6 +207,8 @@ contains
 
     allocate (debug(m,n),debug2(m,n),debug3(m,n))
     allocate (train(m,n))
+
+    allocate(tamb(namb),samb(namb),rhovf(namb))
 
   end subroutine allocate_arrays
 
@@ -211,6 +226,7 @@ contains
     deallocate(ahdx,ahdxu,ahdy,ahdyv)
     deallocate(rhop,temp,tempa,tins,salt,salta,rhoamb,entr,atemp,asalt,drag)
     deallocate(thk_def,artf_entr_frac)
+    deallocate(local_tidal_speed)
     deallocate(utrans,utransa,vtrans,vtransa,su,sv,u0,v0,u0a,v0a,tang)
     deallocate(gwave_speed,gwave_crit_factor)
     deallocate(tint)
@@ -218,6 +234,7 @@ contains
     deallocate(debug,debug2,debug3)
     deallocate(train)
 
+    deallocate(tamb,samb,rhovf)
 
   end subroutine deallocate_arrays
 

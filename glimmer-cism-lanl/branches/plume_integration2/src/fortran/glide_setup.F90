@@ -459,6 +459,7 @@ contains
      type(glide_global_type),intent(inout) :: model
 
      call GetValue(section, 'tau_xy_0', model%bnd_cond_params%tau_xy_0)
+     call GetValue(section, 'annual_percent_var', model%bnd_cond_params%annual_percent_var)
      call GetValue(section, 'use_lateral_stress_bc', model%bnd_cond_params%use_lateral_stress_bc)
      call GetValue(section, 'use_plastic_bnd_cond', model%bnd_cond_params%use_plastic_bnd_cond)
      call GetValue(section, 'use_shelf_bc_1', model%bnd_cond_params%use_shelf_bc_1)
@@ -851,6 +852,8 @@ contains
 
     if (model%bnd_cond_params%use_lateral_stress_bc) then
         write(message, *) 'tau_xy_0: ', model%bnd_cond_params%tau_xy_0
+	call write_log(message)
+	write(message, *) 'annual_percent_var: ', model%bnd_cond_params%annual_percent_var
 	call write_log(message)
     elseif  (model%bnd_cond_params%use_plastic_bnd_cond) then
         call write_log('Imposing plastic yield bnd condition along given curves')

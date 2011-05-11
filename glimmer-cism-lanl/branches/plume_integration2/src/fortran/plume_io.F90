@@ -43,7 +43,7 @@ module plume_io
   character(len=*),parameter :: fmt6500 = '(a,i6,a,i2,a,i2,a,i2,a)'
 
   character(len=512)::output_dir
-  character(len=64) :: jobid
+  character(len=256) :: jobid
 
   real(kind=kdp) :: odep,wtoi
 
@@ -72,6 +72,7 @@ module plume_io
   integer :: sep_varid
   integer :: bmelt_varid,btemp_varid,bsalt_varid
   integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
+  integer :: tidal_speed_varid
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
   integer :: debug_varid,debug2_varid,debug3_varid
   integer :: train_varid
@@ -291,7 +292,8 @@ contains
     integer :: i
     open(famb,file='ambout')    
     do i=1,namb
-       write(famb,*) depth(i),tamb(i),ttt(i),samb(i),rhovf(i),rhopot(i)
+!        write(famb,*) depth(i),tamb(i),ttt(i),samb(i),rhovf(i),rhopot(i)
+	write(famb,"(4f16.4)") depth(i),tamb(i),samb(i),rhovf(i)
     end do
     close(famb)
 
@@ -700,6 +702,10 @@ contains
     call check( nf90_put_att(nc_id, entr_varid, 'long_name', 'entrainment velocity') )
     call check( nf90_put_att(nc_id, entr_varid, 'standard_name', 'entrainment velocity') )
     call check( nf90_put_att(nc_id, entr_varid, 'units', 'meters/year') )
+
+    call io_append_output('Creating variable tide')
+    call check( nf90_def_var(nc_id,'tide',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),tidal_speed_varid) )
+    call check( nf90_put_att(nc_id, tidal_speed_varid, 'units', 'meters/sec') )
 	
 !    call io_append_output('Creating variable jcs')
 !    call check( nf90_def_var(nc_id,'jcs',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),jcs_varid) )
@@ -779,6 +785,7 @@ contains
     integer :: x_dimid, y_dimid, time_dimid
     integer :: nc_id, var_id, time_index
     integer :: x_len, y_len, time_len
+    integer :: result_code
     character(len=NF90_MAX_NAME) :: x_name,y_name,time_name
 
     ! open file
@@ -805,12 +812,18 @@ contains
     end if
 
     ! get variable id
-    call check ( nf90_inq_varid(nc_id, varname, var_id) )
-
-    ! read variable array (last time, all x and y values) and write into out_array
-    call check( nf90_get_var(nc_id, var_id, out_array, &
-                start=(/ 1,1,time_len /), &
-                count=(/ x_len,y_len, 1 /)) )
+    
+    result_code = nf90_inq_varid(nc_id, varname, var_id)
+    if (result_code == NF90_ENOTVAR) then
+       print *, 'Failed to find ', varname, ' in input netcdf.'
+    else
+       call check(result_code)
+       
+       ! read variable array (last time, all x and y values) and write into out_array
+       call check( nf90_get_var(nc_id, var_id, out_array, &
+                  start=(/ 1,1,time_len /), &
+                  count=(/ x_len,y_len, 1 /)) )
+    end if
 
     ! close file
     call check( nf90_close(nc_id) )
@@ -828,6 +841,7 @@ contains
    integer :: x_dimid, y_dimid, time_dimid
    integer :: nc_id, var_id, time_index
    integer :: x_len, y_len, time_len
+   integer :: result_code
    character(len=NF90_MAX_NAME) :: x_name,y_name,time_name
 
    ! open file
@@ -854,12 +868,17 @@ contains
    end if
 
    ! get variable id
-   call check ( nf90_inq_varid(nc_id, varname, var_id) )
+   result_code = nf90_inq_varid(nc_id, varname, var_id) 
+   if (result_code == NF90_ENOTVAR) then
+      print *, 'Failed to find ', varname, ' in input netcdf.'
+   else
+      call check(result_code)
 
-   ! read variable array (last time, all x and y values) and write into out_array
-   call check( nf90_get_var(nc_id, var_id, out_array, &
-        start=(/ 1,1,time_len /), &
-        count=(/ x_len,y_len, 1 /)) )
+      ! read variable array (last time, all x and y values) and write into out_array
+      call check( nf90_get_var(nc_id, var_id, out_array, &
+                  start=(/ 1,1,time_len /), &
+                  count=(/ x_len,y_len, 1 /)) )
+   end if
 
    ! close file
    call check( nf90_close(nc_id) )
@@ -890,6 +909,7 @@ contains
     call check(nf90_put_var(nc_id, temp_varid, temp, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, salt_varid, salt, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, entr_varid, entr*sec_per_year, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, tidal_speed_varid, local_tidal_speed, (/1,1,time_counter/)))
 !    call check(nf90_put_var(nc_id, jcs_varid, jcs, (/1,1,time_counter/)))
 !    call check(nf90_put_var(nc_id, jcw_varid, jcw, (/1,1,time_counter/)))
 !    call check(nf90_put_var(nc_id, jcd_u_varid, jcd_u, (/1,1,time_counter/)))
@@ -900,7 +920,7 @@ contains
     call check(nf90_put_var(nc_id, debug2_varid, debug2, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, debug3_varid, debug3, (/1,1,time_counter/)))
 
-    call check(nf90_put_var(nc_id, train_varid, train*sec_per_year, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, train_varid, (entr+train)*sec_per_year, (/1,1,time_counter/)))
 
     call check(nf90_put_var(nc_id, gwave_speed_varid, gwave_speed, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, gwave_crit_factor_varid, gwave_crit_factor, (/1,1,time_counter/)))
@@ -925,6 +945,7 @@ contains
     integer,intent(in) :: status_code
 
     if (status_code .ne. 0) then
+	print *, status_code
        call io_append_output(NF90_STRERROR(status_code))
        call io_append_output('fatal netcdf error')
        stop 1

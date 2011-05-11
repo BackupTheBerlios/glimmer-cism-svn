@@ -878,6 +878,7 @@ module glide_types
        logical :: use_lateral_stress_bc = .true.   ! apply a plastic yield stress condition on lateral boundaries or not
        logical :: use_plastic_bnd_cond = .true.   
        real(dp) :: tau_xy_0                 	   ! value of yield stress  
+       real(dp) :: annual_percent_var              ! annual variation in side stress
 
        logical :: use_sticky_wall           	   ! whether to pin some ice columns to the wall along one side or not
        integer :: sticky_length		    	   ! number of cells to pin (hold along-wall velocity at zero)
