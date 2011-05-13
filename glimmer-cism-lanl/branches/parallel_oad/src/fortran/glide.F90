@@ -148,6 +148,7 @@ contains
     type(glide_global_type) :: model        !*FD model instance
 
     integer :: i,j,k
+    integer :: loopify1, loopify2
 
     call write_log(glimmer_version)
 
@@ -298,7 +299,12 @@ contains
        if (model%options%whichtemp == TEMP_REMAP_ADV) then
 
           do k = 1, model%general%upn-1
-             model%temper%temp(k,:,:) = min(0.0d0,dble(model%climate%artm(:,:)))
+             do loopify1=lbound(model%temper%temp,2),ubound(model%temper%temp,2)
+                do loopify2=lbound(model%temper%temp,3),ubound(model%temper%temp,3)
+                   model%temper%temp(k,loopify1,loopify2) &
+                   = min(0.0d0,dble(model%climate%artm(loopify1,loopify2)))
+                end do
+             end do
           end do
 
           call calcflwa(model%numerics%sigma,        &
