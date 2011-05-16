@@ -44,6 +44,54 @@
 #include "config.inc"
 #endif
 
+
+subroutine numericalCore(model, climate)
+  use glimmer_global, only:rk, dp
+  use glide
+  use simple_forcing
+  use glimmer_log
+  use glimmer_config
+  use glimmer_commandline
+  use glimmer_writestats_module
+
+  use glide_diagnostics
+
+  implicit none
+
+  type(glide_global_type) :: model        ! model instance
+  type(simple_climate) :: climate         ! climate
+  real(kind=rk) time
+  integer :: tstep_count
+
+  time = model%numerics%tstart
+
+  call simple_massbalance(climate,model,time)
+  call simple_surftemp(climate,model,time)
+  call spinup_lithot(model)
+
+  tstep_count = 0
+
+  do while(time.le.model%numerics%tend)
+     call glide_tstep_p1(model,time)
+     call glide_tstep_p2(model)
+     call glide_tstep_p3(model)
+     ! override masking stuff for now
+
+     tstep_count = tstep_count + 1
+     if (mod(tstep_count, model%numerics%ndiag) == 0) then
+        call glide_write_diag(model, time, model%numerics%idiag, &
+                                           model%numerics%jdiag )
+     endif
+
+     time = time + model%numerics%tinc
+     call simple_massbalance(climate,model,time)
+     call simple_surftemp(climate,model,time)     
+  end do
+
+  ! finalise GLIDE
+  call glide_finalise(model)
+end subroutine
+
 program simple_glide
   !*FD This is a simple GLIDE test driver. It can be used to run
   !*FD the EISMINT test cases
@@ -75,11 +123,8 @@ program simple_glide
   type(glide_global_type) :: model        ! model instance
   type(simple_climate) :: climate         ! climate
   type(ConfigSection), pointer :: config  ! configuration stuff
-  real(kind=rk) time
   real(kind=dp) t1,t2
   integer clock,clock_rate,ret
-
-  integer :: tstep_count
 
   ! start gptl
 #ifdef GPTL
@@ -136,33 +181,7 @@ program simple_glide
   call CheckSections(config)
   ! fill dimension variables
   call glide_nc_fillall(model)
-  time = model%numerics%tstart
-
-  call simple_massbalance(climate,model,time)
-  call simple_surftemp(climate,model,time)
-  call spinup_lithot(model)
-
-  tstep_count = 0
-
-  do while(time.le.model%numerics%tend)
-     call glide_tstep_p1(model,time)
-     call glide_tstep_p2(model)
-     call glide_tstep_p3(model)
-     ! override masking stuff for now
-
-     tstep_count = tstep_count + 1
-     if (mod(tstep_count, model%numerics%ndiag) == 0) then
-        call glide_write_diag(model, time, model%numerics%idiag, &
-                                           model%numerics%jdiag )
-     endif
-
-     time = time + model%numerics%tinc
-     call simple_massbalance(climate,model,time)
-     call simple_surftemp(climate,model,time)     
-  end do
-
-  ! finalise GLIDE
-  call glide_finalise(model)
+  call numericalCore(model, climate)
   call system_clock(clock,clock_rate)
   t2 = real(clock,kind=dp)/real(clock_rate,kind=dp)
   call glimmer_writestats(commandline_resultsname,commandline_configname,t2-t1)
