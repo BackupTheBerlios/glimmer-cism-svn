@@ -276,7 +276,7 @@ program shelf_driver
 
      ! set the velocities in front of the shelf to the inflow velocity, for nice
      ! plotting purposes only
-     model%velocity_hom%vvel(:,:,model%general%nsn) = model%velocity_hom%vvel(:,:,1)  
+
      model%velocity_hom%vvel(:,:,model%general%nsn-1) = model%velocity_hom%vvel(:,:,1)
      model%velocity_hom%vvel(:,:,model%general%nsn-2) = model%velocity_hom%vvel(:,:,1)
      model%velocity_hom%vvel(:,:,model%general%nsn-3) = model%velocity_hom%vvel(:,:,1)
