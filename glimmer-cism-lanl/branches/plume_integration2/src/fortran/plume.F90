@@ -1563,8 +1563,9 @@ contains
        rhopot = rho_func_nonlinear(tamb,samb,0.d0)
 
     end if
-
-    if (.not. suppress_ascii_output)  call io_write_amb(namb,depth,tamb,ttt,samb,rhovf,rhopot)
+	
+    !if (.not. suppress_ascii_output)
+    call io_write_amb(namb,depth,tamb,ttt,samb,rhovf,rhopot)
 
   end subroutine set_ambient
 
