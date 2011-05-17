@@ -12,13 +12,19 @@ if (sys.argv[0] == 'python'):
     if (len(sys.argv) < 3):
         raise Exception("need to specify job name")
     else:
-        jobName = sys.argv[2]
+        jobNames = sys.argv[2:]
 else:        
-    jobName = sys.argv[1]
+    jobNames = sys.argv[1:]
 
-j = FromFilesJob(jobName)
+print (jobNames)
 
-j.assertCanStage()
-j.resolve()
-j.serialize()
+for jobName in jobNames:
+    print(jobName)
+    try:
+        j = FromFilesJob(jobName)
+        j.assertCanStage()
+        j.resolve()
+        j.serialize()
+    except:
+        print('Could not do job %s' % jobName)
 

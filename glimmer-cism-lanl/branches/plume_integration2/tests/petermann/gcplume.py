@@ -329,22 +329,18 @@ class GCConfig(object):
           'CF input' : { 'name' : None,     #name of netcdf file containing input data fields
                          'time' : None      #which time slice to read input data from
                          },
-          'CF output' : { 'variables' : ' '.join(['lsurf','usurf',
+          'CF output' : { 'variables' : ' '.join(['acab','lsurf','usurf',
                                                   'thk','thk_t','bmlt',
                                                   'kinbcmask',
                                                   'uflx_conv','vflx_conv','flx_conv',
                                                   'uvelhom',
                                                   'vvelhom',
-                                                  #uvelhom_srf',
-                                                  #'vvelhom_srf',
                                                   'thkmask','topg',
-                                                  'temp',
-                                                  'efvs',
+                                                  'temp','efvs',
                                                   'tau_hom_xx','tau_hom_yy',
                                                   'tau_hom_xz','tau_hom_yz','tau_hom_xy']),
                           ### NB: there is a (250) character limit on line length!!!
-
-                                   # the following is a list of all possible output variables:
+                          # the following is a list of all possible output variables:
                                    # level lithoz x0 x1 y0 y1 acab acab_tavg age artm backstress
                                    # beta bheatflx bmlt bmlt_tavg btemp btrc bwat bwatflx calving 
                                    # diffu dusrfdtm eus flwa gl_ew gl_ns gline_flux iarea ivol
@@ -763,6 +759,7 @@ class LinearShelfJob(_GenInputJob):
 
     def _getUnderlyingJob(self):
         return self
+    underlyingJob = property(fget=_getUnderlyingJob)
     
 class SandersonShelfJob(LinearShelfJob):
 
@@ -1002,6 +999,7 @@ class ListPerturbJob(RestartIceJob):
         cmd = [_fortran_style('nc_perturb_gl',c) for c in cmd]
 
         return [cmd]
+    
 
 class RegridIceJob(RestartIceJob):
 
@@ -1189,9 +1187,9 @@ class FromFilesJob(_BaseJob):
         return int(self._gcconfig.vals['grid']['nsn'])
     n = property(fget=_get_n)
 
-    def _get_underlyingJob(self):
+    def _getUnderlyingJob(self):
         return self
-    underlyingJob = property(fget=_get_underlyingJob)
+    underlyingJob = property(fget=_getUnderlyingJob)
     
     def resolve(self,gc_override={},plume_override={}):
 

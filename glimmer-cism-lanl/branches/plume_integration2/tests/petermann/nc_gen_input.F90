@@ -180,11 +180,11 @@ contains
     allocate(uvelhom(nx-1,ny-1,n_level), vvelhom(nx-1,ny-1,n_level))
 
     !now populate the dimension variables
-    xs = (/ ( (i-1)*hx,i=1,nx ) /)
-    ys = (/ ( (j-1)*hy,j=1,ny ) /)
+    xs = (/ ( (real(i)-1.5d0)*hx,i=1,nx ) /)
+    ys = (/ ( (real(j)-1.5d0)*hy,j=1,ny ) /)
     level = (/ ( real(i)/real((n_level-1)), i=0,(n_level-1) ) /)
-    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
-    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+    xstag = (/ ( ((real(i)-1.d0)*hx),i=1,nx-1 ) /)
+    ystag = (/ ( ((real(j)-1.d0)*hy),j=1,ny-1 ) /)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! define the topograph, thickness, kinbcmask       !!!
@@ -349,10 +349,14 @@ contains
     allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
 
     !now populate the dimension variables
-    xs = (/ ( (i-1)*hx,i=1,nx ) /)
-    ys = (/ ( (j-1)*hy,j=1,ny ) /)
-    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
-    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+!    xs = (/ ( (i-1)*hx,i=1,nx ) /)
+!    ys = (/ ( (j-1)*hy,j=1,ny ) /)
+!    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
+!    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+    xs = (/ ( (real(i)-1.5d0)*hx,i=1,nx ) /)
+    ys = (/ ( (real(j)-1.5d0)*hy,j=1,ny ) /)
+    xstag = (/ ( ((real(i)-1.d0)*hx),i=1,nx-1 ) /)
+    ystag = (/ ( ((real(j)-1.d0)*hy),j=1,ny-1 ) /)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! define the topograph, thickness, kinbcmask       !!!
@@ -542,11 +546,16 @@ contains
     allocate(rand_row(nx-2*zero_buf))
 
     !now populate the dimension variables
-    xs = (/ ( (i-1)*hx,i=1,nx ) /)
-    ys = (/ ( (j-1)*hy,j=1,ny ) /)
+!    xs = (/ ( (i-1)*hx,i=1,nx ) /)
+!    ys = (/ ( (j-1)*hy,j=1,ny ) /)
+!    level = (/ ( real(i)/real((n_level-1)), i=0,(n_level-1) ) /)
+!    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
+!    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+    xs = (/ ( (real(i)-1.5d0)*hx,i=1,nx ) /)
+    ys = (/ ( (real(j)-1.5d0)*hy,j=1,ny ) /)
     level = (/ ( real(i)/real((n_level-1)), i=0,(n_level-1) ) /)
-    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
-    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+    xstag = (/ ( ((real(i)-1.d0)*hx),i=1,nx-1 ) /)
+    ystag = (/ ( ((real(j)-1.d0)*hy),j=1,ny-1 ) /)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! define the topography, thickness, kinbcmask       !!!
@@ -640,6 +649,7 @@ contains
     real :: chan_depth,otopg,ltopg,acab_per_year
     real,dimension(:),allocatable :: rand_row
     logical :: noslip
+    integer,parameter :: s_marg = 2, w_marg = 1
 
     real :: tmp
     real :: rand_amp
@@ -719,11 +729,11 @@ contains
     allocate(rand_row(nx-2*zero_buf))
 
     !now populate the dimension variables
-    xs = (/ ( (i-1)*hx,i=1,nx ) /)
-    ys = (/ ( (j-1)*hy,j=1,ny ) /)
+    xs = (/ ( (real(i-w_marg)-0.5d0)*hx,i=1,nx ) /)
+    ys = (/ ( (real(j-s_marg)-0.5d0)*hy,j=1,ny ) /)
     level = (/ ( real(i)/real((n_level-1)), i=0,(n_level-1) ) /)
-    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
-    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+    xstag = (/ ( (real(i-w_marg)*hx),i=1,nx-1 ) /)
+    ystag = (/ ( (real(j-s_marg)*hy),j=1,ny-1 ) /)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! define the topography, thickness, kinbcmask       !!!
@@ -741,7 +751,7 @@ contains
     do j=(kinbcw+1),ifpos
        thck(1+zero_buf:(nx-zero_buf),j) = if_thk +  &
 !              real(j-ifpos)/(ny-kinbcw+1-ifpos) * (upstream_thk-if_thk)
-            real(ifpos-j)/(ifpos-kinbcw) * (upstream_thk-if_thk)
+            real(ifpos+0.5d0-j)/(ifpos+0.5d0-kinbcw-0.5d0) * (upstream_thk-if_thk)
     end do
 
     ! define kinbcmask
@@ -867,11 +877,14 @@ contains
     allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
 
     !now populate the dimension variables
-    xs = (/ ( (i-1)*hx,i=1,nx ) /)
-    ys = (/ ( (j-1)*hy,j=1,ny ) /)
-    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
-    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
-
+!    xs = (/ ( (i-1)*hx,i=1,nx ) /)
+!    ys = (/ ( (j-1)*hy,j=1,ny ) /)
+!    xstag = (/ ( ((real(i)-0.5)*hx),i=1,nx-1 ) /)
+!    ystag = (/ ( ((real(j)-0.5)*hy),j=1,ny-1 ) /)
+    xs = (/ ( (real(i)-1.5d0)*hx,i=1,nx ) /)
+    ys = (/ ( (real(j)-1.5d0)*hy,j=1,ny ) /)
+    xstag = (/ ( ((real(i)-1.d0)*hx),i=1,nx-1 ) /)
+    ystag = (/ ( ((real(j)-1.d0)*hy),j=1,ny-1 ) /)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! define the topograph, thickness, kinbcmask       !!!

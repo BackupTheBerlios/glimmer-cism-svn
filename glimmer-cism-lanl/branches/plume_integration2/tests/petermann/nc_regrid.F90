@@ -18,10 +18,9 @@ program nc_regrid
   integer :: nlevel                                !only allow new nlevel = old nlevel
   real(kind=dp) :: hx_old, hy_old, hx_new, hy_new
 
-!  real(kind=dp) :: hx_new_kin, hy_new_kin
+  !  real(kind=dp) :: hx_new_kin, hy_new_kin
+  real(kind=dp) :: domain_xmin, domain_xmax, domain_ymin, domain_ymax
 
-  ! first two old x values, and old y values
-  real(kind=dp),dimension(2) :: x1_old,y1_old
   real(kind=dp) :: inflow_a
   real(kind=dp) :: vvelhom_new_val = 0.d0
   integer :: num_perturbs  ! this is the number of perturbations to apply
@@ -31,6 +30,7 @@ program nc_regrid
 
   !data arrays
   real(kind=dp),dimension(:),allocatable :: levels
+  real(kind=dp),dimension(:),allocatable :: xs_old, ys_old
   real(kind=dp),dimension(:),allocatable :: xs_new,ys_new
   real(kind=dp),dimension(:),allocatable :: xstag_new,ystag_new
   real(kind=dp),dimension(:,:),allocatable :: thck_old,thck_new,topog_old,topog_new
@@ -188,6 +188,7 @@ subroutine main()
              uvelhom_new,vvelhom_new,temp_new)
   deallocate(amp_perturbs,k_perturbs,phase_perturbs)
   deallocate(perturb_ramps)
+  deallocate(xs_old,ys_old)
 
 end subroutine main
 
@@ -275,16 +276,22 @@ subroutine write_south_thk_margin(thck_old,thck_new, &
   end if
 
   do i=i_new_left,i_new_right
-     
-     i_prev = int((real(i) - i_new_left)*(hx_new/hx_old)) + i_old_left
 
+     i_prev = w_marg+1+  &  ! first old grid point inside domain
+          floor((xs_new(i)-xs_old(w_marg+1))/hx_old)  
+     
      ! a is the fractional number of old cells in the x-direction
      ! from the previous old grid point
      ! to the current new grid point
 
-     a = (real(i)-i_new_left)*(hx_new/hx_old) - &
-          aint((real(i)-i_new_left)*(hx_new/hx_old))
-     
+     if (xs_old(i_prev) < domain_xmin) then
+        a = 1.d0
+     elseif (xs_old(i_prev+1) > domain_xmax) then
+        a = 0.d0
+     else
+        a = (xs_new(i)-xs_old(i_prev))/hx_new
+     end if
+
      thck_new(i,1:s_marg) = (1-a) * thck_old(i_prev,  1:s_marg)     + &
                                 a * thck_old(i_prev+1,1:s_marg)
   end do
@@ -293,9 +300,9 @@ subroutine write_south_thk_margin(thck_old,thck_new, &
 end subroutine write_south_thk_margin
   
 subroutine write_real_margins(data_old,data_new, &
-                         test_sign, threshold, &
-                         nx0,nx1,ny0,ny1, &
-	                 n_marg,s_marg,w_marg,e_marg,use_threshold)
+     test_sign, threshold, &
+     nx0,nx1,ny0,ny1, &
+     n_marg,s_marg,w_marg,e_marg,use_threshold)
 
   real(kind=dp),dimension(:,:),intent(in) :: data_old
   real(kind=dp),dimension(:,:),intent(inout) :: data_new
@@ -305,60 +312,62 @@ subroutine write_real_margins(data_old,data_new, &
   logical,intent(in) :: use_threshold
 
   if (use_threshold) then
-  if (test_sign * data_old(1,ny0/2) > test_sign * threshold) then
+
+     if (test_sign * data_old(1,ny0/2) > test_sign * threshold) then
 	!land margin on west
 	data_new(1:w_marg,:) = data_old(1,ny0/2)
-  else
+     else
 	!ocean margin on west
-	data_new(1:w_marg, (s_marg+1):(ny1-n_marg)) = data_old(1,ny0/2)
-  end if
-  
-  if (test_sign * data_old(nx0,ny0/2) > test_sign * threshold) then
+	data_new(1:w_marg, (s_marg+1):(ny1-n_marg)) = &
+            data_old(1,ny0/2)
+     end if
+
+     if (test_sign * data_old(nx0,ny0/2) > test_sign * threshold) then
 	!land margin on east side
 	data_new((nx1+1-e_marg):nx1,:) = data_old(nx0,ny0/2)
-  else
-      ! ocean margin
-      data_new((nx1+1-e_marg):nx1,(s_marg+1):(ny1-n_marg)) = &
-	 					 data_old(nx0,ny0/2)
-  end if
+     else
+        ! ocean margin
+        data_new((nx1+1-e_marg):nx1,(s_marg+1):(ny1-n_marg)) = &
+             data_old(nx0,ny0/2)
+     end if
 
-  if(test_sign * data_old(nx0/2, 1) > test_sign * threshold) then
+     if(test_sign * data_old(nx0/2, 1) > test_sign * threshold) then
 	!land margin on south side
 	data_new(1:nx1, 1:s_marg) = data_old(nx0/2,1)
-  else
+     else
 	data_new((w_marg+1):(nx1-e_marg),1:s_marg) = &
-					  data_old(nx0/2,1)
-  end if
+             data_old(nx0/2,1)
+     end if
 
-  if(test_sign * data_old(nx0/2, ny0) > test_sign * threshold) then
+     if(test_sign * data_old(nx0/2, ny0) > test_sign * threshold) then
 	!land margin on north side
 	data_new(1:nx1, (ny1+1-n_marg):ny1) = &
-					data_old(nx0/2,ny0)
-  else
-	data_new((w_marg+1):(nx1-e_marg),&
-	         (ny1+1-n_marg):ny1) = &
-                               data_old(nx0/2,ny0)
-  end if
+             data_old(nx0/2,ny0)
+     else
+	data_new((w_marg+1):(nx1-e_marg),(ny1+1-n_marg):ny1) = &
+             data_old(nx0/2,ny0)
+     end if
 
   else
-     
+
      print *,'not implemented'
      stop 1
-!     data_new(:,ny1+1-n_marg):ny1) = &
-!                               data_old(nx0/2,ny0)
+     !     data_new(:,ny1+1-n_marg):ny1) = &
+     !                             data_old(nx0/2,ny0)
   end if
 
 end subroutine write_real_margins
 
 
 subroutine write_interior(data_old, data_new, nx_old,nx_new,ny_old,ny_new,&
-                          n_margin,s_margin,w_margin,e_margin)
+     n_margin,s_margin,w_margin,e_margin, writeout)
 
   real(kind=dp),dimension(:,:),intent(in) :: data_old
   real(kind=dp),dimension(:,:),intent(inout) :: data_new
 
   integer,intent(in) :: nx_old,nx_new,ny_old,ny_new
   integer,intent(in) :: n_margin,s_margin,w_margin,e_margin
+  logical, intent(in) :: writeout
 
   !local vars
   integer :: i_old_left,i_new_left,i_old_right,i_new_right
@@ -374,53 +383,107 @@ subroutine write_interior(data_old, data_new, nx_old,nx_new,ny_old,ny_new,&
   i_new_left = w_margin+1
   i_old_right = nx_old - e_margin
   i_new_right = nx_new - e_margin
-  
+
   j_old_bot = s_margin + 1
+!  j_old_bot = s_margin
   j_new_bot = s_margin + 1
+!  j_new_bot = s_margin
+
   j_old_top = ny_old - n_margin
   j_new_top = ny_new - n_margin
 
+  if (writeout) then
+     print *, i_new_left, i_new_right, j_new_bot, j_new_top
+     print *, domain_xmin, domain_xmax, domain_ymin,domain_ymax
+  end if
+
   do i=i_new_left,i_new_right
      do j=j_new_bot,j_new_top
- 	 
-         i_prev = int((real(i) - i_new_left)*(hx_new/hx_old)) + i_old_left
-         j_prev = int((real(j) - j_new_bot) *(hy_new/hy_old)) + j_old_bot
+        
+        i_prev = w_margin+1+ &                             ! first old grid point inside domain
+             floor((xs_new(i)-xs_old(w_margin+1))/hx_old)  ! number of additional old cells west of current point
+             
+        j_prev = s_margin+1+ &                             ! first old grid point inside domain
+             floor((ys_new(j)-ys_old(s_margin+1))/hy_old)  ! number of additional old cells south of current point
 
-         ! a is the fractional number of old cells in the x-direction
-         ! from the previous old grid point
-         ! to the current new grid point. b is the same, in the y-direction
+        ! a is the fractional number of old cells in the x-direction
+        ! from the previous old grid point
+        ! to the current new grid point. b is the same, in the y-direction
 
-         a = (real(i)-i_new_left)*(hx_new/hx_old) - &
-                aint((real(i)-i_new_left)*(hx_new/hx_old))
 
-	 b = (real(j)-j_new_bot)*(hy_new/hy_old) - &
-		aint((real(j)-j_new_bot) *(hy_new/hy_old))
+        if (xs_old(i_prev) < domain_xmin) then
 
-	 data_new(i,j) = (1-a)*(1-b) * data_old(i_prev,j_prev)     + &
-	                 (1-a)*   b  * data_old(i_prev,j_prev+1)   + &
-                            a *(1-b) * data_old(i_prev+1,j_prev)     + &
-	                    a *   b  * data_old(i_prev+1,j_prev+1)
+           if (writeout) then
+              print *,'< x domain', i,j,i_prev,j_prev
+           end if
+
+           a = 1.d0
+
+        else if (xs_old(i_prev+1) > domain_xmax) then
+
+           if (writeout) then
+              print *,'> x domain', i,j,i_prev,j_prev
+           end if
+           
+           a = 0.d0
+
+        else
+
+           a = (xs_new(i)-xs_old(i_prev))/hx_old
+
+        end if
+
+        
+        if (ys_old(j_prev) < (domain_ymin-hx_old/2.d0)) then
+
+           if (writeout) then
+              print *,'< y domain', i,j,i_prev,j_prev
+!              stop 1
+           end if
+
+           b = 1.d0
+
+        else if (ys_old(j_prev+1) > domain_ymax) then
+
+           if (writeout) then
+              print *,'> y domain', i,j,i_prev,j_prev, a
+!              stop 1
+           end if
+           
+           b = 0.d0
+
+        else
+
+           b = (ys_new(j)-ys_old(j_prev))/hy_old
+
+        end if
+
+        data_new(i,j) = (1-a)*(1-b) * data_old(i_prev  ,j_prev)     + &
+                        (1-a)*   b  * data_old(i_prev  ,j_prev+1)   + &
+                           a *(1-b) * data_old(i_prev+1,j_prev)     + &
+                           a *   b  * data_old(i_prev+1,j_prev+1)
+
      end do
   end do
 
-  ! smooth data_new twice
-  do l=1,3
-  do i=(i_new_left+1),(i_new_right-1)
-     do j=(j_new_bot+1),(j_new_top-1)
- 	 data_new_temp(i,j) = data_new(i,j) + &
-              (4.d0*data_new(i,j) &
-                  -data_new(i-1,j) &
-                  -data_new(i+1,j) &
-                  -data_new(i,j-1) &
-                  -data_new(i,j+1))*(-0.1d0)
+  ! smooth data_new
+  do l=1,-1
+     do i=(i_new_left+1),(i_new_right-1)
+        do j=(j_new_bot+1),(j_new_top-1)
+           data_new_temp(i,j) = data_new(i,j) + &
+                (4.d0*data_new(i,j) &
+                -data_new(i-1,j) &
+                -data_new(i+1,j) &
+                -data_new(i,j-1) &
+                -data_new(i,j+1))*(-0.1d0)
 
+        end do
      end do
-  end do
 
-  data_new(i_new_left+1:i_new_right-1,j_new_bot+1:j_new_top-1) = &
-       data_new_temp(i_new_left+1:i_new_right-1,j_new_bot+1:j_new_top-1)
-      
-end do 
+     data_new(i_new_left+1:i_new_right-1,j_new_bot+1:j_new_top-1) = &
+          data_new_temp(i_new_left+1:i_new_right-1,j_new_bot+1:j_new_top-1)
+
+  end do
 
 end subroutine write_interior
 
@@ -452,20 +515,21 @@ subroutine read_old_nc_file()
   call check(nf90_inq_varid(nc_id, 'kinbcmask', kinbcmask_varid))
   call check(nf90_inq_varid(nc_id, 'uvelhom', uvelhom_varid))
   call check(nf90_inq_varid(nc_id, 'vvelhom', vvelhom_varid))
-  call check(nf90_inq_varid(nc_id, 'temp', temp_varid))
+!  call check(nf90_inq_varid(nc_id, 'temp', temp_varid))
 
   call check(nf90_inquire_dimension(nc_id, x_dimid, x1_name, nx_old))
   call check(nf90_inquire_dimension(nc_id, y_dimid, y1_name, ny_old))
   call check(nf90_inquire_dimension(nc_id, time_dimid, t_name, nt_old))
   call check(nf90_inquire_dimension(nc_id, level_dimid, level_name, nlevel))
 
-  call check(nf90_get_var(nc_id, x_varid, x1_old, start= (/ 1 /), &
-						  count= (/ 2 /) ))
-  hx_old = x1_old(2) - x1_old(1)
+  allocate(xs_old(nx_old))
+  allocate(ys_old(ny_old))
 
-  call check(nf90_get_var(nc_id, y_varid, y1_old, start= (/ 1 /), &
-      						  count= (/ 2 /) ))
-  hy_old = y1_old(2) - y1_old(1)
+  call check(nf90_get_var(nc_id, x_varid, xs_old, start= (/ 1 /), count=(/ nx_old /)))
+  call check(nf90_get_var(nc_id, y_varid, ys_old, start= (/ 1 /), count=(/ ny_old /)))
+        
+  hx_old = xs_old(2) - xs_old(1)
+  hy_old = ys_old(2) - ys_old(1)
  
   if (t_read < 1) then
 	write(*,*) 'reading last time slice'
@@ -476,6 +540,11 @@ subroutine read_old_nc_file()
 	write(*,*) 't_read exceeds available time slices: ', nt_old
 	stop 1
   end if
+
+  domain_xmin = 0.5d0*(xs_old(thk_w_margin)+xs_old(thk_w_margin+1))
+  domain_xmax = domain_xmin + hx_old * (nx_old-thk_w_margin-thk_e_margin)
+  domain_ymin = 0.5d0*(ys_old(thk_s_margin)+ys_old(thk_s_margin+1))
+  domain_ymax = domain_ymin + hy_old * (ny_old-thk_s_margin-thk_n_margin)
 
   allocate(thck_old(nx_old,ny_old),topog_old(nx_old,ny_old))
   allocate(kinbcmask_old(nx_old-1, ny_old-1))
@@ -505,9 +574,10 @@ subroutine read_old_nc_file()
                         start= (/ 1,1,1,t_read /), &
                         count= (/ (nx_old-1),(ny_old-1),nlevel,1 /) ))
   
-  call check(nf90_get_var(nc_id, temp_varid, temp_old, &
-                        start= (/ 1,1,1,t_read /), &
-                        count= (/ (nx_old),(ny_old), nlevel, 1 /) ))
+!  call check(nf90_get_var(nc_id, temp_varid, temp_old, &
+!                        start= (/ 1,1,1,t_read /), &
+!                        count= (/ (nx_old),(ny_old), nlevel, 1 /) ))
+  temp_old = -20.d0
 
 end subroutine read_old_nc_file
 
@@ -522,27 +592,30 @@ subroutine define_new_data()
      hx_new = hx_old
      hy_new = hy_old
   else
-    hx_new = hx_old * (nx_old - thk_w_margin - thk_e_margin-1) / &
-                      (nx_new - thk_w_margin - thk_e_margin-1)
-    hy_new = hy_old * (ny_old - thk_s_margin - thk_n_margin-1) / &
-                        (ny_new - thk_s_margin - thk_n_margin-1)
-    print *, 'hx_old',hx_old,'hx_new',hx_new
-!  hx_new_kin = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
-!                        (nx_new - thk_w_margin - thk_e_margin - 1)
-!  hy_new_kin = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
-!                        (ny_new - thk_s_margin - thk_n_margin - 1)
+     !    hx_new = hx_old * (nx_old - thk_w_margin - thk_e_margin-1) / &
+     !                      (nx_new - thk_w_margin - thk_e_margin-1)
+     !    hy_new = hy_old * (ny_old - thk_s_margin - thk_n_margin-1) / &
+     !                        (ny_new - thk_s_margin - thk_n_margin-1)
+
+
+     hx_new = hx_old * (nx_old - thk_w_margin - thk_e_margin) / &
+          (nx_new - thk_w_margin - thk_e_margin)
+     hy_new = hy_old * (ny_old - thk_s_margin - thk_n_margin) / &
+          (ny_new - thk_s_margin - thk_n_margin)
+
+     print *, 'hx_old',hx_old,'hx_new',hx_new
+     !  hx_new_kin = hx_old * (nx_old - thk_w_margin - thk_e_margin - 1) / &
+     !                        (nx_new - thk_w_margin - thk_e_margin - 1)
+     !  hy_new_kin = hy_old * (ny_old - thk_s_margin - thk_n_margin - 1) / &
+     !                        (ny_new - thk_s_margin - thk_n_margin - 1)
   end if
-			 
+
   !now populate the dimension variables
-  xs_new = (/ ( x1_old(1) + (i-1)*hx_new,i=1,nx_new ) /)
-  ys_new = (/ ( y1_old(1) + (j-1)*hy_new,j=1,ny_new ) /)
-  xstag_new = (/ ( x1_old(1) + ((real(i)-0.5)*hx_new),i=1,nx_new-1 ) /)
-  ystag_new = (/ ( y1_old(1) + ((real(j)-0.5)*hy_new),j=1,ny_new-1 ) /)
-  
-  print *, xs_new
-  print *, xstag_new
-  print *, ys_new
-  print *, ystag_new
+
+  xs_new = (/ ( domain_xmin + (i-thk_w_margin-0.5d0)*hx_new,i=1,nx_new ) /)
+  ys_new = (/ ( domain_ymin + (j-thk_s_margin-0.5d0)*hy_new,j=1,ny_new ) /)
+  xstag_new = (/ ( domain_xmin + (i-thk_w_margin)*hx_new,i=1,nx_new-1 ) /)
+  ystag_new = (/ ( domain_ymin + (j-thk_s_margin)*hy_new,j=1,ny_new-1 ) /)
 
   ! now define the thck, topog, kinbcmask arrays
   topog_new = 0.0d0
@@ -559,74 +632,77 @@ subroutine define_new_data()
      kinbcmask_new = kinbcmask_old
      uvelhom_new = uvelhom_old
      vvelhom_new = vvelhom_old
-     temp_new = temp_old
- 
+     !     temp_new = temp_old
+     temp_new = -15.d0
+
      if ( vvelhom_new_val .ne. 0.d0) then
-	     where( vvelhom_old .ne. 0.d0)
-		vvelhom_new = vvelhom_new_val
-             elsewhere
-	        vvelhom_new = 0.d0
-             end where
+        where( vvelhom_old .ne. 0.d0)
+           vvelhom_new = vvelhom_new_val
+        elsewhere
+           vvelhom_new = 0.d0
+        end where
      end if
 
   else
 
-  if (vvelhom_new_val .ne. 0.d0) then
+     if (vvelhom_new_val .ne. 0.d0) then
 	write(*,*) 'Have not implemented setting new velocity for new grid sizes'
 	stop 1
-  end if
- 
-  call write_real_margins(topog_old,topog_new, +1.0d0, 0.0d0,&
-                          nx_old, nx_new,ny_old, ny_new, &
-	                  top_n_margin,top_s_margin,top_w_margin,top_e_margin,.true.)
+     end if
 
-  call write_interior(topog_old,topog_new, nx_old,nx_new,ny_old,ny_new,&
-		      top_n_margin,top_s_margin,top_w_margin,top_e_margin)
+     call write_real_margins(topog_old,topog_new, +1.0d0, 0.0d0,&
+          nx_old, nx_new,ny_old, ny_new, &
+          top_n_margin,top_s_margin,top_w_margin,top_e_margin,.true.)
 
-  call write_real_margins(thck_old,thck_new, -1.0d0, 0.0d0, &
-                          nx_old, nx_new,ny_old, ny_new, &
-                          thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin,.true.)
-  call write_south_thk_margin(thck_old,thck_new,nx_old, nx_new,ny_old, ny_new,thk_s_margin,thk_w_margin,thk_e_margin)
-  print *, thck_old(10,:)
-  print *, thck_new(20,:)
-!  stop 1
-  call write_interior(thck_old,thck_new,nx_old,nx_new,ny_old,ny_new,&
-                      thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin)
+     call write_interior(topog_old,topog_new, nx_old,nx_new,ny_old,ny_new,&
+          top_n_margin,top_s_margin,top_w_margin,top_e_margin, .false.)
 
-  call write_real_margins(kinbcmask_old*1.0d0, kinbcmask_new_real, +1.0d0,0.0d0,&
-                          nx_old-1, nx_new-1, ny_old-1, ny_new-1, &
-			  kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin,.true.)
-  kinbcmask_new = int(kinbcmask_new_real)
+     call write_real_margins(thck_old,thck_new, -1.0d0, 0.0d0, &
+          nx_old, nx_new, ny_old, ny_new, &
+          thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin,.true.)
+     print *, 'after real margins', thck_new(10,:)
 
-  do j=1,nlevel
-     call write_real_margins(uvelhom_old(:,:,j),uvelhom_new(:,:,j), 1.0d0, 0.0d0,&
-                             nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
-                             kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin,.true.)
-     call write_real_margins(vvelhom_old(:,:,j),vvelhom_new(:,:,j), 1.0d0, 0.0d0,&
-                             nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
-                             kin_n_margin,kin_s_margin-1,kin_w_margin,kin_e_margin,.true.)
-     call write_interior(uvelhom_old(:,:,j),uvelhom_new(:,:,j), nx_old-1,nx_new-1, &
-                         ny_old-1,ny_new-1,&
-                         kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin)
+     call write_south_thk_margin(thck_old,thck_new,nx_old, nx_new,ny_old, ny_new,&
+          thk_s_margin,thk_w_margin,thk_e_margin)
+     print *, 'after south thk margin', thck_new(10,:)
 
-     call write_interior(vvelhom_old(:,:,j),vvelhom_new(:,:,j), nx_old-1,nx_new-1, &
-                         ny_old-1,ny_new-1, &
-                         kin_n_margin,kin_s_margin-1,kin_w_margin,kin_e_margin)
+     call write_interior(thck_old,thck_new,nx_old,nx_new,ny_old,ny_new,&
+          thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin, .true.)
+     print *, 'after interior', thck_new(10,:)
 
-     call write_real_margins(temp_old(:,:,j), temp_new(:,:,j), 1.0d0, 0.0d0, &
-                             nx_old, nx_new, ny_old, ny_new, &
-                             0,0,0,0,.true.)
+     call write_real_margins(kinbcmask_old*1.0d0, kinbcmask_new_real, +1.0d0,0.0d0,&
+          nx_old-1, nx_new-1, ny_old-1, ny_new-1, &
+          kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin,.true.)
+     kinbcmask_new = int(kinbcmask_new_real)
 
-     call write_interior(temp_old(:,:,j), temp_new(:,:,j), nx_old,nx_new, &
-                         ny_old, ny_new, 0,0,0,0)
+     do j=1,nlevel
+        call write_real_margins(uvelhom_old(:,:,j),uvelhom_new(:,:,j), 1.0d0, 0.0d0,&
+             nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
+             kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin,.true.)
+        call write_interior(uvelhom_old(:,:,j),uvelhom_new(:,:,j), nx_old-1,nx_new-1, &
+             ny_old-1,ny_new-1,&
+             kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin,.false.)
 
-  end do
+        call write_real_margins(vvelhom_old(:,:,j),vvelhom_new(:,:,j), 1.0d0, 0.0d0,&
+             nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
+             kin_n_margin,kin_s_margin-1,kin_w_margin,kin_e_margin,.true.)
+        call write_interior(vvelhom_old(:,:,j),vvelhom_new(:,:,j), nx_old-1,nx_new-1, &
+             ny_old-1,ny_new-1, &
+             kin_n_margin,kin_s_margin-1,kin_w_margin,kin_e_margin,.false.)
+
+        call write_real_margins(temp_old(:,:,j), temp_new(:,:,j), 1.0d0, 0.0d0, &
+             nx_old, nx_new, ny_old, ny_new, &
+             0,0,0,0,.true.)
+        call write_interior(temp_old(:,:,j), temp_new(:,:,j), nx_old,nx_new, &
+             ny_old, ny_new, 0,0,0,0, .false.)
+
+     end do
   end if
 
   call perturb_rows(thck_new, nx_new, ny_new, &
-                          thk_w_margin, thk_e_margin,kin_s_margin, & !note use of kin_s
-                  	  inflow_a,k_perturbs, amp_perturbs,phase_perturbs,&
-                          perturb_ramps,num_perturbs)
+       thk_w_margin, thk_e_margin,kin_s_margin, & !note use of kin_s
+       inflow_a,k_perturbs, amp_perturbs,phase_perturbs,&
+       perturb_ramps,num_perturbs)
 
 end subroutine define_new_data
 

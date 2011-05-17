@@ -25,6 +25,7 @@ unexplained_list = []
 job_list = []
 
 pattern = 'apr22.2_k_([0-9\.]*)_amp_([0-9\.]*)_upvel_([0-9\.]*)_temp_([\-0-9\.]*)_itemp_([\-0-9\.]*)_tvel_([0-9\.]*)'
+#pattern = 'may_([0-9\.]*)_amp_([0-9\.]*)_upvel_([0-9\.]*)_temp_([\-0-9\.]*)_itemp_([\-0-9\.]*)_tvel_([0-9\.]*)'
 
 for jname in apr_jobs:
 
