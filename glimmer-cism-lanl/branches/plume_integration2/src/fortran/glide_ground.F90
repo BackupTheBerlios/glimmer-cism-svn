@@ -265,12 +265,10 @@ contains
     ewn = size(gline_flux, 1)
     nsn = size(gline_flux, 2)
 
-    
-       
-    where (GLIDE_IS_GROUNDING_LINE(mask))
-         gline_flux = stagthk * ((4.0/5.0)* surfvel(1,:,:) + &
-         (ubas**2.0 + vbas**2.0)**(1.0/2.0))  * dew  
-    end where
+!    where (GLIDE_IS_GROUNDING_LINE(mask))
+!         gline_flux = stagthk * ((4.0/5.0)* surfvel(1,:,:) + &
+!         (ubas**2.0 + vbas**2.0)**(1.0/2.0))  * dew  
+!    end where
   end subroutine calc_gline_flux
 
 !-------------------------------------------------------------------------
