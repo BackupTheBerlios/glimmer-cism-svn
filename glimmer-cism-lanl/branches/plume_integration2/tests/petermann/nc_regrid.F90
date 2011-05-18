@@ -660,15 +660,15 @@ subroutine define_new_data()
      call write_real_margins(thck_old,thck_new, -1.0d0, 0.0d0, &
           nx_old, nx_new, ny_old, ny_new, &
           thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin,.true.)
-     print *, 'after real margins', thck_new(10,:)
+!     print *, 'after real margins', thck_new(10,:)
 
      call write_south_thk_margin(thck_old,thck_new,nx_old, nx_new,ny_old, ny_new,&
           thk_s_margin,thk_w_margin,thk_e_margin)
-     print *, 'after south thk margin', thck_new(10,:)
+!     print *, 'after south thk margin', thck_new(10,:)
 
      call write_interior(thck_old,thck_new,nx_old,nx_new,ny_old,ny_new,&
-          thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin, .true.)
-     print *, 'after interior', thck_new(10,:)
+          thk_n_margin,thk_s_margin,thk_w_margin,thk_e_margin, .false.)
+!     print *, 'after interior', thck_new(10,:)
 
      call write_real_margins(kinbcmask_old*1.0d0, kinbcmask_new_real, +1.0d0,0.0d0,&
           nx_old-1, nx_new-1, ny_old-1, ny_new-1, &
