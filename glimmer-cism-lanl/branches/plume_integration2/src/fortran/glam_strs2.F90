@@ -650,7 +650,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
   case(1)       ! set the eff visc to some const value 
 
-    efvs = 1.0_dp
+    efvs = 1.0d-3
 
   end select
 
@@ -1089,8 +1089,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer, dimension(3) :: shift
   integer :: ew, ns, up
 
-  
-
+  real (kind = dp) :: tau_xy_0_eff !the number we actually use for side stres
 
   ct = 1        ! index to count the number of non-zero entries in the sparse matrix
 
@@ -1427,15 +1426,22 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
 	      efvs_usable = sum(local_efvs2) / (sum(local_efvs2/local_efvs2, mask=local_efvs2 > 1.0d-18))
 
+	      if ((nsn-3-ns) < int(10000.0d0/(dns*len0))) then
+!	          print *, 'near calving front', ns
+		  tau_xy_0_eff = 0.d0
+              else
+		  tau_xy_0_eff = tau_xy_0*(1.d0 - exp(-real(nsn-3-ns)*dns*len0/10000.d0))
+              end if
+	        
               if (ew .le. (ewn-1)/2.0) then
                  call putpcgc( 1.0_dp,loc_array(ew+2,ns)+up,loc_array(ew,ns)+up)
                  call putpcgc(-1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
-                 rhsd(loc_array(ew,ns)+up) = - tau_xy_0*(1.d0 + annual_percent_var*sin(2*pi*time)) &
-                                                       * (2*dew) /  efvs_usable
+                 rhsd(loc_array(ew,ns)+up) = - tau_xy_0_eff*(1.d0 + annual_percent_var*sin(2*pi*time)) &
+                                                       * (2*dew) /  efvs_usable 
               else
                  call putpcgc( 1.0_dp,loc_array(ew,  ns)+up,loc_array(ew,ns)+up)
                  call putpcgc(-1.0_dp,loc_array(ew-2,ns)+up,loc_array(ew,ns)+up)  
-                 rhsd(loc_array(ew,ns)+up) =   tau_xy_0*(1.d0 + annual_percent_var*sin(2*pi*time)) &
+                 rhsd(loc_array(ew,ns)+up) =   tau_xy_0_eff*(1.d0 + annual_percent_var*sin(2*pi*time)) &
                                                        *(2*dew) /  efvs_usable
               end if
               
@@ -1465,7 +1471,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         write(*,*) 'WTF?',ew,ns
     end if
 
-    end do;     ! ew 
+    end do;     ! ew  
+!    print *, ns, tau_xy_0,tau_xy_0_eff
   end do        ! ns
 
   return
