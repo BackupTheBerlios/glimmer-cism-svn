@@ -2411,11 +2411,12 @@ contains
     ! local variables
     integer :: i,k
     
-    do i = icalcan,icalcen
-       do k = kcalcan,kcalcen
-	   local_tidal_speed(i,k) = tidal_velocity * (wcdep+gldep)/bpos(i,k)
-       end do
-    end do
+    local_tidal_speed = tidal_velocity
+!    do i = icalcan,icalcen
+!       do k = kcalcan,kcalcen
+!	   local_tidal_speed(i,k) = tidal_velocity * (wcdep+gldep)/bpos(i,k)
+!       end do
+!    end do
 
   end subroutine tide
 
