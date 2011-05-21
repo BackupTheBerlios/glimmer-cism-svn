@@ -277,9 +277,11 @@ program shelf_driver
      ! set the velocities in front of the shelf to the inflow velocity, for nice
      ! plotting purposes only
 
-     model%velocity_hom%vvel(:,:,model%general%nsn-1) = model%velocity_hom%vvel(:,:,1)
-     model%velocity_hom%vvel(:,:,model%general%nsn-2) = model%velocity_hom%vvel(:,:,1)
-     model%velocity_hom%vvel(:,:,model%general%nsn-3) = model%velocity_hom%vvel(:,:,1)
+!     model%velocity_hom%vvel(:,:,model%general%nsn-1) = model%velocity_hom%vvel(:,:,1)
+!     model%velocity_hom%vvel(:,:,model%general%nsn-2) = model%velocity_hom%vvel(:,:,1)
+!     model%velocity_hom%vvel(:,:,model%general%nsn-3) = model%velocity_hom%vvel(:,:,1)
+
+      model%geometry%thck(:,model%general%nsn-4) = model%geometry%thck(:,model%general%nsn-5)
 
      call glide_tstep_p3(model)      ! isostasy, upper/lower surfaces
 
