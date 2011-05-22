@@ -265,6 +265,8 @@ program shelf_driver
      model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
                             !model%general%nsn-1) = 0.d0
                              2) = 0.d0
+
+
      ! impose dh/dx = 0 along the lateral side walls
 
      ! This has been commented out.  I believe it is physically incorrect since it can act 
@@ -281,7 +283,8 @@ program shelf_driver
 !     model%velocity_hom%vvel(:,:,model%general%nsn-2) = model%velocity_hom%vvel(:,:,1)
 !     model%velocity_hom%vvel(:,:,model%general%nsn-3) = model%velocity_hom%vvel(:,:,1)
 
-      model%geometry%thck(:,model%general%nsn-4) = model%geometry%thck(:,model%general%nsn-5)
+     model%geometry%thck(:,model%general%nsn-4) = model%geometry%thck(:,model%general%nsn-5)
+     model%geometry%thck_t(:, model%general%nsn-4) = 0.d0
 
      call glide_tstep_p3(model)      ! isostasy, upper/lower surfaces
 
