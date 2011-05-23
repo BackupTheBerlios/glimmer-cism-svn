@@ -1426,12 +1426,13 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
 	      efvs_usable = sum(local_efvs2) / (sum(local_efvs2/local_efvs2, mask=local_efvs2 > 1.0d-18))
 
-	      if ((nsn-3-ns) < int(10000.0d0/(dns*len0))) then
+!	      if ((nsn-3-ns) < int(10000.0d0/(dns*len0))) then
 !	          print *, 'near calving front', ns
-		  tau_xy_0_eff = 0.d0
-              else
-		  tau_xy_0_eff = tau_xy_0*(1.d0 - exp(-real(nsn-3-ns)*dns*len0/10000.d0))
-              end if
+!		  tau_xy_0_eff = 0.d0
+!              else
+!		  tau_xy_0_eff = tau_xy_0*(1.d0 - exp(-real(nsn-3-ns)*dns*len0/10000.d0))
+!              end if
+	      tau_xy_0_eff = tau_xy_0
 	        
               if (ew .le. (ewn-1)/2.0) then
                  call putpcgc( 1.0_dp,loc_array(ew+2,ns)+up,loc_array(ew,ns)+up)
