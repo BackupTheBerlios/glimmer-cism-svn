@@ -256,8 +256,10 @@ subroutine write_south_thk_margin(thck_old,thck_new, &
   integer,intent(in) :: nx_old,nx_new,ny_old,ny_new
   integer,intent(in) :: s_marg,w_marg,e_marg
 
-  integer :: i, i_prev, i_new_left, i_old_left, i_new_right, i_old_right
+  integer :: i,l, i_prev, i_new_left, i_old_left, i_new_right, i_old_right
   real(kind=dp) :: a
+  
+  real(kind=dp), dimension(:,:), allocatable :: thck_temp
 
   thck_new(1:w_marg,1:s_marg) = thck_old(1:w_marg,1:s_marg)
   thck_new((nx_new-e_marg+1):nx_new,1:s_marg) = thck_old((nx_old-e_marg+1):nx_old,1:s_marg)
@@ -279,7 +281,7 @@ subroutine write_south_thk_margin(thck_old,thck_new, &
 
      i_prev = w_marg+1+  &  ! first old grid point inside domain
           floor((xs_new(i)-xs_old(w_marg+1))/hx_old)  
-     
+
      ! a is the fractional number of old cells in the x-direction
      ! from the previous old grid point
      ! to the current new grid point
@@ -289,13 +291,30 @@ subroutine write_south_thk_margin(thck_old,thck_new, &
      elseif (xs_old(i_prev+1) > domain_xmax) then
         a = 0.d0
      else
-        a = (xs_new(i)-xs_old(i_prev))/hx_new
+        a = (xs_new(i)-xs_old(i_prev))/hx_old
      end if
 
      thck_new(i,1:s_marg) = (1-a) * thck_old(i_prev,  1:s_marg)     + &
                                 a * thck_old(i_prev+1,1:s_marg)
+
+
   end do
 
+  allocate(thck_temp(nx_new,s_marg))
+  thck_temp = thck_new(:,1:s_marg)
+
+  do l=1,-1
+     do i=(i_new_left+1),(i_new_right-1)
+        thck_temp(i,1:s_marg) = thck_new(i,1:s_marg)+ &
+                               (2.d0*thck_new(i,1:s_marg) &
+                                    -thck_new(i-1,1:s_marg) &
+                                    -thck_new(i+1,1:s_marg))*(-0.1d0)
+     end do
+ 
+     thck_new(:,1:s_marg) = thck_temp(:,1:s_marg)
+  end do
+
+  deallocate(thck_temp)
 
 end subroutine write_south_thk_margin
   
