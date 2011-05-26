@@ -276,6 +276,8 @@ class GCConfig(object):
                                                    # = 3 means circular ice-shelf
                                                  # NB: only used when using Payne-Price diagnostic scheme
                                                   # model%options%which_ho_babc
+                           'which_ho_efvs' : 0,   #  0 = calculate eff visc from strain rates
+                                                  #  1 = use constant value of 0.001                                               
                            'guess_specified' : 1,     # model%velocity_hom%is_velocity_valid
                            'which_ho_sparse' : 0,     # which sparse solver to use:
                                                       #  = 0 means biCG with incomplete LU precond. 
@@ -1019,7 +1021,7 @@ class RegridIceJob(RestartIceJob):
                     #2,4,1,1,  #n,s,e,w thickness buffers
                     #4,0,1,1,
                     4,2,1,1,
-                    4,2,0,0,
+                    0,2,0,0,
                     0.0,0.0])             
         cmd = [_fortran_style('nc_regrid', c) for c in cmd]
         return [cmd]
