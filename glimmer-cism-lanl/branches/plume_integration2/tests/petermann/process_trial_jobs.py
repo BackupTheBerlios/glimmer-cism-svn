@@ -30,17 +30,13 @@ def main(jobsPrefix,doRestart,pattern=None):
     restart_jobs = []
     job_list = []
 
-    #pattern = 'apr22.2_k_([0-9\.]*)_amp_([0-9\.]*)_upvel_([0-9\.]*)_temp_([\-0-9\.]*)_itemp_([\-0-9\.]*)_tvel_([0-9\.]*)'
-    #pattern = 'may_([0-9\.]*)_amp_([0-9\.]*)_upvel_([0-9\.]*)_temp_([\-0-9\.]*)_itemp_([\-0-9\.]*)_tvel_([0-9\.]*)'
-    pattern = pattern or 'may21.T([profile\-0-9\.]*)_coupled_temp_([\-0-9\.]*)_tau_([0-9\.]*)_diff_([0-9\.]*)_k_([0-9\.]*)_amp_([0-9]*\.[0-9]*)'
-
+    pattern = '.*temp_([\-0-9\.]*)_tau_([0-9\.]*)_diff_([0-9\.]*)_trial_([0-9]*)' 
+    
     for jname in jobs:
         unexplained = True
         g = re.match(pattern,jname).group
 
-        job_key = (str(g(1)),float(g(2)),float(g(3)),
-                   float(g(4)),float(g(5)),float(g(6)))
-
+        job_key = (float(g(1)),float(g(2)),float(g(3)),int(g(4)))
         print(job_key)
         job_list.append(job_key)
 
@@ -131,23 +127,23 @@ def main(jobsPrefix,doRestart,pattern=None):
     print('%s in unexplained_list' % len(unexplained_list))
     print('%s in restart_list' % len(restart_list))
     
-    print('intersections')
-    print(len(set(steady_ice_list).intersection(set(ice_error_list))))
-    print(len(set(steady_ice_list).intersection(set(plume_error_list))))
-    print(len(set(steady_ice_list).intersection(set(unexplained_list))))
-    print(len(set(steady_ice_list).intersection(set(killed_list))))
-    print(len(set(ice_error_list).intersection(set(plume_error_list))))
-    print(len(set(ice_error_list).intersection(set(unexplained_list))))
-    print(len(set(ice_error_list).intersection(set(killed_list))))
-    print(len(set(plume_error_list).intersection(set(unexplained_list))))
-    print(len(set(plume_error_list).intersection(set(killed_list))))
-    print(len(set(killed_list).intersection(set(unexplained_list))))
+    #print('intersections')
+    #print(len(set(steady_ice_list).intersection(set(ice_error_list))))
+    #print(len(set(steady_ice_list).intersection(set(plume_error_list))))
+    #print(len(set(steady_ice_list).intersection(set(unexplained_list))))
+    #print(len(set(steady_ice_list).intersection(set(killed_list))))
+    #print(len(set(ice_error_list).intersection(set(plume_error_list))))
+    #print(len(set(ice_error_list).intersection(set(unexplained_list))))
+    #print(len(set(ice_error_list).intersection(set(killed_list))))
+    #print(len(set(plume_error_list).intersection(set(unexplained_list))))
+    #print(len(set(plume_error_list).intersection(set(killed_list))))
+    #print(len(set(killed_list).intersection(set(unexplained_list))))
 
-    print('in restart and killed %s' % len(set(restart_list).intersection(set(killed_list))))
-    print('in restart and steady %s' % len(set(restart_list).intersection(set(steady_ice_list))))
-    print(len(set(restart_list).intersection(set(ice_error_list))))
-    print(len(set(restart_list).intersection(set(plume_error_list))))
-    print(len(set(restart_list).intersection(set(unexplained_list))))
+    #print('in restart and killed %s' % len(set(restart_list).intersection(set(killed_list))))
+    #print('in restart and steady %s' % len(set(restart_list).intersection(set(steady_ice_list))))
+    #print(len(set(restart_list).intersection(set(ice_error_list))))
+    #print(len(set(restart_list).intersection(set(plume_error_list))))
+    #print(len(set(restart_list).intersection(set(unexplained_list))))
 
     steady = open('jobs_%s_steady.txt' % (jobsPrefix),'w')
     iceerror=open('jobs_%s_iceerror.txt' % (jobsPrefix),'w')
@@ -159,33 +155,26 @@ def main(jobsPrefix,doRestart,pattern=None):
     try:
         for job_key in job_list:
             if job_key in steady_ice_list:
-                steady.write('%s,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f\n' %
-                             (job_key[0],job_key[1],job_key[2],job_key[3],
-                              job_key[4],job_key[5], STEADY_STATE))
+                steady.write('%8.1f,%8.1f,%8.1f,%8.1f\n' %
+                             (job_key[0],job_key[1],job_key[2],job_key[3]))
             elif job_key in plume_error_list:
-                perror.write('%s,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f\n' %
-                             (job_key[0],job_key[1],job_key[2],job_key[3],
-                              job_key[4],job_key[5], PLUME_ERROR))
+                perror.write('%8.1f,%8.1f,%8.1f,%8.1f\n' %
+                             (job_key[0],job_key[1],job_key[2],job_key[3]))
             elif job_key in ice_error_list:
-                iceerror.write('%s,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f\n' %
-                               (job_key[0],job_key[1],job_key[2],job_key[3],
-                                job_key[4],job_key[5], ICE_ERROR))
+                iceerror.write('%8.1f,%8.1f,%8.1f,%8.1f\n' %
+                               (job_key[0],job_key[1],job_key[2],job_key[3]))
             elif job_key in killed_list:
-                killed.write('%s,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f\n' %
-                             (job_key[0],job_key[1],job_key[2],job_key[3],
-                              job_key[4],job_key[5], TIMED_OUT))
+                killed.write('%8.1f,%8.1f,%8.1f,%8.1f\n' %
+                             (job_key[0],job_key[1],job_key[2],job_key[3]))
             elif job_key in unexplained_list:
-                unex.write('%s,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f\n' %
-                           (job_key[0],job_key[1],job_key[2],job_key[3],
-                            job_key[4],job_key[5], UNEXPLAINED))
+                unex.write('%8.1f,%8.1f,%8.1f,%8.1f\n' %
+                           (job_key[0],job_key[1],job_key[2],job_key[3]))
             elif job_key in restart_list:
-                restart.write('%s,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f\n' %
-                           (job_key[0],job_key[1],job_key[2],job_key[3],
-                            job_key[4],job_key[5], RESTART))
+                restart.write('%8.1f,%8.1f,%8.1f,%8.1f\n' %
+                           (job_key[0],job_key[1],job_key[2],job_key[3]))
             else:
-                print('not in any list:%s,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f,%8.1f\n' %
-                      (job_key[0],job_key[1],job_key[2],job_key[3],
-                       job_key[4],job_key[5], -1))
+                print('not in any list: %8.1f,%8.1f,%8.1f,%8.1f\n' %
+                      (job_key[0],job_key[1],job_key[2],job_key[3]))
 
     finally:
         steady.close()
