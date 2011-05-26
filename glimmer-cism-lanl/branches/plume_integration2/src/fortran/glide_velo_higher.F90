@@ -179,7 +179,7 @@ contains
                                       model%velocity_hom%uflx,    model%velocity_hom%vflx) 
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
-            call glam_velo_fordsiapstr( model%numerics%time, &
+            call glam_velo_fordsiapstr( model%numerics%time,model%numerics%tinc, &
 	                                model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
                                         model%numerics%dew,      model%numerics%dns,                &

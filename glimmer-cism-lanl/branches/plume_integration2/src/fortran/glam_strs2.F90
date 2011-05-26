@@ -89,6 +89,10 @@ implicit none
   logical, parameter :: use_shelf_bc_1 = .false.
 
 
+  integer :: num_picard_itrs_const_efvs = 0
+  real(kind=dp) :: max_total_years_const_efvs = 1.0d0
+  integer,parameter :: use_mean_efvs_limit = 50
+
 !***********************************************************************
 
 contains
@@ -165,7 +169,7 @@ end subroutine glam_velo_fordsiapstr_init
 ! 'glide_velo_higher.F90'. In turn, 'run_ho_model' is called from 'inc_remap_driver' in
 ! 'glam.F90', and 'inc_remap_driver' is called from 'glide_tstep_ps' in 'glide.F90'.
 
-subroutine glam_velo_fordsiapstr(time, &
+subroutine glam_velo_fordsiapstr(time,dt, &
 	                         ewn,      nsn,    upn,  &
                                  dew,      dns,          &
                                  sigma,    stagsigma,    &
@@ -191,7 +195,7 @@ subroutine glam_velo_fordsiapstr(time, &
                                  efvs )
 
   implicit none
-  real (kind=sp), intent(in) :: time ! current time in years
+  real (kind=sp), intent(in) :: time,dt ! current time in years
   integer, intent(in) :: ewn, nsn, upn
   integer, dimension(:,:),   intent(inout)  :: umask, mask_unstag 
   ! NOTE: 'inout' status to 'umask' should be changed to 'in' at some point, 
@@ -233,7 +237,7 @@ subroutine glam_velo_fordsiapstr(time, &
 
   integer :: counter                                ! iteation counter 
   character(len=100) :: message                     ! error message
-
+  
   character(len=100) :: fname
 
   ! variables used for incorporating generic wrapper to sparse solver
@@ -242,7 +246,9 @@ subroutine glam_velo_fordsiapstr(time, &
   real (kind = dp) :: err
   integer :: iter
 
-  print *, 'time: ', time
+  integer :: whichefvs2
+  
+  whichefvs2 = whichefvs
 
   ! calc geometric 2nd deriv. for generic input variable 'ipvr', returns 'opvr'
   call geom2ders(ewn, nsn, dew, dns, usrf, stagthck, d2usrfdew2, d2usrfdns2)
@@ -314,10 +320,24 @@ subroutine glam_velo_fordsiapstr(time, &
         .or.  (resid(2) > picard_params%switchres) .or. (counter < picard_params%cswitch))     &
        .and. (counter < picard_params%cmax) )
 
+    if (counter == use_mean_efvs_limit) then
+       print *, 'Warning: using constant viscosity for this Picard iteration'
+       whichefvs2 = 1
+
+       if (num_picard_itrs_const_efvs*dt > max_total_years_const_efvs) then
+          write(message,*) 'Exceeded allowed amount of time using constant viscosity:',max_total_years_const_efvs
+          call write_log(message,GM_ERROR,'glam_strs2.F90')
+          stop 1
+       end if
+
+       num_picard_itrs_const_efvs = num_picard_itrs_const_efvs + 1
+
+    end if
+
     ! calc effective viscosity using previously calc vel. field
     call findefvsstr(ewn,  nsn,  upn,      &
                      stagsigma,  counter,    &
-                     whichefvs,  efvs,     &
+                     whichefvs2,  efvs,     &
                      uvel,       vvel,     &
                      flwa,       thck,     &
                      dusrfdew,   dthckdew, &
@@ -419,6 +439,12 @@ subroutine glam_velo_fordsiapstr(time, &
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
+
+    if (any(isnan(uvel)) .or. (any(isnan(vvel)))) then
+       write(message,*) 'Found NaN in Picard iteration'
+     	call write_log(message,GM_ERROR,'glam_strs2.F90')
+	stop 1
+    end if
 
     ! apply unstable manifold correction to converged velocities
     uvel = mindcrshstr(1,whichresid,uvel,counter, &
@@ -650,7 +676,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
   case(1)       ! set the eff visc to some const value 
 
-    efvs = 1.0d-3
+    efvs = 2.0d-3
 
   end select
 
@@ -890,7 +916,8 @@ function mindcrshstr(pt,whichresid,vel,counter,start_umc,cvg_accel,small_vel,res
           performed_umc(pt) = .false.
           mindcrshstr = vel
        else
-          if (theta > (5.d0/6.d0)*pi) then
+          if (theta > (23.d0/24.d0)*pi) then
+          !if (theta > (5.d0/6.d0)*pi) then
              performed_umc(pt) = .true.    
              print *, 'performing UMC for vel', pt
              mindcrshstr = usav(:,:,:,pt) + (len_old/ &
