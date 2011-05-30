@@ -224,7 +224,7 @@ subroutine perturb_rows(data, &
 
      do i=w_marg+1,nx-e_marg
         do j=1,last_row
-           thk_perturb = amp_perturbs(k) * &
+           thk_perturb = 0.5d0*amp_perturbs(k) * &
                 cos(phase_perturbs(k) + 2*pi*k_perturbs(k)*(i-w_marg-1.d0)/(nx-e_marg-w_marg-1.d0))
            if (k < 2) then
               thk_perturb = thk_perturb + &

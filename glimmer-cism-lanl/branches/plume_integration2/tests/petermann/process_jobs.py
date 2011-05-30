@@ -101,9 +101,14 @@ def main(jobsPrefix):
                     unexplained = False
                     stillRunning = False
                     plume_error_list.append(jname)
+                    break
 
         else:
-            print('Warning: did not find _output file for %s' % jname)
+            if (jname in not_started_list):
+                pass
+            else:
+                print('Warning: did not find _output file for %s' % jname)
+                
 
         # take a look at the job output log file to see if job was killed
         if (job_log_file):
@@ -125,12 +130,14 @@ def main(jobsPrefix):
                     if not(jname in ice_error_list):
                         unexplained = True
                     break
+        if (stillRunning):
+            unexplained = False
+            still_running_list.append(jname)                
                 
         if (unexplained):
             unexplained_list.append(jname)
 
-        if (stillRunning):
-            still_running_list.append(jname)
+
 
     print('%s in all jobs' % len(jobs))
     
