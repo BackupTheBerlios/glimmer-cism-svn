@@ -101,8 +101,8 @@ contains
     allocate(dummy_zeros_int(nx,ny))
 
     !now populate the dimension variables
-    xs = (/ ( (i-1)*hx,i=1,nx ) /)
-    ys = (/ ( (j-1)*hy,j=1,ny ) /)
+    xs = (/ ( (real(i)-3.5d0)*hx,i=1,nx ) /)
+    ys = (/ ( (real(j)-3.5d0)*hy,j=1,ny ) /)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!! define the bmlt      !!!
@@ -112,20 +112,20 @@ contains
 
     bmlt = 0.d0
 
-    do j=1+4,ny-3
+    ! Note: j=3.5 corresponds to y = 0, which is the domain boundary
+
+    do j=4,ny-4
        do i=1,(NCONTROL-1)
-          !the last time this executes will store the correct values
-          if ((y_control(NCONTROL) - y_control(i)) >= (ys(j)+5*hy)) then
+          if ((y_control(i+1) > ys(j)) .and. (y_control(i) <= ys(j))) then
              j_interp = i
           end if
        end do
        
        bmelt_interp = bmlt_control(j_interp) + &
-            (y_control(NCONTROL) - ys(j)-5*hy - y_control(j_interp)) / &
-            (y_control(j_interp+1)-y_control(j_interp)) * &
+            (ys(j)-y_control(j_interp))/(y_control(j_interp+1)-y_control(j_interp))* &
             (bmlt_control(j_interp+1) - bmlt_control(j_interp))
 
-      bmlt(1+3:(nx-3),j) = bmelt_interp
+       bmlt(1+3:(nx-3),j) = bmelt_interp
 
     enddo
     

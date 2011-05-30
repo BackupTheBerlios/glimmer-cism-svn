@@ -905,7 +905,7 @@ class RestartIceJob(_BaseJob):
             self.gc[k].update(gc_override[k])
 
         self.plume.update(plume_override)
-
+        
         self.newJob.name = self.name
         self.underlyingJob.name = self.name
 
@@ -1028,8 +1028,8 @@ class RegridIceJob(RestartIceJob):
     
 class FixedBasalMeltJob(RestartIceJob):
 
-    def __init__(self,initJobName):
-        RestartIceJob.__init__(self,initJobName)
+    def __init__(self,initJobName,newName=None):
+        RestartIceJob.__init__(self,initJobName,newName=newName)
 
         self.underlyingJob.gc['options']['use_plume'] = 1
         self.plume_dt = 1.0
@@ -1049,7 +1049,19 @@ class FixedBasalMeltJob(RestartIceJob):
                                      },
                          } )
 
+        self.plume_m = None
+        self.plume_n = None
+        self.plume_hx = None
+        self.plume_hy = None
         
+        self._plume_restart_file = '"plume_input.out.nc"'
+        
+    def resolve(self,gc_override={},plume_override={}):
+        plume_override.update( {'restart' : True,
+                                'restart_data_filename' : '"%s"' % self.plume_input})
+        RestartIceJob.resolve(self,gc_override,plume_override)
+        
+
     def _getPlumeInputFile(self):
         return os.path.join(self.jobDir,
                             'plume_input.out.nc')
@@ -1066,11 +1078,12 @@ class FixedBasalMeltJob(RestartIceJob):
         
     def _genPlumeInputCmd(self):
         cmd1 = ['nc_gen_plume']
+        #print(self.newJob.gc)
         cmd1.extend(['fb', self.plume_input,
-                    int(self.newJob.m+4),
-                    int(self.newJob.n+2),
-                     float(self.newJob.hx),
-                     float(self.newJob.hy)])
+                    int(self.plume_m),
+                    int(self.plume_n),
+                    float(self.plume_hx),
+                    float(self.plume_hy)])
         cmd1 = [_fortran_style('nc_gen_plume', c) for c in cmd1]
         
         #cmd2 = LinearShelfJob._genInputCmds(self)
@@ -1085,7 +1098,8 @@ class FixedBasalMeltJob(RestartIceJob):
         RestartIceJob.stage(self,genInput)
         cmd = self._genPlumeInputCmd()
         _check_calls([cmd], self.input_cmds_log)
-        
+
+
 def _check_calls(cmds,logfile=None):
 
     if (logfile is not None):
