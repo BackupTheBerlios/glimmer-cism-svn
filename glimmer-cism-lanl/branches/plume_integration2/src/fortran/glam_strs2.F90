@@ -91,7 +91,7 @@ implicit none
 
   integer :: num_picard_itrs_const_efvs = 0
   real(kind=dp) :: max_total_years_const_efvs = 1.0d0
-  integer,parameter :: use_mean_efvs_limit = 50
+  integer,parameter :: use_mean_efvs_limit = 1000
 
 !***********************************************************************
 
