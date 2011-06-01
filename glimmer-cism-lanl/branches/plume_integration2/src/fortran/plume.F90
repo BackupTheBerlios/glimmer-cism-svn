@@ -62,7 +62,8 @@ module plume
        lnottim, & ! long note time interval
        runtim,  & ! accumulated simulation time 
        coupletim, & ! time acculumated in current call to plume_iterate
-       labtim     ! time interval in days used to name output files
+       labtim, &     ! time interval in days used to name output files
+       lastwritetim  ! time of last output (used in plume_iterate)
 
   real(kind=kdp) :: negdep ! total of negative depths (error diagnostic)
 
@@ -171,6 +172,7 @@ contains
     ! initialise time, total of negative depths, and separation and negative
     ! frazil warning counters
     runtim = 0.d0
+    lastwritetim = -1.d0
     coupletim = 0.d0
     negdep = 0.d0
     sepflag = .false.
@@ -209,6 +211,7 @@ contains
        plume_reached_steady, &
        write_all_states, & 
        write_every_n, &
+       write_frequency, &
        use_plume_initial_bmlt)
 
     ! NB: This subroutine is intended to be called only from a 
@@ -247,6 +250,8 @@ contains
     logical,                      intent(in) :: write_all_states
 
     integer,                      intent(in) :: write_every_n
+
+    real(kind=kdp),               intent(in) :: write_frequency
 
     ! Steadiness tolerance.  Relative change in meltrate needed
     ! to continue plume time-stepping
@@ -410,11 +415,15 @@ contains
        ! with respect to which the plume was steady
        runtim = time*3600.0d0*24.0d0*365.25d0 
 
+
        write(log_message, '(a,f6.1)') 'subcycling time in days', &
             subcycling_time/(3600.0*24.0)
        call io_append_output(trim(log_message))
 
-       call io_write_surface_output(runtim,labtim)    
+       if (runtim - lastwritetim > write_frequency) then       
+          call io_write_surface_output(runtim,labtim)    
+          lastwritetim = runtim
+       end if
 
     end if
   end subroutine plume_iterate

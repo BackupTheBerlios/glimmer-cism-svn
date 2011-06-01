@@ -61,6 +61,7 @@ program shelf_driver
   logical :: plume_suppress_ascii_output,plume_suppress_logging
   logical :: plume_write_all_states= .false.
   integer :: plume_write_every_n = 1
+  real(kind=dp) :: plume_output_frequency = 0.d0
 
   real(kind=dp) :: plume_min_subcycle_time,plume_max_subcycle_time
   real(kind=dp) :: plume_min_spinup_time,plume_max_spinup_time
@@ -203,6 +204,7 @@ program shelf_driver
 	  plume_reached_steady, &
           plume_write_all_states, &
           plume_write_every_n, &
+	  0.d0, &	
 	  plume_initial_bmlt)
 
      if (.not. plume_reached_steady .and. .not. plume_initial_bmlt) then
@@ -364,6 +366,7 @@ program shelf_driver
 	     plume_reached_steady, &
              plume_write_all_states, &
              plume_write_every_n, &
+	     plume_output_frequency, &
 	     plume_initial_bmlt)
 
         call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
@@ -505,6 +508,7 @@ contains
     call GetValue(section, 'plume_output_prefix',plume_output_prefix)
     call GetValue(section, 'plume_write_all_states',plume_write_all_states)
     call GetValue(section, 'plume_write_every_n', plume_write_every_n)
+    call GetValue(section, 'plume_output_frequency', plume_output_frequency)
     call GetValue(section, 'plume_min_spinup_time',plume_min_spinup_time)
     call GetValue(section, 'plume_max_spinup_time',plume_max_spinup_time)
     call GetValue(section, 'plume_min_subcycle_time',plume_min_subcycle_time)
@@ -536,6 +540,8 @@ contains
     write(message,*) 'plume_write_all_states:', plume_write_all_states
     call write_log(message)
     write(message,*) 'plume_write_every_n:', plume_write_every_n
+    call write_log(message)
+    write(message,*) 'plume_output_frequency:', plume_output_frequency
     call write_log(message)
     write(message,*) 'plume_min_spinup_time:',plume_min_spinup_time
     call write_log(message)

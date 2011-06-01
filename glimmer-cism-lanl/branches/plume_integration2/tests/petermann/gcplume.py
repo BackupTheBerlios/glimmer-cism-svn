@@ -372,6 +372,7 @@ class GCConfig(object):
                       'plume_write_all_states' : False,   # option to write out all states (all timesteps)
                                                           # NB it is very storage hungry
                       'plume_write_every_n' : 1,
+                      'plume_output_frequency' : 0.0,
                       'plume_min_spinup_time' : 5.0,    # minimum time to spinup the plume, in days
                       'plume_max_spinup_time' : 100.0,   # maximum time to spinup, in days
                       'plume_min_subcycle_time' : 0.5,   # minimum subcycle time, in days
@@ -1002,7 +1003,31 @@ class ListPerturbJob(RestartIceJob):
 
         return [cmd]
     
+class RegridListPerturbJob(ListPerturbJob):
 
+    def __init__(self, initJobName, initJobDir=None, newName=None):
+        ListPerturbJob.__init__(self,initJobName,initJobDir, newName)
+        self.new_m = None
+        self.new_n = None
+
+    def _genInputCmds(self):
+
+        cmd =['nc_regrid']
+        cmd.extend([self._initJobInputNcFile,
+                    self.inputfile,
+                    self._inputNcTimeIndex,
+                    self.new_m,self.new_n,
+                    0,0,0,0,
+                    4,2,1,1,
+                    0,2,0,0,
+                    0.0,0.0])
+
+        for (k,amp,phase,len) in  self.perturb_list:
+            cmd.extend([k,amp,phase,len])
+        
+        cmd = [_fortran_style('nc_perturb_gl_regrid',c) for c in cmd]
+        return [cmd]
+                 
 class RegridIceJob(RestartIceJob):
 
     def __init__(self,initJobFile,new_m,new_n,newName=None):
