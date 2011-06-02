@@ -36,7 +36,7 @@ end
   contourf(x/1000.0,y/1000.0,channel_amp',20,'EdgeColor','None') ;colorbar;
 %  contour(x/1000.0,y/1000.0,mean_draft',20,'w')
   contour(x/1000.0,y/1000.0,max_draft',10,'w')
-  clabel;
+  %clabel;
   caxis([min(min(channel_amp)) max(max(channel_amp))]);
   title('Channel depth with deepest-draft contours','FontSize',fs);
 

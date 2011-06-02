@@ -1,4 +1,4 @@
-function [data] = nc_plume_read(nc_filename,timestride)
+function [data] = nc_plume_read(nc_filename,timestride,max_slices)
 
     nc = netcdf.open(nc_filename, 'NC_NOWRITE');
     
@@ -20,7 +20,7 @@ function [data] = nc_plume_read(nc_filename,timestride)
     y_id = netcdf.inqVarID(nc, 'y');
     
     [tname,tlen] = netcdf.inqDim(nc,time_id);
-    n_timeslices = round(floor(tlen/timestride));    
+    n_timeslices = min(max_slices,round(floor(tlen/timestride)));    
     
     time = netcdf.getVar(nc,time_id,0,n_timeslices,timestride);
     x = netcdf.getVar(nc, x_id);
@@ -45,12 +45,12 @@ function [data] = nc_plume_read(nc_filename,timestride)
     waterdepth = max(max(bpos(:,:,1)));
 
     data.x = x((1+3):(end-3));
-    data.y = y((1+3):(end-4));
+    data.y = y((1+3):(end-5));
     [xgrid,ygrid] = meshgrid(data.x,data.y);
     data.xgrid = xgrid';
     data.ygrid = ygrid';
     
-    f = @(M) M((1+3):(end-3),(1+3):(end-4),:);
+    f = @(M) M((1+3):(end-3),(1+3):(end-5),:);
 
     data.bpos = f(bpos);
     data.pdep = f(pdep);
