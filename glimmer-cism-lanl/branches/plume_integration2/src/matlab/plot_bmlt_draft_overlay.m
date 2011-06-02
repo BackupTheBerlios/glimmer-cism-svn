@@ -1,4 +1,4 @@
-function [] = plot_bmlt_train_overlay(data)
+function [] = plot_bmlt_draft_overlay(data)
 
 x = data.x;
 y = data.y;
@@ -19,7 +19,7 @@ caxis([0, max(max(bmelt))]);
 title('Basal melt rate (m/y) with ice draft contours','FontSize',fs);
 xlabel('Cross shelf distance (km)','FontSize',14);
 ylabel('Along shelf distance (km)','FontSize',14);
-clabel(C,'FontSize',14,'Color','w');
+%clabel(C,'FontSize',14,'Color','w');
 title('Basal melt rate (m/year) with ice draft contours','FontSize',14);
 
 %subplot(1,2,2);

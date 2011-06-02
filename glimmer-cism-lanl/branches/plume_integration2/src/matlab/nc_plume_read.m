@@ -1,4 +1,4 @@
-function [data] = nc_plume_read(nc_filename,timeslice)
+function [data] = nc_plume_read(nc_filename)
 
     nc = netcdf.open(nc_filename, 'NC_NOWRITE');
     
@@ -12,7 +12,10 @@ function [data] = nc_plume_read(nc_filename,timeslice)
     pdep_id = netcdf.inqVarID(nc, 'pdep');    
     train_id = netcdf.inqVarID(nc, 'train');
     entr_id = netcdf.inqVarID(nc, 'entr');
-
+    temp_id = netcdf.inqVarID(nc,'temp');
+    salt_id = netcdf.inqVarID(nc,'salt');
+    rhop_id = netcdf.inqVarID(nc,'rhop');
+    
     x_id = netcdf.inqVarID(nc, 'x');
     y_id = netcdf.inqVarID(nc, 'y');
     
@@ -29,24 +32,29 @@ function [data] = nc_plume_read(nc_filename,timeslice)
     sv = netcdf.getVar(nc, sv_id);
     u = netcdf.getVar(nc, u_id);
     v = netcdf.getVar(nc, v_id);
+    temp = netcdf.getVar(nc, temp_id);
+    salt = netcdf.getVar(nc, salt_id);
+    rhop = netcdf.getVar(nc, rhop_id);
     
-    if (timeslice < 0)
-        timeslice = size(time,1);
-    end
+   % if (timeslice < 0)
+   %     timeslice = size(time,1);
+   % end
     waterdepth = max(max(bpos(:,:,1)));
-    bmelt = bmelt(:,:,timeslice);
-    bpos = bpos(:,:,timeslice);
-    pdep = pdep(:,:,timeslice);
-    train = train(:,:,timeslice);
-    entr = entr(:,:,timeslice);
-    su = su(:,:,timeslice);
-    sv = sv(:,:,timeslice);
-    u = u(:,:,timeslice);
-    v = v(:,:,timeslice);
-
+    
+    %bmelt = bmelt(:,:,timeslice);
+    %bpos = bpos(:,:,timeslice);
+    %pdep = pdep(:,:,timeslice);
+    %train = train(:,:,timeslice);
+    %entr = entr(:,:,timeslice);
+    %su = su(:,:,timeslice);
+    %sv = sv(:,:,timeslice);
+    %u = u(:,:,timeslice);
+    %v = v(:,:,timeslice);
+    %temp = temp(:,:,timeslice);
+    
     data.x = x((1+3):(end-3));
     data.y = y((1+3):(end-4));
-    f = @(M) M((1+3):(end-3),(1+3):(end-4),1);
+    f = @(M) M((1+3):(end-3),(1+3):(end-4),:);
 
     data.bpos = f(bpos);
     data.pdep = f(pdep);
@@ -57,8 +65,13 @@ function [data] = nc_plume_read(nc_filename,timeslice)
     data.sv = f(sv);
     data.u = f(u);
     data.v = f(v);
-
+    data.temp = f(temp);
+    data.salt = f(salt);
+    data.rhop = f(rhop);
+    
     data.draft = data.bpos - waterdepth;
     data.ambdepth = data.draft - data.pdep;
+    [X,Y] = meshgrid(data.x,data.y);
+    [data.gradx,data.grady,data.grad] = local_grad(X',Y',data.bpos);
 
 end
