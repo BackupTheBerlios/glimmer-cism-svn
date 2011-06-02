@@ -1,4 +1,4 @@
-function [x0,y0,x1,y1,thk,uvel,vvel] = nc_read(nc_filename,timeslice)
+function [x0,y0,x1,y1,thk,uvel,vvel] = nc_read_ice_timeslice(nc_filename,timeslice)
 
     nc = netcdf.open(nc_filename, 'NC_NOWRITE');
     

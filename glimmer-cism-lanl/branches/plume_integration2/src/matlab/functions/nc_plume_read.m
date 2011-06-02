@@ -1,4 +1,4 @@
-function [data] = nc_plume_read(nc_filename)
+function [data] = nc_plume_read(nc_filename,timestride)
 
     nc = netcdf.open(nc_filename, 'NC_NOWRITE');
     
@@ -19,41 +19,37 @@ function [data] = nc_plume_read(nc_filename)
     x_id = netcdf.inqVarID(nc, 'x');
     y_id = netcdf.inqVarID(nc, 'y');
     
-    time = netcdf.getVar(nc,time_id);
+    [tname,tlen] = netcdf.inqDim(nc,time_id);
+    n_timeslices = round(floor(tlen/timestride));    
+    
+    time = netcdf.getVar(nc,time_id,0,n_timeslices,timestride);
     x = netcdf.getVar(nc, x_id);
     y = netcdf.getVar(nc, y_id);
 
-    bpos = netcdf.getVar(nc, bpos_id);
-    pdep = netcdf.getVar(nc, pdep_id);
-    bmelt = netcdf.getVar(nc, bmelt_id);
-    train = netcdf.getVar(nc, train_id);
-    entr = netcdf.getVar(nc, entr_id);
-    su = netcdf.getVar(nc, su_id);
-    sv = netcdf.getVar(nc, sv_id);
-    u = netcdf.getVar(nc, u_id);
-    v = netcdf.getVar(nc, v_id);
-    temp = netcdf.getVar(nc, temp_id);
-    salt = netcdf.getVar(nc, salt_id);
-    rhop = netcdf.getVar(nc, rhop_id);
+    m = size(x,1);
+    n = size(y, 1);
+
+    bpos = netcdf.getVar(nc, bpos_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    pdep = netcdf.getVar(nc, pdep_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    bmelt = netcdf.getVar(nc, bmelt_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    train = netcdf.getVar(nc, train_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    entr = netcdf.getVar(nc, entr_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    su = netcdf.getVar(nc, su_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    sv = netcdf.getVar(nc, sv_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    u = netcdf.getVar(nc, u_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    v = netcdf.getVar(nc, v_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    temp = netcdf.getVar(nc, temp_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    salt = netcdf.getVar(nc, salt_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
+    rhop = netcdf.getVar(nc, rhop_id, [0 0 0],[m n n_timeslices],[1 1 timestride]);
     
-   % if (timeslice < 0)
-   %     timeslice = size(time,1);
-   % end
     waterdepth = max(max(bpos(:,:,1)));
-    
-    %bmelt = bmelt(:,:,timeslice);
-    %bpos = bpos(:,:,timeslice);
-    %pdep = pdep(:,:,timeslice);
-    %train = train(:,:,timeslice);
-    %entr = entr(:,:,timeslice);
-    %su = su(:,:,timeslice);
-    %sv = sv(:,:,timeslice);
-    %u = u(:,:,timeslice);
-    %v = v(:,:,timeslice);
-    %temp = temp(:,:,timeslice);
-    
+
     data.x = x((1+3):(end-3));
     data.y = y((1+3):(end-4));
+    [xgrid,ygrid] = meshgrid(data.x,data.y);
+    data.xgrid = xgrid';
+    data.ygrid = ygrid';
+    
     f = @(M) M((1+3):(end-3),(1+3):(end-4),:);
 
     data.bpos = f(bpos);
