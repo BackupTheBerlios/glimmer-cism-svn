@@ -300,7 +300,9 @@ contains
     ! Compute the gradient of the potential field.
     call df_field_2d(wphi,dew,dns,dwphidx,dwphidy,.FALSE.,.FALSE.)
 
-    grad_wphi = sqrt(dwphidx**2 + dwphidy**2)
+
+    grad_wphi = dwphidx**2 + dwphidy**2
+    grad_wphi = sqrt(grad_wphi)
 
     where (grad_wphi.NE.0.) 
         bwat = ( flux / (c * scyr *  dns * grad_wphi ** q) ) ** (1./(p+1.))
