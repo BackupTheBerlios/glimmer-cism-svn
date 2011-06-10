@@ -55,6 +55,7 @@
 #endif
 
 #include "glide_mask.inc"
+#include "glide_mymods.inc"
 
 module glissade_temp
 
@@ -182,7 +183,9 @@ contains
     use glimmer_paramets, only : thk0, tim0
     use glimmer_physcon, only: shci, coni, rhoi
     use glide_mask
+#ifndef DISABLE_EVOL
     use glide_bwater
+#endif
     use glide_temp_utils
     use glimmer_log
 
@@ -408,6 +411,7 @@ contains
                             model%temper%bmlt,         &
                             GLIDE_IS_FLOAT(model%geometry%thkmask))
 
+#ifndef DISABLE_EVOL
     !whl - to do - Should ice thickness be reduced as a result of basal melting?
 
     ! Calculate basal water depth ------------------------------------------------
@@ -422,7 +426,7 @@ contains
                    model%temper%temp(model%general%upn,:,:), &
                    GLIDE_IS_FLOAT(model%geometry%thkmask),   &
                    model%tempwk%wphi)
-
+#endif
     ! Calculate Glenn's A --------------------------------------------------------
 
     call calcflwa(model%numerics%stagsigma,    &
