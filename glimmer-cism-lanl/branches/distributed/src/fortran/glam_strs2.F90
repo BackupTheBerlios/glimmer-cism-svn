@@ -2048,6 +2048,9 @@ end subroutine apply_precond_nox
   call solver_postprocess_jfnk( ewn, nsn, upn, ui, &
                                 xtp, vvel, uvel, ghostbvel, pcgsize(1) )
 
+    ! coordinate halos for updated uvel and vvel
+    call staggered_parallel_halo(uvel)
+    call staggered_parallel_halo(vvel)
 
     call findefvsstr(ewn,  nsn,  upn,       &
                      stagsigma,  counter,  &
