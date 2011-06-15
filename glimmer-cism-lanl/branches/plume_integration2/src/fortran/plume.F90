@@ -28,7 +28,7 @@ module plume
   use plume_context
   use plume_io
 
-  use omp_lib
+!  use omp_lib
 
   implicit none
 

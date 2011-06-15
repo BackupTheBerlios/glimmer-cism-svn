@@ -421,8 +421,10 @@ module glimmer_scales
 
   use glimmer_global, only : dp
 
-  real(dp) :: scale2d_f1, scale2d_f2, scale2d_f3, scale2d_f4, scale2d_f5, scale2d_f6, scale2d_f7, scale2d_f8, scale2d_f9, scale2d_f10
-  real(dp) :: scale3d_f1, scale3d_f2, scale3d_f3, scale3d_f4, scale3d_f5, scale3d_f6, scale3d_f7, scale3d_f8, scale3d_f9
+  real(dp) :: scale2d_f1, scale2d_f2, scale2d_f3, scale2d_f4, scale2d_f5
+  real(dp) :: scale2d_f6, scale2d_f7, scale2d_f8, scale2d_f9, scale2d_f10
+  real(dp) :: scale3d_f1, scale3d_f2, scale3d_f3, scale3d_f4, scale3d_f5
+  real(dp) :: scale3d_f6, scale3d_f7, scale3d_f8, scale3d_f9
 
   !MAKE_RESTART
 #ifdef RESTARTS
