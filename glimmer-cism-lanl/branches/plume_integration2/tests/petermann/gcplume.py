@@ -504,8 +504,8 @@ class _BaseJob(object):
     def _get_use_plume(self):
         if ('options' in self.gc):
             if ('use_plume' in self.gc['options']):
-                return (self.gc['options']['use_plume'] == 1)
-        return (self._gcconfig.vals['options']['use_plume'] == 1)
+                return self.gc['options']['use_plume']
+        return self._gcconfig.vals['options']['use_plume']
                 
     name = property(fset=_setname,fget=_getname)
     jobDir = property(fget=_getJobDir)
@@ -669,6 +669,7 @@ class _GenInputJob(_BaseJob):
         else:
             return self.n - 4
     ifpos = property(fget=_getifpos)
+    
     def _getglpos(self):
         if (self.n is None):
             raise Exception('n is not defined yet')
@@ -731,7 +732,7 @@ class _GenInputJob(_BaseJob):
              #'plume_kmin' : self.ifpos,
              #'plume_kmax' : self.n + self.plume_landw,
              'plume_kmin' : 1,
-             'plume_kmax' : self.ifpos,
+             'plume_kmax' : self.ifpos + self.plume_landw,
              })
 
 

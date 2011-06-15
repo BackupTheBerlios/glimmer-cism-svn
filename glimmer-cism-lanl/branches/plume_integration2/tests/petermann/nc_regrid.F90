@@ -15,7 +15,7 @@ program nc_regrid
   integer,parameter :: dp = kind(1.0d0)
 
   integer :: nx_new, ny_new, ny_old, nx_old, nt_old
-  integer :: nlevel                                !only allow new nlevel = old nlevel
+  integer :: nlevel_old, nlevel_new
   real(kind=dp) :: hx_old, hy_old, hx_new, hy_new
 
   !  real(kind=dp) :: hx_new_kin, hy_new_kin
@@ -29,7 +29,7 @@ program nc_regrid
 
 
   !data arrays
-  real(kind=dp),dimension(:),allocatable :: levels
+  real(kind=dp),dimension(:),allocatable :: levels_old, levels_new
   real(kind=dp),dimension(:),allocatable :: xs_old, ys_old
   real(kind=dp),dimension(:),allocatable :: xs_new,ys_new
   real(kind=dp),dimension(:),allocatable :: xstag_new,ystag_new
@@ -46,7 +46,7 @@ subroutine main()
 
   character(len=512) :: gen_usage = "nc_regrid &
                                     &<nc_file_in> <nc_file_out> &
-                                    &<t_read> <new_m> <new_n> &
+                                    &<t_read> <new_m> <new_n> <new_levels> &
                                     &<top_n_margin> <top_s_margin> &
                                     &<top_w_margin> <top_e_margin> &
                                     &<thk_n_margin> <thk_s_margin> &
@@ -58,7 +58,7 @@ subroutine main()
 
   character(len=512) :: argstr
   integer :: n
-  integer,parameter :: n_baseargs = 19
+  integer,parameter :: n_baseargs = 20
 
   if (command_argument_count() < n_baseargs) then
      write(*,*) "Not enough arguments.  Usage: ", trim(gen_usage)
@@ -94,59 +94,63 @@ subroutine main()
   read(argstr,'(i5)') ny_new
   write(*,*) 'new_n:', ny_new
 
-  call get_command_argument(6, argstr)
+  call get_command_argument(6,argstr)
+  read(argstr,'(i5)') nlevel_new
+  write(*,*) 'nlevel_new:', nlevel_new
+
+  call get_command_argument(7, argstr)
   read(argstr,'(i5)') top_n_margin
   write(*,*) 'top_n_margin:',top_n_margin
 
-  call get_command_argument(7,argstr)
+  call get_command_argument(8,argstr)
   read(argstr,'(i5)') top_s_margin
   write(*,*) 'top_s_margin:',top_s_margin
 
-  call get_command_argument(8, argstr)
+  call get_command_argument(9, argstr)
   read(argstr,'(i5)') top_w_margin
   write(*,*) 'top_w_margin:',top_w_margin
 
-  call get_command_argument(9,argstr)
+  call get_command_argument(10,argstr)
   read(argstr,'(i5)') top_e_margin
   write(*,*) 'top_e_margin:',top_e_margin
 
-  call get_command_argument(10,argstr)
+  call get_command_argument(11,argstr)
   read(argstr,'(i5)') thk_n_margin
   write(*,*)'thk_n_marg', thk_n_margin
 
-  call get_command_argument(11,argstr)
+  call get_command_argument(12,argstr)
   read(argstr,'(i5)') thk_s_margin
   write(*,*)'thk_s_margin', thk_s_margin
 
-  call get_command_argument(12,argstr)
+  call get_command_argument(13,argstr)
   read(argstr,'(i5)') thk_w_margin
   write(*,*)'thk_w_margin', thk_w_margin
 
-  call get_command_argument(13,argstr)
+  call get_command_argument(14,argstr)
   read(argstr,'(i5)') thk_e_margin
   write(*,*)'thk_e_margin', thk_e_margin
 
-  call get_command_argument(14,argstr)
+  call get_command_argument(15,argstr)
   read(argstr,'(i5)') kin_n_margin
   write(*,*)'kin_n_marg', kin_n_margin
 
-  call get_command_argument(15,argstr)
+  call get_command_argument(16,argstr)
   read(argstr,'(i5)') kin_s_margin
   write(*,*)'kin_s_margin', kin_s_margin
 
-  call get_command_argument(16,argstr)
+  call get_command_argument(17,argstr)
   read(argstr,'(i5)') kin_w_margin
   write(*,*)'kin_w_margin', kin_w_margin
 
-  call get_command_argument(17,argstr)
+  call get_command_argument(18,argstr)
   read(argstr,'(i5)') kin_e_margin
   write(*,*)'kin_e_margin', kin_e_margin
 
-  call get_command_argument(18,argstr)
+  call get_command_argument(19,argstr)
   read(argstr,'(f18.12)') inflow_a
   write(*,*)'inflow_a', inflow_a
 
-  call get_command_argument(19,argstr)
+  call get_command_argument(20,argstr)
   read(argstr,'(f18.12)') vvelhom_new_val
   write(*,*)'vvelhom_new_val', vvelhom_new_val
 
@@ -173,11 +177,12 @@ subroutine main()
   call read_old_nc_file() 
 
   allocate(xs_new(nx_new),ys_new(ny_new))
+  allocate(levels_new(nlevel_new+1))
   allocate(xstag_new(nx_new-1),ystag_new(ny_new-1))
   allocate(topog_new(nx_new,ny_new),thck_new(nx_new,ny_new))
   allocate(kinbcmask_new(nx_new-1,ny_new-1))
-  allocate(uvelhom_new(nx_new-1,ny_new-1,nlevel),vvelhom_new(nx_new-1,ny_new-1,nlevel))
-  allocate(temp_new(nx_new,ny_new,nlevel))
+  allocate(uvelhom_new(nx_new-1,ny_new-1,nlevel_new),vvelhom_new(nx_new-1,ny_new-1,nlevel_new))
+  allocate(temp_new(nx_new,ny_new,nlevel_new))
 
   call define_new_data()
   
@@ -539,7 +544,7 @@ subroutine read_old_nc_file()
   call check(nf90_inquire_dimension(nc_id, x_dimid, x1_name, nx_old))
   call check(nf90_inquire_dimension(nc_id, y_dimid, y1_name, ny_old))
   call check(nf90_inquire_dimension(nc_id, time_dimid, t_name, nt_old))
-  call check(nf90_inquire_dimension(nc_id, level_dimid, level_name, nlevel))
+  call check(nf90_inquire_dimension(nc_id, level_dimid, level_name, nlevel_old))
 
   allocate(xs_old(nx_old))
   allocate(ys_old(ny_old))
@@ -567,14 +572,14 @@ subroutine read_old_nc_file()
 
   allocate(thck_old(nx_old,ny_old),topog_old(nx_old,ny_old))
   allocate(kinbcmask_old(nx_old-1, ny_old-1))
-  allocate(uvelhom_old(nx_old-1,ny_old-1,nlevel),vvelhom_old(nx_old-1,ny_old-1,nlevel))
-  allocate(temp_old(nx_old, ny_old,nlevel))
+  allocate(uvelhom_old(nx_old-1,ny_old-1,nlevel_old),vvelhom_old(nx_old-1,ny_old-1,nlevel_old))
+  allocate(temp_old(nx_old, ny_old, nlevel_old))
 
-  allocate(levels(nlevel))
+  allocate(levels_old(nlevel_old))
 
-  call check(nf90_get_var(nc_id, level_varid, levels, &
+  call check(nf90_get_var(nc_id, level_varid, levels_old, &
                           start= (/ 1 /), &
-                          count= (/ nlevel /)))
+                          count= (/ nlevel_old /)))
 
   call check(nf90_get_var(nc_id, thck_varid, thck_old,&
                           start= (/ 1,1,t_read /), &
@@ -588,14 +593,14 @@ subroutine read_old_nc_file()
 
   call check(nf90_get_var(nc_id, uvelhom_varid, uvelhom_old, &
                         start= (/ 1,1,1,t_read /), &
-                        count= (/ (nx_old-1),(ny_old-1),nlevel,1 /) ))
+                        count= (/ (nx_old-1),(ny_old-1),nlevel_old,1 /) ))
   call check(nf90_get_var(nc_id, vvelhom_varid, vvelhom_old, &
                         start= (/ 1,1,1,t_read /), &
-                        count= (/ (nx_old-1),(ny_old-1),nlevel,1 /) ))
+                        count= (/ (nx_old-1),(ny_old-1),nlevel_old,1 /) ))
   
 !  call check(nf90_get_var(nc_id, temp_varid, temp_old, &
 !                        start= (/ 1,1,1,t_read /), &
-!                        count= (/ (nx_old),(ny_old), nlevel, 1 /) ))
+!                        count= (/ (nx_old),(ny_old), nlevel_old, 1 /) ))
   temp_old = -20.d0
 
 end subroutine read_old_nc_file
@@ -636,6 +641,8 @@ subroutine define_new_data()
   xstag_new = (/ ( domain_xmin + (i-thk_w_margin)*hx_new,i=1,nx_new-1 ) /)
   ystag_new = (/ ( domain_ymin + (j-thk_s_margin)*hy_new,j=1,ny_new-1 ) /)
 
+  levels_new = (/ ( (float(i)/nlevel_new),i=0,nlevel_new ) /)
+  
   ! now define the thck, topog, kinbcmask arrays
   topog_new = 0.0d0
   thck_new = 0.0d0
@@ -644,7 +651,7 @@ subroutine define_new_data()
   vvelhom_new = 0.0d0
   temp_new = 0.0d0
 
-  if (nx_new == nx_old .and. ny_new == ny_old) then
+  if (nx_new == nx_old .and. ny_new == ny_old .and. nlevel_new == nlevel_old) then
      print *, 'skipping interpolation'
      topog_new = topog_old
      thck_new = thck_old
@@ -663,6 +670,7 @@ subroutine define_new_data()
      end if
 
   else
+
 
      if (vvelhom_new_val .ne. 0.d0) then
 	write(*,*) 'Have not implemented setting new velocity for new grid sizes'
@@ -694,25 +702,31 @@ subroutine define_new_data()
           kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin,.true.)
      kinbcmask_new = int(kinbcmask_new_real)
 
-     do j=1,nlevel
-        call write_real_margins(uvelhom_old(:,:,j),uvelhom_new(:,:,j), 1.0d0, 0.0d0,&
+     do j=1,nlevel_new
+!        call write_real_margins(uvelhom_old(:,:,j),uvelhom_new(:,:,j), 1.0d0, 0.0d0,&
+        call write_real_margins(uvelhom_old(:,:,1),uvelhom_new(:,:,j), 1.0d0, 0.0d0,&
              nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
              kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin,.true.)
-        call write_interior(uvelhom_old(:,:,j),uvelhom_new(:,:,j), nx_old-1,nx_new-1, &
+!        call write_interior(uvelhom_old(:,:,j),uvelhom_new(:,:,j), nx_old-1,nx_new-1, &
+        call write_interior(uvelhom_old(:,:,1),uvelhom_new(:,:,j), nx_old-1,nx_new-1, &
              ny_old-1,ny_new-1,&
              kin_n_margin,kin_s_margin,kin_w_margin,kin_e_margin,.false.)
 
-        call write_real_margins(vvelhom_old(:,:,j),vvelhom_new(:,:,j), 1.0d0, 0.0d0,&
+!        call write_real_margins(vvelhom_old(:,:,j),vvelhom_new(:,:,j), 1.0d0, 0.0d0,&
+        call write_real_margins(vvelhom_old(:,:,1),vvelhom_new(:,:,j), 1.0d0, 0.0d0,&
              nx_old-1, nx_new-1,ny_old-1,ny_new-1, &
              kin_n_margin,kin_s_margin-1,kin_w_margin,kin_e_margin,.true.)
-        call write_interior(vvelhom_old(:,:,j),vvelhom_new(:,:,j), nx_old-1,nx_new-1, &
+!        call write_interior(vvelhom_old(:,:,j),vvelhom_new(:,:,j), nx_old-1,nx_new-1, &
+        call write_interior(vvelhom_old(:,:,1),vvelhom_new(:,:,j), nx_old-1,nx_new-1, &
              ny_old-1,ny_new-1, &
              kin_n_margin,kin_s_margin-1,kin_w_margin,kin_e_margin,.false.)
 
-        call write_real_margins(temp_old(:,:,j), temp_new(:,:,j), 1.0d0, 0.0d0, &
+!        call write_real_margins(temp_old(:,:,j), temp_new(:,:,j), 1.0d0, 0.0d0, &
+        call write_real_margins(temp_old(:,:,1), temp_new(:,:,j), 1.0d0, 0.0d0, &
              nx_old, nx_new, ny_old, ny_new, &
              0,0,0,0,.true.)
-        call write_interior(temp_old(:,:,j), temp_new(:,:,j), nx_old,nx_new, &
+!        call write_interior(temp_old(:,:,j), temp_new(:,:,j), nx_old,nx_new, &
+        call write_interior(temp_old(:,:,1), temp_new(:,:,j), nx_old,nx_new, &
              ny_old, ny_new, 0,0,0,0, .false.)
 
      end do
@@ -743,7 +757,7 @@ subroutine write_nc_file()
     call check( nf90_def_dim(nc_id,'y1',ny_new,y_dimid) )
     call check( nf90_def_dim(nc_id,'x0',nx_new-1,xstag_dimid) )
     call check( nf90_def_dim(nc_id,'y0',ny_new-1,ystag_dimid) )
-    call check( nf90_def_dim(nc_id,'level',nlevel,level_dimid) )
+    call check( nf90_def_dim(nc_id,'level',nlevel_new+1,level_dimid) )
 
     ! define variables
     call check( nf90_def_var(nc_id,'level',NF90_DOUBLE,(/level_dimid/),level_varid) )
@@ -806,7 +820,7 @@ subroutine write_nc_file()
     call check( nf90_put_var(nc_id,y_varid,ys_new) )
     call check( nf90_put_var(nc_id,xstag_varid,xstag_new) )
     call check( nf90_put_var(nc_id,ystag_varid,ystag_new) )
-    call check( nf90_put_var(nc_id,level_varid,levels) )
+    call check( nf90_put_var(nc_id,level_varid,levels_new) )
     call check( nf90_put_var(nc_id,time_varid, (/ 1 /) ) )
 
     ! write the arrays out to the netcdf file and close it
