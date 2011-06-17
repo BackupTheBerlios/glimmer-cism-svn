@@ -7,17 +7,24 @@
 #include "Teuchos_ParameterList.hpp"
 #include "Teuchos_XMLParameterListHelpers.hpp"
 #include "Teuchos_Time.hpp"
+#include "Teuchos_TimeMonitor.hpp"
 
 #include "Stratimikos_DefaultLinearSolverBuilder.hpp"
 #include "Thyra_LinearOpWithSolveFactoryHelpers.hpp"
 #include "Thyra_EpetraThyraWrappers.hpp"
 #include "Thyra_EpetraLinearOp.hpp"
+#ifdef HAVE_MPI
+#include "Teuchos_DefaultMpiComm.hpp"
+#else
+#include "Teuchos_DefaultSerialComm.hpp"
+#endif
 
 // Define global variables.
-static Teuchos::RCP<TrilinosMatrix_Interface> interface;
+Teuchos::RCP<TrilinosMatrix_Interface> interface;
+Teuchos::RCP<Epetra_CrsMatrix> savedMatrix_A;
+Teuchos::RCP<Epetra_CrsMatrix> savedMatrix_C;
 
-static Teuchos::RCP<Epetra_CrsMatrix> savedMatrix_A;
-static Teuchos::RCP<Epetra_CrsMatrix> savedMatrix_C;
+Teuchos::RCP<Teuchos::ParameterList> pl;
 
 bool returnGlobalVec = true;
 
@@ -30,12 +37,27 @@ extern "C" {
   void inittrilinos_(int& bandwidth, int& mySize, int* myIndicies) {
 #ifdef HAVE_MPI
     Epetra_MpiComm comm(MPI_COMM_WORLD);
+    Teuchos::MpiComm<int> tcomm(Teuchos::opaqueWrapper(MPI_COMM_WORLD));
 #else
     Epetra_SerialComm comm;
+    Teuchos::SerialComm<int> tcomm;
 #endif
 
     Teuchos::RCP<const Epetra_Map> rowMap = 
       Teuchos::rcp(new Epetra_Map(-1,mySize,myIndicies,1,comm) );
+
+    // Read parameter list once
+    try { 
+       pl = Teuchos::rcp(new Teuchos::ParameterList("Stratimikos"));
+       Teuchos::updateParametersFromXmlFileAndBroadcast("strat1.xml", pl.get(), tcomm);
+       //Teuchos::updateParametersFromXmlFile("strat1.xml", pl.get());
+    }
+    catch (std::exception& e) {
+      cout << "\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n"
+           << e.what() << "\nExiting: Invalid strat1.xml file."
+           << "\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << endl;
+      exit(1);
+    }
 
     // Create an interface that holds a CrsMatrix instance and some useful methods.
     interface = Teuchos::rcp(new TrilinosMatrix_Interface(rowMap, bandwidth, comm));
@@ -144,12 +166,6 @@ extern "C" {
 
     Epetra_Vector x(map);
 
-    Teuchos::ParameterList paramList;
-
-    Teuchos::RCP<Teuchos::ParameterList>
-      paramList1 = Teuchos::rcp(&paramList, false);
-    Teuchos::updateParametersFromXmlFile("strat1.xml", paramList1.get() );
-
     Teuchos::RCP<Teuchos::FancyOStream>
       out = Teuchos::VerboseObjectBase::getDefaultOStream();
 
@@ -168,7 +184,7 @@ extern "C" {
     Teuchos::RCP<Thyra::VectorBase<double> >
       thyraSol = Thyra::create_Vector(epetraSol, thyraOper->domain() );
 
-    linearSolverBuilder.setParameterList(Teuchos::rcp(&paramList, false) );
+    linearSolverBuilder.setParameterList(pl);
 
     Teuchos::RCP<Thyra::LinearOpWithSolveFactoryBase<double> >
       lowsFactory = linearSolverBuilder.createLinearSolveStrategy("");
@@ -189,6 +205,8 @@ extern "C" {
 
     elapsedTime = linearTime.stop();
     *out << "Total time elapsed for calling Solve(): " << elapsedTime << endl;
+
+  //Teuchos::TimeMonitor::summarize(*out,false,true,false/*zero timers*/);
 
     //cout << " ======================================" << endl;
   }

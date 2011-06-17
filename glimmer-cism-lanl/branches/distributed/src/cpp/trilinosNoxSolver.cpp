@@ -6,6 +6,7 @@
 #include "Teuchos_RCP.hpp"
 #include "Teuchos_ParameterList.hpp"
 #include "Teuchos_XMLParameterListHelpers.hpp"
+#include "Teuchos_DefaultMpiComm.hpp"
 
 using namespace std;
 using Teuchos::RCP;
@@ -33,13 +34,14 @@ void noxinit_( int* nelems, double* statevector,
   Comm_=rcp(new Epetra_MpiComm(MPI_COMM_WORLD));
   Epetra_Comm& Comm=*Comm_;
   printProc = (Comm_->MyPID() == 0);
+  Teuchos::MpiComm<int> tcomm(Teuchos::opaqueWrapper(MPI_COMM_WORLD));
   
   if (printProc) cout << "NOXINIT CALLED    for nelem=" << *nelems << endl;
 
   paramList = rcp(new Teuchos::ParameterList);
 
   
-  Teuchos::updateParametersFromXmlFile("input.xml", paramList.get());
+  Teuchos::updateParametersFromXmlFileAndBroadcast("input.xml", paramList.get(),tcomm);
   paramList->set("Lean Matrix Free",true); // Saves some GMRES steps
   if (printProc)
   cout << "NOXInit: param list from input.xml is:\n" << *paramList << endl;
@@ -58,9 +60,9 @@ void noxinit_( int* nelems, double* statevector,
   outArgs.set_g(0,xout);
 
  } //end try block
-  catch (std::exception& e) { cout << e.what() << endl; exit(1); }
-  catch (const char *s) { cout << s << endl; exit(1); }
-  catch (...) { cout << "Caught unknown exception!" << endl; exit(1); }
+  catch (std::exception& e) { cout << e.what() << endl; exit(0); }
+  catch (const char *s) { cout << s << endl; exit(0); }
+  catch (...) { cout << "Caught unknown exception!" << endl; exit(0); }
 }
 
 /****************************************************/
@@ -81,9 +83,9 @@ void noxsolve_(int* nelems, double* statevector, void* blackbox_res)
 
     for (int i=0; i<*nelems; i++) statevector[i] = (*xout)[i];
   }
-  catch (std::exception& e) { cout << e.what() << endl; exit(1); }
-  catch (const char *s) { cout << s << endl; exit(1); }
-  catch (...) { cout << "Caught unknown exception!" << endl; exit(1); }
+  catch (std::exception& e) { cout << e.what() << endl; exit(0); }
+  catch (const char *s) { cout << s << endl; exit(0); }
+  catch (...) { cout << "Caught unknown exception!" << endl; exit(0); }
 
 }
 
