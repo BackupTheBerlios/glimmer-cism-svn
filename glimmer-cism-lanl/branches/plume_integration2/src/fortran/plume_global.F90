@@ -100,6 +100,8 @@ module plume_global
   real(kind=kdp) :: tgrad,sgrad,wcdep,gldep,ifdep,rho0,rhoi
   real(kind=kdp),dimension(64) :: amb_temp_ctl_pt, amb_salt_ctl_pt, amb_depth_ctl_pt
   integer        :: n_amb_ctl_pt
+  real(kind=kdp) :: sgd_flux   !sub-glacial discharge flux 
+  integer        :: sgd_type   !sub-glacial discharge type
   real(kind=kdp) :: plume_min_thickness,plume_max_thickness,entr_time_const,detrain_time_const
   real(kind=kdp) :: gaspar_cutoff
   real(kind=kdp) :: u_star_offset
@@ -160,7 +162,7 @@ module plume_global
   real(kind=kdp),allocatable,dimension(:,:) :: train
 
   !Gaspar 1988 CMO parameters
-  real(kind=kdp) :: m1,m2,m3,m4,m5,a1,a2
+  real(kind=kdp) :: gasp_m1,gasp_m2,gasp_m3,gasp_m4,gasp_m5,a1,a2
 
   !Gaspar 1988 NK parameters
   real(kind=kdp) :: nk_m, nk_n

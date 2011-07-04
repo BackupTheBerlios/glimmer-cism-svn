@@ -53,8 +53,8 @@ module glimmer_config
   private :: handle_section, handle_value, InsertSection, InsertValue, dp
 
   integer, parameter :: namelen=50
-  integer, parameter :: valuelen=1024
-  integer, parameter :: linelen=1050
+  integer, parameter :: valuelen=1048
+  integer, parameter :: linelen=1048
 
   type ConfigValue
      character(len=namelen) :: name = ''
@@ -132,7 +132,7 @@ contains
     config=>NULL()
     this_section=>NULL()
     do while(ios.eq.0)
-       read(unit,fmt='(a250)',iostat=ios) line
+       read(unit,fmt='(a1048)',iostat=ios) line
        line = adjustl(line)
        if (ios.ne.0) then
           exit
@@ -874,7 +874,7 @@ contains
     new_value%name = name
     new_value%value = val
 
-    if(associated(value)) then
+     if(associated(value)) then
        if (associated(value%next)) then
           new_value%next => value%next
        end if

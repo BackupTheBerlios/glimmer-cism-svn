@@ -30,6 +30,7 @@ program shelf_driver
   integer,parameter :: fake_landw = 2
   integer,parameter :: thk_zero_margin = 1
   logical,parameter :: use_thk_zero_margin = .true.
+  logical,parameter :: doCrossShelfAvg = .false.
 
   !local variables
   type(glide_global_type) :: model        ! model instance
@@ -57,7 +58,7 @@ program shelf_driver
   real(kind=dp),dimension(:,:),allocatable :: prev_ice_thk
 
   !PLUME configuration values
-  character(len=512) :: plume_nl,plume_output_nc_file,plume_output_prefix,plume_ascii_output_dir
+  character(len=1048) :: plume_nl,plume_output_nc_file,plume_output_prefix,plume_ascii_output_dir
   logical :: plume_suppress_ascii_output,plume_suppress_logging
   logical :: plume_write_all_states= .false.
   integer :: plume_write_every_n = 1
@@ -176,6 +177,10 @@ program shelf_driver
      call plume_logging_initialize(trim(plume_ascii_output_dir), &
           trim(plume_output_prefix), &
           plume_suppress_logging)
+
+     if (doCrossShelfAvg) then
+	  call cross_shelf_average(plume_lsrf_ext)
+     end if
 
      call plume_initialise(trim(plume_nl), &
           plume_suppress_ascii_output, &
@@ -350,6 +355,10 @@ program shelf_driver
              plume_ice_dz, 0.0, &
              model%general%ewn, model%general%nsn, fake_landw,fake_landw)
 
+        if (doCrossShelfAvg) then
+             call cross_shelf_average(plume_lsrf_ext)
+        end if
+
         call plume_iterate(time, &
              model%numerics%tinc*1.d0, &
              plume_lsrf_ext, &
@@ -364,7 +373,7 @@ program shelf_driver
 	     plume_max_subcycle_time, &
              .false., &                   !not necessarily running to steady
 	     plume_reached_steady, &
-             plume_write_all_states, &
+	     plume_write_all_states, &
              plume_write_every_n, &
 	     plume_output_frequency, &
 	     plume_initial_bmlt)
@@ -522,6 +531,7 @@ contains
     call GetValue(section, 'plume_const_bmlt', plume_const_bmlt)
     call GetValue(section, 'plume_initial_bmlt', plume_initial_bmlt)
     call GetValue(section, 'plume_const_bmlt_rate', plume_const_bmlt_rate)
+    call GetValue(section, 'plume_do_cross_shelf_avg', doCrossShelfAvg)
 
     call write_log('Plume config')
 
@@ -560,5 +570,18 @@ contains
 
   end subroutine plume_read_print_config
 
+  subroutine cross_shelf_average(lsrf)
+
+     real(kind=dp),dimension(:,:), intent(inout) :: lsrf
+
+     integer :: row_k
+
+     do row_k=plume_kmin,plume_kmax
+	
+	lsrf(plume_imin:plume_imax,row_k) = sum(lsrf(plume_imin:plume_imax,row_k))/real(plume_imax-plume_imin+1)
+   
+     end do
+
+  end subroutine 
 
 end program shelf_driver

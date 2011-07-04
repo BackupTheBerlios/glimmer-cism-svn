@@ -287,17 +287,25 @@ contains
     local_time_step_count = 0
     coupletim = 0.d0
 
+
+
     ! convert lower surface depth into height of basal surface and interface
     ! surface, storing results in plume's global variable
-    bpos = lsrf + gldep + wcdep
-    ipos = bpos - pdep
 
     where( landmask )
        jcs = 0
-       bpos = gldep+wcdep
+       !bpos = gldep+wcdep
+       bpos = 0.d0
+       ipos = 0.d0
+       pdep = 0.d0
     elsewhere
        jcs = 1
+       bpos = lsrf + gldep + wcdep
+       ipos = bpos - pdep
     end where
+
+!    bpos = lsrf + gldep + wcdep
+!    ipos = bpos - pdep
 
     !TODO: assign t_interior and ice_dz to globals 
     ! so that thermodynamics will pick up heat conduction into ice
@@ -420,9 +428,9 @@ contains
             subcycling_time/(3600.0*24.0)
        call io_append_output(trim(log_message))
 
-       if (runtim - lastwritetim > write_frequency) then       
+       if (runtim/(3600.d0*24.d0*365.25d0) - lastwritetim .ge. write_frequency) then 
           call io_write_surface_output(runtim,labtim)    
-          lastwritetim = runtim
+          lastwritetim = runtim/(3600.d0*24.d0*365.25d0)
        end if
 
     end if
@@ -441,6 +449,7 @@ contains
     ! continuity
     ! outflow_bound_bmlt_entr
     ! inflow_calc
+    ! subglacial_discharge
     ! update
     ! outflow_bound_interface
     ! outflow_bound_u_v
@@ -506,6 +515,8 @@ contains
     ! interface and scalars passed forward on open boundary
     call inflow_calc(icalcan,kcalcan,icalcen,kcalcen)
 
+    ! mix in the prescribed subglacial discharge flux near inflow edge
+    call subglacial_discharge(icalcan,kcalcan,icalcen,kcalcen)
     ! ----------------------------------------------------------
     ! update plume thickness, wet/dry boundaries, and velocities
     ! ----------------------------------------------------------
@@ -692,11 +703,11 @@ contains
          ,  seedtype &
          ,  cseedfix &
          ,  cinffix &
-         ,  m1 &
-         ,  m2 &
-         ,  m3 &
-         ,  m4 &
-         ,  m5 &
+         ,  gasp_m1 &
+         ,  gasp_m2 &
+         ,  gasp_m3 &
+         ,  gasp_m4 &
+         ,  gasp_m5 &
          ,  a1 &
          ,  a2 &
          ,  nk_m &
@@ -704,7 +715,9 @@ contains
          ,  n_amb_ctl_pt &
          ,  amb_temp_ctl_pt &
          ,  amb_salt_ctl_pt &
-         ,  amb_depth_ctl_pt 
+         ,  amb_depth_ctl_pt &
+         ,  sgd_type &
+         ,  sgd_flux 
      
     ! ++++++++++++++++++
     ! set default values
@@ -748,11 +761,11 @@ contains
     alpha = -3.87d-5
     beta = 7.86d-4
 
-    m1 = 0.45d0
-    m2 = 2.6d0
-    m3 = 1.9d0
-    m4 = 2.3d0
-    m5 = 0.6d0
+    gasp_m1 = 0.45d0
+    gasp_m2 = 2.6d0
+    gasp_m3 = 1.9d0
+    gasp_m4 = 2.3d0
+    gasp_m5 = 0.6d0
     a1 = 0.6d0
     a2 = 0.3d0
 
@@ -763,6 +776,9 @@ contains
     amb_temp_ctl_pt = 0.d0
     amb_salt_ctl_pt = 0.d0
     amb_depth_ctl_pt = 0.d0
+
+    sgd_type = -1         ! no discharge, by default
+    sgd_flux = 0.d0       ! no flux by default
 
     basmelt     = .true.  ! include direct basal melting and freezing
     rholinear   = .true.  ! use linear equation of state instead of unesco
@@ -795,7 +811,7 @@ contains
     ifdep = 285.d0     ! thickness of ice shelf at ice front (or plateau)
     wcdep = 1600.d0    ! depth of water column beneath grounding line 
     plume_min_thickness = 1.d0 ! artificially determined minimum plume thickness
-    plume_max_thickness = 250.d0
+    plume_max_thickness = 200.d0
     gaspar_cutoff = 100.d0
     u_star_offset = 0.d0       ! source of turbulent kinetic energy for entraining
     tidal_velocity = 0.d0      ! another idea to inject TKE 
@@ -979,7 +995,7 @@ contains
 
     close(21)
 
-    if (phi == 0.d0 .and. entype == 6) then
+    if (abs(phi) < small .and. entype == 6) then
        call io_append_output('Can not run Gaspar entrainment without rotation')
        stop 1
     end if
@@ -1135,8 +1151,8 @@ contains
     jcw = 0
     jcd_u = 1 !initial velocity of 0.d0 is valid
     jcd_v = 1
-    jcd_u = 0
-    jcd_v = 0
+    !jcd_u = 0
+    !jcd_v = 0
     jcd_fl = 0       
     jcd_negdep = 0
     jcd_fseed = 0
@@ -1284,9 +1300,9 @@ contains
        ! calculate plume properties from proportions 
        ! of ambient and melt waters
 
-       saltinf = sambindep + meltinf*(saltinf - sambindep)
-       tempinf = tambindep + meltinf*(tempinf - tambindep)
-
+       !saltinf = sambindep + meltinf*(saltinf - sambindep)
+       !tempinf = tambindep + meltinf*(tempinf - tambindep)
+       
     end where
 
     ! initialise whole domain to wet and set plume initial thickness if mixed-layer
@@ -1668,6 +1684,69 @@ contains
   !******** helper functions called inside plume_runstep() ********
   ! ****************************************************************
 
+
+  subroutine subglacial_discharge(icalcan, kcalcan, icalcen, kcalcen)
+
+    implicit none
+
+    integer, intent(in) :: icalcan,kcalcan,icalcen,kcalcen
+
+    ! local variables
+    integer :: i,k,l
+    real(kind=kdp):: fresh_water_column_thk, ttt, pressure
+    real(kind=kdp):: discharge_area 
+
+    discharge_area = sum(dx(infloa+1:infloe-1))*sum(dy(knfloa+1:knfloe-1))
+
+    if (sgd_type < 0) then
+       return
+    end if
+    if (sgd_type == 0) then
+
+       ! uniform flux across inflow edge
+
+       do i = icalcan,icalcen
+          do k = kcalcan,kcalcen
+    
+             if ((i .gt. infloa) .and. (i .lt. infloe) .and. &
+                  (k .gt. knfloa) .and. (k .lt. knfloe)) then
+                
+                ! sgd_flux should be in giga-tons per year
+                fresh_water_column_thk = sgd_flux*(10.0d12/rhoi)*(dt/(365.25d0*3600.d0*24.d0))/discharge_area
+    
+                salt(i,k) = salt(i,k)*pdep(i,k) / (pdep(i,k)+fresh_water_column_thk)
+                salta(i,k) = salt(i,k)
+                temp(i,k) = temp(i,k)*pdep(i,k) / (pdep(i,k)+fresh_water_column_thk)
+                tempa(i,k) = temp(i,k)
+
+                ! calculate density of inflow water fraction
+
+                if (rholinear) then
+                   rhop(i,k) = rho_func_linear(temp(i,k),salt(i,k))
+                else
+                   if (thermobar) then
+                      pressure = 1.0d-1*(gldep + wcdep - ipos(i,k))
+                      ttt = tinsitu_func(temp(i,k),salt(i,k),pressure)
+                      rhop(i,k) =  &
+                           & rho_func_nonlinear(ttt,salt(i,k),pressure)
+                   else
+                      rhop(i,k) = &
+                           & rho_func_nonlinear(temp(i,k),salt(i,k),0.d0)
+                   end if
+                end if
+
+             end if
+
+          end do
+       end do
+    else
+       print *, 'Unknown sub-glacial discharge type', sgd_type
+       stop 1
+
+    end if
+
+  end subroutine subglacial_discharge
+
   subroutine inflow_calc(icalcan,kcalcan,icalcen,kcalcen)
 
     implicit none
@@ -1800,8 +1879,8 @@ contains
           !     with positive thickness should be physically valid speeds
 
           if (any(jcd_u(i-1:i,k) == 0) .or. any(jcd_v(i,k-1:k) == 0)) then
-!             print *, 'using invalid velocity at', i,k
-!             stop 1
+              print *, 'using invalid velocity at', i,k
+              stop 1
           end if
           tt = 5.0d-1*dy(k)*rdyv(k)
           vmid = tt*sv(i,k-1) + (1.d0-tt)*sv(i,k) 
@@ -1933,7 +2012,7 @@ contains
                    u_star = sqrt(drag(i,k))*sqrt(bspeed(i,k)**2.d0 + 0.5d0*local_tidal_speed(i,k)**2.d0) + u_star_offset
                    lambda = u_star / f
                    delta_b = grav*(- alpha*(btemp(i,k)-temp(i,k)) &
-                                   - beta*(bsalt(i,k)-salt(i,k)) )
+                                    - beta*(bsalt(i,k)-salt(i,k)) )
                    Bh = bmelt(i,k)*delta_b
                    mon_obu_stab = min(pdep(i,k)*Bh/(u_star ** 3.d0), gaspar_cutoff)
 !                   debug3(i,k) = mon_obu_stab
@@ -1941,8 +2020,9 @@ contains
                                       exp(mon_obu_stab)
                    h_over_lp= a1 + a2*exp(mon_obu_stab)
                    lp_over_l = h_over_l/h_over_lp
-                   cp3 = (m4*(m2+m3)-(lp_over_l)*(m2+m3-m5*m3))/3.d0
-                   cp1 = ((2-2*m5)*(lp_over_l)+m4)/6.d0
+                   cp3 = (gasp_m4*(gasp_m2+gasp_m3)-(lp_over_l) * &
+                         (gasp_m2+gasp_m3-gasp_m5*gasp_m3))/3.d0
+                   cp1 = ((2-2*gasp_m5)*(lp_over_l)+gasp_m4)/6.d0
                    Ap = cp3*u_star**3.d0-cp1*pdep(i,k)*Bh
 
                    if (u_star == 0.d0) then
@@ -1952,8 +2032,8 @@ contains
 
                    if (Ap > 0.d0) then
                       !we are entraining
-                      Sp = (m2+m3)*(u_star ** 3.d0)-0.5d0*pdep(i,k)*Bh
-                      c4 = 2.d0*m4/(m1*m1)                   
+                      Sp = (gasp_m2+gasp_m3)*(u_star ** 3.d0)-0.5d0*pdep(i,k)*Bh
+                      c4 = 2.d0*gasp_m4/(gasp_m1*gasp_m1)                   
                       delta_b_lower = &
                            grav*(- alpha*(temp(i,k)-atemp(i,k)) &
                                  - beta *(salt(i,k)-asalt(i,k)) )
@@ -1995,6 +2075,7 @@ contains
 	           !    the mixed layer is a buoyancy flux.
 
 		   heat_flux = (rhoi*lat + rhoi*ci*(btemp(i,k)-tint(i,k)))
+		   heat_flux = (rhoi*ci*(btemp(i,k)-tint(i,k)))
 	           buoyancy_flux_heat = -alpha*heat_flux/(c0*rho0)
 !                   debug3(i,k) = buoyancy_flux_heat/delta_b_upper
                    Bh = bmelt(i,k)*(-buoyancy_flux_heat + &
@@ -2246,11 +2327,12 @@ contains
                  h_over_l = a1 + a2*max(1.d0,pdep(i,k)/(0.4*lambda))* &
                                     exp(mon_obu_stab)
                  h_over_lp= a1 + a2*exp(mon_obu_stab)
-                 cp3 = (m4*(m2+m3)-(h_over_l/h_over_lp)*(m2+m3-m5*m3))/3.d0
-                 cp1 = ((2-2*m5)*(h_over_l/h_over_lp)+m4)/6.d0
+                 cp3 = (gasp_m4*(gasp_m2+gasp_m3)-(h_over_l/h_over_lp)* &
+                       (gasp_m2+gasp_m3-gasp_m5*gasp_m3))/3.d0
+                 cp1 = ((2-2*gasp_m5)*(h_over_l/h_over_lp)+gasp_m4)/6.d0
                  ! Gaspar thickness comes from Ap = 0
                  if (cp1*Bh == 0.d0) then
-                    print *, 'that is surprising'
+                    !print *, 'that is surprising'
                     !stop 1
                     detrain_thk = plume_max_thickness
                  else
@@ -2583,8 +2665,8 @@ contains
              tt = 5.0d-1 
              uu = 5.0d-1*dy(k)*rdyv(k)
              if (any(jcd_v(i:i+1,k-1:k)==0)) then
-!                print *, 'using invalid sv at i,k', i,k
-!                stop 1
+                print *, 'using invalid sv at i,k', i,k
+                stop 1
              end if
              vmid = tt*uu       *(sv(i,k-1) + sv(i+1,k-1)) +  &
                     tt*(1.d0-uu)*(sv(i,k)   + sv(i+1,k))
@@ -3851,7 +3933,7 @@ contains
          pdepc = bpos(i,k) - ipos(i,k)
 
 
-	 if ((i .ne. icalcen) .and. all(jcs(i:(i+1),k) == 1)) then 
+	 if ((i .ne. icalcen) .and. any(jcs(i:(i+1),k) == 1)) then 
            ! u-component
            ! skip icalcen because u(icalcen) is past the edge of the valid region
            ! in the case of an open boundary on the east side
