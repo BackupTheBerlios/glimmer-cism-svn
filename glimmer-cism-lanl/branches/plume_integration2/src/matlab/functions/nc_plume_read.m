@@ -18,11 +18,14 @@ function [data] = nc_plume_read(nc_filename,timestride,max_slices)
     
     x_id = netcdf.inqVarID(nc, 'x');
     y_id = netcdf.inqVarID(nc, 'y');
+
+    time_dim_id = netcdf.inqDimID(nc,'time');
+    time_var_id = netcdf.inqVarID(nc,'time');
     
-    [tname,tlen] = netcdf.inqDim(nc,time_id);
+    [tname,tlen] = netcdf.inqDim(nc,time_dim_id);
     n_timeslices = min(max_slices,round(floor(tlen/timestride)));    
     
-    time = netcdf.getVar(nc,time_id,0,n_timeslices,timestride);
+    time = netcdf.getVar(nc,time_var_id,0,n_timeslices,timestride);
     x = netcdf.getVar(nc, x_id);
     y = netcdf.getVar(nc, y_id);
 

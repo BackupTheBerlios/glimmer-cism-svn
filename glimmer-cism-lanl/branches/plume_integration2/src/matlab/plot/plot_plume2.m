@@ -1,36 +1,40 @@
-function [] = plot_plume2(data,dice,timeslice,flabel)
+function [] = plot_plume2(dplume,dice,timeslice,flabel)
 
 figure(1);
-fs = 14;
+fs = 18;
+fs3 = 14;
+fs2 = 14;
 
 if (timeslice < 0) 
-    timeslice = size(data.su, 3);
+    timeslice = size(dplume.su, 3);
 end 
 
-x = data.x;
-y = data.y;
-su = squeeze(data.su(:,:,timeslice));
-sv = squeeze(data.sv(:,:,timeslice));
-u = squeeze(data.u(:,:,timeslice));
-v = squeeze(data.v(:,:,timeslice));
-train = squeeze(data.train(:,:,timeslice));
-bmelt = squeeze(data.bmelt(:,:,timeslice));
-temp = squeeze(data.temp(:,:,timeslice));
-draft = squeeze(data.draft(:,:,timeslice));
+x = dice.xgrid;
+y = dice.ygrid;
+
+su = squeeze(dplume.su(:,:,timeslice));
+sv = squeeze(dplume.sv(:,:,timeslice));
+u = squeeze(dplume.u(:,:,timeslice));
+v = squeeze(dplume.v(:,:,timeslice));
+train = squeeze(dplume.train(:,:,timeslice));
+bmelt = squeeze(dplume.bmelt(:,:,timeslice));
+temp = squeeze(dplume.temp(:,:,timeslice));
+draft = squeeze(dplume.draft(:,:,timeslice));
 thk_t = squeeze(dice.thk_t(:,:,timeslice));
 
-grad = squeeze(data.grad(:,:,timeslice));
-stride = 1;
-scale = 3.0;
-lw = 1.0;
+grad = squeeze(dplume.grad(:,:,timeslice));
+stride = 2;
+scale = 2.0;
+lw = 0.5;
+
 
 figure(1);
 clf;
 
-
 hold on
 contourf(x/1000.0,y/1000.0,grad',40,'EdgeColor','None');colorbar('FontSize',fs);
 %caxis([0 0.2])
+set(gca,'FontSize',fs2);
 quiver(x(1:stride:end)/1000,y(1:stride:end)/1000,...
       su(1:stride:end,1:stride:end)',...
       sv(1:stride:end,1:stride:end)',...
@@ -43,23 +47,45 @@ hold off
 fname = strcat(['/home/gladish/research/visuals/plume_',flabel,'_grad']);
 print('-depsc',fname);
 
-%subplot(2,2,1);
+
 figure(1);
 clf;
+%subplot(1,2,1);
 hold on
 contourf(x/1000.0,y/1000.0,-draft',40,'EdgeColor','None');colorbar('FontSize',fs);
-caxis([000 800])
-%quiver(x(1:stride:end)/1000,y(1:stride:end)/1000,...
-%      su(1:stride:end,1:stride:end)',...
-%      sv(1:stride:end,1:stride:end)',...
-%     scale,'k','LineWidth',lw);
+set(gca,'FontSize',fs2);
+%caxis([000 650])
+quiver(x(1:stride:end)/1000,y(1:stride:end)/1000,...
+      su(1:stride:end,1:stride:end)',...
+      sv(1:stride:end,1:stride:end)',...
+      scale,'k','LineWidth',lw);
 colormap jet;
 xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
-title('Ocean Velocities with contours of Ice Draft (m)','FontSize',fs);
+caxis([0 800]);
+title('Contours of Ice Draft (m) with plume velocities','FontSize',fs);
+hold off
+print('-depsc',strcat(['/home/gladish/research/visuals/plume_',flabel,'_draft_vel']));
+
+
+figure(1);
+clf;
+%subplot(1,2,1);
+hold on
+contourf(x/1000.0,y/1000.0,-draft',40,'EdgeColor','None');colorbar('FontSize',fs);
+set(gca,'FontSize',fs2);
+%caxis([000 650])
+%quiver(x(1:stride:end)/1000,y(1:stride:end)/1000,...
+%      su(1:stride:end,1:stride:end)',...
+%      sv(1:stride:end,1:stride:end)',...
+%      scale,'k','LineWidth',lw);
+colormap jet;
+xlabel('Across shelf distance (km)','FontSize',fs);
+ylabel('Along shelf distance (km)','FontSize',fs);
+%caxis([0 800]);
 title('Contours of Ice Draft (m)','FontSize',fs);
 hold off
-print('-depsc',strcat(['/home/gladish/research/visuals/plume_',flabel,'_plume_vel']));
+print('-depsc',strcat(['/home/gladish/research/visuals/plume_',flabel,'_draft']));
 
 %subplot(2,2,4);
 %contourf(x/1000.0,y/1000.0,sqrt(su.*su + sv.*sv)',20);colorbar('FontSize',fs); caxis([0 0.05])
@@ -69,12 +95,14 @@ print('-depsc',strcat(['/home/gladish/research/visuals/plume_',flabel,'_plume_ve
 
 figure(1);
 clf;
+%subplot(1,2,2);
 speed = sqrt(su.*su + sv.*sv);
 hold on
 contourf(x/1000.0,y/1000.0,bmelt',20,'EdgeColor','None') ;colorbar('FontSize',fs);
+set(gca,'FontSize',fs2);
 %contour(x/1000.0,y/1000.0,draft',30,'w');
-caxis([min(min(bmelt)), max(max(bmelt))]);
-caxis([0 40]);
+%caxis([min(min(bmelt)), max(max(bmelt))]);
+%caxis([0 40]);
 xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Basal Melt Rate (m/year)','FontSize',fs);
@@ -88,6 +116,7 @@ hold on
 contourf(x/1000.0,y/1000.0,train'/1000.0,...
          30,'EdgeColor','None') ;colorbar('FontSize',fs);
 contour(x/1000.0,y/1000.0,train'/1000.0,[0 0],'k')
+set(gca,'FontSize',fs2);
 %contour(x/1000.0,y/1000.0,draft',20,'w');
 %contour(x/1000.0,y/1000.0,draft',30,'w');
 caxis([min(min(train/1000.0)), max(max(train/1000.0))]);
@@ -103,12 +132,13 @@ clf;
 hold on
 contourf(x/1000.0,y/1000.0,temp',...
          30,'EdgeColor','None') ;colorbar('FontSize',fs);
-%contour(data.x/1000.0,data.y/1000.0,data.draft',20,'w');
-%contour(data.x/1000.0,data.y/1000.0,data.draft',30,'w');
+%contour(dplume.x/1000.0,dplume.y/1000.0,dplume.draft',20,'w');
+%contour(dplume.x/1000.0,dplume.y/1000.0,dplume.draft',30,'w');
 caxis([min(min(temp)), max(max(temp))]);
+set(gca,'FontSize',fs2);
 xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
-title('Ocean Mixed Layer Temperature (C)','FontSize',fs);
+title('Plume Temperature (C)','FontSize',fs);
 hold off
 print('-depsc',strcat(['/home/gladish/research/visuals/plume_',flabel,'_temp']));
 
@@ -130,15 +160,16 @@ end
   hold on
   contourf(x/1000.0,y/1000.0,channel_amp',20,'EdgeColor','None') ;colorbar('FontSize',fs);
 %  contour(x/1000.0,y/1000.0,mean_draft',20,'w')
-  [C,h] = contour(x/1000.0,y/1000.0,max_draft',10,'w');
+set(gca,'FontSize',fs2);
+[C,h] = contour(x/1000.0,y/1000.0,max_draft',10,'w');
   caxis([min(min(channel_amp)) max(max(channel_amp))]);
-  caxis([0 300]);
+%  caxis([0 300]);
   xlabel('Across shelf distance (km)','FontSize',fs);
   ylabel('Along shelf distance (km)','FontSize',fs);
-  %clabel(C,'manual','FontSize',fs,'Color','w')
+  clabel(C,'manual','FontSize',fs2,'Color','w')
   title('Channel depth (m) with deepest-draft contours','FontSize',fs);
 
-  %print('-depsc',strcat(['/home/gladish/research/visuals/plume_',flabel,'_channels']));
+  print('-depsc',strcat(['/home/gladish/research/visuals/plume_',flabel,'_channels']));
 
 
 figure(1);
@@ -153,6 +184,7 @@ for i=1:m
     end
 end
 contourf(x/1000.0,y/1000.0,ratio',20,'EdgeColor','None');
+set(gca,'FontSize',fs2);
 colorbar('FontSize',fs);
 xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
@@ -171,6 +203,7 @@ contourf(dice.Xgrid(:,j_start:n)/1000.0, ...
          dice.Ygrid(:,j_start:n)/1000.0, ...
          min(5.0,dice.vel_div(:,j_start:n,timeslice)), ...
          30,'EdgeColor','None');colorbar('FontSize',fs);
+set(gca,'FontSize',fs2);
 xlabel('Across shelf distance (km)','FontSize',fs)
 ylabel('Along shelf distance (km)','FontSize',fs);
 colorbar('FontSize',fs);
@@ -186,6 +219,7 @@ contourf(dice.Xgrid(:,j_start:j_stop)/1000.0, ...
          dice.Ygrid(:,j_start:j_stop)/1000.0, ...
          -dice.flux_div(:,j_start:j_stop,timeslice), ...
          25,'EdgeColor','None');colorbar('FontSize',fs);
+set(gca,'FontSize',fs2);
 xlabel('Across shelf distance (km)','FontSize',fs)
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Thickness time tendency due to flux divergence','FontSize',fs);    
@@ -208,6 +242,7 @@ contourf(dice.Xgrid(:,j_start:j_stop)/1000.0, ...
          dice.Ygrid(:,j_start:j_stop)/1000.0, ...
          ice_adv, ...
          25,'EdgeColor','None');colorbar('FontSize',fs);
+set(gca,'FontSize',fs2);
 xlabel('Across shelf distance (km)','FontSize',fs)
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Thickness time tendency due to ice advection term u\cdot \nabla H','FontSize',fs);    
@@ -229,6 +264,7 @@ contourf(dice.Xgrid(:,j_start:j_stop)/1000.0, ...
          dice.Ygrid(:,j_start:j_stop)/1000.0, ...
          y_adv, ...
          25,'EdgeColor','None');colorbar('FontSize',fs);
+set(gca,'FontSize',fs2);
 xlabel('Across shelf distance (km)','FontSize',fs)
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Thickness time tendency due to ice advection term v_0*H_y','FontSize',fs);    
@@ -251,9 +287,10 @@ contourf(dice.Xgrid(:,j_start:j_stop)/1000.0, ...
          dice.Ygrid(:,j_start:j_stop)/1000.0, ...
          ice_def, ...
          25,'EdgeColor','None');colorbar('FontSize',fs);
+set(gca,'FontSize',fs2);
 xlabel('Across shelf distance (km)','FontSize',fs)
 ylabel('Along shelf distance (km)','FontSize',fs);
-title('Ice deformation influence on H_t','FontSize',fs);    
+title('Ice deformation influence on H (m/year)','FontSize',fs);    
 %contour(dice.Xgrid(:,j_start:j_stop)/1000.0, ...
 %        dice.Ygrid(:,j_start:j_stop)/1000.0, ...
 %        dice.thk(:,j_start:j_stop,timeslice), ...
@@ -271,10 +308,41 @@ contourf(dice.Xgrid(:,:)/1000.0, ...
          dice.Ygrid(:,:)/1000.0, ...
          dice.thk_t(:,:,timeslice), ...
          25,'EdgeColor','None');colorbar('FontSize',fs);
+set(gca,'FontSize',fs2);
 xlabel('Across shelf distance (km)','FontSize',fs)
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('H_t/H','FontSize',fs);    
 caxis([-0.1 0.1]);
 print('-depsc',strcat(['/home/gladish/research/visuals/plume_',flabel,'_thk_t']));
 hold off
+
+
+
+
+figure(1);
+clf;
+
+subplot(1,2,1);
+hold on
+contourf(x/1000.0,y/1000.0,channel_amp',40,'EdgeColor','None');colorbar('FontSize',fs3);
+set(gca,'FontSize',fs3);
+colormap jet;
+[C,h] = contour(x/1000.0,y/1000.0,max_draft',10,'w');
+caxis([min(min(channel_amp)) max(max(channel_amp))]);
+xlabel('Across shelf distance (km)','FontSize',fs3);
+ylabel('Along shelf distance (km)','FontSize',fs3);
+clabel(C,'manual','FontSize',fs3,'Color','w')
+title('Channel depth (m) with deepest-draft contours','FontSize',fs3);
+hold off
+subplot(1,2,2);
+hold on
+contourf(x/1000.0,y/1000.0,bmelt',20,'EdgeColor','None') ;colorbar('FontSize',fs3);
+set(gca,'FontSize',fs3);
+xlabel('Across shelf distance (km)','FontSize',fs3);
+ylabel('Along shelf distance (km)','FontSize',fs3);
+title('Basal Melt Rate (m/year)','FontSize',fs3);
+hold off
+fname = strcat(['/home/gladish/research/visuals/plume_',flabel,'_2panel']);
+print('-depsc',fname);
+
 end

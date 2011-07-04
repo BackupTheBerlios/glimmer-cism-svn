@@ -1,9 +1,12 @@
 function [] = gc_scatter(docean,dice)
 
-figure(1);
-clf;
 
-fs = 15;
+fs = 16;
+fn = 'Helvetica';
+
+c1 = 'm';
+c2 = 'k';
+
 [m1,n1,k] = size(docean.bmelt(:,:,:));
 
 k2 = length(dice.time);
@@ -26,7 +29,8 @@ flatbmlt = reshape(remove_edge(docean.bmelt(:,:,:)),m*n*k,1);
 flatspeed = reshape(sqrt(remove_edge(docean.su(:,:,:)) .^2 ...
                         +remove_edge(docean.sv(:,:,:)) .^ 2),m*n*k,1);
 flattemp = reshape(remove_edge(docean.temp(:,:,:)),m*n*k,1);
-flatsalt = reshape(remove_edge(docean.salt(:,:,:)),m*n*k,1);
+%flatsalt = reshape(remove_edge(docean.salt(:,:,:)),m*n*k,1);
+flattrain = reshape(remove_edge(docean.train(:,:,:)/1000.0),m*n*k,1);
 %flatgradx = reshape(remove_edge(docean.gradx(:,:,:)),m*n*k,1);
 %flatgrady = reshape(remove_edge(docean.grady(:,:,:)),m*n*k,1);
 flatgrad = reshape(remove_edge(docean.grad(:,:,:)),m*n*k,1);
@@ -38,51 +42,58 @@ flatadv = reshape(remove_edge(-dice.y_adv(:,:,:)),m*n*k,1);
 
 %corr_mat = corrcoef([flatbmlt,flatspeed,flattemp,flatsalt,flatgrad,-flatdraft,flatadv]);
 
+figure(1);
+clf;
 
-subplot(2,num_plots/2,1);
+
+subplot(1,3,1);
 hold on
 plot(flatspeed,flatbmlt,'b.');
 set(gca,'FontSize',fs);
-xlabel('plume speed (m/s)','FontSize',fs);
-ylabel('melt rate (m/year)','FontSize',fs);
+xlabel('plume speed (m/s)','FontSize',fs,'FontName',fn);
+ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 
-subplot(2,num_plots/2,2);
+subplot(1,3,2);
 hold on
-xlabel('plume temperature (C)','FontSize',fs);
-ylabel('melt rate (m/year)','FontSize',fs);
 plot(flattemp,flatbmlt,'b.');
 set(gca,'FontSize',fs);
+xlabel('plume temperature (C)','FontSize',fs,'FontName',fn);
+ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 
-subplot(2,num_plots/2,3);
+subplot(1,3,3);
 hold on
-xlabel('plume salinity (psu)','FontSize',fs);
-ylabel('melt rate (m/year)','FontSize',fs);
-plot(flatsalt,flatbmlt,'b.');
-xlim([34.625 34.75]);
+%xlabel('plume salinity (psu)','FontSize',fs);
+plot(flattrain,flatbmlt,'b.');
+%xlim([34.625 34.75]);
 set(gca,'FontSize',fs);
+xlabel('entrainment (km/year)','FontSize',fs,'FontName',fn);
+ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 
-subplot(2,num_plots/2,4);
+figure(2);
+clf;
+
+subplot(1,3,1);
 hold on
-xlabel('ice gradient (non-dimensional)','FontSize',fs);
-ylabel('melt rate (m/year)','FontSize',fs);
 plot(flatgrad,flatbmlt,'b.');
 set(gca,'FontSize',fs);
+xlabel('ice gradient (non-dimensional)','FontSize',fs,'FontName',fn);
+ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 
-subplot(2,num_plots/2,5);
+subplot(1,3,2);
 hold on
-xlabel('v_0 H_y (m/year)','FontSize',fs);
-xlim([-50 50]);
-ylabel('melt rate (m/year)','FontSize',fs);
 plot(flatadv,flatbmlt,'b.');
+xlim([-50 50]);
 set(gca,'FontSize',fs);
+xlabel('v_0 H_y (m/year)','FontSize',fs,'FontName',fn);
+ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 
-subplot(2,num_plots/2,6);
+subplot(1,3,3);
 hold on
-xlabel('ice draft (m)','FontSize',fs);
-ylabel('melt rate (m/year)','FontSize',fs);
-xlim([0 600]);
 plot(-flatdraft,flatbmlt,'b.');
 set(gca,'FontSize',fs);
+xlabel('ice draft (m)','FontSize',fs,'FontName',fn);
+ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+xlim([0 600]);
 
 %b
 %bint
@@ -100,7 +111,8 @@ flatbmlt = reshape(remove_edge(mean(docean.bmelt(:,:,(lasttime-lookback):lasttim
 flatspeed = reshape(remove_edge(mean(sqrt(docean.su(:,:,(lasttime-lookback):lasttime).^2 ...
                                          +docean.sv(:,:,(lasttime-lookback):lasttime).^2),3)),m*n,1);
 flattemp = reshape(remove_edge(mean(docean.temp(:,:,(lasttime-lookback):lasttime),3)),m*n,1);
-flatsalt = reshape(remove_edge(mean(docean.salt(:,:,(lasttime-lookback):lasttime),3)),m*n,1);
+%flatsalt = reshape(remove_edge(mean(docean.salt(:,:,(lasttime-lookback):lasttime),3)),m*n,1);
+flattrain = reshape(remove_edge(mean(docean.train(:,:,(lasttime-lookback):lasttime),3)),m*n,1)/1000.0;
 flatgrad = reshape(remove_edge(mean(docean.grad(:,:,(lasttime-lookback):lasttime),3)),m*n,1);
 flatgradx = reshape(remove_edge(mean(docean.gradx(:,:,(lasttime-lookback):lasttime),3)),m*n,1);
 flatgrady = reshape(remove_edge(mean(docean.grady(:,:,(lasttime-lookback):lasttime),3)),m*n,1);
@@ -112,49 +124,51 @@ flatadv = reshape(remove_edge(mean(-dice.y_adv(:,:,(lasttime-lookback):lasttime)
 
 %-dice.y_adv(:,:,(lasttime-lookback):lasttime),3)),m*n,1);
 
-corr_mat = corrcoef([flatbmlt,flatspeed,flattemp,flatsalt,flatgrad,flatgradx,flatgrady,flatadv,-flatdraft]);
+corr_mat = corrcoef([flatbmlt,flatspeed,flattemp,flattrain,flatgrad,flatgradx,flatgrady,flatadv,-flatdraft]);
 
 speed_cor = corr_mat(1,2);
 temp_cor =  corr_mat(1,3);
-salt_cor =  corr_mat(1,4);
+train_cor =  corr_mat(1,4);
 grad_cor =  corr_mat(1,5);
 draft_cor=  corr_mat(1,9);
 yadv_cor =  corr_mat(1,8);
 
-subplot(2,num_plots/2,1);
+figure(1);
+subplot(1,3,1);
 plot(flatspeed,flatbmlt,'r.');
-title(strcat(['corr = ', sprintf('%4.3f',speed_cor)]),'FontSize',fs);
+title(strcat(['correlation = ', sprintf('%4.3f',speed_cor)]),'FontSize',fs,'Color',c1,'FontName',fn);
 set(gca,'FontSize',fs);
 hold off
 
-subplot(2,num_plots/2,2);
+subplot(1,3,2);
 plot(flattemp,flatbmlt,'r.');
-title(strcat(['corr = ', sprintf('%4.3f',temp_cor)]),'FontSize',fs);
+title(strcat(['correlation = ', sprintf('%4.3f',temp_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
 set(gca,'FontSize',fs);
 hold off
 
-subplot(2,num_plots/2,3);
-plot(flatsalt,flatbmlt,'r.');
-title(strcat(['corr = ', sprintf('%4.3f',salt_cor)]),'FontSize',fs);
+subplot(1,3,3);
+plot(flattrain,flatbmlt,'r.');
+title(strcat(['correlation = ', sprintf('%4.3f',train_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
 set(gca,'FontSize',fs);
 hold off
 
-subplot(2,num_plots/2,4);
+figure(2);
+subplot(1,3,1);
 plot(flatgrad,flatbmlt,'r.');
 set(gca,'FontSize',fs);
-title(strcat(['corr = ', sprintf('%4.3f',grad_cor)]),'FontSize',fs);
+title(strcat(['correlation = ', sprintf('%4.3f',grad_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
 hold off
 
-subplot(2,num_plots/2,5);
+subplot(1,3,2);
 set(gca,'FontSize',fs);
 plot(flatadv,flatbmlt,'r.');
 plot(0:0.5:40,0:0.5:40,'k.');
-title(strcat(['corr = ', sprintf('%4.3f',yadv_cor)]),'FontSize',fs);
+title(strcat(['correlation = ', sprintf('%4.3f',yadv_cor)]),'FontSize',fs,'Color',c1,'FontName',fn);
 hold off
 
-subplot(2,num_plots/2,6);
+subplot(1,3,3);
 plot(-flatdraft,flatbmlt,'r.');
-title(strcat(['corr = ', sprintf('%4.3f',draft_cor)]),'FontSize',fs);
+title(strcat(['correlation = ', sprintf('%4.3f',draft_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
 set(gca,'FontSize',fs);
 hold off
 
