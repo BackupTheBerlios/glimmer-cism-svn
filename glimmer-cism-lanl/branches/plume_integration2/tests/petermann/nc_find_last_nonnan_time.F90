@@ -10,6 +10,17 @@ program last_non_nan_time
 
 contains
 
+    elemental function isnan_proxy(r)
+	real(kind=kind(1.d0)),intent(in) :: r
+	logical :: isnan_proxy
+
+#ifdef HAVE_ISNAN
+	   isnan_proxy = isnan(r)
+#else
+	   isnan_proxy = .true.
+#endif
+    end function isnan_proxy
+
   subroutine main()
 
     character(len=512) :: gen_usage = "nc_find_last_nonnan_time <nc_file_in>"
@@ -66,11 +77,11 @@ contains
      call check(nf90_get_var(nc_id, uvelhom_varid, vels, &
                              start= (/ 1,1,1,n /), &
                              count= (/ (nx-1),(ny-1),nlevel,1 /) ))
-     if (.not.(any(isnan(vels)))) then
+     if (.not.(any(isnan_proxy(vels)))) then
       call check(nf90_get_var(nc_id, vvelhom_varid, vels, &
                              start= (/ 1,1,1,n /), &
                              count= (/ (nx-1),(ny-1),nlevel,1 /) ))
-      if (.not.(any(isnan(vels)))) then
+      if (.not.(any(isnan_proxy(vels)))) then
          last_good_time = last_good_time + 1
       else
          exit
