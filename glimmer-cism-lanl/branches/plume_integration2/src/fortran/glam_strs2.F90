@@ -440,11 +440,13 @@ subroutine glam_velo_fordsiapstr(time,dt, &
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
 
+#ifdef HAVE_ISNAN
     if (any(isnan(uvel)) .or. (any(isnan(vvel)))) then
        write(message,*) 'Found NaN in Picard iteration'
      	call write_log(message,GM_ERROR,'glam_strs2.F90')
 	stop 1
     end if
+#endif
 
     ! apply unstable manifold correction to converged velocities
     uvel = mindcrshstr(1,whichresid,uvel,counter, &
@@ -1692,7 +1694,7 @@ subroutine bodyset(ew,  ns,  up,           &
 
     ! terms after "/" below count number of non-zero efvs cells ... needed for averaging of the efvs at boundary 
     source = source / ( sum(local_efvs, local_efvs > 1.0d-12) / &
-             sum( (local_efvs/local_efvs), local_efvs > 1.0d-12 ) )
+                        sum((local_efvs/local_efvs), local_efvs > 1.0d-12 ) )
 
     source = source * normal(pt) ! partition according to normal vector at lateral boundary
                                  ! NOTE that source term is already non-dim here 
@@ -3038,7 +3040,7 @@ subroutine calcbetasquared (whichbabc,               &
 
       betasquared = 1.0d-10
 
-    case default    ! frozen (u=v=0) ice-bed interface
+   case default    ! frozen (u=v=0) ice-bed interface
 
       betasquared = 1.0d10
 

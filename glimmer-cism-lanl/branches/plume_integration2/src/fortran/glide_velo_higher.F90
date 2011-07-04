@@ -211,7 +211,8 @@ contains
 	   do ns = 2,model%general%nsn-1
 
 	     if (.not.(GLIDE_HAS_ICE(model%geometry%thkmask(ew,ns)))) cycle
-	     if (all(GLIDE_IS_DIRICHLET_BOUNDARY(model%geometry%thkmask((ew-1):ew,(ns-1):ns)))) cycle
+	     if (all(GLIDE_IS_DIRICHLET_BOUNDARY( &
+	                          model%geometry%thkmask((ew-1):ew,(ns-1):ns)))) cycle
 
              model%velocity_hom%uflx_conv(ew,ns) = &
 		  -1.d0* &
