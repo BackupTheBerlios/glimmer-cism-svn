@@ -379,6 +379,7 @@ class GCConfig(object):
                       'plume_output_prefix' : None, # prefix to put on the old style ASCII output
                       'plume_output_dir' : './',     # where to write the output files
                       'plume_write_all_states' : False,   # option to write out all states (all timesteps)
+                      'plume_do_cross_shelf_avg' : False,
                                                           # NB it is very storage hungry
                       'plume_write_every_n' : 1,
                       'plume_output_frequency' : 0.0,
