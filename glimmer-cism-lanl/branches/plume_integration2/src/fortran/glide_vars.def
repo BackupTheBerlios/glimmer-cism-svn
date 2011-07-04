@@ -209,7 +209,7 @@ long_name:     ice thickness staggered
 data:          data%geomderv%stagthck
 factor:        thk0
 standard_name: land_ice_thickness_staggered
-hot:           1
+hot:           0
 coordinates:   lon lat
 
 [thk_t]
@@ -219,7 +219,7 @@ long_name:     logarithmic time derivative of thickness
 data:          data%geometry%thck_t
 standard_name: land_ice_thickness_t_log_deriv
 coordinates:   lon lat
-hot:           1
+hot:           0
 
 [calving]
 dimensions:    time, y1, x1
