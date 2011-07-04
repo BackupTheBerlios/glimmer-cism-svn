@@ -177,7 +177,7 @@ subroutine main()
   call read_old_nc_file() 
 
   allocate(xs_new(nx_new),ys_new(ny_new))
-  allocate(levels_new(nlevel_new+1))
+  allocate(levels_new(nlevel_new))
   allocate(xstag_new(nx_new-1),ystag_new(ny_new-1))
   allocate(topog_new(nx_new,ny_new),thck_new(nx_new,ny_new))
   allocate(kinbcmask_new(nx_new-1,ny_new-1))
@@ -546,6 +546,10 @@ subroutine read_old_nc_file()
   call check(nf90_inquire_dimension(nc_id, time_dimid, t_name, nt_old))
   call check(nf90_inquire_dimension(nc_id, level_dimid, level_name, nlevel_old))
 
+  if (nlevel_new < 0) then
+	nlevel_new = nlevel_old
+  end if
+
   allocate(xs_old(nx_old))
   allocate(ys_old(ny_old))
 
@@ -641,7 +645,7 @@ subroutine define_new_data()
   xstag_new = (/ ( domain_xmin + (i-thk_w_margin)*hx_new,i=1,nx_new-1 ) /)
   ystag_new = (/ ( domain_ymin + (j-thk_s_margin)*hy_new,j=1,ny_new-1 ) /)
 
-  levels_new = (/ ( (float(i)/nlevel_new),i=0,nlevel_new ) /)
+  levels_new = (/ ( (float(i)/(nlevel_new-1)),i=0,(nlevel_new-1) ) /)
   
   ! now define the thck, topog, kinbcmask arrays
   topog_new = 0.0d0
@@ -757,7 +761,7 @@ subroutine write_nc_file()
     call check( nf90_def_dim(nc_id,'y1',ny_new,y_dimid) )
     call check( nf90_def_dim(nc_id,'x0',nx_new-1,xstag_dimid) )
     call check( nf90_def_dim(nc_id,'y0',ny_new-1,ystag_dimid) )
-    call check( nf90_def_dim(nc_id,'level',nlevel_new+1,level_dimid) )
+    call check( nf90_def_dim(nc_id,'level',nlevel_new,level_dimid) )
 
     ! define variables
     call check( nf90_def_var(nc_id,'level',NF90_DOUBLE,(/level_dimid/),level_varid) )

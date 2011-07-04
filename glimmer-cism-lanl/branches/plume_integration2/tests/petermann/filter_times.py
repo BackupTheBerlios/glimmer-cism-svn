@@ -100,12 +100,12 @@ if __name__ == '__main__':
 
     USAGE = "filter_times.py <new_tstep> <jobdir1> <jobdir2> ... <jobdirN>"
 
-    if (len(sys.argv) < 2):
+    if (len(sys.argv) < 3):
         print (USAGE)
+    else:
+        new_tstep = float(sys.argv[1])
+        jnames = sys.argv[2:]
+        print ('new time step: %s' % new_tstep)
+        print ('applied to: \n%s' % '\n'.join(jnames))
 
-    new_tstep = float(sys.argv[1])
-    jnames = sys.argv[2:]
-    print ('new time step: %s' % new_tstep)
-    print ('applied to: \n%s' % '\n'.join(jnames))
-
-    main(new_tstep, jnames)
+        main(new_tstep, jnames)

@@ -72,6 +72,9 @@ class PlumeNamelist(object):
                      'use_min_plume_thickness' : True,
                      'use_neutral_salinity' : False,
                      'depinffix' : 0.0,
+                     'meltinf' : 0.0,
+                     'sgd_type' : -1,
+                     'sgd_flux' : 0.0,
                      'plume_southern_bc' : 0,       # 0 means d/dy = 0
                                                     # 1 means linear extrapolation
                                                     # 2 means quadratic extrapolation
@@ -90,6 +93,7 @@ class PlumeNamelist(object):
                      'ifdep' : 0.0,
                      'wcdep' : 1000.0,
                      'plume_min_thickness' : 10.0,
+                     'plume_max_thickness' : 100.0,
                      'u_star_offset' : 0.0,
                      'tidal_velocity' : 0.0,
                      'infloain' : 0.0,
@@ -117,6 +121,11 @@ class PlumeNamelist(object):
                      'ef' : 5.0e-1,   # entrainment factor
                      'context' : '""',  #NB: don't remove this
                      'bathtype' : 13,
+                     'gasp_m1' : 0.45,
+                     'gasp_m2' : 2.6,
+                     'gasp_m3' : 1.9,
+                     'gasp_m4' : 2.3,
+                     'gasp_m5' : 0.6,
                      }
 
     def produce_namelist_contents(self):
@@ -310,6 +319,8 @@ class GCConfig(object):
                                   'cvg_accel' : 1.5,
                                   'small_vel' : 0.001,
                                   'start_umc' : 3,
+                                  'x_invariant' : 0,  # = 1 means variables don't change in x direction
+                                                      # model%picard_params%x_invariant
                                   },
           'boundary condition params' :
               {'use_lateral_stress_bc' : True,
@@ -319,8 +330,6 @@ class GCConfig(object):
                'use_shelf_bc_1' : False,
                'use_sticky_wall' : False, # create a 'sticky spot' along wall or not
                'sticky_length' : 0,
-               'x_invariant' : 0,  # = 1 means variables don't change in x direction
-                                   # model%picard_params%x_invariant
                },
           'CF default' : { 'comment' : '',
                            'title' : None,
@@ -850,7 +859,7 @@ class RestartIceJob(_BaseJob):
         p = subprocess.Popen(['ncdump','-v', 'time', self._initJobInputNcFile],stdout=subprocess.PIPE)
         times = p.stdout.read()
 
-        self._inputNcTimeIndex = int(times.split('(')[1].split('currently')[0].strip())
+        self._inputJobLastTimeIndex = int(times.split('(')[1].split('currently')[0].strip())
         self.tstart = float(times.split('time =')[-1].split()[-3])
         self.tend = self._initJob._gcconfig.vals['time']['tend'] # default value
         
@@ -864,8 +873,10 @@ class RestartIceJob(_BaseJob):
         self._plume_restart_file = os.path.join(self.jobDir,
                                                 'last_time.%s' %
                                                 os.path.basename(self._initJob.plume_output_file))
-        self.useRunTimeLimit = False
+        self.useMaxRunTimeLimit = False
         self.maxRunTime = 0.0
+
+        self.restartIceIndex = -1
         
     def _getUnderlyingJob(self):
         return self.newJob.underlyingJob
@@ -878,7 +889,7 @@ class RestartIceJob(_BaseJob):
     def _get_n(self):
         return self.newJob.n
     n = property(fget=_get_n)
-    
+
     def resolve(self,gc_override={},plume_override={}):
         #resolve the contained job
         self.gc['time']['tstart'] = self.tstart
@@ -890,7 +901,14 @@ class RestartIceJob(_BaseJob):
         else:
             self.gc['CF output']['stop'] = self.tend
             self.gc['time']['tend'] =     self.tend
-        
+
+        if (self.restartIceIndex > -1):
+            if (self.restartIceIndex > self._inputJobLastTimeIndex):
+                raise Exception("Ice index %s exceed max available index of %s" % (self.restartIceIndex,
+                                                                                   self._inputJobLastTimeIndex))
+        else:
+            self.restartIceIndex = self._inputJobLastTimeIndex
+            
         if ('doPlumeRestart' in self.__dict__):
             if (self.doPlumeRestart):
                 self.plume['restart'] = True
@@ -929,8 +947,8 @@ class RestartIceJob(_BaseJob):
         cmd =['nc_regrid']
         cmd.extend([self._initJobInputNcFile,
                     self.inputfile,
-                    self._inputNcTimeIndex,
-                    self.m,self.n,
+                    self.restartIceIndex,
+                    self.m,self.n,-1,
                     0,0,0,0, 
 #                    0,4,1,1,
 #                    self.newJob.kinbcw, 4,0,0,
@@ -962,8 +980,8 @@ class IntroGLPerturbJob(RestartIceJob):
         cmd = ['nc_regrid']
         cmd.extend([self._initJobInputNcFile,
                     self.inputfile,
-                    self._inputNcTimeIndex,
-                    self.m,self.n,
+                    self.restartIceIndex,
+                    self.m,self.n,-1,
                     0,0,0,0, 
                     4,2,1,1,
                     0,2,0,0,
@@ -989,8 +1007,8 @@ class ListPerturbJob(RestartIceJob):
         cmd = ['nc_regrid']
         cmd.extend([self._initJobInputNcFile,
                     self.inputfile,
-                    self._inputNcTimeIndex,
-                    self.m,self.n,
+                    self.restartIceIndex,
+                    self.m,self.n,-1,
                     0,0,0,0, 
                     4,2,1,1,
                     0,2,0,0,
@@ -1002,7 +1020,14 @@ class ListPerturbJob(RestartIceJob):
         
         cmd = [_fortran_style('nc_perturb_gl',c) for c in cmd]
 
-        return [cmd]
+        cmds = [cmd]
+        
+        if (self.doPlumeRestart):
+            cmd2 = ['nc_last_time_slice.py', self._initJob.plume_output_file,
+                    '-o%s' % self._plume_restart_file.strip()]
+            cmds.append(cmd2)
+
+        return cmds
     
 class RegridListPerturbJob(ListPerturbJob):
 
@@ -1010,14 +1035,20 @@ class RegridListPerturbJob(ListPerturbJob):
         ListPerturbJob.__init__(self,initJobName,initJobDir, newName)
         self.new_m = None
         self.new_n = None
+        self.new_level = None
 
+    def resolve(self,gc_override={},plume_override={}):
+        gc_override.update( {'grid' : {'upn' : self.new_level,
+                                       }} )
+        ListPerturbJob.resolve(self,gc_override,plume_override)
+        
     def _genInputCmds(self):
 
         cmd =['nc_regrid']
         cmd.extend([self._initJobInputNcFile,
                     self.inputfile,
-                    self._inputNcTimeIndex,
-                    self.new_m,self.new_n,
+                    self.restartIceIndex,
+                    self.new_m,self.new_n,self.new_level,
                     0,0,0,0,
                     4,2,1,1,
                     0,2,0,0,
@@ -1027,22 +1058,31 @@ class RegridListPerturbJob(ListPerturbJob):
             cmd.extend([k,amp,phase,len])
         
         cmd = [_fortran_style('nc_perturb_gl_regrid',c) for c in cmd]
-        return [cmd]
+        cmds = [cmd]
+        
+        if (self.doPlumeRestart):
+            cmd2 = ['nc_last_time_slice.py', self._initJob.plume_output_file,
+                    '-o%s' % self._plume_restart_file.strip()]
+            cmds.append(cmd2)
+
+        return cmds
                  
 class RegridIceJob(RestartIceJob):
 
-    def __init__(self,initJobFile,new_m,new_n,newName=None):
+    def __init__(self,initJobFile,newName=None):
         RestartIceJob.__init__(self,initJobFile,initJobDir=None,newName=newName)
-        self.new_m = new_m
-        self.new_n = new_n
+        self.new_m = None
+        self.new_n = None
+        self.new_level = None
+        self.restartIceIndex = None
         
     def _genInputCmds(self):
 
         cmd =['nc_regrid']
         cmd.extend([self._initJobInputNcFile,
                     self.inputfile,
-                    self._inputNcTimeIndex,
-                    self.new_m,self.new_n,
+                    self.restartIceIndex,
+                    self.new_m,self.new_n,self.new_level,
                     0,0,0,0,
                     #2,4,1,1,  #n,s,e,w thickness buffers
                     #4,0,1,1,
