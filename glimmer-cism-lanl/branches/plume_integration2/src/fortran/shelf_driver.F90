@@ -30,7 +30,6 @@ program shelf_driver
   integer,parameter :: fake_landw = 2
   integer,parameter :: thk_zero_margin = 1
   logical,parameter :: use_thk_zero_margin = .true.
-  logical,parameter :: doCrossShelfAvg = .false.
 
   !local variables
   type(glide_global_type) :: model        ! model instance
@@ -43,6 +42,7 @@ program shelf_driver
   logical :: plume_reached_steady
 
   logical :: check_for_steady = .false.
+  logical :: doCrossShelfAvg = .false.
   logical :: hide_shelf_inflow_row = .true.
   real(kind=dp) :: thk_steady_tol = 1.0e-2
   real(kind=dp) :: mean_thk_steady_tol = 1.0e-6
@@ -566,6 +566,8 @@ contains
     write(message,*) 'plume_const_bmlt', plume_const_bmlt, 'plume_const_bmlt_rate', plume_const_bmlt_rate
     call write_log(message)
     write(message,*) 'plume_initial_bmlt:', plume_initial_bmlt
+    call write_log(message)
+    write(message,*) 'plume_do_cross_shelf_avg:', doCrossShelfAvg
     call write_log(message)
 
   end subroutine plume_read_print_config
