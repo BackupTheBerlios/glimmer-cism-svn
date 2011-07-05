@@ -1902,9 +1902,10 @@ contains
 
              if (pdepc(i,k).gt.mdepth) then         
 
-                dragrt = dsqrt(drag(i,k))
-                ustar = dragrt*sqrt(bspeed(i,k)**2.d0+0.5d0*local_tidal_speed(i,k)**2.d0) + &
-                        u_star_offset
+	        !                dragrt = dsqrt(drag(i,k))
+                ustar = sqrt(drag(i,k)*(bspeed(i,k)**2.d0 + &
+                                        0.5d0*local_tidal_speed(i,k)**2.d0) + &
+                             u_star_offset**2.d0)
                 ! find turbulent exchange coefficients
                 gambt = ustar/(2.12d0*dlog(ustar*pdepc(i,k)/nu0) + prden)
                 gambs = ustar/(2.12d0*dlog(ustar*pdepc(i,k)/nu0) + scden)
@@ -2009,7 +2010,9 @@ contains
 
                 if (entype.eq.6) then
                    ! Gaspar CMO 
-                   u_star = sqrt(drag(i,k))*sqrt(bspeed(i,k)**2.d0 + 0.5d0*local_tidal_speed(i,k)**2.d0) + u_star_offset
+                   u_star = sqrt(drag(i,k)*(bspeed(i,k)**2.d0 + &
+                                            0.5d0*local_tidal_speed(i,k)**2.d0) +  &
+                                 u_star_offset**2.d0)
                    lambda = u_star / f
                    delta_b = grav*(- alpha*(btemp(i,k)-temp(i,k)) &
                                     - beta*(bsalt(i,k)-salt(i,k)) )
@@ -2056,10 +2059,9 @@ contains
 		if (entype == 7) then
 
 		   ! Niiler-Kraus model, from Gaspar 1988
-                   u_star = sqrt(drag(i,k))* &
-                            sqrt(bspeed(i,k)**2.d0 + &
-                                 0.5d0*local_tidal_speed(i,k)**2.d0) &
-                            + u_star_offset+small
+                   u_star = sqrt(drag(i,k)*(bspeed(i,k)**2.d0 + &
+                                            0.5d0*local_tidal_speed(i,k)**2.d0) + &
+                                 u_star_offset**2.d0) + small
                    delta_b_upper = grav*(- alpha*(btemp(i,k)-temp(i,k)) &
                                          -  beta*(bsalt(i,k)-salt(i,k)) )
                    delta_b_lower = grav*(- alpha*(temp(i,k)-atemp(i,k)) &
@@ -2226,7 +2228,8 @@ contains
     !         N = buoyancy freq = sqrt(-g*(rho_plume-rho_amb)/(rho0*plume_thickness))
 
     speed = sqrt( ((su(i-1,k)+su(i,k))**2.d0)/4.d0 + ((sv(i,k-1)+sv(i,k))**2.d0)/4.d0 + small)
-    u_star = sqrt(speed**2.d0+0.5d0*local_tidal_speed(i,k)**2.d0) * sqrt( drag(i,k) ) + u_star_offset
+    u_star = sqrt(drag(i,k)*(speed**2.d0+0.5d0*local_tidal_speed(i,k)**2.d0) + &
+                  u_star_offset**2.d0)
 
 !    debug3(i,k) = u_star
 
@@ -2316,9 +2319,9 @@ contains
                  umid = tt*su(i,k) + (1.d0-tt)*su(i-1,k)
                  speed = umid**2 + vmid**2 + small
                  bspeed = sqrt(speed)
-                 u_star = sqrt(drag(i,k))* &
-                          sqrt(bspeed**2.d0+0.5d0*local_tidal_speed(i,k)**2.d0) &
-                          + u_star_offset
+                 u_star = sqrt(drag(i,k)*(bspeed**2.d0 + &
+                                          0.5d0*local_tidal_speed(i,k)**2.d0) + &
+                               u_star_offset**2.d0)
                  lambda = u_star / f
                  delta_b_upper = grav*(- alpha*(btemp(i,k)-temp(i,k)) &
                                        - beta *(bsalt(i,k)-salt(i,k)) )
@@ -2357,10 +2360,8 @@ contains
                  tt = 5.0d-1*dx(i-1)*rdxu(i)
                  umid = tt*su(i,k) + (1.d0-tt)*su(i-1,k)
                  speed = umid**2 + vmid**2 + small
-	         u_star = sqrt(drag(i,k))* &
-                          sqrt(speed + &
-                               0.5d0*local_tidal_speed(i,k)**2.d0) &
-                          + u_star_offset
+	         u_star = sqrt(drag(i,k) * (speed + 0.5d0*local_tidal_speed(i,k)**2.d0) + &
+                               u_star_offset**2.d0)
                  delta_b_upper = grav*(-alpha*(btemp(i,k)-temp(i,k)) &
                                        - beta*(bsalt(i,k)-salt(i,k)) )
                  delta_b_lower = grav*(-alpha*(temp(i,k)-atemp(i,k)) &
@@ -4359,7 +4360,9 @@ contains
 
              if (pdepc(i,k).gt.mdepth) then         
                 dragrt = dsqrt(drag(i,k))
-                ustar = dragrt*sqrt(bspeed(i,k)**2.d0+0.5d0*local_tidal_speed(i,k)**2.d0) + u_star_offset
+                ustar = sqrt(drag(i,k)*( bspeed(i,k)**2.d0 + &
+                                         0.5d0*local_tidal_speed(i,k)**2.d0) + &
+                             u_star_offset**2.d0)
                 ! find turbulent exchange coefficients
                 gambt = ustar/ &
                      (2.12d0*dlog(ustar*pdepc(i,k)/nu0) + prden)             
