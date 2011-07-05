@@ -1711,16 +1711,19 @@ contains
              if ((i .gt. infloa) .and. (i .lt. infloe) .and. &
                   (k .gt. knfloa) .and. (k .lt. knfloe)) then
                 
-                ! sgd_flux should be in giga-tons per year
-                fresh_water_column_thk = sgd_flux*(10.0d12/rhoi)*(dt/(365.25d0*3600.d0*24.d0))/discharge_area
-    
+                ! sgd_flux should be in km^3 per year
+                fresh_water_column_thk = sgd_flux * (1.0d9)*(dt/(365.25d0*3600.d0*24.d0))/discharge_area
+
                 salt(i,k) = salt(i,k)*pdep(i,k) / (pdep(i,k)+fresh_water_column_thk)
                 salta(i,k) = salt(i,k)
                 temp(i,k) = temp(i,k)*pdep(i,k) / (pdep(i,k)+fresh_water_column_thk)
                 tempa(i,k) = temp(i,k)
 
-                ! calculate density of inflow water fraction
+                pdep(i,k) = pdep(i,k) + fresh_water_column_thk
+                ipos(i,k) = bpos(i,k) - pdep(i,k)
 
+
+                ! calculate density 
                 if (rholinear) then
                    rhop(i,k) = rho_func_linear(temp(i,k),salt(i,k))
                 else
