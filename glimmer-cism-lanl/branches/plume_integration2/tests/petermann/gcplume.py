@@ -72,6 +72,7 @@ class PlumeNamelist(object):
                      'use_min_plume_thickness' : True,
                      'use_neutral_salinity' : False,
                      'depinffix' : 0.0,
+                     'depinit' : 0.0,
                      'meltinf' : 0.0,
                      'sgd_type' : -1,
                      'sgd_flux' : 0.0,
@@ -719,8 +720,7 @@ class _GenInputJob(_BaseJob):
                                        })
         self.gc['parameters'].update({ 'default_flwa' : self.default_flwa,
                                                   })
-        self.gc['CF output'].update({'frequency' : self.ice_dt,
-                                     'start' : self.tstart,
+        self.gc['CF output'].update({'start' : self.tstart,
                                      'stop' : self.tend,
                                      })
 
