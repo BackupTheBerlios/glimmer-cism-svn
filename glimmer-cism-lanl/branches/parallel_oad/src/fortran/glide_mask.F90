@@ -349,8 +349,8 @@ contains
         !end if
 
         ! calculate the angle of the normal in cart. (x,y) system w/ 0 deg. at 12 O'clock, 90 deg. at 3 O'clock, etc.
-        if( sum( sum( thckmask, 1 ) ) .eq. 1.0d0 )then
-            phi = sum( sum( thckmask * maskcorners, 1 ) )
+        if( sum(thckmask) .eq. 1.0d0 )then
+            phi = sum(thckmask * maskcorners)
         else
             if( any( testvect .eq. 360.0d0 ) )then
                 if( sum( testvect ) .eq. 450.0d0 )then
