@@ -27,7 +27,16 @@ def find_last_time(nc_filename):
     cmd = ['nc_find_last_nonnan_time',nc_filename]
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     p.wait()
-    return int(p.stdout.readlines()[0].strip())
+    lt = 0
+    try:
+        pout = p.stdout.readlines()
+        stuff = pout[-1].strip()
+        lt = int(stuff)
+        return lt
+
+    except ValueError:
+        
+        raise Exception('invalid value %s' % stuff)
     
 def filter_file(nc_filename,stride,lastslice,outfile):
     
@@ -73,8 +82,11 @@ def main(new_tstep, jnames):
             if (tstep):
                 stride = int(math.floor(new_tstep/tstep))
                 tindex = find_last_time(icename)
-                if (stride > 1):
-                    filter_file(icename,stride,tindex,filtered_icename)
+                if (tindex < 0):
+                    print ('Found negative final time in %s' % icename)
+                else:
+                    if (stride > 1):
+                        filter_file(icename,stride,tindex,filtered_icename)
             else:
                 print ('skipping %s' % icename)
         else:

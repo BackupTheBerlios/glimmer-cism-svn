@@ -17,7 +17,7 @@ contains
 #ifdef HAVE_ISNAN
 	   isnan_proxy = isnan(r)
 #else
-	   isnan_proxy = .true.
+	   isnan_proxy = .false.
 #endif
     end function isnan_proxy
 
