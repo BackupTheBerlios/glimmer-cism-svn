@@ -339,11 +339,14 @@ contains
     real(dp) :: default_flwa
     real(dp),dimension(4) :: arrfact
     integer :: ew,ns,up,ewn,nsn,upn, loopify
+    real(dp), dimension(size(flwa,1)) :: contempArr
 
     real(dp), dimension(size(sigma)) :: tempcor
 
     !------------------------------------------------------------------------------------ 
    
+    contempArr=contemp
+
     default_flwa = flow_factor * default_flwa_arg / (vis0*scyr) 
 
     upn=size(flwa,1) ; ewn=size(flwa,2) ; nsn=size(flwa,3)
@@ -392,7 +395,7 @@ contains
 
             ! Calculate Glenn's A with a fixed temperature.
 
-            call patebudd((/(contemp, up=1,upn)/),flwa(:,ew,ns),arrfact) 
+            call patebudd(contempArr,flwa(:,ew,ns),arrfact) 
           else
             flwa(:,ew,ns) = default_flwa
           end if
@@ -445,16 +448,19 @@ contains
     real(dp),dimension(:), intent(out)   :: calcga   !*FD The output values of Glenn's $A$.
     real(dp),dimension(4), intent(in)    :: fact     !*FD Constants for the calculation. These
                                                      !*FD are set when the velo module is initialised
-
+    integer :: loopify, loopifyl, loopifyu
     !------------------------------------------------------------------------------------
 
     ! Actual calculation is done here - constants depend on temperature -----------------
-
-    where (tempcor >= -10.0d0)         
-      calcga = fact(1) * exp(fact(3) / (tempcor + trpt))
-    elsewhere
-      calcga = fact(2) * exp(fact(4) / (tempcor + trpt))
-    end where
+    loopifyl=lbound(tempcor,1)
+    loopifyu=ubound(tempcor,1)
+    do loopify=loopifyl,loopifyu
+       if  (tempcor(loopify) >= -10.0d0)  then
+          calcga(loopify) = fact(1) * exp(fact(3) / (tempcor(loopify) + trpt))
+       else
+          calcga(loopify) = fact(2) * exp(fact(4) / (tempcor(loopify) + trpt))
+       end if
+    end do
 
   end subroutine patebudd
 
