@@ -121,6 +121,7 @@ module glide_types
   integer, parameter :: BWATER_NONE  = 2
   integer, parameter :: BWATER_BASAL_PROC = 3  !*mb* basal water available from basal proc. module
   integer, parameter :: BWATER_CONST = 4       !*mb* Constant thickness of water, e.g., to force Tpmp.
+  integer, parameter :: BWATER_SSFLUX = 5      !*spc* steady state D8 by Sasha Carter
 
   integer, parameter :: HO_DIAG_NONE = 0
   integer, parameter :: HO_DIAG_PATTYN_UNSTAGGERED = 1
@@ -207,7 +208,7 @@ module glide_types
     !*FD \item[2] Fast calculation, using Tulaczyk empirical parametrization
     !*FD \end{description}
 
-    integer :: whichbwat = 2
+    integer :: whichbwat = 5
 
     !*FD Basal water depth: 
     !*FD \begin{description} 
@@ -216,6 +217,7 @@ module glide_types
     !*FD \item[2] Set to zero everywhere 
     !*FD \item[3] Calculated from till water content, in the basal processes module
     !*FD \item[4] Set to constant everywhere (10m).
+    !*FD \item[5] SPC: Stedy state D8 model
     !*FD \end{description}
 
     integer :: whichmarn = 1
