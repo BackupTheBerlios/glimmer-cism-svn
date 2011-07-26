@@ -477,12 +477,13 @@ contains
          'Basal proc mod disabled '  , &
          'Basal proc, high res.   '   , &
          'Basal proc, fast calc.  ' /)
-    character(len=*), dimension(0:4), parameter :: basal_water = (/ &
+    character(len=*), dimension(0:5), parameter :: basal_water = (/ &
          'local water balance   ', &
          'local + const flux    ', &
          'none                  ', &
          'From basal proc model ', &
-         'Constant value (=10m) '/)
+         'Constant value (=10m) ', &
+         'Steadystate D8 by SPC '/)
     character(len=*), dimension(0:7), parameter :: marine_margin = (/ &
          'ignore              ', &
          'no ice shelf        ', &
