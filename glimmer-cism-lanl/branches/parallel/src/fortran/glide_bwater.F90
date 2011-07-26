@@ -9,7 +9,8 @@ contains
     use glimmer_paramets, only : thk0
     use glide_thck
     use glide_grids, only: stagvarb
-
+	use ssflux_h2o_spc, only: ssflux_h2o_SPC_driver
+	
     implicit none
 
     type(glide_global_type),intent(inout) :: model
@@ -24,7 +25,7 @@ contains
     real(dp) :: dwphidew, dwphidns, dwphi, pmpt, bave
 
     integer :: t_wat,ns,ew
-
+	
     real(dp),  dimension(model%general%ewn,model%general%nsn) :: N, flux, lakes
     real(dp) :: c_effective_pressure,c_flux_to_depth,p_flux_to_depth,q_flux_to_depth
 
@@ -33,6 +34,8 @@ contains
     c_flux_to_depth = 1./(1.8d-3*12.0d0)  ! 
     p_flux_to_depth = 2.0d0            ! exponent on the depth
     q_flux_to_depth = 1.0d0            ! exponent on the potential gradient
+    
+    print *, 12345
 
     select case (which)
 
@@ -40,6 +43,7 @@ contains
     ! which = BWATER_FLUX Flux based calculation
     ! which = BWATER_NONE Nothing, basal water = 0.
     ! which = BWATER_BASAL_PROC, till water content in the basal processes module
+	! which = BWATER_SSFLUX, SPC Steadystate d8
 
     case(BWATER_LOCAL)
 
@@ -83,6 +87,10 @@ contains
 
     ! Case added by Jesse Johnson 11/15/08
     ! Steady state routing of basal water using flux calculation
+    case(BWATER_SSFLUX)
+	! calling SPC steady state D8 water model which looks a lot like BWATER F_FLUX, but that's okay
+	
+      call ssflux_h2o_spc_driver(model,bmlt,bwat,thck,topg,btem,floater)
     case(BWATER_FLUX)
 
       call effective_pressure(bwat,c_effective_pressure,N)
