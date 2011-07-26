@@ -89,5 +89,5 @@ module glimmer_physcon
 
   real(dp),parameter :: pmlt = 9.7456d-8         !*FD Factor for dependence of melting point on pressure (K Pa$^{-1}$)
   real(dp),parameter :: trpt = 273.15d0          !*FD Triple point of water (K)
-
+  real(dp),parameter :: muw = 1.787e-3           !*FD The viscosity of fresh water (kg m$^{-3}$)
 end module glimmer_physcon
