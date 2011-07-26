@@ -129,6 +129,9 @@ contains
     !*mb* added 
     use glam_Basal_Proc, only : Basal_Proc_init
 
+	!*spc* added 
+    use ssflux_h2o_spc, only : ssflux_h2o_spc_init
+
     implicit none
     type(glide_global_type) :: model        !*FD model instance
 
@@ -423,7 +426,10 @@ contains
     ! *sfp** added for summer modeling school
     use fo_upwind_advect, only: fo_upwind_advect_driver
 
+ ! *spc** added
+    use ssflux_h2o_spc, only: ssflux_h2o_spc_driver
     ! *sfp* added so that stress tensor is populated w/ HO stress fields
+    
     use stress_hom, only: glide_stress
 
     implicit none
