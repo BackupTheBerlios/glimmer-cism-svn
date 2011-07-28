@@ -57,7 +57,7 @@ module glide_stop
   use glam_Basal_Proc, only : Basal_Proc_final
 
   ! *spc* added
-  use ssflux_h2o_spc, only : ssflux_h2o_spc_final
+  !use ssflux_h2o_spc, only : ssflux_h2o_spc_final
   
   implicit none
   !*FD module containing finalisation of glide
