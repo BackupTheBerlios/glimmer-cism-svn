@@ -161,7 +161,8 @@ contains
 
     ! *mb* added; finalization of Basal Proc module
     if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
-        model%options%which_bmod == BAS_PROC_FASTCALC) then
+        model%options%which_bmod == BAS_PROC_FASTCALC.or. &
+        model%options%which_bmod == BAS_PROC_HYDROLOG) then
         call Basal_Proc_final (model%basalproc)
     end if  
 

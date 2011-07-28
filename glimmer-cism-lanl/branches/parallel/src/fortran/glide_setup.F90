@@ -473,10 +473,11 @@ contains
          'Paterson and Budd (temp=-10degC) ', &
          'const 1e-16a^-1Pa^-n             '/)
   !*mb* added options for basal processes model       
-    character(len=*), dimension(0:2), parameter :: which_bmod = (/ &
-         'Basal proc mod disabled '  , &
-         'Basal proc, high res.   '   , &
-         'Basal proc, fast calc.  ' /)
+    character(len=*), dimension(0:3), parameter :: which_bmod = (/ &
+         'Basal proc mod disabled         '   , &
+         'Basal proc, high res.           '   , &
+         'Basal proc, fast calc.          '   , &
+         'Basal proc, coupled to hydrology'/)
     character(len=*), dimension(0:5), parameter :: basal_water = (/ &
          'local water balance   ', &
          'local + const flux    ', &
@@ -811,7 +812,7 @@ contains
         call GetValue(section, 'Comp',  model%basalproc%Comp)
         call GetValue(section, 'Cv',  model%basalproc%Cv)
         call GetValue(section, 'Kh',  model%basalproc%Kh)
-    else if (model%options%which_bmod.eq.2) then
+    else if (model%options%which_bmod.ge.2) then
         call GetValue(section, 'aconst',  model%basalproc%aconst)
         call GetValue(section, 'bconst',  model%basalproc%bconst)
     end if

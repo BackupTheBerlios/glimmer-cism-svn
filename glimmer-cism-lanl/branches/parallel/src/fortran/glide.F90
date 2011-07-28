@@ -256,7 +256,8 @@ contains
 
     ! *mb* added; initialization of basal proc. module
     if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
-        model%options%which_bmod == BAS_PROC_FASTCALC) then
+        model%options%which_bmod == BAS_PROC_FASTCALC .or. &
+        model%options%which_bmod == BAS_PROC_HYDROLOG) then
         
         call Basal_Proc_init (model%general%ewn, model%general%nsn,model%basalproc,     &
                               model%numerics%ntem)
@@ -398,11 +399,12 @@ contains
     ! Calculate basal shear strength from Basal Proc module, if necessary
     ! ------------------------------------------------------------------------    
     if (model%options%which_bmod == BAS_PROC_FULLCALC .or. &
-        model%options%which_bmod == BAS_PROC_FASTCALC) then
+        model%options%which_bmod == BAS_PROC_FASTCALC .or. &
+        model%options%which_bmod == BAS_PROC_HYDROLOG ) then
         call Basal_Proc_driver (model%general%ewn,model%general%nsn,model%general%upn,       &
                                 model%numerics%ntem,model%velocity_hom%uvel(model%general%upn,:,:), &
                                 model%velocity_hom%vvel(model%general%upn,:,:), &
-                                model%options%which_bmod,model%temper%bmlt,model%basalproc)
+                                model%options%which_bmod,model%temper%bmlt,model%temper%bwat,model%basalproc)
     end if
 
   end subroutine glide_tstep_p1

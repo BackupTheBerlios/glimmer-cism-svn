@@ -96,7 +96,7 @@ contains
   
   
   subroutine Basal_Proc_driver (ewn,      nsn,      upn,  				&
-								dt,ubas,vbas,  what, bmlt, basalproc)
+								dt,ubas,vbas,  what, bmlt, bwat, basalproc)
 								
 	use glide_grids, only: stagvarb								
   implicit none
@@ -106,10 +106,11 @@ contains
     real (kind = sp), intent(in) :: dt
     real (kind = dp), dimension(:,:), intent (in) :: ubas,vbas
     real (kind = dp), dimension(:,:), intent (in) :: bmlt
+    real (kind = dp), dimension(:,:), intent (inout) :: bwat
     type(glide_basalproc),intent(inout) :: basalproc
     
     !Variables
-    real (kind = dp), dimension (ewn-1,nsn-1) :: Ub,stagHwater,stagbmlt
+    real (kind = dp), dimension (ewn-1,nsn-1) :: Ub,stagHwater,stagbmlt,stagbwat
     real (kind = dp) :: f1
     integer :: i
 
@@ -119,6 +120,10 @@ contains
 	!Re-Scale bmlt (scale2d_f1=scyr*thk0/tim0):
 	stagbmlt=stagbmlt*(scyr*thk0/tim0)
     
+    !Similarly, calculate the basal water thickness bwat on a staggered grid
+    call stagvarb(bwat,stagbwat,ewn,nsn)
+    !Re-Scale bwat (scaled with thk0)
+    stagbwat=stagbwat*thk0
     
 !    !Calculate the magnitude of basal velocity, in m/yr
 	Ub=scyr*vel0* (sqrt(ubas(:,:)**2+vbas(:,:)**2))
@@ -140,15 +145,21 @@ contains
     case(2)
     call Till_FastCalc (dt,stagbmlt,basalproc%aconst,basalproc%bconst,      &
     					basalproc%Zs,basalproc%minTauf,stagHwater,basalproc%etill) 
+    					
+    case(3)
+    call Till_hydro(ewn,nsn,basalproc%aconst,basalproc%bconst,basalproc%Zs,basalproc%minTauf,	&
+    				stagHwater,stagbwat,basalproc%etill)
     
     end select
 
-	!Calculate Hwater on normal grid - using zero gradient as BC
+	!Calculate Hwater and bwat on normal grid - using zero gradient as BC
 	call stag2norm(ewn,nsn,stagHwater,basalproc%Hwater)
+	call stag2norm(ewn,nsn,stagbwat,bwat)
 	print*,'ENDING WITH mean Tauf=',sum(basalproc%minTauf)/((ewn-1)*(nsn-1))
-	! Scale minTauf
+	! Scale minTauf and bwat
 	basalproc%minTauf=basalproc%minTauf/tau0_glam
-
+	bwat=bwat/thk0
+	basalproc%Hwater=basalproc%Hwater/thk0
 
  
     
@@ -310,7 +321,7 @@ subroutine Till_FastCalc(dt,bdot,aconst,bconst,Zs,minTauf,Hwater,etill)
   end where
 
   minTauf=aconst*exp(-bconst*etill(:,:,1))
-  Hwater=Zs*(etill(:,:,1)/(1+etill(:,:,1)))
+  Hwater=Zs*etill(:,:,1)
 
 	!Reset minTauf values where tillmask=.false.
 	where (.not.tillmask)
@@ -320,6 +331,53 @@ subroutine Till_FastCalc(dt,bdot,aconst,bconst,Zs,minTauf,Hwater,etill)
 
 
 end subroutine Till_FastCalc
+
+
+
+subroutine Till_hydro(ewn,nsn,aconst,bconst,Zs,minTauf,Hwater,stagbwat,etill)
+!This subroutine assumes a simple coupling between a till layer and a regional hydrology system, as defined in Sasha's model
+!Sasha's model output is bwat - the latter is used as input to determine the till water content
+
+! Liquid limit of till, porosity = 56% <==> void ratio = 1.27
+!dHwater is the water added to the void ratio etill. It is a function of the water thickness calculated by sasha's model (Hwater)
+!When till has low porosity, all water is assimilated into till layer
+!When till has high porosity, no water is assimilated into till layer
+!In-between, linear interp., for now. 
+!Hwater_till is the water available in the till layer. Should be used to accomodate freezing rates if necessary.
+!bdot is passed on to sasha's model - melting is added to Hwater, while freezing removes water from Hwater.
+!If Hwater is already zero, then freezing should be removed from Hwater_till. 
+!Both Hwater and Hwater_till are passed on to this module.
+  use glimmer_paramets, only : dp,sp
+  
+  implicit none
+  
+  !Arguments
+  integer, intent(in) :: ewn,nsn
+  real (kind=dp), intent(in):: aconst,bconst,Zs
+  real (kind = dp), dimension(:,:,:),intent(inout) :: etill  !Till void ratio
+  real (kind = dp), dimension(:,:),intent(out) :: minTauf ! basal melt rate m.yr
+  real (kind = dp), dimension(:,:),intent(inout) :: stagbwat, Hwater ! basal melt rate m.yr
+ 
+ !Variables
+ real (kind=dp), dimension(ewn-1,nsn-1)::dHwater
+
+dHwater=stagbwat*( abs(etill(:,:,1)-1.27)/abs(0.15-1.27) )
+etill(:,:,1)=etill(:,:,1) + dHwater/Zs
+
+minTauf=aconst*exp(-bconst*etill(:,:,1))
+
+stagbwat=stagbwat-dHwater
+Hwater= Zs*etill(:,:,1)
+
+
+	!Reset minTauf values where tillmask=.false.
+	where (.not.tillmask)
+		minTauf=minTauf_init
+		Hwater=Hwater_init
+	end where
+
+end subroutine Till_hydro
+
 
  
 end module glam_Basal_Proc

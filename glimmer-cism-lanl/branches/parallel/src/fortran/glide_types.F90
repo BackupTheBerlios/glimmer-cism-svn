@@ -171,6 +171,7 @@ module glide_types
   integer, parameter :: BAS_PROC_DISABLED = 0
   integer, parameter :: BAS_PROC_FULLCALC = 1
   integer, parameter :: BAS_PROC_FASTCALC = 2
+  integer, parameter :: BAS_PROC_HYDROLOG = 3
 
   type glide_options
 
@@ -206,6 +207,7 @@ module glide_types
     !*FD \item[0] Disabled
     !*FD \item[1] Full calculation, with at least 3 nodes to represent the till layer
     !*FD \item[2] Fast calculation, using Tulaczyk empirical parametrization
+    !*FD \item[3] Fast calculation (as in option 2), and coupling with hydrology (whichbwat=5)
     !*FD \end{description}
 
     integer :: whichbwat = 5
