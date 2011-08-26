@@ -32,6 +32,10 @@ module glide_velo_higher
     real(dp), parameter :: SHTUNE   = 1.D-16
     integer,  parameter :: UPSTREAM = 0
     integer,  parameter :: MANIFOLD = 1
+
+    real(dp) :: last_time_diag
+    real(dp), parameter :: big_tinc = 0.1d0
+
 contains
         
     subroutine init_velo_hom_pattyn(model)
@@ -179,6 +183,11 @@ contains
                                       model%velocity_hom%uflx,    model%velocity_hom%vflx) 
             
         else if (model%options%which_ho_diagnostic == HO_DIAG_PP) then
+
+	    if (model%numerics%time .ge. last_time_diag + big_tinc) then
+
+	    last_time_diag = model%numerics%time
+
             call glam_velo_fordsiapstr( model%numerics%time,model%numerics%tinc, &
 	                                model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
@@ -205,6 +214,7 @@ contains
                                         model%velocity_hom%uvel, model%velocity_hom%vvel,           &
                                         model%velocity_hom%uflx, model%velocity_hom%vflx,           &
                                         model%velocity_hom%efvs )
+
 
         ! diagnose the flux divergences
 	do ew = 2,model%general%ewn-1
@@ -241,7 +251,7 @@ contains
 
          end do
       end do
-
+      end if
          else if (model%options%which_ho_diagnostic == HO_DIAG_PLUG) then
             ! impose no zonal velocity
             model%velocity_hom%uvel = 0.d0
@@ -267,7 +277,8 @@ contains
         !we put it out here
         model%velocity_hom%velnorm = sqrt(model%velocity_hom%uvel**2 + model%velocity_hom%vvel**2)
         model%velocity_hom%is_velocity_valid = .true.
-        
+
+
     end subroutine
 
     function vertintg(upn, sigma, in) 

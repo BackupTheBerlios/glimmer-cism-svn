@@ -516,7 +516,10 @@ contains
     call inflow_calc(icalcan,kcalcan,icalcen,kcalcen)
 
     ! mix in the prescribed subglacial discharge flux near inflow edge
-    call subglacial_discharge(icalcan,kcalcan,icalcen,kcalcen)
+!   this code is redundant now, since the sgd code has been added into 
+!   the continuity and scalar subroutines
+!    call subglacial_discharge(icalcan,kcalcan,icalcen,kcalcen)
+
     ! ----------------------------------------------------------
     ! update plume thickness, wet/dry boundaries, and velocities
     ! ----------------------------------------------------------
@@ -1159,6 +1162,7 @@ contains
     ctot = 0.d0
     tfreeze = 0.d0
     entr = 0.d0
+    sgd = 0.d0
     artf_entr_frac = 0.d0
     local_tidal_speed = 0.d0
     thk_def = 0.d0
@@ -1698,9 +1702,6 @@ contains
 
     discharge_area = sum(dx(infloa+1:infloe-1))*sum(dy(knfloa+1:knfloe-1))
 
-    if (sgd_type < 0) then
-       return
-    end if
     if (sgd_type == 0) then
 
        ! uniform flux across inflow edge
@@ -1713,15 +1714,12 @@ contains
                 
                 ! sgd_flux should be in km^3 per year
                 fresh_water_column_thk = sgd_flux * (1.0d9)*(dt/(365.25d0*3600.d0*24.d0))/discharge_area
-
                 salt(i,k) = salt(i,k)*pdep(i,k) / (pdep(i,k)+fresh_water_column_thk)
                 salta(i,k) = salt(i,k)
                 temp(i,k) = temp(i,k)*pdep(i,k) / (pdep(i,k)+fresh_water_column_thk)
                 tempa(i,k) = temp(i,k)
 
                 pdep(i,k) = pdep(i,k) + fresh_water_column_thk
-                ipos(i,k) = bpos(i,k) - pdep(i,k)
-
 
                 ! calculate density 
                 if (rholinear) then
@@ -1853,6 +1851,8 @@ contains
     real(kind=kdp) :: delta_b_lower,delta_b_upper,u_star,Bh,heat_flux
     real(kind=kdp) :: buoyancy_flux_heat
     real(kind=kdp) :: lp_over_l
+
+    real(kind=kdp):: discharge_area 
 
     ! this may be used as a mechanism to generate a positive 
     ! minimum entrainment rate.  Change to a number > 0.d0
@@ -2099,6 +2099,30 @@ contains
              end if
 
              deltam(i,k) = deltam(i,k) + entr(i,k)
+
+          end do
+       end do
+    end if
+
+    !-----2.5  subglacial discharge------
+
+    if (sgd_type == 0) then
+
+       ! uniform flux across inflow edge
+
+       discharge_area = sum(dx(infloa+1:infloe-1))*sum(dy(knfloa+1:knfloe-1))
+
+       do i = icalcan,icalcen
+          do k = kcalcan,kcalcen
+    
+             if ((i .gt. infloa) .and. (i .lt. infloe) .and. &
+                  (k .gt. knfloa) .and. (k .lt. knfloe)) then
+                
+                ! sgd_flux should be in km^3 per year
+		sgd(i,k) = sgd_flux * (1.0d9)*(1.d0/(365.25d0*3600.d0*24.d0))/discharge_area
+		deltam(i,k) = deltam(i,k) + sgd(i,k)
+
+	     end if
 
           end do
        end do
@@ -4022,6 +4046,11 @@ contains
     real(kind=kdp) :: gamct,gamcs,ucrit,ucl
     real(kind=kdp) :: fmelttot,wturb,mfac1,mfac2,gi,gim1,mi,mip1
     real(kind=kdp) :: amb_depth, ustar
+    !real(kind=kdp):: fresh_water_column_thk
+    !real(kind=kdp):: discharge_area 
+    real(kind=kdp),parameter :: sgd_temp = 0.d0
+    real(kind=kdp),parameter :: sgd_salt = 0.d0
+    
 
     one = 1.d0
     prden = 12.5d0*pr**(2.d0/3.d0) - 9.d0
@@ -4036,7 +4065,7 @@ contains
              ! newly-wet cell
              if (use_min_plume_thickness) then
                 print *, 'should not execute this jcd_fl'
-!                stop 1
+                stop 1
              end if
              slon = dmax1(0.d0,ipos(i,k)-ipos(i,k+1))*jcw(i,k+1)
              sloe = dmax1(0.d0,ipos(i,k)-ipos(i+1,k))*jcw(i+1,k)
@@ -4178,6 +4207,21 @@ contains
              endif
           end do
        end do
+
+    if (sgd_type == 0) then
+
+       ! uniform flux across inflow edge
+       do i = icalcan,icalcen
+          do k = kcalcan,kcalcen
+    
+		deltat(i,k) = deltat(i,k)  &
+                             + dt*sgd(i,k)*(sgd_temp - tempa(i,k))/pdepcp(i,k)
+                deltas(i,k) =  deltas(i,k) &
+                             + dt*sgd(i,k)*(sgd_salt - salta(i,k))/pdepcp(i,k)
+ 
+          end do
+       end do
+    end if
 
        if (frazil) then
           do i = icalcan,icalcen

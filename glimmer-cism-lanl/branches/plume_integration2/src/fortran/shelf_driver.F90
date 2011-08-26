@@ -49,6 +49,9 @@ program shelf_driver
   real(kind=dp) :: mean_rel_thk_change = 0.d0
   real(kind=dp) :: max_rel_thk_change = 0.d0	
 
+  real(kind=dp) :: last_bmlt_time = 0.d0
+  real(kind=dp),parameter :: big_tinc = 0.0d0
+
   integer :: ice_ntimestep = 0	
 
   real(kind=rk),dimension(:),allocatable :: upstream_thck
@@ -359,6 +362,10 @@ program shelf_driver
              call cross_shelf_average(plume_lsrf_ext)
         end if
 
+	if (time > last_bmlt_time + big_tinc) then
+
+	last_bmlt_time = time
+
         call plume_iterate(time, &
              model%numerics%tinc*1.d0, &
              plume_lsrf_ext, &
@@ -382,6 +389,8 @@ program shelf_driver
              model%general%ewn, model%general%nsn, fake_landw)
         call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
              model%general%ewn, model%general%nsn, fake_landw)
+	     
+	end if
      end if
 
      if (plume_const_bmlt) then

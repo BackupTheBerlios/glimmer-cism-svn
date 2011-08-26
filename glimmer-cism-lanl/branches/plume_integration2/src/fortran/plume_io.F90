@@ -72,6 +72,7 @@ module plume_io
   integer :: sep_varid
   integer :: bmelt_varid,btemp_varid,bsalt_varid
   integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
+  integer :: sgd_varid
   integer :: tidal_speed_varid
   integer :: jcs_varid,jcw_varid,jcd_u_varid,jcd_v_varid,jcd_fl_varid,jcd_negdep_varid
   integer :: debug_varid,debug2_varid,debug3_varid
@@ -703,6 +704,14 @@ contains
     call check( nf90_put_att(nc_id, entr_varid, 'standard_name', 'entrainment velocity') )
     call check( nf90_put_att(nc_id, entr_varid, 'units', 'meters/year') )
 
+    call io_append_output('Creating variable sgd')
+    call check( nf90_def_var(nc_id,'sgd',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),sgd_varid) )
+    call check( nf90_put_att(nc_id, sgd_varid, 'positive', 'increasing plume thickness') )
+    call check( nf90_put_att(nc_id, sgd_varid, 'long_name', 'subglacial discharge velocity') )
+    call check( nf90_put_att(nc_id, sgd_varid, 'standard_name', 'subglacial discharge velocity') )
+    call check( nf90_put_att(nc_id, sgd_varid, 'units', 'meters/year') )
+
+
     call io_append_output('Creating variable tide')
     call check( nf90_def_var(nc_id,'tide',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),tidal_speed_varid) )
     call check( nf90_put_att(nc_id, tidal_speed_varid, 'units', 'meters/sec') )
@@ -909,6 +918,7 @@ contains
     call check(nf90_put_var(nc_id, temp_varid, temp, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, salt_varid, salt, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, entr_varid, entr*sec_per_year, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, sgd_varid, sgd*sec_per_year, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, tidal_speed_varid, local_tidal_speed, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcs_varid, jcs, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, jcw_varid, jcw, (/1,1,time_counter/)))

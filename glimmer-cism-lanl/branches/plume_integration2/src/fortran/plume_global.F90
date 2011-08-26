@@ -119,6 +119,7 @@ module plume_global
   real(kind=kdp),allocatable,dimension(:,:) :: rhop,temp,tempa,tins
   real(kind=kdp),allocatable,dimension(:,:) :: salt,salta,rhoamb
   real(kind=kdp),allocatable,dimension(:,:) :: entr,atemp,asalt,drag,thk_def,artf_entr_frac
+  real(kind=kdp),allocatable,dimension(:,:) :: sgd
   real(kind=kdp),allocatable,dimension(:,:) :: local_tidal_speed
   real(kind=kdp),allocatable,dimension(:) :: samb,tamb,rhovf
 
@@ -193,6 +194,7 @@ contains
     allocate (rhop(m,n),temp(m,n),tempa(m,n),tins(m,n))
     allocate (salt(m,n),salta(m,n),rhoamb(m,n))
     allocate (entr(m,n),thk_def(m,n),artf_entr_frac(m,n))
+    allocate (sgd(m,n))
     allocate (local_tidal_speed(m,n))
     allocate (atemp(m,n),asalt(m,n))
     allocate (drag(m,n))
@@ -227,6 +229,7 @@ contains
     deallocate(saltinf,tempinf,depinf,intracer,intracera)
     deallocate(ahdx,ahdxu,ahdy,ahdyv)
     deallocate(rhop,temp,tempa,tins,salt,salta,rhoamb,entr,atemp,asalt,drag)
+    deallocate(sgd)
     deallocate(thk_def,artf_entr_frac)
     deallocate(local_tidal_speed)
     deallocate(utrans,utransa,vtrans,vtransa,su,sv,u0,v0,u0a,v0a,tang)
