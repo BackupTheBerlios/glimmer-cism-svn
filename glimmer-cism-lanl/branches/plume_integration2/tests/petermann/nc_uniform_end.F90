@@ -43,10 +43,10 @@ subroutine main()
 
   character(len=512) :: argstr
   integer :: n,i,j
-  integer,parameter :: n_baseargs = 16
+  integer,parameter :: n_baseargs = 6
 
   if (command_argument_count() < n_baseargs) then
-     write(*,*) "Not enough arguments.  Usage: ", trim(gen_usage)
+     write(*,*) "Not enough arguments received (",command_argument_count(),").  Usage: ", trim(gen_usage)
      stop 1
   end if
 
@@ -180,7 +180,11 @@ end subroutine read_old_nc_file
 
 subroutine modify_thickness_velocity()
 
-  print *, 'modifying it'
+  integer :: j
+
+  do j=(template_row_index+1),(ny-thk_n_margin)
+     thck(:,j) = thck(:,template_row_index)
+  end do
 
 end subroutine modify_thickness_velocity
 
