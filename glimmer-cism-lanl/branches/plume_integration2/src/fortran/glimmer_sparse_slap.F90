@@ -49,7 +49,8 @@ contains
         type(sparse_solver_options_base), intent(in), target :: base
         opt%itol = 2
         opt%use_gmres = .false.
-        opt%gmres_saved_vectors = 20
+!        opt%gmres_saved_vectors = 20
+        opt%gmres_saved_vectors = 100
         opt%base => base
     end subroutine slap_default_options
 
