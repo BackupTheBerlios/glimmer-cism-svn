@@ -244,8 +244,8 @@ subroutine glam_velo_fordsiapstr(time,dt, &
   type(sparse_matrix_type) :: matrix
   real (kind = dp), dimension(:), allocatable :: answer
   real (kind = dp) :: err
-  integer :: iter
 
+  integer :: iter,rhsdi
   integer :: whichefvs2
   
   whichefvs2 = whichefvs
@@ -383,7 +383,7 @@ subroutine glam_velo_fordsiapstr(time,dt, &
 
     ! solve 'Ax=b' for the y-component of velocity using method "which_sparse"
     call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
-
+!    print *, 'linear solver used ', iter, 'iterations'
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
 
@@ -392,9 +392,23 @@ subroutine glam_velo_fordsiapstr(time,dt, &
     ! This is necessary since we have not yet solved for the x-comp of vel, which needs the
     ! old prev. guess as an input (NOT the new guess).
 
+#ifdef HAVE_ISNAN
+    if (any(isnan(tvel))) then
+       write(message,*) 'Found NaN in Picard iteration solving for y velocities'
+!       print *, any(isnan(rhsd)), any(isnan(answer)), any(isnan(matrix%val)),any(isnan(tvel)),any(isnan(vvel))
+!       do rhsdi=1,pcgsize(1)
+!         if (isnan(rhsd(rhsdi))) then
+!             print *, rhsdi
+!	 end if 
+!       end do
+     	call write_log(message,GM_ERROR,'glam_strs2.F90')
+	stop 1
+    end if
+#endif
+
 
 ! implement periodic boundary conditions in y (if flagged)
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
     if( periodic_ns )then
         tvel(:,:,nsn-1) = tvel(:,:,2)
         tvel(:,:,1) = tvel(:,:,nsn-2)
@@ -441,9 +455,11 @@ subroutine glam_velo_fordsiapstr(time,dt, &
 
 
 #ifdef HAVE_ISNAN
-    if (any(isnan(uvel)) .or. (any(isnan(vvel)))) then
-       write(message,*) 'Found NaN in Picard iteration'
+    if (any(isnan(uvel)) .or. (any(isnan(tvel)))) then
+       write(message,*) 'Found NaN in Picard iteration solving for x velocities'
+       print *, any(isnan(rhsd)), any(isnan(answer)), any(isnan(matrix%val)),any(isnan(tvel)),any(isnan(uvel))
      	call write_log(message,GM_ERROR,'glam_strs2.F90')
+	
 	stop 1
     end if
 #endif
@@ -634,7 +650,6 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
                          0.25_dp * (vgradew + ugradns)**2 + &
 !                         f1 * (ugradup**2 + vgradup**2)              ! make line ACTIVE for "capping" version (see note below)   
                          f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
-
     ! -----------------------------------------------------------------------------------
     ! NOTES on capping vs. non-capping version of eff. strain rate calc.
     ! -----------------------------------------------------------------------------------
@@ -675,6 +690,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
 
        end do   ! end ew
    end do       ! end ns
+
 
   case(1)       ! set the eff visc to some const value 
 
@@ -893,7 +909,7 @@ function mindcrshstr(pt,whichresid,vel,counter,start_umc,cvg_accel,small_vel,res
   integer,      dimension(size(vel,1),size(vel,2),size(vel,3)) :: vel_ne_0
   real(kind=dp),dimension(size(vel,1),size(vel,2),size(vel,3)) :: rel_diff
 
-  logical,parameter :: hindmarch_payne_umc = .true.
+  logical,parameter :: hindmarch_payne_umc = .false.
   logical,parameter  :: deschmedt_scheme = .false.
 
   if (counter == 1) then
@@ -1117,6 +1133,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
   integer, dimension(6) :: loc
   integer, dimension(3) :: shift
   integer :: ew, ns, up
+  real(kind=dp),parameter :: flwabar_threshold = 1.0d-10
 
   real (kind = dp) :: tau_xy_0_eff !the number we actually use for side stres
 
@@ -1140,15 +1157,18 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
      ! Calculate the depth-averaged value of the rate factor, needed below when applying an ice shelf
      ! boundary condition (complicated code so as not to include funny values at boundaries ...
      ! ... kind of a mess and could be redone or made into a function or subroutine).
-     flwabar = ( sum( flwa(:,ew,ns), 1, flwa(1,ew,ns)*vis0_glam < 1.0d-10 )/real(upn) + &
-               sum( flwa(:,ew,ns+1), 1, flwa(1,ew,ns+1)*vis0_glam < 1.0d-10 )/real(upn)  + &
-               sum( flwa(:,ew+1,ns), 1, flwa(1,ew+1,ns)*vis0_glam < 1.0d-10 )/real(upn)  + &
-               sum( flwa(:,ew+1,ns+1), 1, flwa(1,ew+1,ns+1)*vis0_glam < 1.0d-10 )/real(upn) ) / &
-               ( sum( flwa(:,ew,ns)/flwa(:,ew,ns), 1, flwa(1,ew,ns)*vis0_glam < 1.0d-10 )/real(upn) + &
-               sum( flwa(:,ew,ns+1)/flwa(:,ew,ns+1), 1, flwa(1,ew,ns+1)*vis0_glam < 1.0d-10 )/real(upn) + &
-               sum( flwa(:,ew+1,ns)/flwa(:,ew+1,ns), 1, flwa(1,ew+1,ns)*vis0 < 1.0d-10 )/real(upn) + &
-               sum( flwa(:,ew+1,ns+1)/flwa(:,ew+1,ns+1), 1, flwa(1,ew+1,ns+1)*vis0_glam < 1.0d-10 )/real(upn) )
+     flwabar = ( sum( flwa(:,ew  ,ns  ), 1, flwa(1,ew  ,ns  )*vis0_glam < flwabar_threshold )/real(upn) + &
+                 sum( flwa(:,ew  ,ns+1), 1, flwa(1,ew  ,ns+1)*vis0_glam < flwabar_threshold )/real(upn)  + &
+                 sum( flwa(:,ew+1,ns  ), 1, flwa(1,ew+1,ns  )*vis0_glam < flwabar_threshold )/real(upn)  + &
+                 sum( flwa(:,ew+1,ns+1), 1, flwa(1,ew+1,ns+1)*vis0_glam < flwabar_threshold )/real(upn) ) / &
+               ( sum( flwa(:,ew  ,ns  )/flwa(:,ew  ,ns  ), 1, flwa(1,ew  ,ns  )*vis0_glam < flwabar_threshold )/real(upn) + &
+                 sum( flwa(:,ew  ,ns+1)/flwa(:,ew  ,ns+1), 1, flwa(1,ew  ,ns+1)*vis0_glam < flwabar_threshold )/real(upn) + &
+                 sum( flwa(:,ew+1,ns  )/flwa(:,ew+1,ns  ), 1, flwa(1,ew+1,ns  )*vis0_glam < flwabar_threshold )/real(upn) + &
+                 sum( flwa(:,ew+1,ns+1)/flwa(:,ew+1,ns+1), 1, flwa(1,ew+1,ns+1)*vis0_glam < flwabar_threshold )/real(upn) )
 
+!     This works for a rectangular shelf with a northern ice front, only.  **cvg**
+!     flwabar = ( sum( flwa(:,ew  ,ns  ), 1 )  +  &
+!                 sum( flwa(:,ew+1,ns  ), 1 ) ) /(2.d0*real(upn))
 
     if( ns == 1 .and. ew == 1 ) then
            loc_array = getlocationarray(ewn, nsn, upn, mask )
@@ -1160,12 +1180,14 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 !    pause
 
     loc(1) = loc_array(ew,ns)
-    
+
     if (bnd_cond_params%use_plastic_bnd_cond .and. is_bnd_point(bnd_cond_params, ew, ns)) then
 
         ! apply no normal flow condition
 	! apply imposed lateral stress (plastic yield) condition
 
+	print *, 'this does not work yet'
+	stop 1
 	call get_normal_vector(bnd_cond_params, ew,ns, norm_vect)
 
 	!impose shear stress condition and no normal flow, which means 
@@ -1626,6 +1648,7 @@ subroutine bodyset(ew,  ns,  up,           &
         ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
         ! which results from moving them from the LHS over to the RHS, has been moved
         ! inside of "croshorizmainbc_lat".
+
         rhsd(locplusup) = sum( croshorizmainbc_lat(dew,           dns,           &
                                                    slopex,        slopey,        &
                                                    dsigmadew(up), dsigmadns(up), &
@@ -1635,7 +1658,7 @@ subroutine bodyset(ew,  ns,  up,           &
                                                    onesideddiff,                 &
                                                    normal,fwdorbwd)              &         
                                                  * local_othervel )
-                
+
     end if     ! up = 1 or up = upn (IF at lateral boundary and IF at surface or bed)
 
     ! If in main body and at ice/ocean boundary, calculate depth-averaged stress
@@ -1719,6 +1742,7 @@ subroutine bodyset(ew,  ns,  up,           &
     ! NOTE that in the following expression, the "-" sign on the crosshoriz terms, 
     ! which results from moving them from the LHS over to the RHS, has been moved
     ! inside of "croshorizmainbc_lat".
+
     rhsd(locplusup) = sum( croshorizmainbc_lat(dew,           dns,            &
                                                slopex,        slopey,         &
                                                dsigmadew(up), dsigmadns(up),  &
@@ -1728,7 +1752,8 @@ subroutine bodyset(ew,  ns,  up,           &
                                                onesideddiff,                  &
                                                normal,        fwdorbwd)       &
                                               * local_othervel ) + source
- 
+
+
   else   ! NOT at a lateral boundary 
 
 ! *********************************************************************************************
