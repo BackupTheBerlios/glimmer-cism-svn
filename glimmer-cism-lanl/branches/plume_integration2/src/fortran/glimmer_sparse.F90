@@ -36,7 +36,7 @@ contains
 
         opt%base%method = method
         opt%base%tolerance  = 1e-11
-        opt%base%maxiters = 200
+        opt%base%maxiters = 1000
 
         !Solver specific options
         if (method == SPARSE_SOLVER_BICG) then
@@ -45,6 +45,7 @@ contains
         else if (method == SPARSE_SOLVER_GMRES) then
             call slap_default_options(opt%slap, opt%base)
             opt%slap%use_gmres = .true.
+	    opt%slap%itol = 0
 
         else if (method == SPARSE_SOLVER_UMF) then
             call umf_default_options(opt%umf)
@@ -323,7 +324,8 @@ contains
         character(256) :: errdesc
 
         !If no error happened, this routine should be a nop
-        if (error == 0 .OR. error == 2 .OR. error == 6) return
+!        if (error == 0 .OR. error == 2 .OR. error == 6) return
+        if (error == 0) return
 
         !Aquire a file unit, and open the file
         lunit = get_free_unit()
