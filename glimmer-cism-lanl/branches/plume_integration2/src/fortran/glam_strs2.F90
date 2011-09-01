@@ -25,8 +25,9 @@ use glimmer_sparse_type
 use glimmer_sparse
 use glam_bnd_cond
 
-use glide_types, only : glide_picard_params, glide_bnd_cond_params
+use glide_types, only : glide_picard_params, glide_bnd_cond_params,glide_global_type
 use xls
+use glide_io
 
 implicit none
 
@@ -169,7 +170,7 @@ end subroutine glam_velo_fordsiapstr_init
 ! 'glide_velo_higher.F90'. In turn, 'run_ho_model' is called from 'inc_remap_driver' in
 ! 'glam.F90', and 'inc_remap_driver' is called from 'glide_tstep_ps' in 'glide.F90'.
 
-subroutine glam_velo_fordsiapstr(time,dt, &
+subroutine glam_velo_fordsiapstr(model,time,dt, &
 	                         ewn,      nsn,    upn,  &
                                  dew,      dns,          &
                                  sigma,    stagsigma,    &
@@ -195,6 +196,7 @@ subroutine glam_velo_fordsiapstr(time,dt, &
                                  efvs )
 
   implicit none
+  type(glide_global_type) :: model
   real (kind=sp), intent(in) :: time,dt ! current time in years
   integer, intent(in) :: ewn, nsn, upn
   integer, dimension(:,:),   intent(inout)  :: umask, mask_unstag 
@@ -383,7 +385,9 @@ subroutine glam_velo_fordsiapstr(time,dt, &
 
     ! solve 'Ax=b' for the y-component of velocity using method "which_sparse"
     call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
-!    print *, 'linear solver used ', iter, 'iterations'
+!    print *, 'y vel: linear solver used ', iter, 'iterations'
+!    print *, 'y vel: error estimate ', err
+
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, uindx, answer, tvel )
 
@@ -450,6 +454,9 @@ subroutine glam_velo_fordsiapstr(time,dt, &
     ! solve 'Ax=b' for the x-component of velocity using method "which_sparse"
     call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
 
+!    print *, 'x vel: linear solver used ', iter, 'iterations'
+!    print *, 'x vel: error estimate ', err
+
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, uindx, answer, uvel )
 
@@ -497,13 +504,19 @@ subroutine glam_velo_fordsiapstr(time,dt, &
     !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), picard_params%minres
     !call write_log (message)
 
+
+    
+    ! increment time counter
+!    model%numerics%timecounter = model%numerics%timecounter + 1
+!    call glide_io_writeall(model,model,atend=.true.,time=(model%numerics%time+1.0*counter))
+
   end do
 
-  if (counter == picard_params%cmax) then
-	write(message,*) 'Picard iteration failed to converge after ', counter, ' iterations.'
-     	call write_log(message,GM_ERROR,'glam_strs2.F90')
-	stop 1
-  end if
+!  if (counter == picard_params%cmax) then
+!	write(message,*) 'Picard iteration failed to converge after ', counter, ' iterations.'
+!     	call write_log(message,GM_ERROR,'glam_strs2.F90')
+!	stop 1
+!  end if
 
   ! ****************************************************************************************
   ! END of Picard iteration
@@ -650,6 +663,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
                          0.25_dp * (vgradew + ugradns)**2 + &
 !                         f1 * (ugradup**2 + vgradup**2)              ! make line ACTIVE for "capping" version (see note below)   
                          f1 * (ugradup**2 + vgradup**2) + effstrminsq ! make line ACTIVE for new version
+	  
     ! -----------------------------------------------------------------------------------
     ! NOTES on capping vs. non-capping version of eff. strain rate calc.
     ! -----------------------------------------------------------------------------------
@@ -682,7 +696,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! horiz grid, even though it does not). 
 
             ! Below, p2=(1-n)/2n. The 1/2 is from taking the sqr root of the squared eff. strain rate
-            efvs(1:upn-1,ew,ns) = flwafact(1:upn-1,ew,ns) * effstr**p2
+            efvs(1:upn-1,ew,ns) = max(5.d-4,flwafact(1:upn-1,ew,ns) * effstr**p2)
 
         else  
            efvs(:,ew,ns) = effstrminsq ! if the point is associated w/ no ice, set to min value

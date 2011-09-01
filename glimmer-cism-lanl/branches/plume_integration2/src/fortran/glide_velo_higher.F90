@@ -189,7 +189,7 @@ contains
 
 	    last_time_diag = model%numerics%time
 
-            call glam_velo_fordsiapstr( model%numerics%time,model%numerics%tinc, &
+            call glam_velo_fordsiapstr( model,model%numerics%time,model%numerics%tinc, &
 	                                model%general%ewn,       model%general%nsn,                 &
                                         model%general%upn,                                          &
                                         model%numerics%dew,      model%numerics%dns,                &

@@ -668,8 +668,10 @@ subroutine define_new_data()
      if ( vvelhom_new_val .ne. 0.d0) then
         where( vvelhom_old .ne. 0.d0)
            vvelhom_new = vvelhom_new_val
+	   uvelhom_new = 0.d0
         elsewhere
            vvelhom_new = 0.d0
+	   uvelhom_new = 0.d0
         end where
      end if
 
