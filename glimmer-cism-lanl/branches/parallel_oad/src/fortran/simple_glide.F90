@@ -49,11 +49,6 @@ subroutine numericalCore(model, climate)
   use glimmer_global, only:rk, dp
   use glide
   use simple_forcing
-  use glimmer_log
-  use glimmer_config
-  use glimmer_commandline
-  use glimmer_writestats_module
-
   use glide_diagnostics
 
   implicit none
@@ -84,12 +79,43 @@ subroutine numericalCore(model, climate)
      endif
 
      time = time + model%numerics%tinc
+
      call simple_massbalance(climate,model,time)
      call simple_surftemp(climate,model,time)     
+
   end do
 
-  ! finalise GLIDE
   call glide_finalise(model)
+
+end subroutine
+
+subroutine numericalCoreWithModelInit(model, climate, config)
+  use glide
+  use simple_forcing
+  use glimmer_config
+
+  implicit none
+
+  type(glide_global_type)      :: model 
+  type(ConfigSection), pointer :: config
+  type(simple_climate)         :: climate 
+
+  interface 
+     subroutine numericalCore(model, climate)
+       use glide
+       use simple_forcing
+       type(glide_global_type) :: model 
+       type(simple_climate) :: climate 
+     end subroutine numericalCore
+  end interface
+
+  call glide_config(model,config)
+  call simple_initialise(climate,config)
+  call glide_initialise(model)
+  call CheckSections(config)
+  ! fill dimension variables
+  call glide_nc_fillall(model)
+  call numericalCore(model, climate)
 end subroutine
 
 program simple_glide
@@ -106,6 +132,17 @@ program simple_glide
   use glide_diagnostics
 
   implicit none
+ 
+  interface 
+     subroutine numericalCoreWithModelInit(model, climate, config)
+       use glide
+       use simple_forcing
+       use glimmer_config
+       type(glide_global_type)      :: model 
+       type(ConfigSection), pointer :: config
+       type(simple_climate)         :: climate 
+     end subroutine
+  end interface
 
 #ifdef GPTL
 #include <gptl.inc>
@@ -175,13 +212,7 @@ program simple_glide
   t1 = real(clock,kind=dp)/real(clock_rate,kind=dp)
 
   ! initialise GLIDE
-  call glide_config(model,config)
-  call simple_initialise(climate,config)
-  call glide_initialise(model)
-  call CheckSections(config)
-  ! fill dimension variables
-  call glide_nc_fillall(model)
-  call numericalCore(model, climate)
+  call numericalCoreWithModelInit(model, climate,config)
   call system_clock(clock,clock_rate)
   t2 = real(clock,kind=dp)/real(clock_rate,kind=dp)
   call glimmer_writestats(commandline_resultsname,commandline_configname,t2-t1)
