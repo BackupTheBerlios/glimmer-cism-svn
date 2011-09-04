@@ -10,7 +10,7 @@ program nc_gen_input
 
   character(len=512) :: gen_usage = "nc_gen_input <type_code> &
        &nc_filename [params] &
-       &<type_code> = [cs|ts|gs|ss|ls]"
+       &<type_code> = [cs|ts|gs|ss|ls|tc]"
 
   character(len=512) :: conf_shelf_params = "<fname> <nx> <ny> <hx> <hy> &
        &<slope_start_pos> <grounded_ice_thk> &
@@ -74,6 +74,10 @@ program nc_gen_input
   else if (type_code == 'gs') then
 
      call make_ghost_shelf()
+
+  else if (type_code == 'tc') then
+
+     call make_test_case()
 
   else
 
@@ -636,6 +640,88 @@ contains
     deallocate(thck,topog,kinbcmask,uvelhom,vvelhom)
 
   end subroutine make_steady_shelf
+
+  subroutine make_test_case()
+
+    ! local variables
+    integer :: i,j,n_mid,num_periods
+    real :: hx,hy,rift_amp, thk0
+
+    character (len=512) :: test_case_params = "<num periods> <thk0> <rift_amp>"
+
+    if (command_argument_count() /= 4) then
+       write(*,*)"Incorrect number of parameters. test_case requires: &
+            &  ",trim(test_case_params)
+       stop 1
+    end if
+
+    fname = 'testcase.nc'
+    nx = 21
+    ny = 101
+
+    rift_amp = -200.d0
+    thk0 = 200.0
+    num_periods = 3 !should be an odd number
+
+    n_mid = 51
+    n_level = 3
+
+    call get_command_argument(2,argstr)
+    read(argstr,'(i5)') num_periods
+    write(*,*) 'num_periods', num_periods
+
+    call get_command_argument(3,argstr)
+    read(argstr,'(f18.12)') thk0
+    write(*,*) 'thk0', thk0
+
+    call get_command_argument(4,argstr)
+    read(argstr,'(f18.12)') rift_amp
+    write(*,*) 'rift_amp', rift_amp
+
+
+    allocate(xs(nx),ys(ny),level(n_level),xstag(nx-1),ystag(ny-1))
+    allocate(topog(nx,ny),thck(nx,ny),kinbcmask(nx-1,ny-1))
+    allocate(uvelhom(nx-1,ny-1,n_level), vvelhom(nx-1,ny-1,n_level))
+
+    hx = 500.d0
+    hy = 500.d0
+
+    !now populate the dimension variables
+    xs = (/ ( (real(i)*hx),i=1,nx ) /)
+    ys = (/ ( (real(j)*hy),j=1,ny ) /)
+    level = (/ ( real(i)/real((n_level-1)), i=0,(n_level-1) ) /)
+    xstag = (/ ( (real(i)+0.5d0)*hx,i=1,nx-1 ) /)
+    ystag = (/ ( (real(j)+0.5d0)*hy,j=1,ny-1 ) /)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!! define the topography, thickness, kinbcmask       !!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    !define topg
+    topog = -1000.d0
+    
+    !define thickness
+    thck = 0.d0
+    thck( 5:(nx-4),1:(ny-4)) = thk0
+
+    do i=5,(nx-4)
+        thck(i,(n_mid-5*num_periods):(n_mid+5*num_periods)) = thck(i,(n_mid-5*num_periods):(n_mid+5*num_periods)) - &
+                        rift_amp * 0.5d0 * (1.d0 + cos(2*pi* (/ (real(j)/10.d0, j=-5*num_periods,5*num_periods) /)))
+    end do
+
+    ! define kinbcmask
+    kinbcmask = 0
+    kinbcmask(:,1:4) = 1
+
+    uvelhom = 0.d0
+    vvelhom = 0.d0
+
+    call write_nc_file(.true.)
+
+    deallocate(level,xs,ys,xstag,ystag)
+    deallocate(thck,topog,kinbcmask,uvelhom,vvelhom)
+
+  end subroutine make_test_case
 
   subroutine make_linear_shelf()
 
