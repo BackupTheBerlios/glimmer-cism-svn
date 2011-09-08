@@ -145,7 +145,7 @@ subroutine dumpvels(name, uvel, vvel)
        endif
     else
        write(*,*) name, "Parallel uvel & vvel (1,5:6,15:16)", uvel(1,5:6,15:16), vvel(1,5:6,15:16)
-    endif
+    endif 
 end subroutine
 
 subroutine glam_velo_fordsiapstr_init( ewn,   nsn,   upn,    &
@@ -565,7 +565,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     ! old prev. guess as an input (NOT the new guess).
 
 ! implement periodic boundary conditions in y (if flagged)
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -----------------------------
     if( periodic_ns )then
         call not_parallel(__FILE__, __LINE__)
 
@@ -578,7 +578,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
         tvel(:,ewn-1,:) = tvel(:,2,:)
         tvel(:,1,:) = tvel(:,ewn-2,:)
     end if
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -----------------------------
 
     ! calculate coeff. for stress balance calc. in x-direction 
     call findcoefstr(ewn,  nsn,   upn,            &
@@ -692,7 +692,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     call staggered_parallel_halo(vvel)
 
 ! implement periodic boundary conditions in x (if flagged)
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -----------------------------
     if( periodic_ns )then
         call not_parallel(__FILE__, __LINE__)
 
@@ -705,7 +705,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
         uvel(:,ewn-1,:) = uvel(:,2,:)
         uvel(:,1,:) = uvel(:,ewn-2,:)
     end if
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -----------------------------
 
     if (this_rank == 0) then
         ! Can't use main_task flag because main_task is true for all processors in case of parallel_single
@@ -1048,8 +1048,11 @@ subroutine JFNK                 (model,umask,tstep)
   call ghost_preprocess_jfnk( ewn, nsn, upn, uindx, ughost, vghost, &
                          xk_1, uvel, vvel, gx_flag, pcgsize(1)) ! jfl_20100430
 
+! SLAP incompatibility with main_task
+if (main_task) then
   print *, ' '
   print *, 'Running Payne/Price higher-order dynamics with JFNK solver' 
+end if
 
   calcoffdiag = .false.    ! save off diag matrix components
 
@@ -1763,7 +1766,7 @@ subroutine solver_postprocess_jfnk( ewn, nsn, upn, uindx, answrapped, ansunwrapp
              ansunwrappedv(:,ew,ns) = 0.0d0
              ansunwrappedu(:,ew,ns) = 0.0d0
            end if
-       end do
+      end do
    end do
 end subroutine solver_postprocess_jfnk
 
@@ -2051,6 +2054,7 @@ end subroutine apply_precond_nox
     ! coordinate halos for updated uvel and vvel
     call staggered_parallel_halo(uvel)
     call staggered_parallel_halo(vvel)
+
 
     call findefvsstr(ewn,  nsn,  upn,       &
                      stagsigma,  counter,  &
@@ -2721,15 +2725,16 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 	!JEFFLOC.  Is loc(1) used as an ID or an index?
     loc(1) = loc_array(ew,ns)
 
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -------------------------
     if ( GLIDE_HAS_ICE(mask(ew,ns)) .and. .not. &
          GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns)) .and. .not. &
          GLIDE_IS_MARGIN(mask(ew,ns)) .and. .not. &
          GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) .and. .not. &
-         GLIDE_IS_CALVING(mask(ew,ns) ) ) &
+         GLIDE_IS_CALVING(mask(ew,ns) ) .and. .not. &
+         GLIDE_IS_THIN(mask(ew,ns) ) ) &
     then
 !    print *, 'In main body ... ew, ns = ', ew, ns
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -------------------------
 
         !JEFFLOC Watch for usage of hidden output vars: fvert(:), dsigmadew(:), dsigmadns(:), d2sigmadew2(:), d2sigmadns2(:), d2sigmadewdns(:), d2sigmadewdsigma, d2sigmadnsdsigma
         call calccoeffs( upn,               sigma,              &
@@ -2784,13 +2789,14 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
         end do  ! upn
 
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -----------------------
     elseif ( GLIDE_IS_CALVING( mask(ew,ns) ) .and. .not. &
              GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns) ) .and. .not. &
-             GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) ) &
+             GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) .and. .not. &
+             GLIDE_IS_THIN(mask(ew,ns) ) ) &
     then
 !    print *, 'At a SHELF boundary ... ew, ns = ', ew, ns
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -----------------------
 
         call calccoeffs( upn,               sigma,              &
                          stagthck(ew,ns),                       &
@@ -2827,12 +2833,13 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         end do
         lateralboundry = .false.
 
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -----------------------
     elseif ( GLIDE_HAS_ICE(mask(ew,ns)) .and. ( GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) .or. &
-             GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns)) ) .or. GLIDE_IS_LAND_MARGIN(mask(ew,ns))) &
+             GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns)) ) .or. GLIDE_IS_LAND_MARGIN(mask(ew,ns)) .or. &
+             GLIDE_IS_THIN(mask(ew,ns)) ) &
     then
 !    print *, 'At a NON-SHELF boundary ... ew, ns = ', ew, ns
-! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+! -----------------------
 
         ! Put specified value for vel on rhs. NOTE that this is NOT zero by default 
         ! unless the initial guess is zero. It will be set to whatever the initial value 
@@ -4571,6 +4578,8 @@ subroutine calcbetasquared (whichbabc,               &
       ! this is a check for NaNs, which indicate, and are replaced by no slip
       where ( betasquared /= betasquared )
         betasquared = 1.0d10
+! KJE Steve said change in order to more slip at edges
+!        betasquared = 1.0d4
       end where
 
   end select

@@ -67,6 +67,9 @@ netCDFfile.createVariable('y0','f',('y0',))[:] = dy/2 + y[:-1]
 thk  = numpy.zeros([ny,nx],dtype='float32')
 topg = numpy.zeros([ny,nx],dtype='float32')
 
+# put down a layer of "thin" ice everywhere in the domain
+thk[:] = 20.0
+
 # Calculate the thickness of the (ellipsoidal) hump of ice
 for i in range(nx):
   x = float(i-nx/2)/nx
