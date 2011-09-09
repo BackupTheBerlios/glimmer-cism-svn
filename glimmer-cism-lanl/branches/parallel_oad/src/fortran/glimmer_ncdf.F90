@@ -325,7 +325,7 @@ contains
     print*,'vars:           ',trim(stat%vars)
 
   end subroutine nc_print_stat
-
+#ifdef RESTARTS
   subroutine nc_repair_outpoint(output)
 
     implicit none
@@ -377,7 +377,7 @@ contains
     end do
 
   end subroutine nc_repair_inpoint
-
+#endif
   subroutine nc_prefix_outfiles(output,prefix)
 
     !*FD Adds a prefix to all the filenames stored in the linked list.
