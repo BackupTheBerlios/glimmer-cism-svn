@@ -1,0 +1,13 @@
+Dear Glimmer-CISM Developer,
+we would like to change the license of Glimmer-CISM from GPLv2 [1] to the LGPLv3 [2]. Since you have contributed to Glimmer-CISM and are thus one of the copyright holders we need to get your consent to change the license.
+
+The choice of a particular license for a software project is a political one. The GNU Public License (GPL) ensures that all contributions to Glimmer-CISM are available to everyone else under the same terms, i.e. you cannot take Glimmer-CISM, change it and give it to someone else without also allowing the 3rd party to do same. Specifically, the source code for Glimmer-CISM has to be available for all to modify and distribute provided they do not change those terms. Furthermore, the GPL requires that other programs, e.g. in our case climate models, have to be GPL compatible. This requirement is problematic for some of the targeted climate model which are not licensed under a GPL compatible license. A compromise can be reached by using the Lesser GNU Public License (LGPL) which ensures that contributions to Glimmer-CISM are available to everyone whilst allowing proprietary models to use Glimmer-CISM.
+
+We think that changing the license to the LGPL will maintain the spirit of Glimmer-CISM whilst making it available to a wider audience. We hope you agree with these changes and are looking forward to Glimmer-CISM used in many new and exciting ways.
+
+Regards,
+the GC steering committee
+
+
+[1] http://www.gnu.org/licenses/old-licenses/lgpl-2.0.html
+[2] http://www.gnu.org/licenses/lgpl.html
