@@ -53,8 +53,8 @@ figure(3), imagesc( x/1e3, y/1e3, usrf ), axis xy, axis equal, axis tight, color
 xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'upper surface (m)' )
 
 %% load in old till map
-%  load ~/Home/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl           % Marion's path
-load ~/work/modeling/glam/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
+  load ~/Home/Code/GLAM/GLIMGLAM/SENS/new_UPB/trunk/GLAM/Tillggl           % Marion's path
+%load ~/work/modeling/glam/glam-stream-marion-new/trunk/GLAM/Tillggl      % Steve's path
 
 minTauf = Tillggl;
 
@@ -110,7 +110,7 @@ xlabel( 'x (km)' ), ylabel( 'y (km)' ), title( 'acab (m/a)' )
 
 tauf = minTauf;
 
-%  cd ~/Home/Glimmer2/glimmer-cism-lanl/branches/basalproc/tests/basalproc     % Marion's path
-cd /Users/sprice/work/modeling/cism/cism-parallel/tests/basalproc            % Steve's path
+  cd ~/Home/Code/GlimSLAB/parallel/tests/basalproc     % Marion's path
+%cd /Users/sprice/work/modeling/cism/cism-parallel/tests/basalproc            % Steve's path
 
 save bproc.mat artm acab bheatflx usrf topg thck beta tauf kinbcmask uvelhom vvelhom

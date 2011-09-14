@@ -98,7 +98,7 @@ eismint3_glide_SOURCES = eismint3_glide.F90
 eismint3_glide_LDADD = libclimate.a libglide.a libglimmer.a \
                        SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS) 
 simple_glide_SOURCES = simple_glide.F90 
-simple_glide_LDADD = -lxlf -lm -lc libclimate.a libglide.a libglimmer.a \
+simple_glide_LDADD = libclimate.a libglide.a libglimmer.a \
                      SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)
 eis_glide_SOURCES = eis_glide.F90
 eis_glide_LDADD = libclimate.a libglide.a libglimmer.a SLAP_library/libslap.a $(ALL_TRILINOS_LIBS) $(BLAS_LIBS) $(NETCDF_LDFLAGS) $(NETCDF_LIBS)

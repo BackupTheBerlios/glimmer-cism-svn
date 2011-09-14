@@ -2,6 +2,72 @@
 Notes on issues related to running the basal processes test case
 ________________________________________________________________
 
+MHB - SEPT 2011 UPDATES
+
+Hacks to run the code with the basal proc case are similar to the ones described in October 2010. 
+Hacks to keep the thickness constant (necessary to get to a steady state using real domain) are now as follow:
+
+For T equil only (that is, hold H const while letting T spinup to ss):
+
+1. glam.F90 ***********************************************************
+
+On or around line 115, make sure the follow ing lines are commented out:
+
+
+      call horizontal_remap( model%remap_wk%dt_ir,                                         &
+                                  model%general%ewn-1,        model%general%nsn-1,              &
+                                  ntrace_ir,                  nghost_ir,                        &
+                                  model%remap_wk%uvel_ir,     model%remap_wk%vvel_ir,           &
+                                  model%remap_wk%thck_ir,     model%remap_wk%trace_ir,          &
+                                  model%remap_wk%dew_ir,      model%remap_wk%dns_ir,            &
+                                  model%remap_wk%dewt_ir,     model%remap_wk%dnst_ir,           &
+                                  model%remap_wk%dewu_ir,     model%remap_wk%dnsu_ir,           &
+                                  model%remap_wk%hm_ir,       model%remap_wk%tarear_ir)
+
+
+
+2. remap_glamutils.F90 **************************************************
+
+2.a - On or around line 277, make sure the following lines are commented OUT:
+
+    if (wk%upn_ir > 1) then
+
+       thck(:,:) = 0.d0
+       do k = 1, wk%upn_ir
+          do j = 1, wk%nsn_ir
+          do i = 1, wk%ewn_ir
+             thck(i,j) = thck(i,j) + wk%thck_ir(i,j,k)
+          enddo
+          enddo
+       enddo
+       thck(:,:) = thck(:,:) / thk0
+
+    else   ! upn_ir = 1
+
+!!    thck(::) = wk%thck_ir(:,:,1) / thk0
+       do j = 1, wk%nsn_ir
+       do i = 1, wk%ewn_ir
+          thck(i,j) = wk%thck_ir(i,j,1) / thk0
+       enddo
+       enddo
+
+    endif   ! upn_ir > 1
+
+
+2.b - On or around line 324, make sure the following lines are commented OUT:
+
+    !Apply accumulation
+    thck = thck + acab*dt
+
+	!whl - to do - Allow ice to expand into places where it did not originally exist.
+ 
+    !Remove thickness from previously masked out locations
+
+    thck = thck * wk%mask_ir
+
+
+_________________________________________________________________________________________________________
+_________________________________________________________________________________________________________
 As of Oct. 2010, the various hacks to the code necessary to run the basal processes
 test case have changed, and are recorded here.
 
@@ -12,7 +78,7 @@ thickness evolution, are included at the bottom of this doc).
 
 It is still necessary to hack simple_glide.F90 a bit, and those hacks are as follows:
 
-(1) on or around line 36, comment out the following 3 lines ...
+(1) on or around line 141, comment out the following 3 lines ...
 
   call simple_massbalance(climate,model,time)
   call simple_surftemp(climate,model,time)
@@ -21,7 +87,7 @@ It is still necessary to hack simple_glide.F90 a bit, and those hacks are as fol
 This is so that the code is forced to use the temperature and mass balance files loaded 
 in from the .nc file (and we ignore the isostacy calc.)
 
-(2) on or around line 146, comment out the following two lines ...
+(2) on or around line 160, comment out the following two lines ...
 
      call simple_massbalance(climate,model,time)
      call simple_surftemp(climate,model,time)     
