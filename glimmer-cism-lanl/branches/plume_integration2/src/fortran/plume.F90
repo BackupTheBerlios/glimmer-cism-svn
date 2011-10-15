@@ -326,6 +326,7 @@ contains
     ! while not steady
 
     if (.not. use_plume_initial_bmlt) then
+
        do while ((subcycling_time .le. min(max_run_time_sec,ice_dt_in_sec) &
                      .and. .not. run_plume_to_steady) &
            .or. &
@@ -335,14 +336,9 @@ contains
           
           call plume_runstep()
 
-          !print *, 'ranstep'
-!          debug3 = entr*train
           ! calculate max error
           max_rel_bmelt_change = maxval(abs(bmelt_old - bmelt)/ &
                (abs(bmelt)+epsilon(1.d0)))
-
-!          mean_rel_bmelt_change = sum(abs(bmelt_old-bmelt)/ &
-!               (abs(bmelt)+epsilon(1.d0)))/sum(
 
           ! speed is an (m-2)*(n-2) array
           ! this step is necessary because su and sv are on different grids
@@ -407,12 +403,7 @@ contains
     end if
 
     btemp_out = btemp
-    
-    if (use_plume_initial_bmlt) then
-       bmelt_out = bmelt
-    else
-       bmelt_out = bmelt * (365.25d0*24.0d0*3600.0d0)
-    end if
+    bmelt_out = bmelt * (365.25d0*24.0d0*3600.0d0)
 
     if (.not. use_plume_initial_bmlt) then
        if (.not. plume_reached_steady) then
@@ -1199,6 +1190,7 @@ contains
        call plume_netcdf_read_real_var(restart_data_filename, 'salt' , salt)
        call plume_netcdf_read_real_var(restart_data_filename, 'entr' , entr)
 
+       bmelt = bmelt / (365.25d0*24.d0*3600.d0)  ! convert the m/year quantity to m/s
        utransa = utrans
        vtransa = vtrans
        tempa = temp
@@ -1414,6 +1406,7 @@ contains
 
     real(kind=kdp) :: rmdx,adx,adxu
     real(kind=kdp) ::  rmdxu,rmdy,rmdyv,ady,adyv
+    real(kind=kdp) :: enhance_factor
 
     imid=(m_grid+1)/2
     kmid=(n_grid+1)/2
@@ -1457,16 +1450,38 @@ contains
     adx = dt*ah*rmdx**2
     adxu = dt*ah*rmdxu**2
 
-    ahdx = adx/rdx
-    ahdxu = adxu/rdxu
+    do k=1,n_grid
+      ahdx(:,k)  = adx/rdx
+      ahdxu(:,k) = adxu/rdxu
+    end do
 
     rmdy = rdy(kmid)
     rmdyv = rdyv(kmid)
     ady = dt*ah*rmdy**2
     adyv = dt*ah*rmdyv**2
 
-    ahdy = ady/rdy
-    ahdyv = adyv/rdyv
+    do i=1,m_grid
+       ahdy(i,:) = ady/rdy
+       ahdyv(i,:) = adyv/rdyv
+    end do
+
+    khgrid = kh
+
+    do k=floor(n_grid*visc_enhance_location),n_grid
+
+       enhance_factor = visc_enhance_factor*min(1.d0, &
+                                                real(k-floor(n_grid*visc_enhance_location)) / &
+                                                visc_enhance_smoothing_ramp)
+       ahdx(:,k) = (1.d0+enhance_factor) * ahdx(:,k)
+       ahdxu(:,k)= (1.d0+enhance_factor) * ahdxu(:,k)
+       ahdy(:,k) = (1.d0+enhance_factor) * ahdy(:,k)
+       ahdyv(:,k)= (1.d0+enhance_factor) * ahdyv(:,k)
+       khgrid(:,k)=(1.d0+enhance_factor) * khgrid(:,k)
+
+    end do
+
+    print *, 'ahdx', ahdx(25,:)
+    print *, 'khgrid', khgrid(25,:)
 
   end subroutine grid_set
 
@@ -1546,6 +1561,7 @@ contains
 
                 ctl_tgrad =  (amb_temp_ctl_pt(i_ctl-1)-amb_temp_ctl_pt(i_ctl)) / &
                              (amb_depth_ctl_pt(i_ctl-1)-amb_depth_ctl_pt(i_ctl))
+		print *, i, ctl_tgrad
 
                 if (use_neutral_salinity) then
 
@@ -1700,6 +1716,11 @@ contains
     real(kind=kdp):: fresh_water_column_thk, ttt, pressure
     real(kind=kdp):: discharge_area 
 
+    real(kind=kdp),dimension(m_grid) :: fresh_water_column_thks
+
+    print *, 'this code should not be used' 
+    stop 1
+
     discharge_area = sum(dx(infloa+1:infloe-1))*sum(dy(knfloa+1:knfloe-1))
 
     if (sgd_type == 0) then
@@ -1853,6 +1874,7 @@ contains
     real(kind=kdp) :: lp_over_l
 
     real(kind=kdp):: discharge_area 
+    real(kind=kdp),parameter :: sgd_flux_k = 4.d0
 
     ! this may be used as a mechanism to generate a positive 
     ! minimum entrainment rate.  Change to a number > 0.d0
@@ -2106,7 +2128,7 @@ contains
 
     !-----2.5  subglacial discharge------
 
-    if (sgd_type == 0) then
+    if (sgd_type == 0 .or. sgd_type == 1) then
 
        ! uniform flux across inflow edge
 
@@ -2120,6 +2142,17 @@ contains
                 
                 ! sgd_flux should be in km^3 per year
 		sgd(i,k) = sgd_flux * (1.0d9)*(1.d0/(365.25d0*3600.d0*24.d0))/discharge_area
+
+		if (sgd_type == 1) then
+
+		   !Note: The idea of approximating a train of spikes using a truncated cosine series
+	           !      doesn't seem to work well.  Going back to a much gentler x-variation
+	           sgd(i,k) = sgd(i,k)*(  1.d0  \
+	                                - 0.5d0*cos(2.d0*pi*1.d0*sgd_flux_k*real(i-infloa-1)/real(infloe-1-infloa-1)) )
+	 
+
+	        end if 
+
 		deltam(i,k) = deltam(i,k) + sgd(i,k)
 
 	     end if
@@ -2648,11 +2681,11 @@ contains
              skip_u_calc = .true.
           end if
 
-          ! skipping u calculation if northern cells are dry land
+          ! skipping u calculation if northern/southern cells are dry land
           ! would be a no-slip condition
-!          if (any(jcs(i:i+1,k+1) == 0)) then
-!             skip_u_calc = .true.
-!          end if
+          if (any(jcs(i:i+1,k+1) == 0) .or. any(jcs(i:i+1,k-1) == 0)) then
+             skip_u_calc = .true.
+          end if
 
 	  if (i == icalcen) then
              ! the last column of u grid is not part of the problem
@@ -2681,7 +2714,7 @@ contains
           endif
 
           if (skip_u_calc) then
-             !print *, 'skipped u ', i,k
+             print *, 'skipped u ', i,k
           else
              ! control of negative depth effects by enhanced friction
              jcvfac = 0
@@ -2898,21 +2931,21 @@ contains
              ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
              if (horturb) then
 
-                tlate = ahdxu(i+1)*(su(i+1,k) - su(i,k))
-                tlatw = ahdxu(i)*(su(i,k) - su(i-1,k))
+                tlate = ahdxu(i+1,k)*(su(i+1,k) - su(i,k))
+                tlatw = ahdxu(i,k)*(su(i,k) - su(i-1,k))
                 
                 if (any(jcs(i:i+1,k+1) == 0)) then
                    ! boundary to the north
                    tlatn = 0.d0
                 else
-                   tlatn = ahdy(k)*(su(i,k+1) - su(i,k))
+                   tlatn = ahdy(i,k)*(su(i,k+1) - su(i,k))
                 end if
 
                 if (any(jcs(i:i+1,k-1) == 0)) then
                    ! boundary to the south
                    tlats = 0.d0
                 else
-                   tlats = ahdy(k-1)*(su(i,k) - su(i,k-1))
+                   tlats = ahdy(i,k-1)*(su(i,k) - su(i,k-1))
                 end if
 
 
@@ -2945,6 +2978,12 @@ contains
           if (any(jcs(i,k:k+1) == 0)) then
 	      skip_v_calc = .true.
 	  end if
+
+          ! skipping v calculation if eastern/western cells are dry land
+          ! would be a no-slip condition
+          if (any(jcs(i-1,k:k+1) == 0) .or. any(jcs(i+1,k:k+1) == 0)) then
+             skip_v_calc = .true.
+          end if
 
 	  if (k == kcalcen) then
              ! last row of v is not part of the problem domain
@@ -3149,18 +3188,18 @@ contains
                 ! boundary to the west
                 tlatw = 0.d0
              else
-                tlatw = ahdx(i-1)*(sv(i,k) - sv(i-1,k))
+                tlatw = ahdx(i-1,k)*(sv(i,k) - sv(i-1,k))
              end if
 
              if (any(jcs(i+1,k:k+1) == 0)) then
                 ! boundary to the east
                 tlate = 0.d0
              else
-                tlate = ahdx(i)*(sv(i+1,k) - sv(i,k))
+                tlate = ahdx(i,k)*(sv(i+1,k) - sv(i,k))
              end if
 
-             tlats = ahdyv(k)*(sv(i,k) - sv(i,k-1))
-             tlatn = ahdyv(k+1)*(sv(i,k+1) - sv(i,k))
+             tlats = ahdyv(i,k)*(sv(i,k) - sv(i,k-1))
+             tlatn = ahdyv(i,k+1)*(sv(i,k+1) - sv(i,k))
 
              hordif = pdepv*((tlate-tlatw)*rdxu(i) + (tlatn-tlats)*rdy(k))
 
@@ -3907,11 +3946,11 @@ contains
           ! report any errors
           error = abs(iconti - ipos(i,k))
           negdep = negdep+error               
-          if (error.gt.5.0d-1) then
+          if (error.gt.5.0d-2) then
              write(*,*) 'error: negative depth ',error,' at i=', &
-                  i,' k=',k
+                  i,' k=',k, 'error =', error
              write(11,*) 'error: negative depth ',error,' at i=', &
-                  i,' k=',k
+                  i,' k=',k, 'error =', error
              print *, 'pdep', pdep(i,k),'ipos',iconti
              stop 1
           end if
@@ -4208,7 +4247,7 @@ contains
           end do
        end do
 
-    if (sgd_type == 0) then
+    if (sgd_type == 0 .or. sgd_type == 1) then
 
        ! uniform flux across inflow edge
        do i = icalcan,icalcen
@@ -4332,18 +4371,18 @@ contains
 
              if (jcs(i,k) .ne. 1) cycle
 
-             dife = (tempa(i+1,k) - tempa(i,k))*jcw(i+1,k)*kh*rdx(i)
-             difw = (tempa(i,k) - tempa(i-1,k))*jcw(i-1,k)*kh*rdx(i-1)
-             difn = (tempa(i,k+1) - tempa(i,k))*jcw(i,k+1)*kh*rdy(k)
-             difs = (tempa(i,k) - tempa(i,k-1))*jcw(i,k-1)*kh*rdy(k-1)
+             dife = (tempa(i+1,k) - tempa(i,k))*jcw(i+1,k)*khgrid(i,k)*rdx(i)
+             difw = (tempa(i,k) - tempa(i-1,k))*jcw(i-1,k)*khgrid(i,k)*rdx(i-1)
+             difn = (tempa(i,k+1) - tempa(i,k))*jcw(i,k+1)*khgrid(i,k)*rdy(k)
+             difs = (tempa(i,k) - tempa(i,k-1))*jcw(i,k-1)*khgrid(i,k)*rdy(k-1)
 
              deltat(i,k) = deltat(i,k) &
                   + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt 
  
-             dife = (salta(i+1,k) - salta(i,k))*jcw(i+1,k)*kh*rdx(i)
-             difw = (salta(i,k) - salta(i-1,k))*jcw(i-1,k)*kh*rdx(i-1)
-             difn = (salta(i,k+1) - salta(i,k))*jcw(i,k+1)*kh*rdy(k)
-             difs = (salta(i,k) - salta(i,k-1))*jcw(i,k-1)*kh*rdy(k-1)
+             dife = (salta(i+1,k) - salta(i,k))*jcw(i+1,k)*khgrid(i,k)*rdx(i)
+             difw = (salta(i,k) - salta(i-1,k))*jcw(i-1,k)*khgrid(i,k)*rdx(i-1)
+             difn = (salta(i,k+1) - salta(i,k))*jcw(i,k+1)*khgrid(i,k)*rdy(k)
+             difs = (salta(i,k) - salta(i,k-1))*jcw(i,k-1)*khgrid(i,k)*rdy(k-1)
 
              deltas(i,k) = deltas(i,k) &
                   + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt
@@ -4360,10 +4399,10 @@ contains
                 print *, 'unexpected use of frazil code'
                 stop 1
                 do l = 1,nice
-                   dife = (ca_ice(i+1,k,l) - ca_ice(i,k,l))*jcw(i+1,k)*kh*rdx(i)
-                   difw = (ca_ice(i,k,l) - ca_ice(i-1,k,l))*jcw(i-1,k)*kh*rdx(i-1)
-                   difn = (ca_ice(i,k+1,l) - ca_ice(i,k,l))*jcw(i,k+1)*kh*rdy(k)
-                   difs = (ca_ice(i,k,l) - ca_ice(i,k-1,l))*jcw(i,k-1)*kh*rdy(k-1)
+                   dife = (ca_ice(i+1,k,l) - ca_ice(i,k,l))*jcw(i+1,k)*khgrid(i,k)*rdx(i)
+                   difw = (ca_ice(i,k,l) - ca_ice(i-1,k,l))*jcw(i-1,k)*khgrid(i,k)*rdx(i-1)
+                   difn = (ca_ice(i,k+1,l) - ca_ice(i,k,l))*jcw(i,k+1)*khgrid(i,k)*rdy(k)
+                   difs = (ca_ice(i,k,l) - ca_ice(i,k-1,l))*jcw(i,k-1)*khgrid(i,k)*rdy(k-1)
                    deltac(i,k,l) = deltac(i,k,l)  &
                         + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt
                 end do
@@ -4379,13 +4418,13 @@ contains
 
                 do l = ninfmin,ninfmax
                    dife =  &
-                        (intracera(i+1,k,l) - intracera(i,k,l))*jcw(i+1,k)*kh*rdx(i)
+                        (intracera(i+1,k,l) - intracera(i,k,l))*jcw(i+1,k)*khgrid(i,k)*rdx(i)
                    difw =  &
-                        (intracera(i,k,l) - intracera(i-1,k,l))*jcw(i-1,k)*kh*rdx(i-1)
+                        (intracera(i,k,l) - intracera(i-1,k,l))*jcw(i-1,k)*khgrid(i,k)*rdx(i-1)
                    difn =  &
-                        (intracera(i,k+1,l) - intracera(i,k,l))*jcw(i,k+1)*kh*rdy(k)
+                        (intracera(i,k+1,l) - intracera(i,k,l))*jcw(i,k+1)*khgrid(i,k)*rdy(k)
                    difs =  &
-                        (intracera(i,k,l) - intracera(i,k-1,l))*jcw(i,k-1)*kh*rdy(k-1)
+                        (intracera(i,k,l) - intracera(i,k-1,l))*jcw(i,k-1)*khgrid(i,k)*rdy(k-1)
                    deltatr(i,k,l) = deltatr(i,k,l)  &
                         + ((dife - difw)*rdxu(i) + (difn-difs)*rdyv(k))*dt
                 end do

@@ -1058,7 +1058,7 @@ max_vel = maxval(sqrt(ustar**2 + vstar**2))
                     options%which_ho_sparse_fallback /= options%which_ho_sparse) then
                     write(*,*)"Sparse solve failed, falling back on alternate method"
                     call sparse_easy_solve(matrix, d, x, err, iter, options%which_ho_sparse_fallback, &
-                                           __FILE__, __LINE__)
+                                           __FILE__, __LINE__,verbose=.false.)
                 else
                     call handle_sparse_error(matrix, matrix_options, ierr, __FILE__, __LINE__)      
                 end if

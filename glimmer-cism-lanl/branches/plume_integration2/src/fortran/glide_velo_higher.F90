@@ -35,7 +35,7 @@ module glide_velo_higher
 
     real(dp) :: last_time_diag
 !    real(dp), parameter :: big_tinc = 0.1d0
-    real(dp), parameter :: big_tinc = 0.d0
+    real(dp), parameter :: big_tinc = 0.0d0
 
 contains
         

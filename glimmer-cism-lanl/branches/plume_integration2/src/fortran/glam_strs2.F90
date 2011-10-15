@@ -250,6 +250,8 @@ subroutine glam_velo_fordsiapstr(model,time,dt, &
   integer :: iter,rhsdi
   integer :: whichefvs2
   
+  logical :: verbose_linear_solve = .false.
+
   whichefvs2 = whichefvs
 
   ! calc geometric 2nd deriv. for generic input variable 'ipvr', returns 'opvr'
@@ -313,14 +315,21 @@ subroutine glam_velo_fordsiapstr(model,time,dt, &
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
 
-  do while (((resid(1) > picard_params%minres .and. .not. picard_params%x_invariant)           &
-        .or. (resid(2) > picard_params%minres))                                                &
-       .and. (resid(2) .ge. picard_params%y_overrideres .or. (counter < picard_params%cmin))   &
-       .and. (resid(1) .ge. picard_params%x_overrideres .or. (counter < picard_params%cmin)    &
-                                                        .or. picard_params%x_invariant)        &
-       .and. ((resid(1) > picard_params%switchres .and. .not. picard_params%x_invariant)       &
-        .or.  (resid(2) > picard_params%switchres) .or. (counter < picard_params%cswitch))     &
-       .and. (counter < picard_params%cmax) )
+  do while (     									     &
+        (    (resid(1) > picard_params%minres .and. .not. picard_params%x_invariant)         &
+        .or. (resid(2) > picard_params%minres)                                               &
+        .or. (counter < picard_params%cmin))             				     &
+	.and. 	                                                                             &
+        (resid(2) .ge. picard_params%y_overrideres .or. counter < picard_params%cmin)        &
+       .and.										     &
+        (resid(1) .ge. picard_params%x_overrideres .or. counter < picard_params%cmin         &
+                                                   .or. picard_params%x_invariant )          &
+       .and. 										     &
+ 	(     (resid(1) > picard_params%switchres .and. .not. picard_params%x_invariant)     &
+         .or. (resid(2) > picard_params%switchres) 				             &
+         .or. (counter < picard_params%cswitch) )	   			             &
+       .and. 										     &
+	(counter < picard_params%cmax) )
 
     if (counter == use_mean_efvs_limit) then
        print *, 'Warning: using constant viscosity for this Picard iteration'
@@ -384,7 +393,7 @@ subroutine glam_velo_fordsiapstr(model,time,dt, &
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, vvel )
 
     ! solve 'Ax=b' for the y-component of velocity using method "which_sparse"
-    call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
+    call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse,verbose=verbose_linear_solve)
 !    print *, 'y vel: linear solver used ', iter, 'iterations'
 !    print *, 'y vel: error estimate ', err
 
@@ -452,7 +461,7 @@ subroutine glam_velo_fordsiapstr(model,time,dt, &
     call solver_preprocess( ewn, nsn, upn, uindx, matrix, answer, uvel )
 
     ! solve 'Ax=b' for the x-component of velocity using method "which_sparse"
-    call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse )
+    call sparse_easy_solve( matrix, rhsd, answer, err, iter, whichsparse,verbose=verbose_linear_solve )
 
 !    print *, 'x vel: linear solver used ', iter, 'iterations'
 !    print *, 'x vel: error estimate ', err
@@ -609,6 +618,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
                                                ugradew, ugradns, vgradew, vgradns
 
   integer, dimension(2) :: mew, mns
+  real (kind = dp), parameter :: min_effvs = 5.d-4
 
   ! This is the factor 1/4(X0/H0)^2 in front of the term ((dv/dz)^2+(du/dz)^2) 
   real (kind = dp), parameter :: f1 = 0.25_dp * (len0 / thk0)**2
@@ -696,7 +706,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
     ! horiz grid, even though it does not). 
 
             ! Below, p2=(1-n)/2n. The 1/2 is from taking the sqr root of the squared eff. strain rate
-            efvs(1:upn-1,ew,ns) = max(5.d-4,flwafact(1:upn-1,ew,ns) * effstr**p2)
+            efvs(1:upn-1,ew,ns) = max(min_effvs,flwafact(1:upn-1,ew,ns) * effstr**p2)
 
         else  
            efvs(:,ew,ns) = effstrminsq ! if the point is associated w/ no ice, set to min value
@@ -1427,7 +1437,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 
     
       if (use_lateral_stress_bc) then
-!	   write(*,*)'imposing no shear stress at ',ew,ns
+	   write(*,*)'imposing no shear stress at ',ew,ns
            !impose no shear stress condition and no normal flow, which means 
            !   dv/dx = 0
            !      u  = 0

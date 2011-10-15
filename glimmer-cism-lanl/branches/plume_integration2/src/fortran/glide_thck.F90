@@ -435,7 +435,7 @@ contains
 
     ! Solve the system using SLAP
     call sparse_easy_solve(model%pcgdwk%matrix, model%pcgdwk%rhsd, model%pcgdwk%answ, &
-                           err, linit)
+                           err, linit,verbose=.false.)
     
     ! Rejig the solution onto a 2D array
     do ns = 1,model%general%nsn

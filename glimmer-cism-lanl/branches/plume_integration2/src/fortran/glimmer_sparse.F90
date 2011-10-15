@@ -35,8 +35,8 @@ contains
         type(sparse_solver_options) :: opt
 
         opt%base%method = method
-        opt%base%tolerance  = 1e-7
-        opt%base%maxiters = 10000
+        opt%base%tolerance  = 1e-4
+        opt%base%maxiters = 5000
 
         !Solver specific options
         if (method == SPARSE_SOLVER_BICG) then
@@ -246,7 +246,7 @@ contains
         endif
     end subroutine sparse_interpret_error
 
-    subroutine sparse_easy_solve(matrix, rhs, answer, err, iter, method_arg, calling_file, calling_line)
+    subroutine sparse_easy_solve(matrix, rhs, answer, err, iter, method_arg, calling_file, calling_line,verbose)
         !This subroutine wraps the basic (though probably the most inefficient)
         !workflow to solve a sparse matrix using the sparse matrix solver
         !framework.  It handles errors gracefully, and reports back the
@@ -267,6 +267,7 @@ contains
 
         character(*), optional :: calling_file
         integer, optional :: calling_line
+	logical,intent(in) :: verbose
 
         type(sparse_solver_options) :: opt
         type(sparse_solver_workspace) :: wk
@@ -284,7 +285,7 @@ contains
         call sparse_allocate_workspace(matrix, opt, wk)
         call sparse_solver_preprocess(matrix, opt, wk)
 
-        ierr = sparse_solve(matrix, rhs, answer, opt, wk, err, iter, .false.)
+        ierr = sparse_solve(matrix, rhs, answer, opt, wk, err, iter, verbose)
        
         call sparse_solver_postprocess(matrix, opt, wk)
 

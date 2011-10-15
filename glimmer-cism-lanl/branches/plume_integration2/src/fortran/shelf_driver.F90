@@ -39,6 +39,7 @@ program shelf_driver
   real(kind=dp) :: t1,t2
   integer :: clock,clock_rate
   logical :: is_steady = .false.
+  logical :: do_plume_coupling = .true.
   logical :: plume_reached_steady
 
   logical :: check_for_steady = .false.
@@ -72,7 +73,9 @@ program shelf_driver
   real(kind=dp) :: plume_steadiness_tol,plume_speed_steadiness_tol
 
   integer :: plume_imin,plume_imax,plume_kmin,plume_kmax
-  logical :: plume_const_bmlt,plume_initial_bmlt
+  logical :: plume_const_bmlt,plume_initial_bmlt, plume_delayed_coupling
+  real(kind=dp) :: plume_homotopy_frac = 1.d0
+  real(kind=dp) :: plume_homotopy_ramp = 0.001d0
 
   real(kind=dp) :: plume_const_bmlt_rate
 
@@ -156,7 +159,6 @@ program shelf_driver
      end if
 
      if (hide_shelf_inflow_row) then
-!        no_plume(:,model%general%nsn) = .true. 
         no_plume(:,1) = .true.    !hide southern row of ice
      end if
 
@@ -219,6 +221,8 @@ program shelf_driver
 	call write_log("Plume did not reach a steady state",GM_WARNING)
      end if
 
+     call homotopy_bmlt(plume_bmelt_out,time,model%numerics%tstart*1.d0)
+
      call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
           model%general%ewn, model%general%nsn, fake_landw)
      call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
@@ -261,19 +265,15 @@ program shelf_driver
 
      ! adjust the heights in the upstream row
      model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                         !model%general%nsn  ) = upstream_thck
-                         1  ) = upstream_thck
+                         1  ) = upstream_thck + inflow_thk_perturb(time)
 
      model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                         !model%general%nsn-1) = upstream_thck
-                         2  ) = upstream_thck
+                         2  ) = upstream_thck + inflow_thk_perturb(time)
     
      ! and therefore zero out the thck_t values
      model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                     !      model%general%nsn  ) = 0.d0
                            1  ) = 0.d0
      model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                            !model%general%nsn-1) = 0.d0
                              2) = 0.d0
 
 
@@ -366,6 +366,14 @@ program shelf_driver
 
 	last_bmlt_time = time
 
+	if (plume_delayed_coupling) then
+	    if (is_steady) then
+		is_steady = .false.
+	        plume_initial_bmlt = .false.
+	        do_plume_coupling = .true.
+            end if
+        end if
+
         call plume_iterate(time, &
              model%numerics%tinc*1.d0, &
              plume_lsrf_ext, &
@@ -383,7 +391,9 @@ program shelf_driver
 	     plume_write_all_states, &
              plume_write_every_n, &
 	     plume_output_frequency, &
-	     plume_initial_bmlt)
+	     plume_initial_bmlt .or. .not.(do_plume_coupling) )
+
+	call homotopy_bmlt(plume_bmelt_out,time,model%numerics%tstart*1.d0)
 
         call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
              model%general%ewn, model%general%nsn, fake_landw)
@@ -424,6 +434,31 @@ program shelf_driver
   call close_log()
 
 contains
+
+  function inflow_thk_perturb(time)
+
+	! return a scaled time-varying perturbation that is to be applied
+        ! to all ice entering the domain across the inflow line
+
+	real(kind=dp),intent(in) :: time
+
+	real(kind=dp) :: inflow_thk_perturb
+	real(kind=dp),parameter :: amplitude = 0.d0 !50.d0
+
+	inflow_thk_perturb = amplitude * sin(2.d0*3.1415926d0*time)/ thk0
+
+  end function inflow_thk_perturb
+
+  subroutine homotopy_bmlt(bmelt_field, time, starttime)
+
+	real(kind=dp),dimension(:,:),intent(inout) :: bmelt_field
+	real(kind=dp),intent(in) :: time, starttime
+ 	
+	bmelt_field = bmelt_field * min(1.d0, (plume_homotopy_frac + \
+                                              (1.d0-plume_homotopy_frac) * \
+                                                (time-starttime)/plume_homotopy_ramp))
+	
+  end subroutine homotopy_bmlt
 
   subroutine write_real_plume_array(a_in,a_out,padding_val, m,n,pad_ew,pad_s)
 
@@ -539,6 +574,9 @@ contains
     call GetValue(section, 'plume_kmax',plume_kmax)
     call GetValue(section, 'plume_const_bmlt', plume_const_bmlt)
     call GetValue(section, 'plume_initial_bmlt', plume_initial_bmlt)
+    call GetValue(section, 'plume_delayed_coupling', plume_delayed_coupling)
+    call GetValue(section, 'plume_homotopy_frac', plume_homotopy_frac)
+    call GetValue(section, 'plume_homotopy_ramp', plume_homotopy_ramp)
     call GetValue(section, 'plume_const_bmlt_rate', plume_const_bmlt_rate)
     call GetValue(section, 'plume_do_cross_shelf_avg', doCrossShelfAvg)
 
@@ -575,6 +613,8 @@ contains
     write(message,*) 'plume_const_bmlt', plume_const_bmlt, 'plume_const_bmlt_rate', plume_const_bmlt_rate
     call write_log(message)
     write(message,*) 'plume_initial_bmlt:', plume_initial_bmlt
+    call write_log(message)
+    write(message,*) 'plume_delayed_coupling', plume_delayed_coupling
     call write_log(message)
     write(message,*) 'plume_do_cross_shelf_avg:', doCrossShelfAvg
     call write_log(message)

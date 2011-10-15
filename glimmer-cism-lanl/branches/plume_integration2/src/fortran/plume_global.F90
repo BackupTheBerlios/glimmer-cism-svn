@@ -110,6 +110,9 @@ module plume_global
   real(kind=kdp) :: phi ! latitude
   real(kind=kdp) :: radian,f	
   real(kind=kdp) :: periodic_forcing_amp, forcing_period
+  real(kind=kdp) :: visc_enhance_factor = 0.d0
+  real(kind=kdp) :: visc_enhance_location = 0.25d0
+  integer        :: visc_enhance_smoothing_ramp = 40
 
   real(kind=kdp) :: dt1,dt2,dtswtim ! first timestep size
   ! second timestep size
@@ -137,7 +140,8 @@ module plume_global
   real(kind=kdp) :: random_amplitude
 
   !eddy viscosities
-  real(kind=kdp),allocatable,dimension(:) :: ahdx,ahdxu,ahdy,ahdyv
+  real(kind=kdp),allocatable,dimension(:,:) :: ahdx,ahdxu,ahdy,ahdyv
+  real(kind=kdp),allocatable,dimension(:,:) :: khgrid
 
   ! gravity wave speeds (from shallow water formula)
   real(kind=kdp),allocatable,dimension(:,:) :: gwave_speed, gwave_crit_factor
@@ -199,7 +203,8 @@ contains
     allocate (atemp(m,n),asalt(m,n))
     allocate (drag(m,n))
 
-    allocate (ahdx(m),ahdxu(m),ahdy(n),ahdyv(n))
+    allocate (ahdx(m,n),ahdxu(m,n),ahdy(m,n),ahdyv(m,n))
+    allocate (khgrid(m,n))
 
     allocate (gwave_speed(m,n), gwave_crit_factor(m,n))
     allocate (utrans(m,n),utransa(m,n),vtrans(m,n),vtransa(m,n))
@@ -228,6 +233,7 @@ contains
     deallocate(fmelt,fppn,fnuc)
     deallocate(saltinf,tempinf,depinf,intracer,intracera)
     deallocate(ahdx,ahdxu,ahdy,ahdyv)
+    deallocate(khgrid)
     deallocate(rhop,temp,tempa,tins,salt,salta,rhoamb,entr,atemp,asalt,drag)
     deallocate(sgd)
     deallocate(thk_def,artf_entr_frac)

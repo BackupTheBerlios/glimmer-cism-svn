@@ -49,8 +49,7 @@ contains
         type(sparse_solver_options_base), intent(in), target :: base
         opt%itol = 2
         opt%use_gmres = .false.
-!        opt%gmres_saved_vectors = 20
-        opt%gmres_saved_vectors = 100
+	opt%gmres_saved_vectors = 1000
         opt%base => base
     end subroutine slap_default_options
 
@@ -86,8 +85,11 @@ contains
 
             !Figure out how much memory to allocate.  These figures were derived
             !from the SLAP documentation.
-            lenrw = 20*max_nonzeros 
-            leniw = 20*max_nonzeros
+!            lenrw = 20*max_nonzeros 
+!            leniw = 20*max_nonzeros
+            lenrw = 100*max_nonzeros 
+            leniw = 100*max_nonzeros
+
 
             if (lenrw < 0 .or. leniw < 0) then
                 call write_log("The amount of workspace memory that SLAP needs caused a numerical overflow.  " // &
@@ -217,14 +219,42 @@ contains
                             options%base%tolerance, options%base%maxiters, &
                             niters, err, ierr, iunit, &
                             workspace%rwork, size(workspace%rwork), workspace%iwork, size(workspace%iwork))
+	        if (ierr == 2) then
+	          !exceeded ITMAX error, so try again with weaker goals
+	          print *, 'trying gmres again with bigger tolerance'
+		  call dslugm(matrix%order, rhs, solution, matrix%nonzeros, &
+                	    matrix%row, matrix%col, matrix%val, &
+                            isym, options%gmres_saved_vectors, options%itol, &
+                            options%base%tolerance*10.d0, options%base%maxiters, &
+                            niters, err, ierr, iunit, &
+                            workspace%rwork, size(workspace%rwork), workspace%iwork, size(workspace%iwork))
+	        end if
+	        if (ierr == 2) then
+	          !exceeded ITMAX error, so try again with weaker goals
+	          print *, 'trying gmres again with bigger tolerance'
+		  call dslugm(matrix%order, rhs, solution, matrix%nonzeros, &
+                	    matrix%row, matrix%col, matrix%val, &
+                            isym, options%gmres_saved_vectors, options%itol, &
+                            options%base%tolerance*50.d0, options%base%maxiters*10, &
+                            niters, err, ierr, iunit, &
+                            workspace%rwork, size(workspace%rwork), workspace%iwork, size(workspace%iwork))
+	        end if
             else
                 call dslucs(matrix%order, rhs, solution, matrix%nonzeros, &
                             matrix%row, matrix%col, matrix%val, &
                             isym, options%itol, options%base%tolerance, options%base%maxiters,&
                             niters, err, ierr, iunit, &
                             workspace%rwork, size(workspace%rwork), workspace%iwork, size(workspace%iwork))
+	        if (ierr == 2) then
+	          !exceeded ITMAX error, so try again with weaker goals
+	         print *, 'trying dslucs again with easier tolerance'
+                 call dslucs(matrix%order, rhs, solution, matrix%nonzeros, &
+                             matrix%row, matrix%col, matrix%val, &
+                             isym, options%itol, options%base%tolerance*1.d+2, options%base%maxiters,&
+                            niters, err, ierr, iunit, &
+                            workspace%rwork, size(workspace%rwork), workspace%iwork, size(workspace%iwork))
+	        end if
             end if
-
             if (ierr == 5) then
 
                 !might be that Ax=b already
