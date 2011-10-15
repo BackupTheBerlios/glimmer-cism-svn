@@ -1,10 +1,7 @@
-f_ice6 = '/data/gladish/gc_output/igs_jobs/may29_highres_temp_-10.0_tau_25000.0_diff_10.0_k_4.0_amp_50.0_tempbot_-0.1_pmin_10.0/may29_highres_temp_-10.0_tau_25000.0_diff_10.0_k_4.0_amp_50.0_tempbot_-0.1_pmin_10.0.out.nc';
-f_plume6='/data/gladish/gc_output/igs_jobs/may29_highres_temp_-10.0_tau_25000.0_diff_10.0_k_4.0_amp_50.0_tempbot_-0.1_pmin_10.0/plume.may29_highres_temp_-10.0_tau_25000.0_diff_10.0_k_4.0_amp_50.0_tempbot_-0.1_pmin_10.0.out.nc';
+function plot_keel_crossing(dice,docean,tlen)
 
-%dice6 = nc_ice_read(f_ice6,10,51);
-%dplume6 = nc_plume_read(f_plume6,10,51);
+[flat_ocean,flat_ice] = flatten_gc(docean,dice,tlen);
 
-[flat_ocean,flat_ice] = flatten_gc(dplume6,dice6,51);
 figure(1);
 clf;
 
@@ -30,3 +27,4 @@ set(gca,'FontSize',fs);
 
 
 
+end 

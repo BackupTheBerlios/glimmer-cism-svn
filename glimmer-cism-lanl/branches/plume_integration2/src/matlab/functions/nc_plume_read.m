@@ -23,7 +23,11 @@ function [data] = nc_plume_read(nc_filename,timestride,max_slices)
     time_var_id = netcdf.inqVarID(nc,'time');
     
     [tname,tlen] = netcdf.inqDim(nc,time_dim_id);
-    n_timeslices = min(max_slices,round(floor(tlen/timestride)));    
+    if (max_slices < 0) 
+      n_timeslices = round(floor(tlen/timestride));
+    else
+      n_timeslices = min(max_slices,round(floor(tlen/timestride)));
+    end
     
     time = netcdf.getVar(nc,time_var_id,0,n_timeslices,timestride);
     x = netcdf.getVar(nc, x_id);
@@ -52,7 +56,8 @@ function [data] = nc_plume_read(nc_filename,timestride,max_slices)
     [xgrid,ygrid] = meshgrid(data.x,data.y);
     data.xgrid = xgrid';
     data.ygrid = ygrid';
-    
+    data.time = time;
+
     f = @(M) M((1+3):(end-3),(1+3):(end-5),:);
 
     data.bpos = f(bpos);

@@ -5,7 +5,8 @@ function [data] = nc_ice_read(nc_filename, timestride, max_slices)
     
     thk_id = netcdf.inqVarID(nc, 'thk');
     thk_t_id = netcdf.inqVarID(nc,'thk_t');
-       
+
+    efvs_id =  netcdf.inqVarID(nc,'efvs');
     lsurf_id = netcdf.inqVarID(nc,'lsurf');
     uvel_id = netcdf.inqVarID(nc, 'uvelhom');
     vvel_id = netcdf.inqVarID(nc, 'vvelhom');
@@ -28,9 +29,12 @@ function [data] = nc_ice_read(nc_filename, timestride, max_slices)
     end
     
     [tname,tlen] = netcdf.inqDim(nc,time_dim_id);    
-    
-    n_timeslices = min(max_slices,round(floor(tlen/timestride)));
-    
+    if (max_slices < 0)
+      n_timeslices = round(floor(tlen/timestride));
+    else
+      n_timeslices = min(max_slices,round(floor(tlen/timestride)));
+    end
+
     time = netcdf.getVar(nc,time_var_id,0,n_timeslices,timestride);
     
     x0 = netcdf.getVar(nc, x0_id);
@@ -65,6 +69,8 @@ function [data] = nc_ice_read(nc_filename, timestride, max_slices)
     data.thk_t = fgrid(netcdf.getVar(nc,thk_t_id,[0 0 0],[m1 n1 n_timeslices],[1 1 timestride]));
     data.bmlt = fgrid(netcdf.getVar(nc,bmlt_id,[0 0 0],[m1 n1 n_timeslices],[1 1 timestride]));
     data.lsurf = fgrid(netcdf.getVar(nc,lsurf_id,[0 0 0],[m1 n1 n_timeslices],[1 1 timestride]));
+    data.efvs = fgrid(netcdf.getVar(nc,efvs_id,[0 0 0 0],[m1 n1 k n_timeslices],[1 1 1 timestride]));
+
     if (have_flux_conv)
         uflx_conv = fgrid(netcdf.getVar(nc,uflx_conv_id,[0 0 0],[m1 n1 n_timeslices],[1 1 timestride]));
         vflx_conv = fgrid(netcdf.getVar(nc,vflx_conv_id,[0 0 0],[m1 n1 n_timeslices],[1 1 timestride]));
@@ -93,8 +99,7 @@ function [data] = nc_ice_read(nc_filename, timestride, max_slices)
           data.vvelmean(2:end,    2:end,:)- ...
           data.vvelmean(1:(end-1),1:(end-1),:)- ...
           data.vvelmean(2:end,    1:(end-1),:))/(2*dy);
-      
-  
+
     data.vel_div = zeros(size(data.thk,1),size(data.thk,2),size(data.thk,3));
     data.vel_div(2:(end-1),2:(end-1),:) = (ux(2:(end-1),2:(end-1),:) + ...
                                            vy(2:(end-1),2:(end-1),:)) .* ...

@@ -16,7 +16,7 @@ pdep = data.pdep(:,:,timeslice);
 draft = data.draft(:,:,timeslice);
 ambdepth = data.ambdepth(:,:,timeslice);
 
-  figure('Units','centimeters','Position',[0 0 20 20]);
+figure('Units','centimeters','Position',[0 0 20 20]);
 
 fs = 14;
 
