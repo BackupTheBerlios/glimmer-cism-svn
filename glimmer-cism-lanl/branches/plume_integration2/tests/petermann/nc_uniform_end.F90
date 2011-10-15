@@ -13,6 +13,7 @@ program nc_uniform_end
   integer,parameter :: dp = kind(1.0d0)
 
   integer :: ny, nx, nt
+  integer :: ny_new
   integer :: nlevel
   real(kind=dp) :: hx, hy
 
@@ -28,6 +29,7 @@ program nc_uniform_end
   integer,dimension(:,:),allocatable :: kinbcmask
 
   integer :: template_row_index
+  logical :: chop
   
   call main()
 
@@ -39,11 +41,11 @@ subroutine main()
                                     &<nc_file_in> <nc_file_out> &
                                     &<t_read>&
                                     &<thk_n_margin> <kin_n_margin> &
-                                    &<template_row_index>"
+                                    &<template_row_index> <chop>"
 
   character(len=512) :: argstr
   integer :: n,i,j
-  integer,parameter :: n_baseargs = 6
+  integer,parameter :: n_baseargs = 7
 
   if (command_argument_count() < n_baseargs) then
      write(*,*) "Not enough arguments received (",command_argument_count(),").  Usage: ", trim(gen_usage)
@@ -74,12 +76,21 @@ subroutine main()
   read(argstr,'(i5)') template_row_index
   write(*,*)'template_row_index', template_row_index
 
+  call get_command_argument(7,argstr)
+  read(argstr,'(l1)') chop
+  write(*,*)'chop', chop
+
   call read_old_nc_file() 
+
+  if (chop) then
+	ny_new = template_row_index + thk_n_margin
+  else
+        ny_new = ny
+  end if
 
   allocate(xstag(nx-1),ystag(ny-1))
   xstag = (/ ( 0.5d0*(xs(i)+xs(i+1))  ,i=1,nx-1 ) /)
   ystag = (/ ( 0.5d0*(ys(j)+ys(j+1))  ,j=1,ny-1 ) /)
-
 
   call modify_thickness_velocity()
   
@@ -181,8 +192,8 @@ end subroutine read_old_nc_file
 subroutine modify_thickness_velocity()
 
   integer :: j
-
-  do j=(template_row_index+1),(ny-thk_n_margin)
+ 
+  do j=(template_row_index+1),(ny-thk_n_margin) 
      thck(:,j) = thck(:,template_row_index)
   end do
 
@@ -202,10 +213,17 @@ subroutine write_nc_file()
 
     ! defining dimensions
     call check( nf90_def_dim(nc_id,'time',1,time_dimid) )
-    call check( nf90_def_dim(nc_id,'x1',nx,x_dimid) )
-    call check( nf90_def_dim(nc_id,'y1',ny,y_dimid) )
     call check( nf90_def_dim(nc_id,'x0',nx-1,xstag_dimid) )
-    call check( nf90_def_dim(nc_id,'y0',ny-1,ystag_dimid) )
+    call check( nf90_def_dim(nc_id,'x1',nx,x_dimid) )
+
+    if (chop) then
+	call check( nf90_def_dim(nc_id,'y0',ny_new-1,ystag_dimid) )
+        call check( nf90_def_dim(nc_id,'y1',ny_new,  y_dimid) )
+    else
+	call check( nf90_def_dim(nc_id,'y0',ny-1,ystag_dimid) )
+        call check( nf90_def_dim(nc_id,'y1',ny,y_dimid) )
+    end if
+
     call check( nf90_def_dim(nc_id,'level',nlevel,level_dimid) )
 
     ! define variables
@@ -266,21 +284,39 @@ subroutine write_nc_file()
     call check( nf90_enddef(nc_id) )
 
     call check( nf90_put_var(nc_id,x_varid,xs) )
-    call check( nf90_put_var(nc_id,y_varid,ys) )
     call check( nf90_put_var(nc_id,xstag_varid,xstag) )
-    call check( nf90_put_var(nc_id,ystag_varid,ystag) )
+    if (chop) then
+	call check( nf90_put_var(nc_id,y_varid,ys(1:ny_new)) )
+	call check( nf90_put_var(nc_id,ystag_varid,ystag(1:(ny_new-1))) )
+    else
+        call check( nf90_put_var(nc_id,y_varid,ys) )
+	call check( nf90_put_var(nc_id,ystag_varid,ystag) )
+    end if
+
     call check( nf90_put_var(nc_id,level_varid,levels) )
     call check( nf90_put_var(nc_id,time_varid, (/ 1 /) ) )
 
     ! write the arrays out to the netcdf file and close it
-    call check( nf90_put_var(nc_id, thck_varid, thck) )
-    call check( nf90_put_var(nc_id, topog_varid, topog) )
-    call check( nf90_put_var(nc_id, kinbcmask_varid, kinbcmask) )
+    if (chop) then
 
-    call check( nf90_put_var(nc_id, uvelhom_varid, uvelhom) )
-    call check( nf90_put_var(nc_id, vvelhom_varid, vvelhom) )
-    
-    call check( nf90_put_var(nc_id, temp_varid, temp) )
+       thck(:,(ny_new-thk_n_margin+1):ny_new) = 0.d0
+       uvelhom(:,(ny_new-thk_n_margin+1):(ny_new-1),:) = 0.d0
+       vvelhom(:,(ny_new-thk_n_margin+1):(ny_new-1),:) = 0.d0
+
+       call check( nf90_put_var(nc_id, thck_varid, thck(:,1:ny_new)) )
+       call check( nf90_put_var(nc_id, topog_varid, topog(:,1:ny_new)) )
+       call check( nf90_put_var(nc_id, kinbcmask_varid, kinbcmask(:,1:(ny_new-1))) )
+       call check( nf90_put_var(nc_id, uvelhom_varid, uvelhom(:,1:ny_new-1,:)) )
+       call check( nf90_put_var(nc_id, vvelhom_varid, vvelhom(:,1:ny_new-1,:)) )
+       call check( nf90_put_var(nc_id, temp_varid, temp(:,1:ny_new,:)) )
+    else
+       call check( nf90_put_var(nc_id, thck_varid, thck) )
+       call check( nf90_put_var(nc_id, topog_varid, topog) )
+       call check( nf90_put_var(nc_id, kinbcmask_varid, kinbcmask) )
+       call check( nf90_put_var(nc_id, uvelhom_varid, uvelhom) )
+       call check( nf90_put_var(nc_id, vvelhom_varid, vvelhom) )
+       call check( nf90_put_var(nc_id, temp_varid, temp) )
+    end if
 
     call check( nf90_close(nc_id) )
 

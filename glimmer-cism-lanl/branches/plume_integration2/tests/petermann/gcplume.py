@@ -395,6 +395,9 @@ class GCConfig(object):
                       'plume_kmin' : None,
                       'plume_kmax' : None,
                       'plume_initial_bmlt' : False,     # Apply the initial bmelt field for all time
+                      'plume_delayed_coupling' : False, # Determine the initial bmlt and use that until ice is steady, then couple
+                      'plume_homotopy_frac' : 1.0,
+                      'plume_homotopy_ramp' : 0.001,
                       'plume_const_bmlt' : False,       # Apply a uniform melt rate under floating ice
                       'plume_const_bmlt_rate' : 0.0     # At given rate in meters per year
                       }
@@ -859,11 +862,10 @@ class RestartIceJob(_BaseJob):
         #parse the output of the old job to figure out the last time and index
         p = subprocess.Popen(['ncdump','-v', 'time', self._initJobInputNcFile],stdout=subprocess.PIPE)
         times = p.stdout.read()
-
+        #print(times)
         self._inputJobLastTimeIndex = int(times.split('(')[1].split('currently')[0].strip())
         self.tstart = float(times.split('time =')[-1].split()[-3])
         self.tend = self._initJob._gcconfig.vals['time']['tend'] # default value
-        
         self.gc = defaultdict({})
         self.plume = {}
 
@@ -1016,8 +1018,8 @@ class ListPerturbJob(RestartIceJob):
                     self.inflow_a,
                     self.vvelhom_new_val*1.0,
                     ])
-        for (k,amp,phase,len) in  self.perturb_list:
-            cmd.extend([k,amp,phase,len])
+        for (k,amp,phase,len,code,shift) in  self.perturb_list:
+            cmd.extend([k,amp,phase,len,code,shift])
         
         cmd = [_fortran_style('nc_perturb_gl',c) for c in cmd]
 
@@ -1189,7 +1191,7 @@ def _check_calls(cmds,logfile=None):
             
 class FromFilesJob(_BaseJob):
 
-    def __init__(self,jobDir):
+    def __init__(self,jobDir,name=None,configFile=None,nl_fname=None):
         _BaseJob.__init__(self)
 
         if (not(os.path.exists(jobDir))):
@@ -1199,18 +1201,24 @@ class FromFilesJob(_BaseJob):
                 raise Exception("Can not find %s" % jobDir)
             else:
                 jobDir = jobDir2
+        
+        if (configFile is None):
+            config_files = [x for x in os.listdir(jobDir) if
+                            (x.endswith('.config') and not('captured' in x))]
 
-        config_files = [x for x in os.listdir(jobDir) if
-                        (x.endswith('.config') and not('captured' in x))]
+            if (len(config_files) != 1):
+                raise Exception("Did not find a unique .config file")
 
-        if (len(config_files) != 1):
-            raise Exception("Did not find a unique .config file")
+            else:
+                configFile=config_files[0]
 
-
-        self.name = config_files[0].split('.config')[0]
+        if (name is None):
+            self.name = config_files[0].split('.config')[0]
+        else:
+            self.name = name
 
         # parse the .config file
-        f_config = open(os.path.join(jobDir,config_files[0]),'r').read()
+        f_config = open(os.path.join(jobDir,configFile),'r').read()
 
         sections = re.findall('\\[([a-z,A-Z,0-9,_,\s]*)\\]([0-9,.,_,+,\-,\s,a-z,A-Z,=,/]*)',f_config)
 
@@ -1239,10 +1247,15 @@ class FromFilesJob(_BaseJob):
 
         if (self.use_plume):
             # now parse the nl file
-            nl_fname =os.path.join(self.jobDir,
-                                   config_files[0].split('.config')[0]+'.nl')
+            if (nl_fname is None):
+                nl_fname =os.path.join(self.jobDir,
+                                       configFile.split('.config')[0]+'.nl')
+                
             if (not os.path.exists(nl_fname)):
-                raise Exception("Could not find expected namelist file %s" % nl_fname)
+                nl_fname_original = nl_fname
+                nl_fname = os.path.join(self.jobDir,nl_fname)
+                if (not os.path.exists(nl_fname)):
+                    raise Exception("Could not find expected namelist file %s" % nl_fname_original)
 
             nl_file = open(nl_fname,'r').read()
 

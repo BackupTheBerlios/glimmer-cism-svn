@@ -33,8 +33,9 @@ def write_jobscript(j,email,jobfile,walltime,ppn,overwrite):
                           'run_GC_%s.sh' % j.name),
              'w')
 
-    script = '''#PBS -l nodes=1:ppn=%s,walltime=%s
-                #PBS -N GC_%s
+    script = '''#!/bin/sh
+                #PBS -l nodes=1:ppn=%s,walltime=%s
+                #PBS -N %s
                 #PBS -M %s
                 #PBS -m abe
                 #PBS -e localhost:%s/\${PBS_JOBNAME}.e
@@ -102,7 +103,7 @@ def main():
     #
 
     EMAIL='gladish@cims.nyu.edu'
-    ppn = 1
+    ppn = 4
     OVERWRITE = False
     
     #

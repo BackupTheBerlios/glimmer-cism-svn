@@ -728,14 +728,14 @@ contains
     ! local variables
     integer :: i,j,k
     integer :: ifpos,kinbcw
-    integer,parameter :: zero_buf = 1
+    integer,parameter :: zero_buf = 3
     real :: hx,hy
     real :: rhoi, rhoo
     real :: upstream_thk, if_thk, upstream_vel,inflow_a
     real :: chan_depth,otopg,ltopg,acab_per_year
     real,dimension(:),allocatable :: rand_row
     logical :: noslip
-    integer,parameter :: s_marg = 2, w_marg = 1
+    integer,parameter :: s_marg = 3, w_marg = 3
 
     real :: tmp
     real :: rand_amp
@@ -815,6 +815,7 @@ contains
     allocate(rand_row(nx-2*zero_buf))
 
     !now populate the dimension variables
+
     xs = (/ ( (real(i-w_marg)-0.5d0)*hx,i=1,nx ) /)
     ys = (/ ( (real(j-s_marg)-0.5d0)*hy,j=1,ny ) /)
     level = (/ ( real(i)/real((n_level-1)), i=0,(n_level-1) ) /)

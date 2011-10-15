@@ -25,7 +25,8 @@ program nc_regrid
   real(kind=dp) :: vvelhom_new_val = 0.d0
   integer :: num_perturbs  ! this is the number of perturbations to apply
   real(kind=dp),dimension(:),allocatable :: k_perturbs, amp_perturbs, phase_perturbs
-  integer,dimension(:),allocatable :: perturb_ramps
+  integer,dimension(:),allocatable :: perturb_ramps, perturb_codes, size_perturb_ramps
+  real(kind=dp),dimension(:),allocatable ::  x_shifts
 
 
   !data arrays
@@ -54,24 +55,26 @@ subroutine main()
                                     &<kin_n_margin> <kin_s_margin> &
                                     &<kin_w_margin> <kin_e_margin> &
                                     &<inflow_a> <vvelhom_new> [<k_perturb>, &
-				    &<amp_perturb> <phase_perturb> <perturb_ramp>]*"
+				    &<amp_perturb> <phase_perturb> <perturb_ramp> <perturb_code> <x_shift>]*"
 
   character(len=512) :: argstr
   integer :: n
   integer,parameter :: n_baseargs = 20
+  integer,parameter :: n_perturb_args = 6
 
   if (command_argument_count() < n_baseargs) then
      write(*,*) "Not enough arguments.  Usage: ", trim(gen_usage)
      stop 1
   end if
 
-  if (mod(command_argument_count() - n_baseargs,4) /= 0) then
+  if (mod(command_argument_count() - n_baseargs,n_perturb_args) /= 0) then
      write(*,*) "Usage: ", trim(gen_usage)
      stop 1
   else
-     num_perturbs = (command_argument_count() - n_baseargs) / 4
+     num_perturbs = (command_argument_count() - n_baseargs) / n_perturb_args
      allocate(k_perturbs(num_perturbs),amp_perturbs(num_perturbs),phase_perturbs(num_perturbs))
-     allocate(perturb_ramps(num_perturbs))
+     allocate(perturb_ramps(num_perturbs),x_shifts(num_perturbs))
+     allocate(perturb_codes(num_perturbs))
   end if
 
   call get_command_argument(1,argstr)
@@ -156,21 +159,29 @@ subroutine main()
 
   do n=1,num_perturbs
 
-     call get_command_argument(n_baseargs +(n-1)*4 + 1,argstr)
+     call get_command_argument(n_baseargs +(n-1)*n_perturb_args+ 1,argstr)
      read(argstr,'(f18.12)') k_perturbs(n)
      write(*,*)'k_perturb',n,k_perturbs(n)
 
-     call get_command_argument(n_baseargs +(n-1)*4 + 2,argstr)
+     call get_command_argument(n_baseargs +(n-1)*n_perturb_args + 2,argstr)
      read(argstr,'(f18.12)') amp_perturbs(n)
      write(*,*) 'amp_perturb',n, amp_perturbs(n)
 
-     call get_command_argument(n_baseargs +(n-1)*4 + 3,argstr)
+     call get_command_argument(n_baseargs +(n-1)*n_perturb_args + 3,argstr)
      read(argstr,'(f18.12)') phase_perturbs(n)
      write(*,*) 'phase_perturb',n, phase_perturbs(n)
 
-     call get_command_argument(n_baseargs +(n-1)*4 + 4,argstr)
+     call get_command_argument(n_baseargs +(n-1)*n_perturb_args + 4,argstr)
      read(argstr,'(i5)') perturb_ramps(n)
      write(*,*) 'perturb_ramp',n, perturb_ramps(n)
+
+     call get_command_argument(n_baseargs +(n-1)*n_perturb_args + 5,argstr)
+     read(argstr,'(i5)') perturb_codes(n)
+     write(*,*) 'perturb_code',n, perturb_codes(n)
+
+     call get_command_argument(n_baseargs +(n-1)*n_perturb_args + 6,argstr)
+     read(argstr,'(f18.12)') x_shifts(n)
+     write(*,*) 'x_shift',n, x_shifts(n)
 
   end do
 
@@ -192,62 +203,89 @@ subroutine main()
              thck_new,topog_new,kinbcmask_new, &
              uvelhom_new,vvelhom_new,temp_new)
   deallocate(amp_perturbs,k_perturbs,phase_perturbs)
-  deallocate(perturb_ramps)
+  deallocate(perturb_ramps,x_shifts,perturb_codes)
   deallocate(xs_old,ys_old)
 
 end subroutine main
 
-subroutine perturb_rows(data, &
-     nx, ny, &
-     w_marg, e_marg, gl_rows, &
-     inflow_a, &
-     k_perturbs, amp_perturbs, phase_perturbs, &
-     ramp_lens,n_perturbs)
+subroutine perturb_rows(data, nx, ny, w_marg, e_marg, gl_rows)
 
   real(kind=dp),dimension(:,:),intent(inout) :: data
   integer, intent(in) :: nx,ny
   integer,intent(in) :: w_marg, e_marg
   integer, intent(in) :: gl_rows
-  integer,dimension(:),intent(in) :: ramp_lens
-  integer :: n_perturbs
-  real(kind=dp),dimension(:),intent(in) :: k_perturbs, amp_perturbs, phase_perturbs
-  real(kind=dp) :: inflow_a
   real(kind=dp),parameter :: pi = 3.1415926535897
 
   !local variables
   integer :: i,j,k
-  real(kind=dp) :: thk_perturb
-  integer :: last_row
+  real(kind=dp),dimension(nx,ny) :: thk_perturb 
+  real(kind=dp) :: delta_x
+  integer :: last_row, ramp_len
+  integer,parameter :: lat_ramp = 4
 
-  do k=1,n_perturbs
-     if (ramp_lens(k) > 0) then
-        !last_row = ny-(n_rows+ramp_lens(k))+1
-        last_row = gl_rows+ramp_lens(k)
-     else
+  
+  delta_x = xs_new(2)-xs_new(1)
+
+  do k=1,num_perturbs
+
+     thk_perturb = 0.d0
+ 
+     if (perturb_ramps(k) > 0) then
+        last_row = gl_rows+perturb_ramps(k)
+        ramp_len = perturb_ramps(k)
+     else 
         last_row = ny-4
+        ramp_len = ny-4 - gl_rows
      end if
+
 
      do i=w_marg+1,nx-e_marg
         do j=1,last_row
-           thk_perturb = 0.5d0*amp_perturbs(k) * &
-                cos(phase_perturbs(k) + 2*pi*k_perturbs(k)*(i-w_marg-1.d0)/(nx-e_marg-w_marg-1.d0))
+
+           select case (perturb_codes(k))
+           case (0)
+           thk_perturb(i,j) = 0.5d0*amp_perturbs(k) * &
+                cos(phase_perturbs(k) + &
+                    2.d0*pi*k_perturbs(k) * &
+                    (((x_shifts(k)/delta_x)+real(i-w_marg)-1.d0))/(real(nx-e_marg-w_marg)-1.d0))
+           case (1)
+           thk_perturb(i,j) = 600.d0 - data(i,gl_rows)
+
+	   case (2)
+           thk_perturb(i,j) = 0.5d0*amp_perturbs(k) * &
+                cos(phase_perturbs(k) + &
+                    2.d0*pi*k_perturbs(k) * &
+                    (((x_shifts(k)/delta_x)+real(i-w_marg)-1.d0))/(real(nx-e_marg-w_marg)-1.d0))
+
+	   if (i <= (1+w_marg+lat_ramp)) then
+		thk_perturb(i,j) = thk_perturb(i,j)*  exp(-(real(1+w_marg+lat_ramp-i)/real(lat_ramp/2.d0))**2.d0)
+	   end if
+
+	   if (i >= (nx-e_marg-lat_ramp)) then
+		thk_perturb(i,j) = thk_perturb(i,j)*  exp(-(real(i-(nx-e_marg-lat_ramp))/real(lat_ramp/2.d0))**2.d0)
+	   end if
+
+           case default
+           print *, 'Invalid perturb_code', perturb_codes(k)
+           stop 1
+           end select
+
            if (k < 2) then
-              thk_perturb = thk_perturb + &
+              thk_perturb(i,j) = thk_perturb(i,j) + &
                    inflow_a * (xs_new(i)-xs_new((nx-1)/2+1))**2.0
            end if
 
-           if (ramp_lens(k) > 0) then
-              if (j > gl_rows) then
-                 !inside domain, ramping down
-                 thk_perturb = thk_perturb * (last_row-j)/ramp_lens(k)
-!              thk_perturb = thk_perturb * (j-(ny-(n_rows+ramp_lens(k))+1.d0))/ramp_lens(k)
-              end if
+           if (j > gl_rows) then
+              !inside domain, ramping down
+              thk_perturb(i,j) = thk_perturb(i,j) * (last_row-j)/real(ramp_len)
            end if
 
-           data(i,j) = data(i,j) + thk_perturb
+
 
         end do
      end do
+
+     data = data + thk_perturb
 
   end do
 
@@ -739,9 +777,7 @@ subroutine define_new_data()
   end if
 
   call perturb_rows(thck_new, nx_new, ny_new, &
-       thk_w_margin, thk_e_margin,kin_s_margin, & !note use of kin_s
-       inflow_a,k_perturbs, amp_perturbs,phase_perturbs,&
-       perturb_ramps,num_perturbs)
+       thk_w_margin, thk_e_margin,kin_s_margin)
 
 end subroutine define_new_data
 

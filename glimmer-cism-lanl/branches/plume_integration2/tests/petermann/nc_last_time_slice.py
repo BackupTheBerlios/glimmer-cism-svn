@@ -27,7 +27,7 @@ def process_files(fnames,outputfile=None):
         if (outputfile is None):
             outputfile = './last_time.%s' % os.path.basename(fname)
 
-        cmd = ['ncra','-A','-dtime,%s,%s' % (final_time-1,
+        cmd = ['ncra','-O','-dtime,%s,%s' % (final_time-1,
                                              final_time),
                                fname,
                                outputfile]

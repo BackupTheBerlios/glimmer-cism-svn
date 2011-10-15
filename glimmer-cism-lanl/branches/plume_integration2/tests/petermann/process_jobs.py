@@ -127,7 +127,7 @@ def main(jobsPrefix):
 
                 if ('Error running:' in l):
                     stillRunning = False
-                    if not(jname in ice_error_list):
+                    if not((jname in ice_error_list) or (jname in plume_error_list)):
                         unexplained = True
                     break
         if (stillRunning):
@@ -136,9 +136,8 @@ def main(jobsPrefix):
                 
         if (unexplained):
             unexplained_list.append(jname)
-
-
-
+    
+   
     print('%s in all jobs' % len(jobs))
     
     print('%s in steady_ice_list' % len(steady_ice_list))
@@ -148,7 +147,9 @@ def main(jobsPrefix):
     print('%s in still_running_list' % len(still_running_list))
     print('%s in not_started_list' % len(not_started_list))
     print('%s in unexplained_list' % len(unexplained_list))
-    
+    #print ('unexplained jobs: %s' % unexplained_list)
+    #print ('ice error jobs: %s' % ice_error_list)
+    #print ('plume error jobs: %s' % plume_error_list)
     steady = open('jobs_%s_steady.txt' % (jobsPrefix),'w')
     iceerror=open('jobs_%s_iceerror.txt' % (jobsPrefix),'w')
     perror = open('jobs_%s_perror.txt' % (jobsPrefix),'w')
