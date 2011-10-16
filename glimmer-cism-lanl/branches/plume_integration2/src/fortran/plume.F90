@@ -2714,7 +2714,7 @@ contains
           endif
 
           if (skip_u_calc) then
-             print *, 'skipped u ', i,k
+      !       print *, 'skipped u ', i,k
           else
              ! control of negative depth effects by enhanced friction
              jcvfac = 0

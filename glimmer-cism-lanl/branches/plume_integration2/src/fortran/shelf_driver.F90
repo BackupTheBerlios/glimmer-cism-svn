@@ -28,7 +28,7 @@ program shelf_driver
 
   integer,parameter :: USE_PLUME = 1
   integer,parameter :: fake_landw = 2
-  integer,parameter :: thk_zero_margin = 1
+  integer,parameter :: thk_zero_margin = 3
   logical,parameter :: use_thk_zero_margin = .true.
 
   !local variables
