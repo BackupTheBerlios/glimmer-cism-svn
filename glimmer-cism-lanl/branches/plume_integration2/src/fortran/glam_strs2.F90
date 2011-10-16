@@ -1175,6 +1175,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                         minTauf, beta,          &
                         betasquared )
 
+
   do ns = 1,nsn-1
     do ew = 1,ewn-1 
 
@@ -1378,7 +1379,8 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elseif ( GLIDE_IS_CALVING( mask(ew,ns) ) .and. .not. &
              GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns) ) .and. .not. &
-             GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) ) &
+             GLIDE_IS_DIRICHLET_BOUNDARY(mask(ew,ns)) .and. &
+             (ew > 3) .and. (ew < (ewn-3))) &
     then
 !    print *, 'At a SHELF boundary ... ew, ns = ', ew, ns
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1430,14 +1432,15 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
         end do
     
     elseif (GLIDE_HAS_ICE(mask(ew,ns)) .and. ( GLIDE_IS_COMP_DOMAIN_BND(mask(ew,ns))  & 
-                                          .or. GLIDE_IS_LAND_MARGIN(mask(ew,ns)))) then
+                                          .or. GLIDE_IS_LAND_MARGIN(mask(ew,ns))  &
+                                          .or. (ew <=3) .or. (ew >= (ewn-3)))) then
                  
- !      print *, 'At a NON-SHELF boundary ... ew, ns = ', ew, ns
+!      print *, 'At a NON-SHELF boundary ... ew, ns = ', ew, ns
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
     
       if (use_lateral_stress_bc) then
-	   write(*,*)'imposing no shear stress at ',ew,ns
+!	   write(*,*)'imposing shear stress at ',ew,ns
            !impose no shear stress condition and no normal flow, which means 
            !   dv/dx = 0
            !      u  = 0
