@@ -326,7 +326,7 @@ contains
 
         !If no error happened, this routine should be a nop
 !        if (error == 0 .OR. error == 2 .OR. error == 6) return
-        if (error == 0) return
+        if (error == 0 .OR. error ==6) return  !no error, or resid==0 error
 
         !Aquire a file unit, and open the file
         lunit = get_free_unit()
