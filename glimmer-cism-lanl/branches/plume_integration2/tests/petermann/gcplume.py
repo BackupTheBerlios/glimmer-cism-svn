@@ -955,8 +955,8 @@ class RestartIceJob(_BaseJob):
                     0,0,0,0, 
 #                    0,4,1,1,
 #                    self.newJob.kinbcw, 4,0,0,
-                    4,2,1,1,
-                    0,self.newJob.kinbcw,0,0,
+                    4,3,3,3,
+                    0,3,0,0,
                     0.0,           0.0])             
         cmd1 = [_fortran_style('nc_regrid', c) for c in cmd]
         
@@ -986,8 +986,8 @@ class IntroGLPerturbJob(RestartIceJob):
                     self.restartIceIndex,
                     self.m,self.n,-1,
                     0,0,0,0, 
-                    4,2,1,1,
-                    0,2,0,0,
+                    4,3,3,3,
+                    0,3,0,0,
                     self.inflow_a,
                     self.k, self.amp, self.ramp_len])
         
@@ -1013,8 +1013,8 @@ class ListPerturbJob(RestartIceJob):
                     self.restartIceIndex,
                     self.m,self.n,-1,
                     0,0,0,0, 
-                    4,2,1,1,
-                    0,2,0,0,
+                    4,3,3,3,
+                    0,3,0,0,
                     self.inflow_a,
                     self.vvelhom_new_val*1.0,
                     ])
@@ -1053,8 +1053,8 @@ class RegridListPerturbJob(ListPerturbJob):
                     self.restartIceIndex,
                     self.new_m,self.new_n,self.new_level,
                     0,0,0,0,
-                    4,2,1,1,
-                    0,2,0,0,
+                    4,3,3,3,
+                    0,3,0,0,
                     0.0,0.0])
 
         for (k,amp,phase,len) in  self.perturb_list:
@@ -1087,10 +1087,8 @@ class RegridIceJob(RestartIceJob):
                     self.restartIceIndex,
                     self.new_m,self.new_n,self.new_level,
                     0,0,0,0,
-                    #2,4,1,1,  #n,s,e,w thickness buffers
-                    #4,0,1,1,
-                    4,2,1,1,
-                    0,2,0,0,
+                    4,3,3,3,
+                    0,3,0,0,
                     0.0,0.0])             
         cmd = [_fortran_style('nc_regrid', c) for c in cmd]
         return [cmd]
