@@ -53,8 +53,8 @@ def main(jobsPrefix):
         # list the files in the job directory
         job_contents_p = subprocess.Popen(['ls',os.path.join(os.path.expandvars('$GC_JOBS'),jname)],
                                           stdout=subprocess.PIPE)
-        job_contents_p.wait()
-        job_contents = job_contents_p.stdout.readlines()
+        [stdout,stderr] = job_contents_p.communicate(None)
+        job_contents = stdout.split('\n')
 
         job_log_file = ''
         plume_output_file = ''
@@ -72,8 +72,8 @@ def main(jobsPrefix):
         if (ice_log_file):
             cmd = ['tail','-n20',ice_log_file]
             log_tail_p = subprocess.Popen(cmd,stdout=subprocess.PIPE)
-            log_tail_p.wait()
-            final_log_lines = log_tail_p.stdout.readlines()
+            [stdout,stderr] = log_tail_p.communicate(None)
+            final_log_lines = stdout.split('\n')
 
             for l in final_log_lines:
                 if l.strip().startswith('Stopped time-stepping'):
@@ -93,8 +93,8 @@ def main(jobsPrefix):
         if plume_output_file:
             cmd = ['tail','-n100',plume_output_file]
             plume_output_tail_p = subprocess.Popen(cmd,stdout=subprocess.PIPE)
-            plume_output_tail_p.wait()
-            plume_output_final_lines = plume_output_tail_p.stdout.readlines()
+            [stdout,stderr] = plume_output_tail_p.communicate(None)
+            plume_output_final_lines = stdout.split('\n')
 
             for l in plume_output_final_lines:
                 if 'error' in l:
@@ -115,8 +115,8 @@ def main(jobsPrefix):
 
             cmd = ['tail','-n100',job_log_file]
             outlog_tail_p = subprocess.Popen(cmd,stdout=subprocess.PIPE)
-            outlog_tail_p.wait()
-            final_outlog_lines = outlog_tail_p.stdout.readlines()
+            [stdout,stderr] = outlog_tail_p.communicate(None)
+            final_outlog_lines = stdout.split('\n')
 
             for l in final_outlog_lines:
                 if 'process killed (SIGTERM)' in l:

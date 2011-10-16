@@ -12,13 +12,15 @@ import subprocess
 
 def readjob(jobfile):
 
+    j = None
     if (not(os.path.exists(jobfile))):
-        raise Exception('ERROR: job file not found')
-    g = open(jobfile,'r')
-    try:
-        j = pickle.load(g)
-    finally:
-        g.close()
+        print('WARNING: job file not found')
+    else:
+        g = open(jobfile,'r')
+        try:
+            j = pickle.load(g)
+        finally:
+            g.close()
         
     return j
 
@@ -84,32 +86,41 @@ def queue_job(mode, j):
 def submit_job(job,email,walltime,mode,ppn,overwrite):
     
     if (type(job) is str):
-        j = readjob(job)
+        try:
+            j = readjob(job)
+        except ImportError:
+            j = None
+        if (j is None):
+            #maybe j is a text file listing jobs to resubmit
+            if os.path.exists(job):
+                try:
+                    f = open(job)
+                    names = f.readlines()
+                    names = [os.path.join(os.path.expandvars('$GC_JOBS'),
+                                          n.strip(),'%s.gcpl' % n.strip()) for n in names]
+                    print names
+                    jobs = [readjob(n) for n in names]
+                finally:
+                    f.close()
+        else:
+            jobs = [j]
     else:
-        j = job
+        jobs = [job]
 
-    j.assertCanStage()
-    write_jobscript(j,email,j.serialFile,walltime,ppn,overwrite)
+    for j in jobs:
+        j.assertCanStage()
+        write_jobscript(j,email,j.serialFile,walltime,ppn,overwrite)
     
-    queue_job(mode,j)
+        queue_job(mode,j)
 
     
-def main():
+def main(job_files=None):
 
-    USAGE="submit_GC_job.sh <job_file> <walltime> <mode> [<ppn>] [-overwrite]"
-
-    #
-    # set user-specific stuff
-    #
-
-    EMAIL='gladish@cims.nyu.edu'
-    ppn = 4
-    OVERWRITE = False
-    
     #
     # trap incorrect number of arguments
     #
-
+    
+    USAGE="submit_GC_job.sh <job_file> <walltime> <mode> [<ppn>] [-overwrite]"
     if (len(sys.argv) < 4 ):
         print('ERROR: incorrect number of arguments')
         print(USAGE)
@@ -118,7 +129,11 @@ def main():
     #
     # set variables
     #
-
+    
+    EMAIL='gladish@cims.nyu.edu'
+    ppn = 4
+    OVERWRITE = False
+    
     JOB=sys.argv[1]
     print('%s: %s' % ('jobfile', JOB))
     WALLTIME=sys.argv[2]
