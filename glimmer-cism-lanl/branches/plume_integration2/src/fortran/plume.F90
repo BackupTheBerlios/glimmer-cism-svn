@@ -2683,9 +2683,9 @@ contains
 
           ! skipping u calculation if northern/southern cells are dry land
           ! would be a no-slip condition
-          if (any(jcs(i:i+1,k+1) == 0) .or. any(jcs(i:i+1,k-1) == 0)) then
-             skip_u_calc = .true.
-          end if
+          !if (any(jcs(i:i+1,k+1) == 0) .or. any(jcs(i:i+1,k-1) == 0)) then
+          !   skip_u_calc = .true.
+          !end if
 
 	  if (i == icalcen) then
              ! the last column of u grid is not part of the problem
@@ -2981,9 +2981,9 @@ contains
 
           ! skipping v calculation if eastern/western cells are dry land
           ! would be a no-slip condition
-          if (any(jcs(i-1,k:k+1) == 0) .or. any(jcs(i+1,k:k+1) == 0)) then
-             skip_v_calc = .true.
-          end if
+          !if (any(jcs(i-1,k:k+1) == 0) .or. any(jcs(i+1,k:k+1) == 0)) then
+          !   skip_v_calc = .true.
+          !end if
 
 	  if (k == kcalcen) then
              ! last row of v is not part of the problem domain
