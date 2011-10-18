@@ -293,7 +293,6 @@ contains
     integer :: i
     open(famb,file='ambout')    
     do i=1,namb
-!        write(famb,*) depth(i),tamb(i),ttt(i),samb(i),rhovf(i),rhopot(i)
 	write(famb,"(4f16.4)") depth(i),tamb(i),samb(i),rhovf(i)
     end do
     close(famb)
@@ -322,8 +321,8 @@ contains
     do i = 1,m_grid
        do k = 1,n_grid
           zc =  wcdep + gldep - ipos(i,k) 
-          izo = int(zc/dzincr) + 1
-          izu = izo + 1
+          izo = floor(zc/dzincr) + 1
+          izu = ceiling(zc/dzincr) + 1
           difu = dble(izo)*dzincr - zc
           difo = dzincr - difu
           tambz = (difu*tamb(izo) + difo*tamb(izu))/dzincr
@@ -520,8 +519,8 @@ contains
     do i = 1,m_grid
        do k = 1,n_grid
           depth = wcdep + gldep - ipos(i,k) - 5.0d-1*pdep(i,k)
-          izo = int(depth/dzincr) + 1
-          izu = izo + 1
+          izo = floor(depth/dzincr) + 1
+          izu = ceiling(depth/dzincr) + 1
           difu = dble(izo)*dzincr - depth
           difo = dzincr - difu
           rhoatmp = (difu*rhovf(izo)+difo*rhovf(izu))/dzincr

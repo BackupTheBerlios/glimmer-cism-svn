@@ -45,6 +45,7 @@ program shelf_driver
   logical :: check_for_steady = .false.
   logical :: doCrossShelfAvg = .false.
   logical :: hide_shelf_inflow_row = .true.
+
   real(kind=dp) :: thk_steady_tol = 1.0e-2
   real(kind=dp) :: mean_thk_steady_tol = 1.0e-6
   real(kind=dp) :: mean_rel_thk_change = 0.d0
@@ -55,7 +56,7 @@ program shelf_driver
 
   integer :: ice_ntimestep = 0	
 
-  real(kind=rk),dimension(:),allocatable :: upstream_thck
+  real(kind=rk),dimension(:,:),allocatable :: upstream_thck
   logical,      dimension(:,:),allocatable :: plume_land_mask,no_plume
   real(kind=dp),dimension(:,:),allocatable :: plume_lsrf_ext,plume_ice_dz,plume_t_interior
   real(kind=dp),dimension(:,:),allocatable :: plume_bmelt_out, plume_btemp_out
@@ -121,9 +122,10 @@ program shelf_driver
   !initialise ice temperature to air temperature
   call timeevoltemp(model,0)
 
-  allocate(upstream_thck(model%general%ewn-2*thk_zero_margin))
-  upstream_thck = model%geometry%thck(thk_zero_margin+1:model%general%nsn-thk_zero_margin,&
-                                      1)  !south edge is inflow
+  allocate(upstream_thck(model%general%ewn-2*thk_zero_margin,1))
+  upstream_thck(:,1) = &
+       model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+       	                   1)  !south edge is inflow
 
   ! fill dimension variables
   call glide_nc_fillall(model)
@@ -133,6 +135,7 @@ program shelf_driver
   if ((model%options%use_plume == USE_PLUME) .and. .not. plume_const_bmlt) then
      ! we are using the plume
 
+     ! these are plume grid fields
      allocate(plume_land_mask(  model%general%ewn+2*fake_landw, &
           model%general%nsn+1*fake_landw))
      allocate(plume_lsrf_ext(   model%general%ewn+2*fake_landw, &
@@ -162,22 +165,24 @@ program shelf_driver
         no_plume(:,1) = .true.    !hide southern row of ice
      end if
 
-     call write_logical_plume_array(no_plume, &
-          plume_land_mask, .true., &
-          model%general%ewn, model%general%nsn, fake_landw)
-
-     call write_real_plume_array(model%geometry%lsrf *thk0, plume_lsrf_ext, 0.0, &
+     call write_logical_plume_array(no_plume,plume_land_mask, .true., &
           model%general%ewn, model%general%nsn, fake_landw,fake_landw)
 
-     call write_real_plume_array( model%temper%temp(model%general%upn-1,:,:), &
-          plume_t_interior, 0.0, &
+     call write_real_plume_array(model%geometry%lsrf*thk0, plume_lsrf_ext, 0.d0, &
+          model%general%ewn, model%general%nsn, fake_landw, fake_landw)
+
+     !must be explicit about model%temper%temp array bounds, since it has extra cells
+     call write_real_plume_array( model%temper%temp(model%general%upn-1, &
+                                                    1:model%general%ewn, &
+                                                    1:model%general%nsn), &
+          plume_t_interior, 0.d0, &
           model%general%ewn, model%general%nsn, fake_landw,fake_landw)
 
      call write_real_plume_array((model%numerics%sigma(model%general%upn) - &
-          model%numerics%sigma(model%general%upn -1)) * &
-          model%geometry%thck * thk0, &
-          plume_ice_dz, 0.0, &
-          model%general%ewn, model%general%nsn, fake_landw,fake_landw)   
+                                  model%numerics%sigma(model%general%upn -1)) * &
+                                  model%geometry%thck * thk0, &
+                                  plume_ice_dz, 0.d0, &
+                                  model%general%ewn, model%general%nsn, fake_landw,fake_landw)   
 
      call plume_logging_initialize(trim(plume_ascii_output_dir), &
           trim(plume_output_prefix), &
@@ -224,9 +229,11 @@ program shelf_driver
      call homotopy_bmlt(plume_bmelt_out,time,model%numerics%tstart*1.d0)
 
      call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
-          model%general%ewn, model%general%nsn, fake_landw)
-     call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
-          model%general%ewn, model%general%nsn, fake_landw)
+          model%general%ewn, model%general%nsn, fake_landw,fake_landw)
+     call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn, &
+                                                                 1:model%general%ewn, &
+                                                                 1:model%general%nsn), &
+          model%general%ewn, model%general%nsn, fake_landw,fake_landw)
 
   end if
 
@@ -246,12 +253,10 @@ program shelf_driver
   end if
 
   allocate(prev_ice_thk(model%general%ewn,model%general%nsn))
-  prev_ice_thk = 0.0
+  prev_ice_thk = 0.d0
 
-  model%geometry%thck(1:thk_zero_margin , &
-                      :) = 0.0_dp
-  model%geometry%thck(model%general%ewn-(thk_zero_margin-1):model%general%ewn, &
-                      :) = 0.0_dp
+  model%geometry%thck(1:thk_zero_margin ,:) = 0.0_dp
+  model%geometry%thck(model%general%ewn-(thk_zero_margin-1):model%general%ewn,:) = 0.0_dp
 
   do while(time .le. model%numerics%tend  .and. &
        .not. (check_for_steady .and. is_steady))
@@ -260,21 +265,30 @@ program shelf_driver
      model%climate%artm(:,:) = climate_cfg%artm
      model%climate%eus = climate_cfg%eus
 
+     print *, 'beginning tstep_p1'
      call glide_tstep_p1(model,time) ! temp evolution
+
+     print *, 'beginning tstep_p2'
      call glide_tstep_p2(model)      ! velocities, thickness advection
 
+     print *, 'zeroing out marginal thickness values'
      ! adjust the heights in the upstream row
      model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                         1  ) = upstream_thck + inflow_thk_perturb(time)
+                         1  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
 
      model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                         2  ) = upstream_thck + inflow_thk_perturb(time)
+                         2  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
+
+     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+                         3  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
     
      ! and therefore zero out the thck_t values
      model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
                            1  ) = 0.d0
      model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                             2) = 0.d0
+                           2  ) = 0.d0
+     model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+                           3  ) = 0.d0
 
 
      ! impose dh/dx = 0 along the lateral side walls
@@ -285,17 +299,7 @@ program shelf_driver
 !     model%geometry%thck(model%general%ewn,:) = model%geometry%thck(model%general%ewn-1,:)
 !     model%geometry%thck(                1,:) = model%geometry%thck(                  2,:)
 
-
-     ! set the velocities in front of the shelf to the inflow velocity, for nice
-     ! plotting purposes only
-
-!     model%velocity_hom%vvel(:,:,model%general%nsn-1) = model%velocity_hom%vvel(:,:,1)
-!     model%velocity_hom%vvel(:,:,model%general%nsn-2) = model%velocity_hom%vvel(:,:,1)
-!     model%velocity_hom%vvel(:,:,model%general%nsn-3) = model%velocity_hom%vvel(:,:,1)
-
-     model%geometry%thck(:,model%general%nsn-4) = model%geometry%thck(:,model%general%nsn-5)
-     model%geometry%thck_t(:, model%general%nsn-4) = 0.d0
-
+     print *, 'beginning tstep_p3'
      call glide_tstep_p3(model)      ! isostasy, upper/lower surfaces
 
      mean_rel_thk_change = abs(sum(model%geometry%thck_t)/ &
@@ -337,25 +341,24 @@ program shelf_driver
         end if
 
 	if (hide_shelf_inflow_row) then
-!	       no_plume(:, model%general%nsn) = .true.
 	       no_plume(:, 1) = .true.
 	end if
 
-        call write_logical_plume_array(   no_plume,  &
-             plume_land_mask, .true.,&
-             model%general%ewn, model%general%nsn, fake_landw)
-
-        call write_real_plume_array(model%geometry%lsrf *thk0, &
-             plume_lsrf_ext, 0.0, &                              
+        call write_logical_plume_array(   no_plume, plume_land_mask, .true.,&
              model%general%ewn, model%general%nsn, fake_landw,fake_landw)
-        call write_real_plume_array( model%temper%temp(model%general%upn-1,:,:), &
-             plume_t_interior, 0.0, &
+
+        call write_real_plume_array(model%geometry%lsrf *thk0, plume_lsrf_ext, 0.d0, &                              
+             model%general%ewn, model%general%nsn, fake_landw,fake_landw)
+        call write_real_plume_array( model%temper%temp(model%general%upn-1, &
+                                                       1:model%general%ewn, &
+                                                       1:model%general%nsn), &
+             plume_t_interior, 0.d0, &
              model%general%ewn, model%general%nsn, fake_landw,fake_landw)
 
         call write_real_plume_array((model%numerics%sigma(model%general%upn) - &
-             model%numerics%sigma(model%general%upn -1)) * &
-             model%geometry%thck * thk0, &
-             plume_ice_dz, 0.0, &
+                                     model%numerics%sigma(model%general%upn -1)) * &
+                                     model%geometry%thck * thk0, &
+             plume_ice_dz, 0.d0, &
              model%general%ewn, model%general%nsn, fake_landw,fake_landw)
 
         if (doCrossShelfAvg) then
@@ -396,9 +399,11 @@ program shelf_driver
 	call homotopy_bmlt(plume_bmelt_out,time,model%numerics%tstart*1.d0)
 
         call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
-             model%general%ewn, model%general%nsn, fake_landw)
-        call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn,:,:), &
-             model%general%ewn, model%general%nsn, fake_landw)
+             model%general%ewn, model%general%nsn, fake_landw,fake_landw)
+        call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn, &
+	                                                            1:model%general%ewn, &
+							            1:model%general%nsn), &
+	                          model%general%ewn, model%general%nsn, fake_landw,fake_landw)
 	     
 	end if
      end if
@@ -460,37 +465,37 @@ contains
 	
   end subroutine homotopy_bmlt
 
-  subroutine write_real_plume_array(a_in,a_out,padding_val, m,n,pad_ew,pad_s)
+  subroutine write_real_plume_array(a_in,a_out,padding_val, in_m,in_n,padw,pads)
 
     real(kind=dp),dimension(:,:),intent(in) :: a_in
     real(kind=dp),dimension(:,:),intent(out):: a_out
-    real,                        intent(in) :: padding_val
-    integer,                     intent(in) :: m,n,pad_ew,pad_s
+    real(kind=dp),               intent(in) :: padding_val
+    integer,                     intent(in) :: in_m,in_n,padw,pads
 
     a_out = padding_val
-    a_out( (1+pad_ew):(m+pad_ew), (1+pad_s):(n+pad_s) ) = a_in
+    a_out( (1+padw):(in_m+padw), (1+pads):(in_n+pads) ) = a_in
 
   end subroutine write_real_plume_array
 
-  subroutine write_logical_plume_array(a_in,a_out,padding_val, m,n,padw)
+  subroutine write_logical_plume_array(a_in,a_out,padding_val, in_m,in_n,padw,pads)
 
     logical,dimension(:,:),intent(in) :: a_in
     logical,dimension(:,:),intent(out):: a_out
     logical,               intent(in) :: padding_val
-    integer,               intent(in) :: m,n,padw
+    integer,               intent(in) :: in_m,in_n,padw,pads
 
     a_out = padding_val
-    a_out( (1+padw) : (m+padw), (1+padw):(n+padw) ) = a_in
+    a_out( (1+padw) : (in_m+padw), (1+pads):(in_n+pads) ) = a_in
 
   end subroutine write_logical_plume_array
 
-  subroutine write_real_ice_array(a_in,a_out, m,n,padw)
+  subroutine write_real_ice_array(a_in,a_out, in_m,in_n,padw,pads)
 
     real(kind=dp),dimension(:,:),intent(in) :: a_in
     real(kind=dp),dimension(:,:),intent(out):: a_out
-    integer,                     intent(in) :: m,n,padw
+    integer,                     intent(in) :: in_m,in_n,padw,pads
 
-    a_out = a_in( (1+padw):(m+padw), (1+padw):(n+padw) )
+    a_out = a_in( (1+padw):(in_m+padw), (1+pads):(in_n+pads) )
 
   end subroutine write_real_ice_array
 

@@ -1368,7 +1368,7 @@ contains
        else
           pdep = bpos - ipos
        end if
-
+       pdep = min(plume_max_thickness,pdep)
     
        ! set field for wet/dry points (jcw)
        where (pdep >= dcr) jcw = 1
@@ -1379,7 +1379,10 @@ contains
     ! (used when considering newly-wet cells)
 
     zd = max(0.d0,wcdep + gldep - bpos)
-
+    if (any(zd > wcdep+gldep)) then
+       print *, 'invalid depth ', zd
+       stop 1
+    end if
 
     rhoa = get_rhoamb_z(zd)
     rhoamb = rhoa
@@ -1480,8 +1483,6 @@ contains
 
     end do
 
-    print *, 'ahdx', ahdx(25,:)
-    print *, 'khgrid', khgrid(25,:)
 
   end subroutine grid_set
 
@@ -2816,6 +2817,9 @@ contains
              zu = wcdep + gldep - 5.0d-1*(ipos(i,k) + ipos(i+1,k))
              zum = zu - 5.0d-1*pdepu      
 
+	     zu = max(0.d0, zu)
+	     zu = min(zu, wcdep+gldep)
+
 	     rhoa  = get_rhoamb_z(zu)
 
       ! density of water fraction
@@ -3086,6 +3090,9 @@ contains
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           zv = wcdep + gldep - 5.0d-1*(ipos(i,k) + ipos(i,k+1))
           zvm = zv - 5.0d-1*pdepv     
+
+	  zv = max(0.d0, zv)
+          zv = min(zv, wcdep+gldep)
 
 	  rhoa = get_rhoamb_z(zv)
 
@@ -3715,7 +3722,7 @@ contains
 
        if (frazil) then
           do i = domain_imin,domain_imax
-             ctot(i,domain_kmin) = ctot(i,domain_kmin+1)                          
+             ctot(i,domain_kmin) = ctot(i,domain_kmin+1)                     
              do l = 1,nice
 		c_ice(i,domain_kmin,l) = c_ice(i,domain_kmin+1,l)
 		ca_ice(i,domain_kmin,l) = ca_ice(i,domain_kmin+1,l)
@@ -4050,6 +4057,10 @@ contains
        do k = kcalcan,kcalcen
           if (jcs(i,k).ne.1) cycle
           zd = gldep + wcdep - ipos(i,k)
+	  if (zd > gldep+wcdep .or. zd < 0.d0) then
+	     print *, 'zd out of range', zd
+	     stop 1
+          end if
           rhoamb(i,k) = get_rhoamb_z(zd)
        end do
     end do
@@ -4902,6 +4913,10 @@ contains
           if (pdep(i,k).gt.dcr) then
 
              depth = wcdep + gldep - ipos(i,k) - 5.0d-1*pdep(i,k)
+             if (depth < 0.d0 .or. depth > wcdep+gldep) then
+                print *, 'invalid depth, density gradient', depth
+                stop 1 
+             end if
 	     rhoatmp = get_rhoamb_z(depth)
 
              if ((rhoatmp + septol < rhop(i,k)).and. &
@@ -4920,28 +4935,21 @@ contains
 
   end subroutine rho_calc
 
-!  elemental real(kind=kdp) function get_rhoamb_z(z)
-
-!    implicit none
-!    real(kind=kdp),intent(in) :: z ! depth at which rhoamb is sought
-
-!    get_rhoamb_z = rhovf(1)
-    
-!  end function get_rhoamb_z
-
-   elemental real(kind=kdp) function get_rhoamb_z(z)
+  elemental real(kind=kdp) function get_rhoamb_z(z)
 
     implicit none
 
     real(kind=kdp),intent(in) :: z !depth at which rhoamb is sought
-
+    real(kind=kdp) :: z1  
     integer :: izo,izu
     real(kind=kdp) :: difu,difo
     character(128) :: error_message
+   
+    z1 = min(wcdep+gldep,z)
 
-    izo = int(z/dzincr) + 1
-    izu = izo + 1
-    difu = dble(izo)*dzincr - z
+    izo = floor(z1/dzincr)+1
+    izu = ceiling(z1/dzincr)+1
+    difu = dble(izo)*dzincr - z1
     difo = dzincr - difu
 
     get_rhoamb_z = (difu*rhovf(izo) + difo*rhovf(izu))/dzincr
@@ -4951,13 +4959,16 @@ contains
   elemental real(kind=kdp) function get_tamb_z(z)
     implicit none
     real(kind=kdp),intent(in) :: z ! depth at which tamb is sought
+    real(kind=kdp) :: z1
 
     integer :: izo,izu
     real(kind=kdp) :: difu,difo
 
-    izo = int(z/dzincr) + 1
-    izu = izo + 1
-    difu = dble(izo)*dzincr - z
+    z1 = min(wcdep+gldep,z)
+
+    izo = floor(z1/dzincr) + 1
+    izu = ceiling(z1/dzincr) + 1
+    difu = dble(izo)*dzincr - z1
     difo = dzincr - difu
     get_tamb_z = (difu*tamb(izo) + difo*tamb(izu))/dzincr
 
@@ -4966,13 +4977,16 @@ contains
   elemental real(kind=kdp) function get_samb_z(z)
     implicit none
     real(kind=kdp),intent(in) :: z
+    real(kind=kdp) :: z1
 
     integer :: izo,izu
     real(kind=kdp) :: difu,difo
 
-    izo = int(z/dzincr) + 1
-    izu = izo + 1
-    difu = dble(izo)*dzincr - z
+    z1 = min(wcdep+gldep,z)
+
+    izo = floor(z1/dzincr) + 1
+    izu = ceiling(z1/dzincr) + 1
+    difu = dble(izo)*dzincr - z1
     difo = dzincr - difu
     get_samb_z = (difu*samb(izo) + difo*samb(izu))/dzincr	    
 

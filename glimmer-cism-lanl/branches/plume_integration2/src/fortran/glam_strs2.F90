@@ -505,7 +505,6 @@ subroutine glam_velo_fordsiapstr(model,time,dt, &
     end if
 ! >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-    counter = counter + 1   ! advance the iteration counter
 
     ! output the iteration status: iteration number, max residual, and location of max residual
     ! (send output to the screen or to the log file, per whichever line is commented out) 
@@ -513,9 +512,9 @@ subroutine glam_velo_fordsiapstr(model,time,dt, &
     !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), picard_params%minres
     !call write_log (message)
 
-
+    counter = counter + 1   ! advance the iteration counter
     
-    ! increment time counter
+! increment time counter
 !    model%numerics%timecounter = model%numerics%timecounter + 1
 !    call glide_io_writeall(model,model,atend=.true.,time=(model%numerics%time+1.0*counter))
 
