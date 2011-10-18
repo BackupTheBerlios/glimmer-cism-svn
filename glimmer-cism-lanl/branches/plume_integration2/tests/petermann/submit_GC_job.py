@@ -11,7 +11,7 @@ import subprocess
 
 
 def readjob(jobfile):
-
+    #jobfile should be a .gcpl file 
     j = None
     if (not(os.path.exists(jobfile))):
         print('WARNING: job file not found')
@@ -84,35 +84,32 @@ def queue_job(mode, j):
 	    raise Exception("Error running qsub")
 
 def submit_job(job,email,walltime,mode,ppn,overwrite):
-    
+    #job should be the name of a .gcpl file, or else an actually job object
     if (type(job) is str):
-        try:
-            j = readjob(job)
-        except ImportError:
-            j = None
-        if (j is None):
-            #maybe j is a text file listing jobs to resubmit
-            if os.path.exists(job):
-                try:
-                    f = open(job)
-                    names = f.readlines()
-                    names = [os.path.join(os.path.expandvars('$GC_JOBS'),
-                                          n.strip(),'%s.gcpl' % n.strip()) for n in names]
-                    print names
-                    jobs = [readjob(n) for n in names]
-                finally:
-                    f.close()
-        else:
-            jobs = [j]
+        j = readjob(job)
     else:
-        jobs = [job]
+        j = job
+    j.assertCanStage()
+    write_jobscript(j,email,j.serialFile,walltime,ppn,overwrite)
+    queue_job(mode,j)
 
-    for j in jobs:
-        j.assertCanStage()
-        write_jobscript(j,email,j.serialFile,walltime,ppn,overwrite)
+#def submit_job(job,email,walltime,mode,ppn,overwrite):
+#    print "submitting %s" % str(job)
     
-        queue_job(mode,j)
+def glob_jobs(joblistfile):
+    #joblistfile is the name of a textfile
+    joblist = []
 
+    if os.path.exists(joblistfile):
+        f = open(joblistfile)
+        names = f.readlines()
+        f.close()
+        names = [os.path.join(os.path.expandvars('$GC_JOBS'),
+                              n.strip(),'%s.gcpl' % n.strip()) for n in names]
+        if (reduce((lambda x,y:x and y),[os.path.exists(n) for n in names],True)):
+            joblist = names
+
+    return joblist
     
 def main(job_files=None):
 
@@ -158,8 +155,13 @@ def main(job_files=None):
         
     print('%s: %s' % ('ppn', ppn))
     print('%s: %s' % ('overwrite', OVERWRITE))
-    
-    submit_job(JOB,EMAIL,WALLTIME,MODE,ppn,OVERWRITE)
+
+    gjobs = glob_jobs(JOB)
+    if gjobs:
+        for j in gjobs:
+            submit_job(j,EMAIL,WALLTIME,MODE,ppn,OVERWRITE)
+    else:
+        submit_job(JOB,EMAIL,WALLTIME,MODE,ppn,OVERWRITE)
 
 
 if __name__ == '__main__':
