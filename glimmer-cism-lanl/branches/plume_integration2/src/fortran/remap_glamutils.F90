@@ -58,13 +58,13 @@ module remap_glamutils
       if (periodic_ew) then
         wk%ewn_ir = ewn + 2
      else
-        wk%ewn_ir = ewn + 4
+        wk%ewn_ir = ewn-1
       end if
 
       if (periodic_ns) then
         wk%nsn_ir = nsn + 2
       else
-        wk%nsn_ir = nsn + 4
+        wk%nsn_ir = nsn-1
       end if
 
       ! allocate arrays/vars 
@@ -133,7 +133,6 @@ module remap_glamutils
 
     ! Number of *extra* ghost cells in ew, ns directions 
     ! (depending on whether periodic bcs are enabled) 
-    integer  :: ngew, ngns 
 
 
     ! NOTE: number of tracers to be mapped (must be >1, even though for 
@@ -147,10 +146,12 @@ module remap_glamutils
     ewn = size(thck, 1)
     nsn = size(thck, 2)
 
-    ngew = (wk%ewn_ir - ewn)/2
-    ngns = (wk%nsn_ir - nsn)/2
-    
-    wk%thck_ir(1+ngew:ngew+ewn,1+ngns:ngns+nsn,1) = thck(:,:)*thk0
+    if ((wk%ewn_ir .ne. ewn)  .or.  (wk%nsn_ir .ne. nsn)) then
+	print *, 'mismatch in array sizes in remap_in'
+	stop 1
+    end if
+
+    wk%thck_ir(:,:,1) = thck(:,:)*thk0
     wk%dew_ir(:,:,1)  = dew*len0; wk%dns_ir(:,:,1) = dns*len0
     wk%dewt_ir(:,:,1) = dew*len0; wk%dnst_ir(:,:,1) = dns*len0
     wk%dewu_ir(:,:,1) = dew*len0; wk%dnsu_ir(:,:,1) = dns*len0
@@ -177,16 +178,16 @@ module remap_glamutils
     ! ok (compiles and produces expected output) with some compilers 
     ! (ie gfortran and sun f90) but not with others (ie g95).  
     where(stagthck > 0.0_dp )
-        wk%ubar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = uflx/stagthck*vel0;
-        wk%vbar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = vflx/stagthck*vel0;
+        wk%ubar_ir(:,:,1) = uflx/stagthck*vel0;
+        wk%vbar_ir(:,:,1) = vflx/stagthck*vel0;
     elsewhere
-        wk%ubar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = 0.0_dp
-        wk%vbar_ir(1+ngew:ngew+ewn-1,1+ngns:ngns+nsn-1,1) = 0.0_dp
+        wk%ubar_ir(:,:,1) = 0.0_dp
+        wk%vbar_ir(:,:,1) = 0.0_dp
     endwhere
 
-    call periodic_boundaries(wk%thck_ir(:,:,1), periodic_ew, periodic_ns, 2)
-    call periodic_boundaries(wk%ubar_ir(:wk%ewn_ir-1,:wk%nsn_ir-1,1), periodic_ew, periodic_ns, 2)
-    call periodic_boundaries(wk%vbar_ir(:wk%ewn_ir-1,:wk%nsn_ir-1,1), periodic_ew, periodic_ns, 2)
+!    call periodic_boundaries(wk%thck_ir(:,:,1), periodic_ew, periodic_ns, 2)
+!    call periodic_boundaries(wk%ubar_ir(:wk%ewn_ir-1,:wk%nsn_ir-1,1), periodic_ew, periodic_ns, 2)
+!    call periodic_boundaries(wk%vbar_ir(:wk%ewn_ir-1,:wk%nsn_ir-1,1), periodic_ew, periodic_ns, 2)
 
     !*tjb* Copy the extra set of ghost cells over
     !Hard coded 5 as the source for these ghost cells,
@@ -241,18 +242,18 @@ module remap_glamutils
     real (kind = dp), dimension(:,:), intent(inout) :: thck
     logical, intent(in) :: periodic_ew, periodic_ns
 
-    integer :: ewn, nsn, ngew, ngns
+    integer :: ewn, nsn   !, ngew, ngns
 
     ewn = size(thck, 1)
     nsn = size(thck, 2)
-
-    ngew = (wk%ewn_ir - ewn)/2
-    ngns = (wk%nsn_ir - nsn)/2
-
-    call periodic_boundaries(wk%thck_ir(:,:,1), periodic_ew, periodic_ns, 2)
+ 
+    if ((ewn .ne. wk%ewn_ir) .or. (nsn .ne. wk%nsn_ir)) then
+	print * ,'remap array size does not match glide array'
+	stop 1
+    end if
 
     !Map from IR thickness field back to Glide thickness field
-    thck = wk%thck_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn,1) / thk0
+    thck = wk%thck_ir(:,:,1) / thk0
     
     !Apply accumulation
     thck = thck + acab * dt
@@ -268,7 +269,7 @@ module remap_glamutils
     ! (previously) ice free grid cell would be suspect anyway. Nevertheless, this
     ! should probably be added as a config file option (apply the mask or not) if
     ! only to remind us that we are making that choice at present. 
-    thck = thck * wk%mask_ir(1+ngew:ngew+ewn, 1+ngns:ngns+nsn)
+    thck = thck * wk%mask_ir
     
     end subroutine horizontal_remap_out
 

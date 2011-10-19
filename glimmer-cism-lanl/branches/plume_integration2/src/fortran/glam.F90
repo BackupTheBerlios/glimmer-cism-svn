@@ -61,8 +61,8 @@ module glam
         ! (this subroutine lives in "remap_glamutils.F90")
 
         call horizontal_remap_in(model%remap_wk, model%numerics%dt,                               &
-                                  model%geometry%thck,&
-!                                 model%geometry%thck(1:model%general%ewn-1,1:model%general%nsn-1),&
+                                 model%geometry%thck(1:model%general%ewn-1,&
+                                                     1:model%general%nsn-1),&
                                  ntrace_ir,               nghost_ir,                             &
                                  model%numerics%dew,      model%numerics%dns,                    &
                                  model%velocity_hom%uflx, model%velocity_hom%vflx,               &
@@ -83,10 +83,14 @@ module glam
 
         ! put output from inc. remapping code back into format that model wants
         ! (this subroutine lives in "remap_glamutils.F90")
-        call horizontal_remap_out (model%remap_wk, model%geometry%thck,    &
-                                   model%climate%acab,model%temper%bmlt, model%numerics%dt, &
+        call horizontal_remap_out (model%remap_wk, &
+                                   model%geometry%thck(1:model%general%ewn-1,1:model%general%nsn-1),&
+                                   model%climate%acab(1:model%general%ewn-1, &
+	                                              1:model%general%nsn-1), &
+                                   model%temper%bmlt(1:model%general%ewn-1, &
+	                                             1:model%general%nsn-1), &
+                                   model%numerics%dt, &
                                    model%options%periodic_ew, model%options%periodic_ns)
-
 
         ! now calculate the relative change in thickness
 
