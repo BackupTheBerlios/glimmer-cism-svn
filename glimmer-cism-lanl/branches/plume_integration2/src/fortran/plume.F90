@@ -2040,11 +2040,10 @@ contains
                                             0.5d0*local_tidal_speed(i,k)**2.d0) +  &
                                  u_star_offset**2.d0)
                    lambda = u_star / f
-                   delta_b = grav*(- alpha*(btemp(i,k)-temp(i,k)) &
+                   delta_b = grav*(- alpha*(btemp(i,k)-temp(i,k)) &  !note, alpha is negative
                                     - beta*(bsalt(i,k)-salt(i,k)) )
                    Bh = bmelt(i,k)*delta_b
                    mon_obu_stab = min(pdep(i,k)*Bh/(u_star ** 3.d0), gaspar_cutoff)
-!                   debug3(i,k) = mon_obu_stab
                    h_over_l = a1 + a2*max(1.d0,pdep(i,k)/(0.4d0*lambda))* &
                                       exp(mon_obu_stab)
                    h_over_lp= a1 + a2*exp(mon_obu_stab)
@@ -2088,30 +2087,16 @@ contains
                    u_star = sqrt(drag(i,k)*(bspeed(i,k)**2.d0 + &
                                             0.5d0*local_tidal_speed(i,k)**2.d0) + &
                                  u_star_offset**2.d0) + small
-                   delta_b_upper = grav*(- alpha*(btemp(i,k)-temp(i,k)) &
+                   delta_b_upper = grav*(- alpha*(btemp(i,k)-temp(i,k)) &  !note, alpha is negative
                                          -  beta*(bsalt(i,k)-salt(i,k)) )
                    delta_b_lower = grav*(- alpha*(temp(i,k)-atemp(i,k)) &
-                                         - beta*(salt(i,k)-asalt(i,k)) )
+                                         - beta *(salt(i,k)-asalt(i,k)) )
 
-                   !when melting at the ice interface, we are creating two
-	           ! buoyancy fluxes:
-	           ! 1. The flux of heat from the mixed layer into the 
-	           !    interface to warm the ice to the melting point and
-	           !    to supply the latent heat of fusion needed to melt 
-	           !    the ice.
-	           ! 2. The meltwater which is immediately mixed down into 
-	           !    the mixed layer is a buoyancy flux.
-
-		   heat_flux = (rhoi*lat + rhoi*ci*(btemp(i,k)-tint(i,k)))
-		   heat_flux = (rhoi*ci*(btemp(i,k)-tint(i,k)))
-	           buoyancy_flux_heat = -alpha*heat_flux/(c0*rho0)
-!                   debug3(i,k) = buoyancy_flux_heat/delta_b_upper
-                   Bh = bmelt(i,k)*(-buoyancy_flux_heat + &
-                                    delta_b_upper)
-	
+		   Bh = bmelt(i,k)*delta_b_upper    !positive when bmelt >0 and delta_b_upper > 0
 		   entr(i,k) = (1.d0/(pdep(i,k)*delta_b_lower)) * &
-		       (2.d0*nk_m*u_star**3.d0 &
-                         -0.5d0*pdep(i,k)*((1-nk_n)*abs(Bh)+(1+nk_n)*Bh))
+		               (2.d0*nk_m*u_star**3.d0 &
+                               -0.5d0*pdep(i,k)*((1-nk_n)*abs(Bh)+(1+nk_n)*Bh)) !Bh is > 0, so nk_n
+						                                ! doesn't matter
 
 		   if (entr(i,k) < 0.d0) then
 			entr(i,k) = 0.d0
@@ -2366,9 +2351,6 @@ contains
              if (entype == 5) then
 
                 call ZM_1996_thickness(i,k,ZM_h, h_formula, h_f, h_B)
-                !debug(i,k)  = h_formula
-                debug2(i,k) = h_B
-!                debug3(i,k) = h_f
                 thk_def(i,k) = ZM_h - pdep(i,k)
 
              else if (entype == 6) then
@@ -2427,14 +2409,16 @@ contains
                                        - beta*(bsalt(i,k)-salt(i,k)) )
                  delta_b_lower = grav*(-alpha*(temp(i,k)-atemp(i,k)) &
                                        - beta*(salt(i,k)-asalt(i,k)) )
-                 heat_flux = (rhoi*lat + rhoi*ci*(btemp(i,k)-tint(i,k)))
-	         buoyancy_flux_heat = -alpha*heat_flux/(c0*rho0)
-                 Bh = bmelt(i,k)*(-buoyancy_flux_heat + &
-                                   delta_b_upper)
+                 Bh = bmelt(i,k)*delta_b_upper
 
-                 if (Bh .le. 0.d0) then
+                 if (Bh .lt. 0.d0) then
+	            ! negative (freezing) buoyancy source, shouldn't happen
+	            print *, 'negative buoyancy unexpected'
+		    stop 1
                     detrain_thk = plume_max_thickness
-                 else
+                 elseif (Bh .eq. 0.d0) then
+ 		    detrain_thk = plume_max_thickness
+ 		else
                     detrain_thk = 2.d0*nk_m*u_star**3.d0 / Bh 
                  end if
 

@@ -290,6 +290,12 @@ program shelf_driver
      model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
                            3  ) = 0.d0
 
+     ! set thickness in last row equal to the next upstream row.  This is
+     ! something like a calving condition, to keep the thickness from growing 
+     ! for reasons I don't understand **cvg***
+
+     model%geometry%thck(:,model%general%nsn-4) = model%geometry%thck(:,model%general%nsn-5)
+     model%geometry%thck_t(:,model%general%nsn-4) = 0.d0
 
      ! impose dh/dx = 0 along the lateral side walls
 
