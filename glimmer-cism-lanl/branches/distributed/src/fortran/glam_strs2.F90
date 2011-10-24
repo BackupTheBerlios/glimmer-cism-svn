@@ -139,9 +139,9 @@ subroutine dumpvels(name, uvel, vvel)
 
     if (distributed_execution) then
        if (this_rank == 0) then
-           write(*,*) name, "Proc 0 uvel & vvel (1,7:8,17:18)", uvel(1,7:8,17:18), vvel(1,7:8,17:18)
+           write(*,*) name, "Proc 0 uvel & vvel (1,7:8,16:17)", uvel(1,7:8,16:17), vvel(1,7:8,16:17)
        else
-           write(*,*) name, "Proc 1 uvel & vvel (1,7:8,2:3)", uvel(1,7:8,2:3), vvel(1,7:8,2:3)
+           write(*,*) name, "Proc 1 uvel & vvel (1,7:8,0:1)", uvel(1,7:8,0:1), vvel(1,7:8,0:1)
        endif
     else
        write(*,*) name, "Parallel uvel & vvel (1,5:6,15:16)", uvel(1,5:6,15:16), vvel(1,5:6,15:16)
@@ -467,13 +467,13 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     write(Looptime, '(i3.3)') overallloop
     loopnum = trim(loopnum)  ! Trying to get rid of spaces in name.
     Looptime = trim(Looptime)
-    call distributed_print("uvel_ov"//Looptime//"_pic"//loopnum//"_tsk", uvel)
+    call distributed_print("uvela_ov"//Looptime//"_pic"//loopnum//"_tsk", uvel)
 
-    call distributed_print("vvel_ov"//Looptime//"_pic"//loopnum//"_tsk", vvel)
+    call distributed_print("vvela_ov"//Looptime//"_pic"//loopnum//"_tsk", vvel)
 
     ! call dumpvels("Before findefvsstr", uvel, vvel)
 
-    call distributed_print("preefvs_ov"//Looptime//"_pic"//loopnum//"_tsk", efvs)
+    ! call distributed_print("preefvs_ov"//Looptime//"_pic"//loopnum//"_tsk", efvs)
 #endif
 
     ! calc effective viscosity using previously calc vel. field
@@ -552,8 +552,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, 2, uindx, answer, tvel, ghostbvel )
 
-#ifdef JEFFTEST
-    ! call dumpvels("After tvel", uvel, vvel)
+ #ifdef JEFFTEST
+    !call dumpvels("After tvel", uvel, vvel)
 
     !JEFF Debugging Output to see what differences in final vvel and tvel.
     call distributed_print("tvel_ov"//Looptime//"_pic"//loopnum//"_tsk", tvel)
@@ -681,15 +681,53 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     ! call plasticbediteration( ewn, nsn, uvel(upn,:,:), tvel(upn,:,:), btraction, minTauf, &
     !                          plastic_coeff_lhs, plastic_coeff_rhs, plastic_rhs, plastic_resid )
 
+#ifdef JEFFTEST
+    !JEFF Debugging Output to see what differences in final vvel and tvel.
+    write(loopnum,'(i3.3)') counter
+    write(Looptime, '(i3.3)') overallloop
+    loopnum = trim(loopnum)  ! Trying to get rid of spaces in name.
+    Looptime = trim(Looptime)
+    call distributed_print("uvelb_ov"//Looptime//"_pic"//loopnum//"_tsk", uvel)
+
+    call distributed_print("vvelb_ov"//Looptime//"_pic"//loopnum//"_tsk", vvel)
+#endif
+
     ! apply unstable manifold correction to converged velocities
     uvel = mindcrshstr(1,whichresid,uvel,counter,resid(1))
     vvel = mindcrshstr(2,whichresid,tvel,counter,resid(2))
 
-    ! call dumpvels("After mindcrsh", uvel, vvel)
+#ifdef JEFFTEST
+    !JEFF Debugging Output to see what differences in final vvel and tvel.
+    write(loopnum,'(i3.3)') counter
+    write(Looptime, '(i3.3)') overallloop
+    loopnum = trim(loopnum)  ! Trying to get rid of spaces in name.
+    Looptime = trim(Looptime)
+    call distributed_print("uvelc_ov"//Looptime//"_pic"//loopnum//"_tsk", uvel)
+
+    call distributed_print("vvelc_ov"//Looptime//"_pic"//loopnum//"_tsk", vvel)
+#endif
 
     ! coordinate halos for updated uvel and vvel
     call staggered_parallel_halo(uvel)
     call staggered_parallel_halo(vvel)
+
+    ! Calculated the residual after halo updates.  
+    ! Separated because vvel and uvel have to be updated first.
+    call resid_calc(1,whichresid,uvel,resid(1))
+    call resid_calc(2,whichresid,vvel,resid(2))
+
+#ifdef JEFFTEST
+    !JEFF Debugging Output to see what differences in final vvel and tvel.
+    write(loopnum,'(i3.3)') counter
+    write(Looptime, '(i3.3)') overallloop
+    loopnum = trim(loopnum)  ! Trying to get rid of spaces in name.
+    Looptime = trim(Looptime) 
+    call distributed_print("uveld_ov"//Looptime//"_pic"//loopnum//"_tsk", uvel)
+    
+    call distributed_print("vveld_ov"//Looptime//"_pic"//loopnum//"_tsk", vvel)
+#endif
+
+    !call dumpvels("After mindcrsh", uvel, vvel)
 
 ! implement periodic boundary conditions in x (if flagged)
 ! -----------------------------
@@ -2394,54 +2432,54 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   !*sfp* correction from Carl Gladdish
   !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
 
-  select case (whichresid)
-
-  ! options for residual calculation method, as specified in configuration file
-  ! (see additional notes in "higher-order options" section of documentation)
-  ! case(0): use max of abs( vel_old - vel ) / vel )
-  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels
-  ! case(2): use mean of abs( vel_old - vel ) / vel )
-
-   case(0)
-    resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
-    resid = parallel_reduce_max(resid)
-    !JEFF locat is only used in diagnostic print statement below.
-    !locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
-
-   case(1)
-    nr = size( vel, dim=1 ) ! number of grid points in vertical ...
-    resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
-                        MASK = vel .ne. 0.0_dp)
-    resid = parallel_reduce_max(resid)
-    !JEFF locat = maxloc( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
-    !JEFF        MASK = vel .ne. 0.0_dp)
-
-   case(2)
-    nr = size( vel, dim=1 )
-    vel_ne_0 = 0
-    where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
-
-    ! include basal velocities in resid. calculation when using MEAN
-    ! JEFF Compute sums across nodes in order to compute mean.
-    resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
-            MASK = vel .ne. 0.0_dp)
-    resid = parallel_reduce_sum(resid)
-    sum_vel_ne_0 = sum( vel_ne_0 )
-    sum_vel_ne_0 = parallel_reduce_sum(sum_vel_ne_0)
-
-    resid = resid / sum_vel_ne_0
-
-    ! ignore basal velocities in resid. calculation when using MEAN
-    ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
-    !           MASK = vel .ne. 0.0_dp) / sum( vel_ne_0(1:nr-1,:,:) )
-
-    ! NOTE that the location of the max residual is somewhat irrelevent here
-    !      since we are using the mean resid for convergence testing
-    ! locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
-
-  end select
-
-    usav(:,:,:,pt) = vel
+!  select case (whichresid)
+!
+!  ! options for residual calculation method, as specified in configuration file
+!  ! (see additional notes in "higher-order options" section of documentation)
+!  ! case(0): use max of abs( vel_old - vel ) / vel )
+!  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels
+!  ! case(2): use mean of abs( vel_old - vel ) / vel )
+!
+!   case(0)
+!    resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+!    resid = parallel_reduce_max(resid)
+!    !JEFF locat is only used in diagnostic print statement below.
+!    !locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+!
+!   case(1)
+!    nr = size( vel, dim=1 ) ! number of grid points in vertical ...
+!    resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
+!                        MASK = vel .ne. 0.0_dp)
+!    resid = parallel_reduce_max(resid)
+!    !JEFF locat = maxloc( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
+!    !JEFF        MASK = vel .ne. 0.0_dp)
+!
+!   case(2)
+!    nr = size( vel, dim=1 )
+!    vel_ne_0 = 0
+!    where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
+!
+!    ! include basal velocities in resid. calculation when using MEAN
+!    ! JEFF Compute sums across nodes in order to compute mean.
+!    resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
+!            MASK = vel .ne. 0.0_dp)
+!    resid = parallel_reduce_sum(resid)
+!    sum_vel_ne_0 = sum( vel_ne_0 )
+!    sum_vel_ne_0 = parallel_reduce_sum(sum_vel_ne_0)
+!
+!    resid = resid / sum_vel_ne_0
+!
+!    ! ignore basal velocities in resid. calculation when using MEAN
+!    ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
+!    !           MASK = vel .ne. 0.0_dp) / sum( vel_ne_0(1:nr-1,:,:) )
+!
+!    ! NOTE that the location of the max residual is somewhat irrelevent here
+!    !      since we are using the mean resid for convergence testing
+!    ! locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+!
+!  end select
+!
+!    usav(:,:,:,pt) = vel
 
     ! Additional debugging line, useful when trying to determine if convergence is being consistently
     ! help up by the residual at one or a few particular locations in the domain.
@@ -2599,6 +2637,92 @@ function mindcrshstr2(pt,whichresid,vel,counter,resid)
   return
 
 end function mindcrshstr2
+
+!***********************************************************************
+
+subroutine resid_calc(pt,whichresid,vel,resid)
+! Moved the residual calculation out of mindcrshstr().  mindcrsh updates uvel and vvel and computes the residual.  By separating
+! out the residual calculation then can update the halos before calculating the residual.
+! Jeff October 23, 2011
+  use parallel
+
+  implicit none
+
+  real (kind = dp), intent(in), dimension(:,:,:) :: vel
+  integer, intent(in) :: pt, whichresid
+  real (kind = dp), intent(out) :: resid
+
+  real (kind = dp), intrinsic :: abs
+
+  integer, dimension(2), save :: new = 1, old = 2
+  integer :: locat(3)
+
+  integer :: nr
+  integer,      dimension(size(vel,1),size(vel,2),size(vel,3)) :: vel_ne_0
+  real (kind = dp) :: sum_vel_ne_0
+
+  !*sfp* Old version
+  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
+
+  !*sfp* correction from Carl Gladdish
+  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
+
+  select case (whichresid)
+
+  ! options for residual calculation method, as specified in configuration file
+  ! (see additional notes in "higher-order options" section of documentation)
+  ! case(0): use max of abs( vel_old - vel ) / vel )
+  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels
+  ! case(2): use mean of abs( vel_old - vel ) / vel )
+
+  ! JEFF Note that because using MASK, then halos are included in the residual calculations.
+   case(0)
+    resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+    resid = parallel_reduce_max(resid)
+    !JEFF locat is only used in diagnostic print statement below.
+    !locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+
+   case(1)
+    nr = size( vel, dim=1 ) ! number of grid points in vertical ...
+    resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
+                        MASK = vel .ne. 0.0_dp)
+    resid = parallel_reduce_max(resid)
+    !JEFF locat = maxloc( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
+    !JEFF        MASK = vel .ne. 0.0_dp)
+
+   case(2)
+    nr = size( vel, dim=1 )
+    vel_ne_0 = 0
+    where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
+
+    ! include basal velocities in resid. calculation when using MEAN
+    ! JEFF Compute sums across nodes in order to compute mean.
+    resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
+            MASK = vel .ne. 0.0_dp)
+    resid = parallel_reduce_sum(resid)
+    sum_vel_ne_0 = sum( vel_ne_0 )
+    sum_vel_ne_0 = parallel_reduce_sum(sum_vel_ne_0)
+
+    resid = resid / sum_vel_ne_0
+
+    ! ignore basal velocities in resid. calculation when using MEAN
+    ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
+    !           MASK = vel .ne. 0.0_dp) / sum( vel_ne_0(1:nr-1,:,:) )
+
+    ! NOTE that the location of the max residual is somewhat irrelevent here
+    !      since we are using the mean resid for convergence testing
+    ! locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+
+  end select
+
+  usav(:,:,:,pt) = vel
+
+  ! Additional debugging line, useful when trying to determine if convergence is being consistently
+  ! help up by the residual at one or a few particular locations in the domain.
+  ! print '("* ",g20.6,3i6,g20.6)', resid, locat, vel(locat(1),locat(2),locat(3))*vel0
+
+  return
+end subroutine resid_calc
 
 !***********************************************************************
 
