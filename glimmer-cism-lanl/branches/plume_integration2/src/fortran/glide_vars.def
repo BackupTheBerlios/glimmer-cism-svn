@@ -608,3 +608,12 @@ long_name:    total flux convergence
 data:         data%velocity_hom%flx_conv
 coordinates:  lon lat
 factor:       scale2d_f10
+
+
+[H_diff_t]
+dimensions:   time, y1, x1
+units:        meter/year
+long_name:    thickness diffusion rate
+data:         data%velocity_hom%H_diff_t
+coordinates:  lon lat
+factor:       thk0

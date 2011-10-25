@@ -54,9 +54,15 @@ program shelf_driver
   real(kind=dp) :: last_bmlt_time = 0.d0
   real(kind=dp),parameter :: big_tinc = 0.0d0
 
+  ! smooth_diff is the diffusivity of thickness in x direction, in (m^2/a)
+  real(kind=dp)  :: smooth_diff = 0.d0 
+  real(kind=dp)  :: non_dim_smooth_diff
+
+  integer :: i_smooth_col 
   integer :: ice_ntimestep = 0	
 
   real(kind=rk),dimension(:,:),allocatable :: upstream_thck
+  real(kind=rk),dimension(:,:),allocatable :: smoothed_thck
   logical,      dimension(:,:),allocatable :: plume_land_mask,no_plume
   real(kind=dp),dimension(:,:),allocatable :: plume_lsrf_ext,plume_ice_dz,plume_t_interior
   real(kind=dp),dimension(:,:),allocatable :: plume_bmelt_out, plume_btemp_out
@@ -123,9 +129,12 @@ program shelf_driver
   call timeevoltemp(model,0)
 
   allocate(upstream_thck(model%general%ewn-2*thk_zero_margin,1))
+  allocate(smoothed_thck(model%general%ewn,model%general%nsn))
+
   upstream_thck(:,1) = &
        model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
        	                   1)  !south edge is inflow
+  smoothed_thck = 0.d0
 
   ! fill dimension variables
   call glide_nc_fillall(model)
@@ -215,6 +224,7 @@ program shelf_driver
           plume_speed_steadiness_tol, &
           plume_min_spinup_time, &
 	  plume_max_spinup_time, &
+	  3600.d0, &
           .true.,&
 	  plume_reached_steady, &
           plume_write_all_states, &
@@ -305,8 +315,41 @@ program shelf_driver
 !     model%geometry%thck(model%general%ewn,:) = model%geometry%thck(model%general%ewn-1,:)
 !     model%geometry%thck(                1,:) = model%geometry%thck(                  2,:)
 
+     !apply x-direction smoothing
+     non_dim_smooth_diff = &
+            smooth_diff*model%numerics%tinc/(model%numerics%dew**2.d0) &
+	    * (1.d0/len0**2.d0)
+
+     print *, 'non_dim_smooth_diff = ',non_dim_smooth_diff
+     if (non_dim_smooth_diff > 0.5d0) then
+	print *, "Diffusion violates Courant condition"
+	stop 1
+     end if
+
+     smoothed_thck(thk_zero_margin+1,4:) = &
+          (1.d0-2.d0*non_dim_smooth_diff)*model%geometry%thck(thk_zero_margin+1,4:) &
+               +2.d0*non_dim_smooth_diff*model%geometry%thck(thk_zero_margin+2,4:)
+
+     smoothed_thck(model%general%ewn-thk_zero_margin,4:) = &
+          (1.d0-2.d0*non_dim_smooth_diff)*model%geometry%thck(model%general%ewn - &
+                                                      thk_zero_margin, 4:) &
+               +2.d0*non_dim_smooth_diff*model%geometry%thck(model%general%ewn - &
+                                                     thk_zero_margin-1, 4:)
+
+     do i_smooth_col=thk_zero_margin+2,model%general%ewn-thk_zero_margin-1
+        smoothed_thck(i_smooth_col,4:) = &
+             (1.d0 - 2.d0*non_dim_smooth_diff)*model%geometry%thck(i_smooth_col,4:) &
+	           + non_dim_smooth_diff*model%geometry%thck(i_smooth_col+1,4:) &
+                   +  non_dim_smooth_diff*model%geometry%thck(i_smooth_col-1,4:)
+     end do
+     model%velocity_hom%H_diff_t = &
+           (1.d0/model%numerics%tinc)*(smoothed_thck-model%geometry%thck)
+     model%geometry%thck = smoothed_thck
+
+
      print *, 'beginning tstep_p3'
      call glide_tstep_p3(model)      ! isostasy, upper/lower surfaces
+
 
      mean_rel_thk_change = abs(sum(model%geometry%thck_t)/ &
 		         (model%general%nsn*model%general%ewn))
@@ -395,6 +438,7 @@ program shelf_driver
              plume_speed_steadiness_tol, &
              plume_min_subcycle_time, &
 	     plume_max_subcycle_time, &
+	     3600.d0, &
              .false., &                   !not necessarily running to steady
 	     plume_reached_steady, &
 	     plume_write_all_states, &
@@ -437,6 +481,8 @@ program shelf_driver
 
   ! finalise GLIDE
   deallocate(upstream_thck, prev_ice_thk)
+  deallocate(smoothed_thck)
+
   call glide_finalise(model)
 
   call system_clock(clock,clock_rate)
@@ -465,10 +511,15 @@ contains
 	real(kind=dp),dimension(:,:),intent(inout) :: bmelt_field
 	real(kind=dp),intent(in) :: time, starttime
  	
-	bmelt_field = bmelt_field * min(1.d0, (plume_homotopy_frac + \
-                                              (1.d0-plume_homotopy_frac) * \
-                                                (time-starttime)/plume_homotopy_ramp))
-	
+	if (time .ge. starttime) then
+		bmelt_field = bmelt_field * min(1.d0, (plume_homotopy_frac + \
+        	                                (1.d0-plume_homotopy_frac) * \
+                                        (time-starttime)/plume_homotopy_ramp))
+	else
+		print *, "Expected time > starttime"
+	        stop 1
+	end if
+
   end subroutine homotopy_bmlt
 
   subroutine write_real_plume_array(a_in,a_out,padding_val, in_m,in_n,padw,pads)
@@ -588,6 +639,7 @@ contains
     call GetValue(section, 'plume_delayed_coupling', plume_delayed_coupling)
     call GetValue(section, 'plume_homotopy_frac', plume_homotopy_frac)
     call GetValue(section, 'plume_homotopy_ramp', plume_homotopy_ramp)
+    call GetValue(section, 'plume_smooth_diff', smooth_diff)
     call GetValue(section, 'plume_const_bmlt_rate', plume_const_bmlt_rate)
     call GetValue(section, 'plume_do_cross_shelf_avg', doCrossShelfAvg)
 
@@ -628,6 +680,12 @@ contains
     write(message,*) 'plume_delayed_coupling', plume_delayed_coupling
     call write_log(message)
     write(message,*) 'plume_do_cross_shelf_avg:', doCrossShelfAvg
+    call write_log(message)
+    write(message,*) 'plume_smooth_diff:',smooth_diff
+    call write_log(message)
+    write(message,*) 'plume_homotopy_frac:',plume_homotopy_frac
+    call write_log(message)
+    write(message,*) 'plume_homotopy_ramp:',plume_homotopy_ramp
     call write_log(message)
 
   end subroutine plume_read_print_config

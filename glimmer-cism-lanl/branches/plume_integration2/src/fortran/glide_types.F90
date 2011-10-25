@@ -568,6 +568,8 @@ module glide_types
     real(dp),dimension(:,:)  ,pointer   :: vflx_conv  => null() !*FD   
     real(dp),dimension(:,:)  ,pointer   :: flx_conv   => null() !*FD   
 
+    real(dp),dimension(:,:)  ,pointer   :: H_diff_t  => null() !*FD   	
+
     real(dp),dimension(:,:)  ,pointer   :: diffu_x => null() !*FD 
     real(dp),dimension(:,:)  ,pointer   :: diffu_y => null()
     real(dp),dimension(:,:)  ,pointer   :: total_diffu => null() !*FD total diffusivity
@@ -956,6 +958,7 @@ contains
     !*FD \item \texttt{uflx_conv(ewn,nsn))}
     !*FD \item \texttt{vflx_conv(ewn,nsn))}
     !*FD \item \texttt{flx_conv(ewn,nsn))}
+    !*FD \item \texttt{H_diff_t(ewn,nsn))}
     !*FD \item \texttt{diffu(ewn,nsn))}
     !*FD \item \texttt{btrc(ewn,nsn))}
     !*FD \item \texttt{ubas(ewn,nsn))}
@@ -1066,6 +1069,7 @@ contains
     call coordsystem_allocate(model%general%ice_grid, model%velocity_hom%uflx_conv)
     call coordsystem_allocate(model%general%ice_grid, model%velocity_hom%vflx_conv)
     call coordsystem_allocate(model%general%ice_grid, model%velocity_hom%flx_conv)
+    call coordsystem_allocate(model%general%ice_grid, model%velocity_hom%H_diff_t)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%diffu_x)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%diffu_y)
     call coordsystem_allocate(model%general%velo_grid, model%velocity_hom%total_diffu)
@@ -1241,6 +1245,7 @@ contains
     deallocate(model%velocity_hom%uflx_conv)
     deallocate(model%velocity_hom%vflx_conv)
     deallocate(model%velocity_hom%flx_conv)
+    deallocate(model%velocity_hom%H_diff_t)
     deallocate(model%velocity_hom%diffu_x)
     deallocate(model%velocity_hom%diffu_y)
     deallocate(model%velocity_hom%total_diffu)

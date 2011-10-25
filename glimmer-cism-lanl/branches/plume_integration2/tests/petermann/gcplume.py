@@ -398,6 +398,7 @@ class GCConfig(object):
                       'plume_delayed_coupling' : False, # Determine the initial bmlt and use that until ice is steady, then couple
                       'plume_homotopy_frac' : 1.0,
                       'plume_homotopy_ramp' : 0.001,
+                      'plume_smooth_diff' : 0.0,
                       'plume_const_bmlt' : False,       # Apply a uniform melt rate under floating ice
                       'plume_const_bmlt_rate' : 0.0     # At given rate in meters per year
                       }

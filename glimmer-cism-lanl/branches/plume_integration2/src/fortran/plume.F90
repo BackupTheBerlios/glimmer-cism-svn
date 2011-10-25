@@ -207,6 +207,7 @@ contains
        plume_speed_stopping_tol, &
        min_run_time, &
        max_run_time, &
+       max_bmlt_avg_window, &
        run_plume_to_steady, &
        plume_reached_steady, &
        write_all_states, & 
@@ -259,6 +260,7 @@ contains
 
     real(kind=kdp),               intent(in) :: min_run_time !in days
     real(kind=kdp),               intent(in) :: max_run_time ! in days
+    real(kind=kdp),               intent(in) :: max_bmlt_avg_window !in secs
 
     ! melt rate predicted by plume, in meters per year
     real(kind=kdp),dimension(m_grid,n_grid),intent(out) :: bmelt_out
@@ -282,6 +284,11 @@ contains
     real(kind=kdp) :: prev_rel_change,prev_rel_speed_change
     real(kind=kdp) :: min_run_time_sec,max_run_time_sec
     character(len=512) :: log_message
+
+    real(kind=kdp),dimension(:,:,:),allocatable :: avg_bmelt_slices
+    
+    real(kind=kdp) :: avg_window_sec
+    integer :: n_avg_samples, next_insert_index
 
     integer :: local_time_step_count !number of steps executed in this plume_iterate call
     local_time_step_count = 0
@@ -317,6 +324,14 @@ contains
     ice_dt_in_sec = ice_dt * 365.25d0*24.0d0*3600.d0
     min_run_time_sec = min_run_time * 3600.d0 * 24.d0
     max_run_time_sec = max_run_time * 3600.d0 * 24.d0
+	 
+    avg_window_sec = min(max_run_time_sec,ice_dt_in_sec,max_bmlt_avg_window)
+    print *, max_run_time_sec,ice_dt_in_sec,max_bmlt_avg_window
+    print *, avg_window_sec
+    print *, 'allocating ', floor(avg_window_sec/dt), 'time slices'
+    allocate(avg_bmelt_slices(m_grid,n_grid,max(1,floor(avg_window_sec/dt))))
+    print *, 'finished allocating'
+    avg_bmelt_slices = 0.d0
 
     plume_reached_steady = .false.
     prev_rel_change = 1.d0
@@ -325,8 +340,11 @@ contains
 
     ! while not steady
 
-    if (.not. use_plume_initial_bmlt) then
+    n_avg_samples = 0
+    next_insert_index = 1
 
+    if (.not. use_plume_initial_bmlt) then
+	
        do while ((subcycling_time .le. min(max_run_time_sec,ice_dt_in_sec) &
                      .and. .not. run_plume_to_steady) &
            .or. &
@@ -399,12 +417,23 @@ contains
           bmelt_old = bmelt
           speed_old = speed
 
+	  avg_bmelt_slices(:,:,next_insert_index) = bmelt
+	  if (next_insert_index + 1 > max(1,floor(avg_window_sec/dt))) then
+	 	next_insert_index = 1			
+	  else
+	        next_insert_index = next_insert_index + 1
+		if (n_avg_samples < size(avg_bmelt_slices,3)) then
+			n_avg_samples = n_avg_samples + 1
+                end if
+	  end if
+
        end do
     end if
 
     btemp_out = btemp
-    bmelt_out = bmelt * (365.25d0*24.0d0*3600.0d0)
-
+    bmelt_out = sum(avg_bmelt_slices,3)/real(n_avg_samples) *  &
+                (365.25d0*24.0d0*3600.0d0)
+   
     if (.not. use_plume_initial_bmlt) then
        if (.not. plume_reached_steady) then
           call io_append_output('plume did not reach steady state')
@@ -425,6 +454,9 @@ contains
        end if
 
     end if
+
+    deallocate(avg_bmelt_slices)
+
   end subroutine plume_iterate
 
   ! **************************************************************************
@@ -2876,14 +2908,15 @@ contains
                 sy = abs(vmid)*dt/dyy
 
                 if ((sx.gt.one).or.(sy.gt.one)) then
+	           print *, 'sx: ',sx, 'sy: ', sy
                    write(*,*) 'error: u courant exceeded at i=',i,' k=',k
                    write(11,*) 'error: u courant exceeded at i=',i,' k=',k
                 end if
 
-!		if ((abs(umid) + gwave_speed(i,k)) > dxx/dt) then
-!                  write(*,*) 'error: u courant (w/ grv waves)at i=',i,' k=',k
-!                  write(11,*) 'error: u courant (w/ grv waves) at i=',i,' k=',k
-	!	end if
+		if ((abs(umid) + gwave_speed(i,k)) > dxx/dt) then
+                  write(*,*) 'error: u courant (w/ grv waves)at i=',i,' k=',k
+                  write(11,*) 'error: u courant (w/ grv waves) at i=',i,' k=',k
+		end if
 
                 sxy = sx -sy
                 r1 = (sign(one,sxy) + 1.d0)*5.0d-1
@@ -3148,14 +3181,15 @@ contains
              sy = abs(vmid)*dt/dyy
              ! test courant number
              if ((sx.gt.one).or.(sy.gt.one)) then
+		print *, 'sx: ',sx, 'sy: ', sy
                 write(*,*) 'error: v courant exceeded at i=',i,' k=',k
                 write(11,*) 'error: v courant exceeded at i=',i,' k=',k
              end if
-!	     if ((abs(vmid)+gwave_speed(i,k)) > dyy/dt) then
-!                  write(*,*) 'error: v courant (w/ grv waves)at i=',i,' k=',k
-!                  write(11,*) 'error: v courant (w/ grv waves) at i=',i,' k=',k
-!		end if
-             ! calculate nonlinear terms
+	     if ((abs(vmid)+gwave_speed(i,k)) > dyy/dt) then
+                  write(*,*) 'error: v courant (w/ grv waves)at i=',i,' k=',k
+                  write(11,*) 'error: v courant (w/ grv waves) at i=',i,' k=',k
+		end if
+            ! calculate nonlinear terms
              sxy = sx -sy
              r1 = (dsign(one,sxy) + 1.d0)*5.0d-1
              r2 = one - r1
