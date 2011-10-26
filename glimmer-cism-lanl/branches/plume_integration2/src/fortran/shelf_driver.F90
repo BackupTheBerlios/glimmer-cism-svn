@@ -343,7 +343,7 @@ program shelf_driver
                    +  non_dim_smooth_diff*model%geometry%thck(i_smooth_col-1,4:)
      end do
      model%velocity_hom%H_diff_t(:,4:) = &
-           (1.d0/model%numerics%tinc)*(smoothed_thck-model(:,4:)%geometry%thck(:,4:))
+           (1.d0/model%numerics%tinc)*(smoothed_thck(:,4:)-model%geometry%thck(:,4:))
      model%geometry%thck(:,4:) = smoothed_thck(:,4:)
 
 
