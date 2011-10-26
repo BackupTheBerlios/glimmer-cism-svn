@@ -617,7 +617,7 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
                                                ugradew, ugradns, vgradew, vgradns
 
   integer, dimension(2) :: mew, mns
-  real (kind = dp), parameter :: min_effvs = 5.d-4
+  real (kind = dp), parameter :: min_effvs = 1.d-3
 
   ! This is the factor 1/4(X0/H0)^2 in front of the term ((dv/dz)^2+(du/dz)^2) 
   real (kind = dp), parameter :: f1 = 0.25_dp * (len0 / thk0)**2
