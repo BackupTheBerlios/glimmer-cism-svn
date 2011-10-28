@@ -552,8 +552,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
     ! put vels and coeffs from sparse vector format (soln) back into 3d arrays
     call solver_postprocess( ewn, nsn, upn, 2, uindx, answer, tvel, ghostbvel )
 
- #ifdef JEFFTEST
-    !call dumpvels("After tvel", uvel, vvel)
+#ifdef JEFFTEST
+    ! call dumpvels("After tvel", uvel, vvel)
 
     !JEFF Debugging Output to see what differences in final vvel and tvel.
     call distributed_print("tvel_ov"//Looptime//"_pic"//loopnum//"_tsk", tvel)
