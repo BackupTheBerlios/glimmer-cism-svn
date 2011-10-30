@@ -31,7 +31,7 @@ CPPFLAGS="-DHAVE_MPI -DMPICH_IGNORE_CXX_SEEK -DglobalIDs"  \
 LDFLAGS="-pgcpplibs -L/opt/cray/hdf5/1.8.3.1/hdf5-pgi/lib -L/sw/xt5/parmetis/3.1.1/cnl2.2_pgi9.0.4/lib" \
 NETCDF_LIBS="-lnetcdff -lnetcdf" \
 LIBS="-lhdf5_hl -lhdf5 -lz" \
---with-netcdf=/opt/cray/netcdf/4.0.1.1/netcdf-pgi \
+--with-netcdf=$NETCDF_DIR \
 --with-trilinos=/ccs/proj/cli043/trilinos/NOX_BUILD \
 --with-lapack=-lsci --with-blas=-lsci
 
