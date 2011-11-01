@@ -31,6 +31,8 @@ program shelf_driver
   integer,parameter :: thk_zero_margin = 3
   logical,parameter :: use_thk_zero_margin = .true.
 
+  real(kind=kind(1.d0)),parameter :: min_melt_depth = -50.d0
+
   !local variables
   type(glide_global_type) :: model        ! model instance
   type(shelf_climate) :: climate_cfg      ! climate configuration info
@@ -224,7 +226,7 @@ program shelf_driver
           plume_speed_steadiness_tol, &
           plume_min_spinup_time, &
 	  plume_max_spinup_time, &
-	  3600.d0, &
+	  3600.d0*24, &
           .true.,&
 	  plume_reached_steady, &
           plume_write_all_states, &
@@ -240,6 +242,11 @@ program shelf_driver
 
      call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
           model%general%ewn, model%general%nsn, fake_landw,fake_landw)
+
+     where (model%geometry%lsrf > min_melt_depth/thk0)
+	model%temper%bmlt = 0.d0
+     end where
+     
      call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn, &
                                                                  1:model%general%ewn, &
                                                                  1:model%general%nsn), &
@@ -438,7 +445,7 @@ program shelf_driver
              plume_speed_steadiness_tol, &
              plume_min_subcycle_time, &
 	     plume_max_subcycle_time, &
-	     3600.d0, &
+	     3600.d0*24, &
              .false., &                   !not necessarily running to steady
 	     plume_reached_steady, &
 	     plume_write_all_states, &
@@ -450,6 +457,11 @@ program shelf_driver
 
         call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
              model%general%ewn, model%general%nsn, fake_landw,fake_landw)
+
+	where (model%geometry%lsrf > min_melt_depth/thk0)
+             model%temper%bmlt = 0.d0
+        end where
+
         call write_real_ice_array(plume_btemp_out,model%temper%temp(model%general%upn, &
 	                                                            1:model%general%ewn, &
 							            1:model%general%nsn), &
