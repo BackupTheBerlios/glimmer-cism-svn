@@ -101,6 +101,7 @@ plot(flat_ocean.train,flat_ocean.bmlt,c_steady);
 title(strcat(['correlation = ', sprintf('%4.3f',train_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
 set(gca,'FontSize',fs);
 xlabel('entrainment (km/year)','FontSize',fs,'FontName',fn);
+xlim([-1000 200]);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 hold off
 
@@ -123,11 +124,13 @@ if(not(doTransient))
   hold on;
 end
 plot(flat_ice.y_adv,flat_ocean.bmlt,c_steady);
-plot(0:0.5:80,0:0.5:80,c5,'linewidth',2.0);
+plot(0:0.5:100,0:0.5:100,c5,'linewidth',2.0);
 title(strcat(['correlation = ', sprintf('%4.3f',yadv_cor)]),'FontSize',fs,'Color',c1,'FontName',fn);
+xlim([-5 105]);
 xlabel('v_0 H_y (m/year)','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 hold off
+
 
 subplot(1,3,3);
 plot(-flat_ocean.draft,flat_ocean.bmlt,c_steady);

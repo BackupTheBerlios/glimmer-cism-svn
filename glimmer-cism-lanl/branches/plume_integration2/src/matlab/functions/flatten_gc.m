@@ -1,6 +1,6 @@
 function [ flat_ocean, flat_ice ] = flatten_gc( docean,dice, times)
 
-  [m1,n1,k] = size(docean.bmelt(:,:,times));
+[m1,n1,k] = size(docean.bmelt(:,:,times));
 
 k2 = length(dice.time(times));
 if (k ~= k2)
@@ -11,8 +11,10 @@ m=m1-2;
 n=n1-2;
 
 remove_edge=@(d) d(2:(m1-1),2:(n1-1),:);
-extra_rows = 40;
-remove_hot_spot=@(d) d(2:(m1-1),(2+extra_rows):(n1-1),:);
+%remove_edge=@(d) d;
+
+%extra_rows = 40;
+%remove_hot_spot=@(d) d(2:(m1-1),(2+extra_rows):(n1-1),:);
 
 ygridrep = repmat(docean.ygrid,[1,1,k]);
 
@@ -21,6 +23,7 @@ secondderivDxDx = zeros(m1,n1,k);
 dx = docean.xgrid(2) - docean.xgrid(1);
 
 for ti=1:k
+
  for xi=3:(m1-2)
   for yi=1:n1
   p = polyfit(dx*[-2,-1,0,1,2],docean.draft((xi-2):(xi+2),yi,ti)',2);
@@ -56,10 +59,10 @@ flat_ice.ice_def = reshape(remove_edge(-dice.flux_div(:,:,times)+dice.y_adv(:,:,
 flat_ice.thk_div = reshape(remove_edge(dice.vel_div(:,:,times)),m*n*k,1);
 flat_ice.flux_div = reshape(remove_edge(dice.flux_div(:,:,times)),m*n*k,1);
 
-flat_ice.downstream_ice_def = reshape(remove_hot_spot(-dice.flux_div(:,:,times)+dice.y_adv(:,:,times)), ...
-                                      m*(n-extra_rows)*k,1);
-flat_ice.downstream_draft = reshape(remove_hot_spot(docean.draft(:,:,times)), ...
-                                    m*(n-extra_rows)*k,1);
+%flat_ice.downstream_ice_def = reshape(remove_hot_spot(-dice.flux_div(:,:,times)+dice.y_adv(:,:,times)), ...
+%                                      m*(n-extra_rows)*k,1);
+%flat_ice.downstream_draft = reshape(remove_hot_spot(docean.draft(:,:,times)), ...
+%                                    m*(n-extra_rows)*k,1);
 
 
 [m3,n3,k3] = size(docean.draft);
@@ -69,8 +72,8 @@ for i=1:n3
   channel_amp(:,i,:) = docean.draft(:,i,:) - repmat(min(docean.draft(:,i,:)),[m3 1]);
 end
 
-flat_ice.downstream_channel_amp = reshape(remove_hot_spot(channel_amp(:,:,times)),...
-                                    m*(n-extra_rows)*k,1);
+%flat_ice.downstream_channel_amp = reshape(remove_hot_spot(channel_amp(:,:,times)),...
+%                                    m*(n-extra_rows)*k,1);
 
 end
 
