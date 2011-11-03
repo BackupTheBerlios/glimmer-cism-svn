@@ -43,7 +43,7 @@ hold on
 contourf(x/1000.0,y/1000.0,train'/1000.0,40,'EdgeColor','None');
 colorbar('FontSize',fs6);
 contour(x/1000.0,y/1000.0,train'/1000.0,[0 0],'k')
-caxis([-1000 1000]);
+%caxis([-700 50]);
 set(gca,'FontSize',fs6);
 xlabel('Across shelf distance (km)','FontSize',fs6);
 ylabel('Along shelf distance (km)','FontSize',fs6);

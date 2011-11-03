@@ -3,6 +3,7 @@ clf;
 set(fig1,'Position',[1 1 four_panel_fig_x_size four_panel_fig_y_size]);
 subplot(2,2,1);
 hold on
+fs3 = 14;
 contourf(x/1000.0,y/1000.0,bmelt',40,'EdgeColor','None');colorbar('FontSize',fs3);
 set(gca,'FontSize',fs3);
 colormap jet;
@@ -61,6 +62,6 @@ title('Thickness time tendency due to ice advection term v_0 H_y','FontSize',fs3
 %title('Thermal forcing (^\circ C)','FontSize',fs3);
 %hold off
 
-fname = strcat([fig_dir,'/plume_',flabel,'_4panel_melt']);
+fname = strcat([fig_dir,'/plume_4panel_melt']);
 print('-depsc',fname);
 

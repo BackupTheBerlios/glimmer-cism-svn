@@ -13,7 +13,7 @@ function [ ug,vg, uag, vag, agfrac ] = geostrophic_vel( d_plume, amb_temp,amb_sa
     
     salt = d_plume.salt;
     temp = d_plume.temp;
-    rhop = dplume.rhop;
+    rhop = d_plume.rhop;
     ambsurf = d_plume.bpos - d_plume.pdep;
     depth = abs(d_plume.draft);
     pdep = d_plume.pdep;

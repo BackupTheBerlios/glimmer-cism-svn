@@ -1,6 +1,8 @@
-function [] = gc_scatter(flat_ocean,flat_ice,flat_ocean_transient,flat_ice_transient,amb_t_func)
+function [] = gc_scatter(flat_ocean,flat_ice,flat_ocean_transient,flat_ice_transient,amb_t_func,fig_dir)
 
 doTransient = false;
+scatter_xsize = 1000;
+scatter_ysize = 600;
 
 fs = 16;
 fn = 'Helvetica';
@@ -23,6 +25,7 @@ flattforcing = thermal_forcing(abs(flat_ocean_transient.draft), ...
 
 figure(100);
 clf;
+set(figure(100),'Position',[1 1 scatter_xsize scatter_ysize]);
 
 subplot(1,3,1);
 hold on
@@ -78,6 +81,7 @@ exp_var_cor = corr_mat(1,14);
 figure(100);
 if (not(doTransient))
   clf;
+  set(figure(100),'Position',[1 1 scatter_xsize scatter_ysize]);
 end
 
 subplot(1,3,1);
@@ -105,10 +109,13 @@ xlim([-1000 200]);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 hold off
 
+print('-depsc',strcat([fig_dir,'/plume_scatter']));
+
 figure(101);
 if (not(doTransient))
   clf;
 end
+set(figure(101),'Position',[1 1 scatter_xsize scatter_ysize]);
 
 subplot(1,3,1);
 plot(flat_ocean.grad,flat_ocean.bmlt,c_steady);
@@ -124,9 +131,9 @@ if(not(doTransient))
   hold on;
 end
 plot(flat_ice.y_adv,flat_ocean.bmlt,c_steady);
-plot(0:0.5:100,0:0.5:100,c5,'linewidth',2.0);
+plot(0:0.5:75,0:0.5:75,c5,'linewidth',2.0);
 title(strcat(['correlation = ', sprintf('%4.3f',yadv_cor)]),'FontSize',fs,'Color',c1,'FontName',fn);
-xlim([-5 105]);
+xlim([-5 80]);
 xlabel('v_0 H_y (m/year)','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 hold off
@@ -140,7 +147,9 @@ xlabel('ice draft (m)','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 xlim([0 600]);hold off
 
+print('-depsc',strcat([fig_dir,'/ice_scatter']));
 
+if (false)
 figure(102);
 if (not(doTransient))
   clf;
@@ -170,12 +179,14 @@ xlabel('exp var','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 hold off
 
+end
 
 coeffs = corrcoef([flat_ice.ice_def, flat_ocean.gradx, flat_ocean.grady, flat_ocean.grad]);
 gradx_cor = coeffs(1,2);
 grady_cor = coeffs(1,3);
 grad_cor = coeffs(1,4);
 
+if (false)
 figure(103);
 clf;
 subplot(1,2,1);
@@ -201,5 +212,7 @@ hold off
 %ylabel('ice divergence (m/year)','FontSize',fs,'FontName',fn);
 %xlabel('ice thickness gradient, x-direction','FontSize',fs,'FontName',fn);
 %hold off
+
+end
 
 end

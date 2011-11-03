@@ -1,5 +1,11 @@
+three_panel_fig_x_size = 1500;
+three_panel_fig_y_size = 600;
+
 fig1 = figure(1);
 clf;
+
+fs3 = 11;
+
 set(fig1,'Position',[1 1 three_panel_fig_x_size three_panel_fig_y_size]);
 subplot(1,3,3);
 hold on
@@ -32,6 +38,6 @@ ylabel('Along shelf distance (km)','FontSize',fs3);
 title('Ice draft (m)','FontSize',fs3);
 hold off
 
-fname = strcat([fig_dir,'/plume_',flabel,'_3panel']);
+fname = strcat([fig_dir,'/plume_3panel']);
 print('-depsc',fname);
 
