@@ -11,7 +11,6 @@ jname = 'central_paper_no_channels_restart_3';
 f_ice = strcat([jobs,'/',jname,'/',jname,'.out.nc']);
 f_ocean = strcat([jobs,'/',jname,'/plume.',jname,'.out.nc']);
 
-%istart = 1;
 istart = 440;
 iend = 441;
 stride = 1;
@@ -36,9 +35,9 @@ dice_avg = nc_ice_avg(dice);
 				    length(dice_avg.time):length(dice_avg.time) );
 
 %save('/home/cvg222/paper_work/mat_files/nov_1_work_dat.mat');
-save('/home/cvg222/paper_work/mat_files/nov_2_nochannels.mat');
-%load '/home/cvg222/paper_work/mat_files/nov_1_work_dat.mat'
-load '/home/cvg222/paper_work/mat_files/nov_2_nochannels.mat';
+%save('/home/cvg222/paper_work/mat_files/nov_2_nochannels.mat');
+load '/home/cvg222/paper_work/mat_files/nov_1_work_dat.mat'
+%load '/home/cvg222/paper_work/mat_files/nov_2_nochannels.mat';
 fig_dir = '/home/cvg222/paper_work/no_channels';
 
 %plot_amb_water_column(ts,ss,zs,fig_dir);
