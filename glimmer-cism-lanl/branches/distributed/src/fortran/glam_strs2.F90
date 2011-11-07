@@ -457,8 +457,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
   ! Picard iteration; continue iterating until resid falls below specified tolerance
   ! or the max no. of iterations is exceeded
-  ! do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
-   do while ( maxval(resid) > minres .and. counter < cmax)
+  do while ( L2norm .ge. NL_target .and. counter < cmax)    ! use L2 norm for resid calculation
+  !do while ( maxval(resid) > minres .and. counter < cmax)
   !do while ( resid(1) > minres .and. counter < cmax)  ! used for 1d solutions where d*/dy=0 
 
 #ifdef JEFFTEST
@@ -749,12 +749,12 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
         ! Can't use main_task flag because main_task is true for all processors in case of parallel_single
 	!    ! output the iteration status: iteration number, max residual, and location of max residual
 	!    ! (send output to the screen or to the log file, per whichever line is commented out)
-         print '(i4,3g20.6)', counter, resid(1), resid(2), minres
+        ! print '(i4,3g20.6)', counter, resid(1), resid(2), minres
 	!    !write(message,'(" * strs ",i3,3g20.6)') counter, resid(1), resid(2), minres
 	!    !call write_log (message)
 
 	! KJE uncomment to match previous
-	!    print '(i4,3g20.6)', counter, L2norm, NL_target
+	print '(i4,3g20.6)', counter, L2norm, NL_target
     endif
 
     counter = counter + 1   ! advance the iteration counter
