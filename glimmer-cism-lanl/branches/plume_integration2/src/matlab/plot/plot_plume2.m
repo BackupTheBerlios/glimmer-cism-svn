@@ -109,7 +109,7 @@ if (false)
   plot_solo_panels;
 end
 
-if (true)
+if (false)
 plot_3_panel_ice_geometry;
 end
 

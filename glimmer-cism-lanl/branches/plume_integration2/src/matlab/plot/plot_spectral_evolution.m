@@ -36,10 +36,10 @@ title('Ice thickness (m)','FontSize',fs);
 subplot(1,2,2);
 
 z = spec(1:kmax,:,times(t)).* conj(spec(1:kmax,:,times(t)));
-contourf(ks(1:kmax),dice.ygrid/1000,log(abs(z)+1.0e-6)',40,'EdgeColor','None');
+contourf(ks(1:kmax),dice.ygrid/1000,z',40,'EdgeColor','None');
 colorbar;
 
-caxis([-5 10]);
+%caxis([-5 10]);
 
 if (t==1)
 
@@ -50,7 +50,7 @@ end
 xlabel('Across shelf wavenumber (1/km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('log spectral density of cross-shelf variations (m^2)','FontSize',fs);
-
+title('spectral density of cross-shelf variations (m^2)','FontSize',fs);
 
 end
 

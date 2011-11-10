@@ -4,7 +4,7 @@ three_panel_fig_y_size = 600;
 fig1 = figure(1);
 clf;
 
-fs3 = 11;
+fs3 = 14;
 
 set(fig1,'Position',[1 1 three_panel_fig_x_size three_panel_fig_y_size]);
 subplot(1,3,3);

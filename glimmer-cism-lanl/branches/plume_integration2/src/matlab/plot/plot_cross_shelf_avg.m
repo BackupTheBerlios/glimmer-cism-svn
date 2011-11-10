@@ -1,6 +1,6 @@
 figure(1);
 clf;
-
+fs3 = 14;
 subplot(1,2,1);
 hold on
 contourf(x/1000.0,y/1000.0,-draft',40,'EdgeColor','None');colorbar('FontSize',fs3);

@@ -26,14 +26,20 @@ sv=dplume.sv(:,1:end-1,:);
 salt = dplume.salt;
 temp = dplume.temp;
 ambsurf = dplume.bpos - dplume.pdep;
-depth = abs(dplume.draft);
+%depth = abs(dplume.draft);
 rhop = dplume.rhop;
 pdep = dplume.pdep;
+
+res.x = (dplume.x-1375)/1000;
+res.y = (dplume.y - 875)/1000;
 
 res.vel_div  = Dx_xgrid(su,dx) + Dy_ygrid(sv,dy);
 res.flux_div = Dx_xgrid(U, dx) + Dy_ygrid(V ,dy);
 
 res.delta_w = res.vel_div .* pdep;
+
+res.u_trans_conv = res.vel_div .* pad_edge(1,0,0.5*(U(2:end,:,:)+U(1:end-1,:,:)));
+res.v_trans_conv = res.vel_div .* pad_edge(0,1,0.5*(V(:,2:end,:)+V(:,1:end-1,:)));
 
 res.u_flux_div = Dx_xgrid(U.*su,dx)         + Dy_xgrid(U.*y_to_x(sv),dy);
 res.v_flux_div = Dx_ygrid(V.*x_to_y(su),dx) + Dy_ygrid(V.*sv,dy);
@@ -48,6 +54,13 @@ res.v_adv_derv = 0.5*(pad_edge(1,0,su(2:end,:,:)+su(1:end-1,:,:)) ) ...
                  .*Dy_ygrid(V,dy);
 
 
+res.u_trans_detrain = 0.25*(dplume.train-abs(dplume.train)).* ...
+                     pad_edge(1,0,(su(1:end-1,:,:)+su(2:end,:,:))) / ...
+                     (3600.0*24.0*365.25);
+res.v_trans_detrain = 0.25*(dplume.train-abs(dplume.train)).* ...
+                     pad_edge(0,1,(sv(:,1:end-1,:)+sv(:,2:end,:))) / ...
+                     (3600.0*24.0*365.25);
+                 
 res.u_diff = pad_edge(1,0,cen_grad_x(diff*pdep.*Dx_xgrid(su,dx))) + ...
              pad_edge(0,1,cen_grad_y(diff*pdep.*Dy_xgrid(su,dy)));
 res.v_diff = pad_edge(1,0,cen_grad_x(diff*pdep.*Dx_ygrid(sv,dx))) + ...
@@ -70,7 +83,8 @@ res.cor_y =  f*pad_edge(1,0,0.5*(U(2:end,:,:)+U(1:end-1,:,:)));
 res.den_grad_x = (g/(2*rho0))*pdep.^2.*pad_edge(1,0,cen_grad_x(rhop));
 res.den_grad_y = (g/(2*rho0))*pdep.^2.*pad_edge(0,1,cen_grad_y(rhop));
 
-res.isopyc_grad_x = g*(betaS*(amb_s(ambsurf)-salt)-betaT*(amb_t(ambsurf)-temp)) .* ...
+res.g_prime = g*(betaS*(amb_s(ambsurf)-salt)-betaT*(amb_t(ambsurf)-temp));
+res.isopyc_grad_x = res.g_prime .* ...
                     pdep.*pad_edge(1,0,cen_grad_x(ambsurf));
 res.isopyc_grad_y = g*(betaS*(amb_s(ambsurf)-salt)-betaT*(amb_t(ambsurf)-temp)).* ...
                      pdep.*pad_edge(0,1,cen_grad_y(ambsurf));

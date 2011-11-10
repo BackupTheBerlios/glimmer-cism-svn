@@ -102,10 +102,13 @@ hold off
 
 subplot(1,3,3);
 plot(flat_ocean.train,flat_ocean.bmlt,c_steady);
+%plot(abs(flat_ocean.sv),flat_ocean_transient.bmlt,c_steady);
+
 title(strcat(['correlation = ', sprintf('%4.3f',train_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
 set(gca,'FontSize',fs);
 xlabel('entrainment (km/year)','FontSize',fs,'FontName',fn);
-xlim([-1000 200]);
+xlim([-500 100]);
+%xlim([0 0.4]);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 hold off
 
