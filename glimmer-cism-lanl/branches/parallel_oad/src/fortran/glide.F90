@@ -217,7 +217,7 @@ contains
        call flush(50)
        stop
 #else
-       call glide_init_temp(model)
+      call glide_init_temp(model)
 #endif
     endif
 
@@ -500,6 +500,12 @@ contains
     ! ------------------------------------------------------------------------ 
     ! write to netCDF file
     ! ------------------------------------------------------------------------ 
+
+    ! update tempstagbc for output to netcdf, if needed
+    if (model%options%whichtemp == TEMP_REMAP_ADV) then
+       model%temper%tempstagbc = model%temper%temp  !update tempstagbc for io
+    endif
+
     if (present(no_write)) then
        nw=no_write
     else

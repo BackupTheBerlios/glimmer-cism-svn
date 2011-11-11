@@ -388,6 +388,9 @@ class PrintNC_template(PrintVars):
                     dimstring = dimstring + 'outfile%timecounter'
                 elif dims[i] == 'level' or dims[i] == 'levels':
                     dimstring = dimstring + 'up'
+                #*mjh* added to deal w/ writing of vars associated w/ stag vert coord  w/ bc
+                elif dims[i] == 'stagbclevel':
+                    dimstring = dimstring + 'up+1'                
                 else:
                     dimstring = dimstring + '1'
                 
@@ -400,6 +403,11 @@ class PrintNC_template(PrintVars):
                 spaces = ' '*3
                 self.stream.write("       do up=1,NCO%nlevel-1\n")
 
+            #*mjh* added to handle writing of vars associated w/ stag vert coord w/ bc
+            if  'stagbclevel' in dims:
+                # handle 3D fields
+                spaces = ' '*3
+                self.stream.write("       do up=0,NCO%nstagbclevel\n")
                         
             if 'factor' in var:
                 data = '(%s)*(%s)'%(var['factor'], var['data'])
@@ -411,6 +419,11 @@ class PrintNC_template(PrintVars):
 
             if  'level' in dims or 'levels' in dims:
                 self.stream.write("       end do\n")
+
+            #*mjh* added to handle writing of vars associated w/ stag vert coord w/ bc
+            if  'stagbclevel' in dims:
+                self.stream.write("       end do\n")
+
             # remove self since it's not time dependent
             if 'time' not in dims:
                 self.stream.write("       NCO%%do_var(%s) = .False.\n"%(var_type(var)))
@@ -440,6 +453,9 @@ class PrintNC_template(PrintVars):
                         dimstring = dimstring + 'infile%current_time'
                     elif dims[i] == 'level' or dims[i] == 'levels':
                         dimstring = dimstring + 'up'
+                    #*mjh* added to deal w/ writing of vars associated w/ stag vert coord w/ bc
+                    elif dims[i] == 'stagbclevel':
+                        dimstring = dimstring + 'up+1'
                     else:
                         dimstring = dimstring + '1'
 
@@ -451,6 +467,12 @@ class PrintNC_template(PrintVars):
                     spaces = ' '*3
                     self.stream.write("       do up=1,NCI%nlevel-1\n")
 
+                #*mjh* added to handle writing of vars associated w/ stag vert coord w/ bc
+                if  'stagbclevel' in dims:
+                    # handle 3D fields
+                    spaces = ' '*3
+                    self.stream.write("       do up=0,NCO%nstagbclevel\n")
+
                 self.stream.write("%s       status = nf90_get_var(NCI%%id, varid, &\n%s            %s, (/%s/))\n"%(spaces,
                                                                                                                spaces,var['data'], dimstring))
                 self.stream.write("%s       call nc_errorhandle(__FILE__,__LINE__,status)\n"%(spaces))
@@ -458,6 +480,10 @@ class PrintNC_template(PrintVars):
                     self.stream.write("%s       if (scale) then\n%s       %s = %s/(%s)\n%s       end if\n"%(spaces,spaces,var['data'],var['data'],var['factor'],spaces))
 
                 if  'level' in dims or 'levels' in dims:
+                    self.stream.write("       end do\n")
+
+                #*mjh* added to handle writing of vars associated w/ stag vert coord w/ bc
+                if  'stagbclevel' in dims:
                     self.stream.write("       end do\n")
                 
                 self.stream.write("    end if\n\n")

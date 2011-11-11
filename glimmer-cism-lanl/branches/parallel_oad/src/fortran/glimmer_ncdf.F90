@@ -78,6 +78,9 @@ module glimmer_ncdf
      integer :: nlevel = 0
      !*FD size of vertical coordinate
 
+     integer :: nstagbclevel = 0
+     !*FD size of vertical and stag vertical (with and without b.c.) coordinate
+
      integer timedim
      !*FD id of time dimension
      integer timevar
@@ -320,6 +323,7 @@ contains
     print*,'filename:       ',stat%filename
     print*,'id:             ',stat%id
     print*,'nlevel:         ',stat%nlevel
+    print*,'nstagbclevel:   ',stat%nstagbclevel
     print*,'timedim:        ',stat%timedim
     print*,'timevar:        ',stat%timevar
     print*,'vars:           ',trim(stat%vars)

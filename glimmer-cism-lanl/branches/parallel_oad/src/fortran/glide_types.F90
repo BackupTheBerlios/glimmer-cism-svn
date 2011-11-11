@@ -643,6 +643,7 @@ module glide_types
     !            so they will generally be < 0.  
     !      However, bfricflx and dissipcol are defined to be >= 0.
     real(dp),dimension(:,:,:),pointer :: temp => null() !*FD 3D temperature field.
+    real(dp),dimension(:,:,:),pointer :: tempstagbc => null() !*FD 3D stag temperature field.
     real(dp),dimension(:,:),  pointer :: bheatflx => null() !*FD basal heat flux (geothermal)
     real(dp),dimension(:,:,:),pointer :: flwa => null() !*FD Glenn's $A$.
     real(dp),dimension(:,:),  pointer :: bwat => null() !*FD Basal water depth
@@ -742,6 +743,8 @@ module glide_types
                                                      !*FD model levels
     real(dp),dimension(:),pointer :: stagsigma => null() !*FD Staggered values of sigma (layer midpts)
 
+    real(dp),dimension(:),pointer :: stagbcsigma => null() !*FD Staggered values of sigma 
+                                                            ! (layer midpts), with boundaries
     integer :: profile_period = 100            !*FD profile frequency
     integer :: ndiag = 9999999                 !*FD diagnostic frequency
     integer :: idiag = 1                       !*FD grid indices for diagnostic point
@@ -1080,6 +1083,8 @@ contains
 !      columns (0, ewn+1, nsn+1) in the horizontal are not needed.
     if (model%options%whichtemp == TEMP_REMAP_ADV) then
        allocate(model%temper%temp(0:upn,1:ewn,1:nsn)); model%temper%temp = 0.0
+       !MJH needed for io
+       allocate(model%temper%tempstagbc(0:upn,1:ewn,1:nsn)); model%temper%tempstagbc = 0.0 
        call coordsystem_allocate(model%general%ice_grid, upn-1, model%temper%flwa)
     else
        allocate(model%temper%temp(upn,0:ewn+1,0:nsn+1)); model%temper%temp = 0.0
@@ -1215,6 +1220,7 @@ contains
 
     !whl - to do - might be useful to change to (0:upn)
     allocate(model%numerics%stagsigma(upn-1))
+    allocate(model%numerics%stagbcsigma(0:upn))
     
     ! allocate memory for grounding line
     allocate (model%ground%gl_ew(ewn-1,nsn))
@@ -1261,6 +1267,7 @@ contains
     deallocate(model%general%y1) 
 
     deallocate(model%temper%temp)
+    deallocate(model%temper%tempstagbc)
     deallocate(model%temper%flwa)
     deallocate(model%temper%bheatflx)
     deallocate(model%temper%bwat)
@@ -1380,6 +1387,7 @@ contains
     deallocate(model%thckwk%float)
     deallocate(model%numerics%sigma)
     deallocate(model%numerics%stagsigma)
+    deallocate(model%numerics%stagbcsigma)
     
     deallocate(model%pcgdwk%rhsd,model%pcgdwk%answ)
     call del_sparse_matrix(model%pcgdwk%matrix)

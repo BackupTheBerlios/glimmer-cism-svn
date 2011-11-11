@@ -256,6 +256,11 @@ contains
     model%numerics%stagsigma(1:upn-1) =   &
             (model%numerics%sigma(1:upn-1) + model%numerics%sigma(2:upn)) / 2.0_dp
 
+    ! setup stagbcsigma, adding boundaries to stagsigma        
+    model%numerics%stagbcsigma(1:upn-1) = model%numerics%stagsigma(1:upn-1)
+    model%numerics%stagbcsigma(0) = 0.0
+    model%numerics%stagbcsigma(upn) = 1.0
+
     call print_sigma(model)
 
     return

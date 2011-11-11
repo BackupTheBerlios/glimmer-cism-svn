@@ -134,6 +134,11 @@ contains
     status = nf90_inq_varid(NCO%id,'level',varid)
     status=nf90_put_var(NCO%id,varid,model%numerics%sigma)
     call nc_errorhandle(__FILE__,__LINE__,status)
+
+    status = nf90_inq_varid(NCO%id,'stagbclevel',varid)
+    status=nf90_put_var(NCO%id,varid,model%numerics%stagbcsigma)
+    call nc_errorhandle(__FILE__,__LINE__,status)
+
     if (model%options%gthf.gt.0) then
        status = nf90_inq_varid(NCO%id,'lithoz',varid)
        status=nf90_put_var(NCO%id,varid,model%lithot%deltaz)
