@@ -4067,7 +4067,7 @@ contains
           zd = gldep + wcdep - ipos(i,k)
 	  if (zd > gldep+wcdep .or. zd < 0.d0) then
 	     print *, 'zd out of range', zd
-	     stop 1
+	     zd = min(max(zd,0.d0),gldep+wcdep)
           end if
           rhoamb(i,k) = get_rhoamb_z(zd)
        end do

@@ -540,7 +540,7 @@ contains
              model%temper%bmlt = 0.d0
 	end where
 
-	write( msg,* ) 'min melt depth ', current_min_depth
+	write( msg,* ) 'min melt depth ', current_min_depth*thk0
 	call io_append_output(trim(msg))
 
   end subroutine homotopy_bmlt
