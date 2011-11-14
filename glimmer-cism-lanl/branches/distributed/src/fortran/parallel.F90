@@ -3918,8 +3918,8 @@ contains
          if (sendcnt > 0) then
             call mpi_recv ( signal, 1, sendtype, root, mtag, comm, &
                             status, ier )
-            call mpi_rsend ( sendbuf, sendcnt, sendtype, root, mtag, &
-                             comm, ier )
+            call mpi_send ( sendbuf, sendcnt, sendtype, root, mtag, &
+                            comm, ier )
          end if
 
       endif
@@ -4049,8 +4049,8 @@ contains
          if (sendcnt > 0) then
             call mpi_recv ( signal, 1, sendtype, root, mtag, comm, &
                             status, ier )
-            call mpi_rsend ( sendbuf, sendcnt, sendtype, root, mtag, &
-                             comm, ier )
+            call mpi_send ( sendbuf, sendcnt, sendtype, root, mtag, &
+                            comm, ier )
          end if
 
      endif
@@ -4182,8 +4182,8 @@ contains
          if (sendcnt > 0) then
             call mpi_recv ( signal, 1, sendtype, root, mtag, comm, &
                             status, ier )
-            call mpi_rsend ( sendbuf, sendcnt, sendtype, root, mtag, &
-                             comm, ier )
+            call mpi_send ( sendbuf, sendcnt, sendtype, root, mtag, &
+                            comm, ier )
          end if
 
       endif
@@ -4315,8 +4315,8 @@ contains
          if (sendcnt > 0) then
             call mpi_recv ( signal, 1, sendtype, root, mtag, comm, &
                             status, ier )
-            call mpi_rsend ( sendbuf, sendcnt, sendtype, root, mtag, &
-                             comm, ier )
+            call mpi_send ( sendbuf, sendcnt, sendtype, root, mtag, &
+                            comm, ier )
          end if
 
       endif
@@ -4448,8 +4448,8 @@ contains
          if (sendcnt > 0) then
             call mpi_recv ( signal, 1, sendtype, root, mtag, comm, &
                             status, ier )
-            call mpi_rsend ( sendbuf, sendcnt, sendtype, root, mtag, &
-                             comm, ier )
+            call mpi_send ( sendbuf, sendcnt, sendtype, root, mtag, &
+                            comm, ier )
          end if
 
      endif
