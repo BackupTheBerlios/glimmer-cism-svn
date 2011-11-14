@@ -428,11 +428,17 @@ contains
 	  end if
 
        end do
+
+       bmelt_out = sum(avg_bmelt_slices,3)/real(n_avg_samples) *  &
+                  (365.25d0*24.0d0*3600.0d0)
+
+    else
+	! we are using the intial bmelt field
+	bmelt_out = bmelt * (365.25d0*24.0d0*3600.0d0)
+
     end if
 
     btemp_out = btemp
-    bmelt_out = sum(avg_bmelt_slices,3)/real(n_avg_samples) *  &
-                (365.25d0*24.0d0*3600.0d0)
    
     if (.not. use_plume_initial_bmlt) then
        if (.not. plume_reached_steady) then
@@ -538,24 +544,17 @@ contains
     ! interface and scalars passed forward on open boundary
     call inflow_calc(icalcan,kcalcan,icalcen,kcalcen)
 
-    ! mix in the prescribed subglacial discharge flux near inflow edge
-!   this code is redundant now, since the sgd code has been added into 
-!   the continuity and scalar subroutines
-!    call subglacial_discharge(icalcan,kcalcan,icalcen,kcalcen)
-
     ! ----------------------------------------------------------
     ! update plume thickness, wet/dry boundaries, and velocities
     ! ----------------------------------------------------------
     call update(iwetmin,iwetmax,kwetmin,kwetmax,&
          icalcan,icalcen,kcalcan,kcalcen,negdep)
 
-
     ! update interface position and flow on open boundaries
-
     call outflow_bound_interface(icalcan,icalcen,kcalcan,kcalcen)
 
 
-    call outflow_bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
+!    call outflow_bound_u_v(icalcan,icalcen,kcalcan,kcalcen)
 
 
     ! ---------------------------------------------------------------
@@ -573,16 +572,16 @@ contains
 
     call outflow_bound_tsdc(icalcan,icalcen,kcalcan,kcalcen)
 
+
     if (entype == 5 .or. entype == 6 .or. entype == 7) then
        call entrainment_correction(icalcan, icalcen, kcalcan, kcalcen, entype)
     end if
-!    call filter_waves(pdep, jcs, short_waves, long_waves, as, bs)
 
+!    call filter_waves(pdep, jcs, short_waves, long_waves, as, bs)
 !    debug2 = short_waves
     do k=kcalcan,kcalcen
        debug2(:,k) = sum(bmelt(:,k))/( m_grid - 6 ) * 3600.d0*24.d0*365.25d0
     end do
-
 
     call gwaves(icalcan, icalcen, kcalcan, kcalcen)
     ! write short step output and reset separation warning flag
@@ -1128,6 +1127,8 @@ contains
 	entype2 = entype
     end if
     
+    ! hack here to kill the suppression of melt rates
+    min_melt_depth = 0.d0  
 	
   end subroutine set_parameters
 
@@ -1411,10 +1412,7 @@ contains
     ! (used when considering newly-wet cells)
 
     zd = max(0.d0,wcdep + gldep - bpos)
-    if (any(zd > wcdep+gldep)) then
-       print *, 'invalid depth ', zd
-       stop 1
-    end if
+    zd = min(zd, wcdep+gldep)
 
     rhoa = get_rhoamb_z(zd)
     rhoamb = rhoa
@@ -1943,7 +1941,7 @@ contains
           tt = 5.0d-1*dy(k)*rdyv(k)
           vmid = tt*sv(i,k-1) + (1.d0-tt)*sv(i,k) 
           tt = 5.0d-1*dx(i-1)*rdxu(i)
-          umid = tt*su(i,k) + (1.d0-tt)*su(i-1,k)
+          umid = tt*su(i-1,k) + (1.d0-tt)*su(i,k)
           speed(i,k) = umid**2 + vmid**2 + small
           bspeed(i,k) = sqrt(speed(i,k))
        end do
@@ -1960,7 +1958,7 @@ contains
 
              if (pdepc(i,k).gt.mdepth) then         
 
-	        !                dragrt = dsqrt(drag(i,k))
+	        !dragrt = dsqrt(drag(i,k))
                 ustar = sqrt(drag(i,k)*(bspeed(i,k)**2.d0 + &
                                         0.5d0*local_tidal_speed(i,k)**2.d0) + &
                              u_star_offset**2.d0)
@@ -1988,6 +1986,7 @@ contains
                    bmelt(i,k) = 0.d0
                 else
                   bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
+	          ! bmelt(i,k) = max(bmelt(i,k),0.d0)
                 end if
 
                 ! calculate basal temperature and salinity
@@ -1995,8 +1994,7 @@ contains
                      - (lat/c0)*bmelt(i,k) )/  &
                      (gambt + mflag*(ci/c0)*bmelt(i,k))
                 
-                bsalt(i,k) = (btemp(i,k) - ftb  &
-                     - ftc*(gldep + wcdep - bpos(i,k)))/fta
+                bsalt(i,k) = (btemp(i,k) - ftb - ftc*(gldep + wcdep - bpos(i,k)))/fta
 
                 deltam(i,k) = deltam(i,k) + bmelt(i,k)
 
@@ -2026,8 +2024,11 @@ contains
                 rich = dmax1(5.0d-2,rich)    
 
 		amb_depth = wcdep + gldep - ipos(i,k)
-		atemp(i,k) = get_tamb_z(amb_depth)
+		amb_depth = min(max(0.0,amb_depth),wcdep+gldep)
+
+	 	atemp(i,k) = get_tamb_z(amb_depth)
 		asalt(i,k) = get_samb_z(amb_depth)
+
 
                 ! full kochergin entrainment
                 if (entype.eq.1) then
@@ -2234,20 +2235,15 @@ contains
                 ! articicially
 
                 entr(i,k)  = entr(i,k)  +  thk_def(i,k) / entr_time_const  
-	        delta(i,k) = delta(i,k) +  thk_def(i,k) / entr_time_const * dt
-	              
-!                if (entype.eq.5  .or.  entype.eq.6) then
-!                   ! set entrainment back to 0, since we don't want to set it here
-!                   entr(i,k) = 0.d0
-!                end if
+	        delta(i,k) = delta(i,k) +  (thk_def(i,k) / entr_time_const) * dt
 
+	        !this is for output purposes so we can see what percentage of the thicknes
+                !change was due to the imposed minimum thickness
+                artf_entr_frac(i,k) = (thk_def(i,k)/entr_time_const) / entr(i,k)	              
+	    else
+		artf_entr_frac(i,k) = 0.d0
             end if
 
-             !this is for output purposes so we can see what percentage of the thicknes
-             !change was due to the imposed minimum thickness
-            if (entr(i,k) .ne. 0.d0) then
-              artf_entr_frac(i,k) = (thk_def(i,k)/entr_time_const) / entr(i,k)
-            end if
           end if
 
           if (use_periodic_forcing .and. &
@@ -2410,8 +2406,6 @@ contains
                  cp1 = ((2-2*gasp_m5)*(h_over_l/h_over_lp)+gasp_m4)/6.d0
                  ! Gaspar thickness comes from Ap = 0
                  if (cp1*Bh == 0.d0) then
-                    !print *, 'that is surprising'
-                    !stop 1
                     detrain_thk = plume_max_thickness
                  else
                     if (use_min_plume_thickness) then
@@ -2444,12 +2438,10 @@ contains
                  Bh = bmelt(i,k)*delta_b_upper
 
                  if (Bh .lt. 0.d0) then
-	            ! negative (freezing) buoyancy source, shouldn't happen
-	            print *, 'negative buoyancy unexpected'
-		    stop 1
-                    detrain_thk = plume_max_thickness
+	            ! negative (freezing) buoyancy source, so not detraining
+                    detrain_thk = pdep(i,k)
                  elseif (Bh .eq. 0.d0) then
- 		    detrain_thk = plume_max_thickness
+ 		    detrain_thk = pdep(i,k)
  		else
                     detrain_thk = 2.d0*nk_m*u_star**3.d0 / Bh 
                  end if
@@ -2482,9 +2474,9 @@ contains
              pdep(i,k) = pdep(i,k) + delta_thk
              ipos(i,k) = bpos(i,k) - pdep(i,k)
 
-             if (delta_thk > 0.d0) then
+             if (delta_thk > 0.d0 .and. entype == 5) then
 
-                ! entraining case
+                ! entraining case for Zilitinkevich and Mironov
 
                 ! update the average temperature,salt and density
                 temp(i,k) = temp(i,k) + & 
@@ -2537,8 +2529,8 @@ contains
              pdepv = 0.5d0*(pdep(i,k) + pdep(i,k+1))
 
              if (all(jcs(i:(i+1),k) == 1))  then
-                if (utrain > 0.d0) then
-                   ! entraining at u-grid location
+                if (utrain > 0.d0 .and. entype == 5) then
+                   ! entraining at u-grid location in ZM scheme
                    ! in entraining case, the introduced fluid has no momentum, so we do
                    ! not change the transport variables, but we need to update the
                    ! speeds since the thickness has increased
@@ -2554,7 +2546,7 @@ contains
              end if
 
              if (all(jcs(i,k:(k+1)) == 1)) then
-                if (vtrain > 0.d0) then
+                if (vtrain > 0.d0 .and. entype == 5) then
                    ! entraining at v-grid location
                    sv(i,k) =   vtrans(i,k) / pdepv
                 else if (vtrain < 0.d0) then
@@ -2607,7 +2599,7 @@ contains
     integer(kind=kdp) :: idel,kdel,iidx,kkdy,ihilf,khilf
 
     real(kind=kdp) :: one,termnl,termnl2,corx
-    real(kind=kdp) :: redgu,slorho,islope,detrain
+    real(kind=kdp) :: redgu,slorho,islope
     real(kind=kdp) :: pdepu,zu,zum,arfac,tt,uu
     real(kind=kdp) :: vmid,umid
     real(kind=kdp) :: speed,tbotm,rhoa,tu,salu
@@ -2662,7 +2654,7 @@ contains
     !$omp         tlate,tlatw,tlats,tlatn,hordif,cory,redgv, &
     !$omp         i,k,jcvfac,idel,kdel,iidx,kkdy,ihilf,khilf) &
     !$omp shared( bpos, pdep, ipos, jcw, jcd_negdep, su,sv,drag,ugriddrag,newudrag, &
-    !$omp         u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, detrain, &
+    !$omp         u0,u0a,v0,v0a,tang,salt,temp,tins,ctot, &
     !$omp         jcd_u,jcd_v,utrans,vtrans,utransa,vtransa,jcs,gwave_speed, &
     !$omp 	  icalcen,icalcan,kcalcen,kcalcan , &
     !$omp         dx,dxu,rdx,rdxu,dy,dyv,rdy,rdyv,ahdx,ahdxu,ahdy,ahdyv, &
@@ -2689,7 +2681,6 @@ contains
           slorho = 0.d0
           islope = 0.d0
           redgu = 0.d0  
-          detrain = 0.d0
 
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           ! skip u-component if western or eastern cell is dry land
@@ -2713,8 +2704,8 @@ contains
 
           ! plume thickness on the u-grid
           pdepu = 5.0d-1*(pdep(i,k) + pdep(i+1,k))
-          pdepu = 5.0d-1*(bpos(i,k)-ipos(i,k) + &
-                          bpos(i+1,k)-ipos(i+1,k)) ! to get the new pdep?
+!          pdepu = 5.0d-1*(bpos(i,k)-ipos(i,k) + &
+!                          bpos(i+1,k)-ipos(i+1,k)) ! to get the new pdep?
           
           islope =  ipos(i+1,k) - ipos(i,k)  ! NB: this is the new ipos
 
@@ -2737,11 +2728,16 @@ contains
              jcvfac = 0
              arfac = 1.d0
              jcvfac = max0(jcd_negdep(i,k),jcd_negdep(i+1,k))
-             if (jcvfac .ge. 1) arfac = 75.d0*jcvfac  
+             if (jcvfac .ge. 1) then
+		 arfac = 75.d0*jcvfac  
+!		print *, 'problem here'
+	!		stop 1
+ 	     end if
 
              ! velocity components on the u-grid
              tt = 5.0d-1 
              uu = 5.0d-1*dy(k)*rdyv(k)
+	     uu = 5.0d-1
              if (any(jcd_v(i:i+1,k-1:k)==0)) then
                 print *, 'using invalid sv at i,k', i,k
                 stop 1
@@ -2831,10 +2827,10 @@ contains
              !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
              zu = wcdep + gldep - 5.0d-1*(ipos(i,k) + ipos(i+1,k))
-             zum = zu - 5.0d-1*pdepu      
-
 	     zu = max(0.d0, zu)
 	     zu = min(zu, wcdep+gldep)
+
+             zum = zu - 5.0d-1*pdepu      
 
 	     rhoa  = get_rhoamb_z(zu)
 
@@ -2930,16 +2926,10 @@ contains
 
                 ! termnl is the advection term -(su*u_x + sv*u_y) treated 
                 ! using an upwind scheme
-                termnl=(r1*sy + r2*sx) &
-                      *(utransa(ihilf,khilf)*dble(jcd_u(ihilf,khilf)) &
-                     +  utransa(i,k)        *dble(1 - jcd_u(ihilf,khilf))) &
-                     + r1*sxy &
-                      *(utransa(ihilf,k)    *dble(jcd_u(ihilf,k)) &
-                     +  utransa(i,k)        *dble(1 - jcd_u(ihilf,k))) &
-                     - r2*sxy &
-                      *(utransa(i,khilf)    *dble(jcd_u(i,khilf)) &
-                     +  utransa(i,k)        *dble(1 - jcd_u(i,khilf))) &
-                     - (r2*sy + r1*sx)* utransa(i,k)
+                termnl=(r1*sy + r2*sx) * utransa(ihilf,khilf) &
+                      + r1*sxy         * utransa(ihilf,k) &
+                      - r2*sxy         * utransa(i,khilf) &
+                      - (r2*sy + r1*sx)* utransa(i,k)
 
                 ! termnl2 is the divergence term -u(su_x + sv_y)
                 termnl2 = - utransa(i,k)*dt &
@@ -2977,7 +2967,7 @@ contains
 
              ! final
              !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-             utrans(i,k) = (utransa(i,k)+corx+islope+slorho+termnl+termnl2+hordif+detrain)*tbotm
+             utrans(i,k) = (utransa(i,k)+corx+islope+slorho+termnl+termnl2+hordif)*tbotm
 
           end if
 
@@ -2992,7 +2982,6 @@ contains
           slorho = 0.d0
           islope = 0.d0
           redgv = 0.d0
-          detrain = 0.d0
  
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           ! skip v-component if southern or northern cell is dry land
@@ -3014,9 +3003,10 @@ contains
           end if
 
           islope = ipos(i,k+1) - ipos(i,k)
+
           ! plume thickness on the v-grid
           pdepv = 5.0d-1*(pdep(i,k) + pdep(i,k+1))
-          pdepv = 5.0d-1*sum(bpos(i,k:k+1)-ipos(i,k:k+1)) ! to get the new pdep?
+          !pdepv = 5.0d-1*sum(bpos(i,k:k+1)-ipos(i,k:k+1)) ! to get the new pdep?
 
           ! final wet/dry logic
           if ((jcw(i,k).le.0).and.(jcw(i,k+1).le.0)) then
@@ -3041,9 +3031,10 @@ contains
 
           ! velocity components on the v-grid 
           uu = 5.0d-1*dx(i)*rdxu(i)
+	  uu = 5.0d-1
           tt = 5.0d-1
           umid = tt*uu       *(su(i-1,k) + su(i-1,k+1)) + &
-                 tt*(1.d0-uu)*(su(i,k)   + su(i,k+1))
+                 tt*(1.d0-uu)*(su(i  ,k) + su(i  ,k+1))
           vmid = sv(i,k)
 
           speed = umid**2+vmid**2 + small
@@ -3106,10 +3097,10 @@ contains
           ! 2)baroclinic pressure gradient
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           zv = wcdep + gldep - 5.0d-1*(ipos(i,k) + ipos(i,k+1))
-          zvm = zv - 5.0d-1*pdepv     
-
 	  zv = max(0.d0, zv)
           zv = min(zv, wcdep+gldep)
+
+          zvm = zv - 5.0d-1*pdepv     
 
 	  rhoa = get_rhoamb_z(zv)
 
@@ -3149,7 +3140,7 @@ contains
           ! 3)barotropic pressure gradient
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           islope = islope*rdy(k)*gdt*redgv*pdepv
-
+  
           ! 4)coriolis
           ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
           cory =  - pdepv*umid*fdt
@@ -3193,16 +3184,15 @@ contains
              sxy = sx -sy
              r1 = (dsign(one,sxy) + 1.d0)*5.0d-1
              r2 = one - r1
-             termnl=(r1*sy + r2*sx)*(vtransa(ihilf,khilf)*dble(jcd_v(ihilf,khilf)) &
-                  + dble(1 - jcd_v(ihilf,khilf))*vtransa(i,k)) &
-                  + r1*sxy*(vtransa(ihilf,k)*dble(jcd_v(ihilf,k)) &
-                  + dble(1 - jcd_v(ihilf,k))*vtransa(i,k)) &
-                  - r2*sxy*(vtransa(i,khilf)*dble(jcd_v(i,khilf)) &
-                  + dble(1 - jcd_v(i,khilf))*vtransa(i,k)) &
+             termnl=(r1*sy + r2*sx)*vtransa(ihilf,khilf) &
+                  +  r1*sxy        *vtransa(ihilf,k) &
+                  -  r2*sxy        *vtransa(i,khilf) &
                   - (r2*sy + r1*sx)*vtransa(i,k)
+
 
              termnl2 = - vtransa(i,k)*dt*((sv(i,khilf) - sv(i,k))*kdel/dyy  &
                                         + (su(i,kkdy) - su(i-1,kkdy))*rdxu(i))
+
           end if
           !          
           ! 7)lateral shear stress terms (north component)
@@ -3233,7 +3223,7 @@ contains
           !          
           ! final
           !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-          vtrans(i,k) = (vtransa(i,k)+cory+islope+slorho+termnl+termnl2+hordif+detrain)*tbotm
+          vtrans(i,k) = (vtransa(i,k)+cory+islope+slorho+termnl+termnl2+hordif)*tbotm
 
 	  end if
        end do
@@ -3323,7 +3313,7 @@ contains
           speed = sqrt(umid*umid + vmid*vmid)
           
           if ((gwave_speed(i,k) > 0.d0) .and. (speed > 0.d0)) then
-             gwave_crit_factor(i,k) = log(speed/gwave_speed(i,k))
+             gwave_crit_factor(i,k) = speed/gwave_speed(i,k)
           else
              gwave_crit_factor(i,k) = 0.d0
           end if
@@ -4250,6 +4240,8 @@ contains
 	     	! interpolate ambient values to interface and calculate
                 ! quantities for entrainment
 		amb_depth = wcdep + gldep - ipos(i,k)
+		amb_depth = min(max(0.0,amb_depth),wcdep+gldep)
+
 		atemp(i,k) = get_tamb_z(amb_depth)
 		asalt(i,k) = get_samb_z(amb_depth)
 
@@ -4264,11 +4256,13 @@ contains
                 end if
 
                 if (entype .ne. 5) then
+		   !as long as we are not doing ZM entrainment, adjust temp/salt now
 
+		   !note, pdepcp(i,k) already contains the contribution from entr(i,k)*dt
                    deltat(i,k) = deltat(i,k)  &
-                        + dt*entr(i,k)*(atemp(i,k) - tempa(i,k))/pdepcp(i,k)
+                        + dt*entr(i,k)*(atemp(i,k) - tempa(i,k))/(pdepcp(i,k))
                    deltas(i,k) =  deltas(i,k) &
-                        + dt*entr(i,k)*(asalt(i,k)-salta(i,k))/pdepcp(i,k)
+                        + dt*entr(i,k)*(asalt(i,k)-salta(i,k))/(pdepcp(i,k))
 
                 end if
 
@@ -4341,22 +4335,16 @@ contains
              end if
 
 	deltat(i,k) = deltat(i,k)  &
-                 + (r1*sy+r2*sx)*(tempa(ihilf,khilf)*     jcw(ihilf,khilf) &
-                 +                tempa(i,k)        *(1 - jcw(ihilf,khilf)))  &
-                 + r1*sxy*       (tempa(ihilf,k)*         jcw(ihilf,k) &
-                 +                tempa(i,k)*          (1-jcw(ihilf,k))) &
-                 - r2*sxy*       (tempa(i,khilf)*         jcw(i,khilf) &
-                 +                tempa(i,k)*          (1-jcw(i,khilf))) &
-                 - (r2*sy+r1*sx)* tempa(i,k)
+                 + (r1*sy+r2*sx)  * tempa(ihilf,khilf) &
+                 +  r1*sxy        * tempa(ihilf,k) &
+                 -  r2*sxy        * tempa(i,khilf) &
+                 - (r2*sy+r1*sx)  * tempa(i,k)
        
 	deltas(i,k) = deltas(i,k)  &
-                + (r1*sy+r2*sx)*(salta(ihilf,khilf)*      jcw(ihilf,khilf) &
-                +                salta(i,k)*         (1 - jcw(ihilf,khilf)))  &
-                + r1*sxy*       (salta(ihilf,k)*          jcw(ihilf,k) &
-                +                salta(i,k)*         (1 - jcw(ihilf,k))) &
-                - r2*sxy*       (salta(i,khilf)*          jcw(i,khilf) &
-                +                salta(i,k)*         ( 1- jcw(i,khilf))) &
-                - (r2*sy+r1*sx)* salta(i,k)      
+                + (r1*sy+r2*sx)   * salta(ihilf,khilf) &
+                +  r1*sxy         * salta(ihilf,k) &
+                -  r2*sxy         * salta(i,khilf) &
+                - (r2*sy+r1*sx)   * salta(i,k)      
 
              if (frazil) then
                 do l = 1,nice
@@ -4507,6 +4495,7 @@ contains
                    bmelt(i,k) = 0.d0
                 else
                   bmelt(i,k) = -(c2 - dsqrt(c2*c2 - 4.d0*c1*c3))/(2.d0*c1) * depthflag
+	          !bmelt(i,k) = max(0.d0,bmelt(i,k))
                 end if
                 
                 ! calculate basal temperature and salinity
@@ -4931,10 +4920,8 @@ contains
           if (pdep(i,k).gt.dcr) then
 
              depth = wcdep + gldep - ipos(i,k) - 5.0d-1*pdep(i,k)
-             if (depth < 0.d0 .or. depth > wcdep+gldep) then
-                print *, 'invalid depth, density gradient', depth
-                stop 1 
-             end if
+	     depth = min(max(0.0,depth),wcdep+gldep)
+
 	     rhoatmp = get_rhoamb_z(depth)
 
              if ((rhoatmp + septol < rhop(i,k)).and. &
