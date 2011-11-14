@@ -239,7 +239,7 @@ program shelf_driver
 	call write_log("Plume did not reach a steady state",GM_WARNING)
      end if
 
-     call homotopy_bmlt(plume_bmelt_out,time,model%numerics%tstart*1.d0,min_melt_depth)
+     call homotopy_bmlt(plume_bmelt_out,time,model%numerics%tstart*1.d0,model%geometry%lsrf,min_melt_depth)
 
      call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
           model%general%ewn, model%general%nsn, fake_landw,fake_landw)
@@ -450,7 +450,7 @@ program shelf_driver
 	     plume_output_frequency, &
 	     plume_initial_bmlt .or. .not.(do_plume_coupling) )
 
-	call homotopy_bmlt(plume_bmelt_out,time,model%numerics%tstart*1.d0,min_melt_depth)
+	call homotopy_bmlt(plume_bmelt_out,time,model%numerics%tstart*1.d0,model%geometry%lsrf,min_melt_depth)
 
         call write_real_ice_array(plume_bmelt_out / scale2d_f1,model%temper%bmlt, &
              model%general%ewn, model%general%nsn, fake_landw,fake_landw)
@@ -515,11 +515,12 @@ contains
 
   end function inflow_thk_perturb
 
-  subroutine homotopy_bmlt(bmelt_field, time, starttime,min_melt_depth)
+  subroutine homotopy_bmlt(bmelt_field, time, starttime,lsrf,min_melt_depth)
 
 	real(kind=dp),dimension(:,:),intent(inout) :: bmelt_field
 	real(kind=dp),intent(in) :: time, starttime
  	real(kind=dp),intent(in) :: min_melt_depth
+	real(kind=dp),dimension(:,:),intent(in) :: lsrf
 
 	character(len=128) :: msg 
 	real(kind=dp) :: current_min_depth
@@ -536,8 +537,8 @@ contains
 	current_min_depth = max(0.d0, &
                                 (1.0-(time-starttime)/plume_homotopy_ramp))*&
 	                    min_melt_depth/thk0
-        where (model%geometry%lsrf > current_min_depth)
-             model%temper%bmlt = 0.d0
+        where (lsrf > current_min_depth)
+             bmelt_field = 0.d0
 	end where
 
 	write( msg,* ) 'min melt depth ', current_min_depth*thk0
