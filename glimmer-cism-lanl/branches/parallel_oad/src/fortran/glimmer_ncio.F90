@@ -222,6 +222,7 @@ contains
 
     ! setting the size of the level dimension
     NCO%nlevel = model%general%upn
+    NCO%nstagbclevel = model%general%upn
   end subroutine glimmer_nc_createfile
 
   subroutine glimmer_nc_checkwrite(outfile,model,forcewrite,time)
@@ -366,6 +367,7 @@ contains
 
     ! setting the size of the level dimension
     NCI%nlevel = model%general%upn
+    NCI%nstagbclevel = model%general%upn
 
     ! checking if dimensions and grid spacing are the same as in the configuration file
     ! x1
