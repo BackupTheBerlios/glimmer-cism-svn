@@ -517,11 +517,12 @@ contains
 
   subroutine homotopy_bmlt(bmelt_field, time, starttime,lsrf,min_melt_depth)
 
-	real(kind=dp),dimension(:,:),intent(inout) :: bmelt_field
+	real(kind=dp),dimension(:,:),intent(inout),target :: bmelt_field
 	real(kind=dp),intent(in) :: time, starttime
  	real(kind=dp),intent(in) :: min_melt_depth
 	real(kind=dp),dimension(:,:),intent(in) :: lsrf
 
+	real(kind=dp),pointer,dimension(:,:) :: ice_bmlt
 	character(len=128) :: msg 
 	real(kind=dp) :: current_min_depth
 
@@ -537,8 +538,12 @@ contains
 	current_min_depth = max(0.d0, &
                                 (1.0-(time-starttime)/plume_homotopy_ramp))*&
 	                    min_melt_depth/thk0
+
+
+	ice_bmlt => bmelt_field(2+1:2+size(lsrf,1),2+1:2+size(lsrf,2))
+
         where (lsrf > current_min_depth)
-             bmelt_field = 0.d0
+             ice_bmlt = 0.d0
 	end where
 
 	write( msg,* ) 'min melt depth ', current_min_depth*thk0
