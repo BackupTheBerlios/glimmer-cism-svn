@@ -49,6 +49,8 @@ function [data] = nc_plume_read(nc_filename,istart,timestride,iend)
     salt = netcdf.getVar(nc, salt_id, [0 0 istart],[m n n_timeslices],[1 1 timestride]);
     rhop = netcdf.getVar(nc, rhop_id, [0 0 istart],[m n n_timeslices],[1 1 timestride]);
     
+    netcdf.close(nc);
+
     waterdepth = max(max(bpos(:,:,1)));
 
     data.x = x((1+3+2):(end-3-2));

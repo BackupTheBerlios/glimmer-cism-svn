@@ -27,9 +27,17 @@ function [data] = nc_ice_read(nc_filename, istart,timestride, iend)
     end
     
     [tname,tlen] = netcdf.inqDim(nc,time_dim_id);    
+    if (istart < 0)
+      if (iend > 0) 
+	error('Does not make send to have istart < 0 and iend > 0');
+      end
+      istart = tlen-2;
+      stride = 1;
+    end
     if (iend < 0)
       iend = tlen-1;
     end
+   
     n_timeslices = floor((iend-istart)/timestride)+1;
 
     time = netcdf.getVar(nc,time_var_id,istart,n_timeslices,timestride);
@@ -78,6 +86,8 @@ function [data] = nc_ice_read(nc_filename, istart,timestride, iend)
     data.uvel = fstag_layer(netcdf.getVar(nc, uvel_id,[0 0 0 istart],[m0 n0 k n_timeslices],[1 1 1 timestride]));
     data.vvel = fstag_layer(netcdf.getVar(nc, vvel_id,[0 0 0 istart],[m0 n0 k n_timeslices],[1 1 1 timestride]));
     
+netcdf.close(nc);
+
     data.uvelmean = squeeze(mean(data.uvel,3));
     data.vvelmean = squeeze(mean(data.vvel,3));
     
