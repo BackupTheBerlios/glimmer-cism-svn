@@ -32,7 +32,6 @@ program shelf_driver
   logical,parameter :: use_thk_zero_margin = .true.
 
   real(kind=kind(1.d0)),parameter :: min_melt_depth = -50.d0
-!  real(kind=kind(1.d0)),parameter :: min_melt_depth = 0.d0
 
   !local variables
   type(glide_global_type) :: model        ! model instance
@@ -63,8 +62,10 @@ program shelf_driver
 
   integer :: i_smooth_col 
   integer :: ice_ntimestep = 0	
+  logical :: firstIteration 
 
   real(kind=rk),dimension(:,:),allocatable :: upstream_thck
+  real(kind=rk),dimension(:,:),allocatable :: prev_thck
   real(kind=rk),dimension(:,:),allocatable :: smoothed_thck
   logical,      dimension(:,:),allocatable :: plume_land_mask,no_plume
   real(kind=dp),dimension(:,:),allocatable :: plume_lsrf_ext,plume_ice_dz,plume_t_interior
@@ -133,6 +134,7 @@ program shelf_driver
 
   allocate(upstream_thck(model%general%ewn-2*thk_zero_margin,1))
   allocate(smoothed_thck(model%general%ewn,model%general%nsn))
+  allocate(prev_thck(model%general%ewn,model%general%nsn))
 
   upstream_thck(:,1) = &
        model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
@@ -272,6 +274,8 @@ program shelf_driver
   model%geometry%thck(1:thk_zero_margin ,:) = 0.0_dp
   model%geometry%thck(model%general%ewn-(thk_zero_margin-1):model%general%ewn,:) = 0.0_dp
 
+  firstIteration = .true.
+
   do while(time .le. model%numerics%tend  .and. &
        .not. (check_for_steady .and. is_steady))
 
@@ -279,45 +283,18 @@ program shelf_driver
      model%climate%artm(:,:) = climate_cfg%artm
      model%climate%eus = climate_cfg%eus
 
+     if (firstIteration) then
+ 	prev_thck = 0.d0
+     else	
+	!store old ice thicknesses
+        prev_thck = model%geometry%thck
+     end if
+
      print *, 'beginning tstep_p1'
      call glide_tstep_p1(model,time) ! temp evolution
 
      print *, 'beginning tstep_p2'
      call glide_tstep_p2(model)      ! velocities, thickness advection
-
-     print *, 'zeroing out marginal thickness values'
-     ! adjust the heights in the upstream row
-     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                         1  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
-
-     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                         2  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
-
-     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                         3  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
-    
-     ! and therefore zero out the thck_t values
-     model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                           1  ) = 0.d0
-     model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                           2  ) = 0.d0
-     model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
-                           3  ) = 0.d0
-
-     ! set thickness in last row equal to the next upstream row.  This is
-     ! something like a calving condition, to keep the thickness from growing 
-     ! for reasons I don't understand **cvg***
-
-     model%geometry%thck(:,model%general%nsn-4) = model%geometry%thck(:,model%general%nsn-5)
-     model%geometry%thck_t(:,model%general%nsn-4) = 0.d0
-
-     ! impose dh/dx = 0 along the lateral side walls
-
-     ! This has been commented out.  I believe it is physically incorrect since it can act 
-     ! as a thickness source along the sides, which is not the boundary conditions we
-     ! want when simulating a steep-walled fjord like Petermann.
-!     model%geometry%thck(model%general%ewn,:) = model%geometry%thck(model%general%ewn-1,:)
-!     model%geometry%thck(                1,:) = model%geometry%thck(                  2,:)
 
      !apply x-direction smoothing
      non_dim_smooth_diff = &
@@ -346,9 +323,51 @@ program shelf_driver
 	           + non_dim_smooth_diff*model%geometry%thck(i_smooth_col+1,4:) &
                    +  non_dim_smooth_diff*model%geometry%thck(i_smooth_col-1,4:)
      end do
+
      model%velocity_hom%H_diff_t(:,4:) = &
            (1.d0/model%numerics%tinc)*(smoothed_thck(:,4:)-model%geometry%thck(:,4:))
      model%geometry%thck(:,4:) = smoothed_thck(:,4:)
+
+
+     !now calculate thck_t changes
+     where (prev_thck > 0.d0)
+          model%geometry%thck_t = (model%geometry%thck - prev_thck) / & 
+                                  (prev_thck * get_tinc(model))
+     elsewhere
+          model%geometry%thck_t = 0.d0
+     end where
+        
+     !the outer edges of thickness are not valid, due to remapping scheme
+     model%geometry%thck_t(:,1) = 0.d0
+     model%geometry%thck_t(:,model%general%nsn) = 0.d0
+     model%geometry%thck_t(1,:) = 0.d0
+     model%geometry%thck_t(model%general%ewn,:) = 0.d0
+
+     ! adjust the heights in the upstream row
+     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+                         1  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
+
+     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+                         2  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
+
+     model%geometry%thck(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+                         3  ) = upstream_thck(:,1) + inflow_thk_perturb(time)
+
+    
+     ! and therefore zero out the thck_t values
+     model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+                           1  ) = 0.d0
+     model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+                           2  ) = 0.d0
+     model%geometry%thck_t(thk_zero_margin+1:model%general%ewn-thk_zero_margin, &
+                           3  ) = 0.d0
+
+     ! set thickness in last row equal to the next upstream row.  This is
+     ! something like a calving condition, to keep the thickness from growing 
+     ! for reasons I don't understand **cvg***
+
+     model%geometry%thck(:,model%general%nsn-4) = model%geometry%thck(:,model%general%nsn-5)
+     model%geometry%thck_t(:,model%general%nsn-4) = 0.d0
 
 
      print *, 'beginning tstep_p3'
@@ -359,7 +378,7 @@ program shelf_driver
 		         (model%general%nsn*model%general%ewn))
      max_rel_thk_change =  maxval(abs(model%geometry%thck_t))
 
-     is_steady =  check_for_steady .and. &
+     is_steady =  not(firstIteration) .and. check_for_steady .and. &
 	  ( max_rel_thk_change <      thk_steady_tol) .and. &
           (mean_rel_thk_change < mean_thk_steady_tol)
 
@@ -471,6 +490,8 @@ program shelf_driver
         model%temper%bmlt = plume_const_bmlt_rate / scale2d_f1
      end if
 
+     firstIteration = .false.
+
   end do
 
   if (is_steady) then
@@ -491,6 +512,7 @@ program shelf_driver
   ! finalise GLIDE
   deallocate(upstream_thck, prev_ice_thk)
   deallocate(smoothed_thck)
+  deallocate(prev_thck)
 
   call glide_finalise(model)
 
