@@ -21,6 +21,8 @@ depth = abs(dplume.draft);
 rhop = dplume.rhop;
 pdep = dplume.pdep;
 
+pdep_res.x = (dplume.x - 1375)/1000;
+pdep_res.y = (dplume.y - 875)/1000;
 
 pdep_res.thk_flux_div = ...
     pad_edge(1,0, ...

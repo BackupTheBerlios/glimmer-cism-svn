@@ -19,4 +19,4 @@ res = 1/16.0 *( ...
          res(i,j) = sum(sum(M(i:(i+3),j:(j+3))))/16.0;
      end
  end
- 
+  

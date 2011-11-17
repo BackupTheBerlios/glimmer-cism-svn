@@ -2,6 +2,7 @@
 fig1 = figure(1);
 clf;
 
+fs = 14;
 hold on
 contourf(x/1000.0,y/1000.0,grad',40,'EdgeColor','None');
 colorbar('FontSize',fs);
@@ -27,7 +28,7 @@ contourf(x/1000.0,y/1000.0,-draft',40,'EdgeColor','None');
 colorbar('FontSize',fs);
 set(gca,'FontSize',fs2);
 %caxis([000 650])
-scale=1.5;stride=2;
+scale=2.0;stride=2;
 i0 = 2;
 quiver(x(i0:stride:end)/1000,y(1:stride:end)/1000,...
       su(i0:stride:end,1:stride:end)',...
@@ -41,7 +42,7 @@ title('Contours of Ice Draft (m) with plume velocities','FontSize',fs);
 hold off
 print('-depsc',strcat([fig_dir,'/plume_draft_vel']));
 
-
+pause;
 figure(1);
 set(fig1,'Position',[1 1 solo_fig_x_size solo_fig_y_size])
 clf;

@@ -8,7 +8,7 @@ tend = size(ice_data.lsurf,3);
 
 draft = ice_data.lsurf(:,:,tend);
 colors='krbmg';
-fs = 16;
+fs = 14;
 fs2 = 16;
 
 figure(1);

@@ -5,20 +5,20 @@
 clear all;
 
 jobs = getenv('GC_JOBS');
-jname = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_2';
+jname = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_4';
 
 f_ice = strcat([jobs,'/',jname,'/',jname,'.out.nc']);
 f_ocean = strcat([jobs,'/',jname,'/plume.',jname,'.out.nc']);
 
-istart = 880;
-iend = 882;
+istart = 50;
+iend = 90;
 stride = 1;
-dice = nc_ice_read(f_ice,  istart,stride,iend);
+%dice = nc_ice_read(f_ice,istart,stride,iend);
 
-istart = 333;
-iend = 353;
+istart = 15;
+iend = 35;
 stride = 1;
-dplume = nc_plume_read(f_ocean,istart,stride,iend);
+%dplume = nc_plume_read(f_ocean,istart,stride,iend);
 
 f_amb = strcat([jobs,'/',jname,'/ambout']);
 [amb_t,amb_s] = nc_read_amb(f_amb);
@@ -26,17 +26,17 @@ zs = 0:1:800;
 ts = amb_t(zs);
 ss = amb_s(zs);
 
-dplume_avg = nc_plume_avg(dplume);
-dice_avg = nc_ice_avg(dice);
+%dplume_avg = nc_plume_avg(dplume);
+%dice_avg = nc_ice_avg(dice);
 
 %[flat_ocean_transient,flat_ice_transient] = flatten_gc( dplume, dice, 1:length(dice.time) );
 %[flat_ocean,flat_ice] = flatten_gc( dplume_avg, dice_avg,  ...
 %				    length(dice_avg.time):length(dice_avg.time) );
 
-save '/home/cvg222/paper_work/mat_files/nov_14_work_dat.mat';
-load '/home/cvg222/paper_work/mat_files/nov_14_work_dat.mat';
+%save '/home/cvg222/paper_work/mat_files/nov_15_work_dat.mat';
+load '/home/cvg222/paper_work/mat_files/nov_15_work_dat.mat';
 
-fig_dir = '/home/cvg222/paper_work/nov_14_figs/';
+fig_dir = '/home/cvg222/paper_work/nov_16_figs/';
 
 %plot_amb_water_column(ts,ss,zs,fig_dir);
 
@@ -54,9 +54,20 @@ times = [1];
 
 %plot_geostrophic(dplume_avg,1,amb_t,amb_s)
 
-res = plume_momentum_bal2(dplume_avg,amb_t,amb_s);
-x = res.x;
-y = res.y;
-plot_momentum_bal2;
+
+%res = plume_momentum_bal(dplume_avg,amb_t,amb_s);
+%plot_momentum_bal;
+
+%res = plume_momentum_bal2(dplume_avg,amb_t,amb_s);
+%plot_momentum_bal2;
+
+
+
+plot_temp_salt_depths;
+%plot_plume_sections;
+%plot_lower_surf;
+
 %plume_res = plume_dep_bal(dplume_avg);
+%plot_dep_bal;
+
 

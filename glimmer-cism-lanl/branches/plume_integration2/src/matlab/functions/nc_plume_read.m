@@ -23,10 +23,18 @@ function [data] = nc_plume_read(nc_filename,istart,timestride,iend)
     time_var_id = netcdf.inqVarID(nc,'time');
     
     [tname,tlen] = netcdf.inqDim(nc,time_dim_id);
-    if (iend < 0) 
+
+    if (istart < 0)
+      if (iend > 0) 
+	error('Does not make send to have istart < 0 and iend > 0');
+      end
+      istart = tlen-2;
+      stride = 1;
+    end
+    if (iend < 0)
       iend = tlen-1;
     end
- 
+
     n_timeslices = floor((iend-istart)/timestride)+1;
     
     time = netcdf.getVar(nc,time_var_id,istart,n_timeslices,timestride);

@@ -4,8 +4,9 @@ doTransient = false;
 scatter_xsize = 1000;
 scatter_ysize = 600;
 
-fs = 16;
+fs = 14;
 fn = 'Helvetica';
+fs_label = 16;
 
 c1 = 'm';
 c1 = 'k';
@@ -90,6 +91,7 @@ title(strcat(['correlation = ', sprintf('%4.3f',speed_cor)]),'FontSize',fs,'Colo
 set(gca,'FontSize',fs);
 xlabel('plume speed (m/s)','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+text(0.025,77,'a','color','k','FontSize',fs_label);
 hold off
 
 subplot(1,3,2);
@@ -98,6 +100,7 @@ title(strcat(['correlation = ', sprintf('%4.3f',temp_cor)]),'FontSize',fs,'Color
 set(gca,'FontSize',fs);
 xlabel('thermal forcing (C)','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+text(0.2,77,'b','color','k','FontSize',fs_label);
 hold off
 
 subplot(1,3,3);
@@ -110,6 +113,7 @@ xlabel('entrainment (km/year)','FontSize',fs,'FontName',fn);
 xlim([-500 100]);
 %xlim([0 0.4]);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+text(-450,77,'c','color','k','FontSize',fs_label);
 hold off
 
 print('-depsc',strcat([fig_dir,'/plume_scatter']));
@@ -126,6 +130,7 @@ set(gca,'FontSize',fs);
 title(strcat(['correlation = ', sprintf('%4.3f',grad_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
 xlabel('ice gradient (non-dimensional)','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+text(0.025,77,'a','color','k','FontSize',fs_label);
 hold off
 
 subplot(1,3,2);
@@ -139,6 +144,7 @@ title(strcat(['correlation = ', sprintf('%4.3f',yadv_cor)]),'FontSize',fs,'Color
 xlim([-5 80]);
 xlabel('v_0 H_y (m/year)','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+text(2,77,'b','color','k','FontSize',fs_label);
 hold off
 
 
@@ -149,6 +155,7 @@ set(gca,'FontSize',fs);
 xlabel('ice draft (m)','FontSize',fs,'FontName',fn);
 ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
 xlim([0 600]);hold off
+text(30,77,'c','color','k','FontSize',fs_label);
 
 print('-depsc',strcat([fig_dir,'/ice_scatter']));
 
