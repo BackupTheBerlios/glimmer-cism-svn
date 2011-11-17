@@ -470,6 +470,7 @@ contains
 
     real(dp) :: pmptempb  ! pressure melting temp at bed
     real(dp) :: fact
+    real(dp) :: dsigbot
 
     ! set surface temperature
 
@@ -543,20 +544,41 @@ contains
           ! matrix elements corresponding to dT/dsigma
           ! 0.5 is a Crank-Nicolson factor
 
-          subd(model%general%upn+1) = -0.5d0 / (1.0d0 - model%numerics%stagsigma(model%general%upn-1))
-          supd(model%general%upn+1) =  0.0d0 
-          diag(model%general%upn+1) = -subd(model%general%upn+1)
+          dsigbot = (1.0d0 - model%numerics%stagsigma(model%general%upn-1))
+
+        !! Bill's original basal bc - which wasn't working correctly - commented out for now
+
+!          subd(model%general%upn+1) = -0.5d0 / (1.0d0 - model%numerics%stagsigma(model%general%upn-1))
+!          supd(model%general%upn+1) =  0.0d0 
+!          diag(model%general%upn+1) = -subd(model%general%upn+1)
+
+!          model%tempwk%inittemp(model%general%upn,ew,ns) =    &
+!                - model%temper%temp(model%general%upn-1,ew,ns) * subd(model%general%upn+1)  &
+!                - model%temper%temp(model%general%upn,  ew,ns) * diag(model%general%upn+1)  &
+!                - model%geometry%thck(ew,ns)*thk0/coni * model%temper%bheatflx(ew,ns) & ! geothermal (H/k)*G
+!                + model%geometry%thck(ew,ns)*thk0/coni * model%temper%bfricflx(ew,ns)   ! sliding (H/k)*taub*ub
+!
+!          rhsd(model%general%upn+1) = model%tempwk%inittemp(model%general%upn,ew,ns)
+
+        !! Below is fix to Temperature basal bc by M. Hoffman, Nov. 2011
+
+        subd(model%general%upn+1) = -fact / dsigbot**2
+        supd(model%general%upn+1) =  0.0d0
+        diag(model%general%upn+1) = 1.0d0 + fact / dsigbot**2
 
           ! Note: The heat source due to basal sliding (bfricflx) is computed in subroutine calcbfric.
           ! Also note that bheatflx is generally <= 0, since defined as positive down.
 
-          model%tempwk%inittemp(model%general%upn,ew,ns) =    &
-                - model%temper%temp(model%general%upn-1,ew,ns) * subd(model%general%upn+1)  &
-                - model%temper%temp(model%general%upn,  ew,ns) * diag(model%general%upn+1)  &
-                - model%geometry%thck(ew,ns)*thk0/coni * model%temper%bheatflx(ew,ns) & ! geothermal (H/k)*G
-                + model%geometry%thck(ew,ns)*thk0/coni * model%temper%bfricflx(ew,ns)   ! sliding (H/k)*taub*ub
+         model%tempwk%inittemp(model%general%upn,ew,ns) =    &
+           model%temper%temp(model%general%upn-1,ew,ns) * fact / dsigbot**2  &
+           + model%temper%temp(model%general%upn,  ew,ns)  &
+           * (1.0d0 - fact/dsigbot**2)   &
+           - fact *2.0d0 * &
+           model%geometry%thck(ew,ns) * thk0 / coni / dsigbot *  &
+           (model%temper%bheatflx(ew,ns) & ! geothermal (H/k)*G
+           - model%temper%bfricflx(ew,ns) )  ! sliding (H/k)*taub*ub
 
-          rhsd(model%general%upn+1) = model%tempwk%inittemp(model%general%upn,ew,ns)
+        rhsd(model%general%upn+1) = model%tempwk%inittemp(model%general%upn,ew,ns)
 
        endif   ! melting or frozen
 

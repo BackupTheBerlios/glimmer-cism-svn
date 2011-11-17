@@ -71,6 +71,9 @@ topg = numpy.zeros([1,ny,nx],dtype='float32')
 artm = numpy.zeros([1,ny,nx],dtype='float32')
 bheatflx = numpy.zeros([1,ny,nx],dtype='float32')
 
+temp = numpy.zeros([nz,ny,nx],dtype='float32')
+temp[:] = -25.0
+
 # Calculate the thickness of the (ellipsoidal) hump of ice
 for i in range(nx):
   x = float(i-nx/2)/nx
@@ -84,8 +87,10 @@ for i in range(nx):
 netCDFfile.createVariable('thk', 'f',('time','y1','x1'))[:] = thk
 netCDFfile.createVariable('topg','f',('time','y1','x1'))[:] = topg
 
+netCDFfile.createVariable('temp','f',('time', 'level', 'y1','x1'))[:] = temp
+
 #SFP - altered standard test case by adding const. sfc temp and geothermal flux fields
-artm[:] = -20.0
+artm[:] = -25.0
 bheatflx[:] = -0.055
 netCDFfile.createVariable('artm','f',('time','y1','x1'))[:] = artm 
 netCDFfile.createVariable('bheatflx','f',('time','y1','x1'))[:] = bheatflx 
