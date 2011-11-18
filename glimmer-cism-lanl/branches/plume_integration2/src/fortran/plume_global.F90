@@ -46,7 +46,7 @@ module plume_global
   !ice-related variables
   real(kind=kdp),allocatable,dimension(:,:,:) :: c_ice,ca_ice
   real(kind=kdp),allocatable,dimension(:,:) :: ctot,ctota,tfreeze
-  real(kind=kdp),pointer,dimension(:,:) :: bmelt
+  real(kind=kdp),pointer,dimension(:,:) :: bmelt,bmelt_avg
   real(kind=kdp),allocatable,dimension(:,:) :: btemp,bsalt,ctempd
   real(kind=kdp),allocatable,dimension(:,:) :: tint !ice shelf interior temperature
 
@@ -188,7 +188,7 @@ contains
     allocate (jcd_negdep(m,n),jcd_fseed(m,n))
     allocate (c_ice(m,n,lice),ca_ice(m,n,lice),ctot(m,n),ctota(m,n))
     allocate (tfreeze(m,n))
-    allocate (bmelt(m,n))
+    allocate (bmelt(m,n),bmelt_avg(m,n))
     allocate (btemp(m,n),bsalt(m,n),ctempd(m,n))
 
     allocate (fmelt(m,n,lice),fppn(m,n,lice),fnuc(m,n,lice))
@@ -229,7 +229,7 @@ contains
     deallocate(separated)
     deallocate(jcs,jcw,jcd_u,jcd_v,jcd_fl,jcd_negdep,jcd_fseed)
     deallocate(c_ice,ca_ice,ctot,ctota,tfreeze,btemp,bsalt,ctempd)
-    deallocate(bmelt)
+    deallocate(bmelt,bmelt_avg)
     deallocate(fmelt,fppn,fnuc)
     deallocate(saltinf,tempinf,depinf,intracer,intracera)
     deallocate(ahdx,ahdxu,ahdy,ahdyv)

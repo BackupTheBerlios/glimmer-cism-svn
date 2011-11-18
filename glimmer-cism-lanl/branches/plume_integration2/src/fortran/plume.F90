@@ -431,6 +431,7 @@ contains
 
        bmelt_out = sum(avg_bmelt_slices,3)/real(n_avg_samples) *  &
                   (365.25d0*24.0d0*3600.0d0)
+       bmelt_avg = bmelt_out
 
     else
 	! we are using the intial bmelt field

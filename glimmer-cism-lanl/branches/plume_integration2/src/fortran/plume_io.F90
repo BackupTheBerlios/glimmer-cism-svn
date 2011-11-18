@@ -70,7 +70,7 @@ module plume_io
   integer :: u_varid,v_varid,su_varid,sv_varid,speed_varid
   integer :: pdep_varid,bpos_varid,ipos_varid
   integer :: sep_varid
-  integer :: bmelt_varid,btemp_varid,bsalt_varid
+  integer :: bmelt_varid,btemp_varid,bsalt_varid,bmelt_avg_varid
   integer :: rhop_varid,temp_varid,salt_varid,entr_varid,artf_entr_frac_varid
   integer :: sgd_varid
   integer :: tidal_speed_varid
@@ -666,6 +666,13 @@ contains
     call check( nf90_put_att(nc_id, bmelt_varid, 'standard_name', 'basal melt rate') )
     call check( nf90_put_att(nc_id, bmelt_varid, 'units', 'meters/year') )
 
+    call io_append_output('Creating variable bmelt_avg')
+    call check( nf90_def_var(nc_id,'bmelt_avg',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),bmelt_avg_varid) )
+    call check( nf90_put_att(nc_id, bmelt_avg_varid, 'positive', 'thickening plume') )
+    call check( nf90_put_att(nc_id, bmelt_avg_varid, 'long_name', 'basal melt rate averaged') )
+    call check( nf90_put_att(nc_id, bmelt_avg_varid, 'standard_name', 'basal melt rate averaged') )
+    call check( nf90_put_att(nc_id, bmelt_avg_varid, 'units', 'meters/year') )
+
     call io_append_output('Creating variable btemp')
     call check( nf90_def_var(nc_id,'btemp',NF90_DOUBLE,(/x_dimid,y_dimid,time_dimid/),btemp_varid) )
     call check( nf90_put_att(nc_id, btemp_varid, 'long_name', 'ice shelf interface temperature') )
@@ -912,6 +919,7 @@ contains
     call check(nf90_put_var(nc_id, bpos_varid, bpos, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, btemp_varid, btemp, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, bmelt_varid, bmelt*sec_per_year, (/1,1,time_counter/)))
+    call check(nf90_put_var(nc_id, bmelt_avg_varid, bmelt_avg*sec_per_year, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, bsalt_varid, bsalt, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, rhop_varid, rhop, (/1,1,time_counter/)))
     call check(nf90_put_var(nc_id, temp_varid, temp, (/1,1,time_counter/)))
