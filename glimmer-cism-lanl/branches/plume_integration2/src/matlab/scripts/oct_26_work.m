@@ -13,7 +13,7 @@ f_ocean = strcat([jobs,'/',jname,'/plume.',jname,'.out.nc']);
 istart = 50;
 iend = 90;
 stride = 1;
-%dice = nc_ice_read(f_ice,istart,stride,iend);
+dice = nc_ice_read(f_ice,istart,stride,iend);
 
 istart = 15;
 iend = 35;
@@ -33,8 +33,9 @@ ss = amb_s(zs);
 %[flat_ocean,flat_ice] = flatten_gc( dplume_avg, dice_avg,  ...
 %				    length(dice_avg.time):length(dice_avg.time) );
 
+%load '/home/cvg222/paper_work/mat_files/nov_15_work_dat.mat';
 %save '/home/cvg222/paper_work/mat_files/nov_15_work_dat.mat';
-load '/home/cvg222/paper_work/mat_files/nov_15_work_dat.mat';
+%load '/home/cvg222/paper_work/mat_files/nov_15_work_dat.mat';
 
 fig_dir = '/home/cvg222/paper_work/nov_16_figs/';
 
@@ -63,7 +64,7 @@ times = [1];
 
 
 
-plot_temp_salt_depths;
+%plot_temp_salt_depths;
 %plot_plume_sections;
 %plot_lower_surf;
 
@@ -71,3 +72,4 @@ plot_temp_salt_depths;
 %plot_dep_bal;
 
 
+plot_h_diff;
