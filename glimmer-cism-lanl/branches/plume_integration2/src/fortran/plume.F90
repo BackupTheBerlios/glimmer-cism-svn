@@ -431,7 +431,7 @@ contains
 
        bmelt_out = sum(avg_bmelt_slices,3)/real(n_avg_samples) *  &
                   (365.25d0*24.0d0*3600.0d0)
-       bmelt_avg = bmelt_out
+       bmelt_avg = bmelt_out/(365.25d0*24.0d0*3600.0d0)
 
     else
 	! we are using the intial bmelt field
@@ -2165,11 +2165,26 @@ contains
 
 		if (sgd_type == 1) then
 
-		   !Note: The idea of approximating a train of spikes using a truncated cosine series
-	           !      doesn't seem to work well.  Going back to a much gentler x-variation
-	           sgd(i,k) = sgd(i,k)*(  1.d0  \
-	                                - 0.5d0*cos(2.d0*pi*1.d0*sgd_flux_k*real(i-infloa-1)/real(infloe-1-infloa-1)) )
-	 
+		   !Note: The idea of approximating a train of spikes 
+                   !      using a truncated cosine series
+	           !      doesn't seem to work well.  
+                   !    Going back to a much gentler x-variation
+		  !         sgd(i,k) = sgd(i,k)*(  1.d0  \
+          	  !           - 0.5d0*cos(  & 
+                  !             2.d0*pi*1.d0*sgd_flux_k* &
+                  !             real(i-infloa-1)/real(infloe-1-infloa-1) &
+                  !       ))
+	 	    if ( ((i .ge. 12   ) .and. (i .le. 19   )) .or. &
+	                 ((i .ge. 12+20) .and. (i .le. 19+20)) .or. &
+	                 ((i .ge. 12+40) .and. (i .le. 19+40)) .or. &
+	                 ((i .ge. 12+60) .and. (i .le. 19+60))   ) then
+			sgd(i,k) = sgd_flux*(1.0d9)* &
+                                   (1.d0/(365.25d0*3600.d0*24.d0)) / &
+                                   (sum(dy(knfloa+1:knfloe-1)) * &
+                                   4*sum(dx(12:19)))
+		    else
+	                sgd(i,k) = 0.d0
+	            end if
 
 	        end if 
 
