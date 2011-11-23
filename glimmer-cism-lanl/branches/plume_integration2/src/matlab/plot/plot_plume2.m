@@ -75,25 +75,6 @@ ice_adv = -dice.flux_div(:,j_start:j_stop,timeslice) + ...
            dice.vel_div(:,j_start:j_stop,timeslice);   
 
 
-%ice_u = squeeze(dice.uvelmean(:,:,timeslice));
-%ice_v = squeeze(dice.vvelmean(:,:,timeslice));
-
-%su = squeeze(dplume.su(:,:,timeslice));
-%sv = squeeze(dplume.sv(:,:,timeslice));
-%u = squeeze(dplume.u(:,:,timeslice));
-%v = squeeze(dplume.v(:,:,timeslice));
-%train = squeeze(dplume.train(:,:,timeslice));
-%bmelt = squeeze(dplume.bmelt(:,:,timeslice));
-%temp = squeeze(dplume.temp(:,:,timeslice));
-%salt = squeeze(dplume.salt(:,:,timeslice));
-pdep = squeeze(dplume.pdep(:,:,timeslice));
-%draft = squeeze(dplume.draft(:,:,timeslice));
-%thk_t = squeeze(dice.thk_t(:,:,timeslice));
-%T_forcing = thermal_forcing(abs(draft),salt,temp);
-%grad = squeeze(dplume.grad(:,:,timeslice));
-%speed = sqrt(su.*su + sv.*sv);
-
-
 switch1 = true;
 %switch1 = false;
 
@@ -105,7 +86,7 @@ switch3 = false;
 
 switch4 = false;
 
-if (false) 
+if (true) 
   plot_solo_panels;
 end
 
@@ -121,7 +102,7 @@ if (false)
 plot_draft_and_plumevel;
 end
 
-if (false)
+if (true)
 plot_6_panel_plume;
 end
 

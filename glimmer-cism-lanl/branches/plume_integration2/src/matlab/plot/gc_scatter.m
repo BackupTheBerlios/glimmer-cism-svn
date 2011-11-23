@@ -4,9 +4,8 @@ doTransient = false;
 scatter_xsize = 1000;
 scatter_ysize = 600;
 
-fs = 14;
-fn = 'Helvetica';
-fs_label = 16;
+fs = 18;
+fs_label = 18;
 
 c1 = 'm';
 c1 = 'k';
@@ -87,19 +86,19 @@ end
 
 subplot(1,3,1);
 plot(flat_ocean.speed,flat_ocean.bmlt,c_steady);
-title(strcat(['correlation = ', sprintf('%4.3f',speed_cor)]),'FontSize',fs,'Color',c1,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',speed_cor)]),'FontSize',fs,'Color',c1);
 set(gca,'FontSize',fs);
-xlabel('plume speed (m/s)','FontSize',fs,'FontName',fn);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+xlabel('plume speed (m/s)','FontSize',fs);
+ylabel('melt rate (m/a)','FontSize',fs);
 text(0.025,77,'a','color','k','FontSize',fs_label);
 hold off
 
 subplot(1,3,2);
 plot(flattforcing,flat_ocean.bmlt,c_steady);
-title(strcat(['correlation = ', sprintf('%4.3f',temp_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',temp_cor)]),'FontSize',fs,'Color',c2);
 set(gca,'FontSize',fs);
-xlabel('thermal forcing (C)','FontSize',fs,'FontName',fn);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+xlabel('thermal forcing (C)','FontSize',fs);
+ylabel('melt rate (m/a)','FontSize',fs);
 text(0.2,77,'b','color','k','FontSize',fs_label);
 hold off
 
@@ -107,12 +106,12 @@ subplot(1,3,3);
 plot(flat_ocean.train,flat_ocean.bmlt,c_steady);
 %plot(abs(flat_ocean.sv),flat_ocean_transient.bmlt,c_steady);
 
-title(strcat(['correlation = ', sprintf('%4.3f',train_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',train_cor)]),'FontSize',fs,'Color',c2);
 set(gca,'FontSize',fs);
-xlabel('entrainment (km/year)','FontSize',fs,'FontName',fn);
+xlabel('entrainment (km/a)','FontSize',fs);
 xlim([-500 100]);
 %xlim([0 0.4]);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+ylabel('melt rate (m/a)','FontSize',fs);
 text(-450,77,'c','color','k','FontSize',fs_label);
 hold off
 
@@ -127,9 +126,9 @@ set(figure(101),'Position',[1 1 scatter_xsize scatter_ysize]);
 subplot(1,3,1);
 plot(flat_ocean.grad,flat_ocean.bmlt,c_steady);
 set(gca,'FontSize',fs);
-title(strcat(['correlation = ', sprintf('%4.3f',grad_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
-xlabel('ice gradient (non-dimensional)','FontSize',fs,'FontName',fn);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',grad_cor)]),'FontSize',fs,'Color',c2);
+xlabel('ice gradient (non-dimensional)','FontSize',fs);
+ylabel('melt rate (m/a)','FontSize',fs);
 text(0.025,77,'a','color','k','FontSize',fs_label);
 hold off
 
@@ -138,22 +137,22 @@ set(gca,'FontSize',fs);
 if(not(doTransient))
   hold on;
 end
+xlim([-5 80]);
 plot(flat_ice.y_adv,flat_ocean.bmlt,c_steady);
 plot(0:0.5:75,0:0.5:75,c5,'linewidth',2.0);
-title(strcat(['correlation = ', sprintf('%4.3f',yadv_cor)]),'FontSize',fs,'Color',c1,'FontName',fn);
-xlim([-5 80]);
-xlabel('v_0 H_y (m/year)','FontSize',fs,'FontName',fn);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',yadv_cor)]),'FontSize',fs,'Color',c1);
+xlabel('v_0 H_y (m/a)','FontSize',fs);
+ylabel('melt rate (m/a)','FontSize',fs);
 text(2,77,'b','color','k','FontSize',fs_label);
 hold off
 
 
 subplot(1,3,3);
 plot(-flat_ocean.draft,flat_ocean.bmlt,c_steady);
-title(strcat(['correlation = ', sprintf('%4.3f',draft_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',draft_cor)]),'FontSize',fs,'Color',c2);
 set(gca,'FontSize',fs);
-xlabel('ice draft (m)','FontSize',fs,'FontName',fn);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+xlabel('ice draft (m)','FontSize',fs);
+ylabel('melt rate (m/a)','FontSize',fs);
 xlim([0 600]);hold off
 text(30,77,'c','color','k','FontSize',fs_label);
 
@@ -168,25 +167,25 @@ end
 subplot(1,3,1);
 plot(flat_ocean.grad.*flattforcing,flat_ocean.bmlt,c_steady);
 set(gca,'FontSize',fs);
-title(strcat(['correlation = ', sprintf('%4.3f',tforc_grad_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
-xlabel('ice gradient * thermal forcing','FontSize',fs,'FontName',fn);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',tforc_grad_cor)]),'FontSize',fs,'Color',c2);
+xlabel('ice gradient * thermal forcing','FontSize',fs);
+ylabel('melt rate (m/a)','FontSize',fs);
 hold off
 
 subplot(1,3,2);
 plot(flatambtemp,flat_ocean.bmlt,c_steady);
-title(strcat(['correlation = ', sprintf('%4.3f',ambt_cor)]),'FontSize',fs,'Color',c1,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',ambt_cor)]),'FontSize',fs,'Color',c1);
 set(gca,'FontSize',fs);
-xlabel('ambient water temp','FontSize',fs,'FontName',fn);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+xlabel('ambient water temp','FontSize',fs);
+ylabel('melt rate (m/a)','FontSize',fs);
 hold off
 
 subplot(1,3,3);
 plot(flat_exp_var,flat_ocean.bmlt,c_steady);
-title(strcat(['correlation = ', sprintf('%4.3f',exp_var_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',exp_var_cor)]),'FontSize',fs,'Color',c2);
 set(gca,'FontSize',fs);
-xlabel('exp var','FontSize',fs,'FontName',fn);
-ylabel('melt rate (m/year)','FontSize',fs,'FontName',fn);
+xlabel('exp var','FontSize',fs);
+ylabel('melt rate (m/a)','FontSize',fs);
 hold off
 
 end
@@ -202,25 +201,25 @@ clf;
 subplot(1,2,1);
 plot(flat_ocean.gradx,flat_ice.ice_def,c_steady);
 set(gca,'FontSize',fs);
-title(strcat(['correlation = ', sprintf('%4.3f',gradx_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
-ylabel('ice deformation (m/year)','FontSize',fs,'FontName',fn);
-xlabel('ice basal surface gradient, x-direction','FontSize',fs,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',gradx_cor)]),'FontSize',fs,'Color',c2);
+ylabel('ice deformation (m/a)','FontSize',fs);
+xlabel('ice basal surface gradient, x-direction','FontSize',fs);
 hold off
 
 subplot(1,2,2);
 plot(flat_ocean.grady,flat_ice.ice_def,c_steady);
-title(strcat(['correlation = ', sprintf('%4.3f',grady_cor)]),'FontSize',fs,'Color',c1,'FontName',fn);
+title(strcat(['correlation = ', sprintf('%4.3f',grady_cor)]),'FontSize',fs,'Color',c1);
 set(gca,'FontSize',fs);
-ylabel('ice deformation (m/year)','FontSize',fs,'FontName',fn);
-xlabel('ice basal surface gradient, y-direction','FontSize',fs,'FontName',fn);
+ylabel('ice deformation (m/a)','FontSize',fs);
+xlabel('ice basal surface gradient, y-direction','FontSize',fs);
 hold off
 
 %subplot(1,3,3);
 %plot(flat_ocean.gradx,-flat_ice.thk_div,c_steady);
-%title(strcat(['correlation = ', sprintf('%4.3f',grad_cor)]),'FontSize',fs,'Color',c2,'FontName',fn);
+%title(strcat(['correlation = ', sprintf('%4.3f',grad_cor)]),'FontSize',fs,'Color',c2);
 %set(gca,'FontSize',fs);
-%ylabel('ice divergence (m/year)','FontSize',fs,'FontName',fn);
-%xlabel('ice thickness gradient, x-direction','FontSize',fs,'FontName',fn);
+%ylabel('ice divergence (m/a)','FontSize',fs);
+%xlabel('ice thickness gradient, x-direction','FontSize',fs);
 %hold off
 
 end

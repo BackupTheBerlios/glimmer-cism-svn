@@ -16,6 +16,8 @@ flatthk = flatten_field(thk);
 flatuflxconv = flatten_field(uflx_conv);
 
 fig1 = figure(1);
+set(fig1,'Position',[1 1 800 600]);
+
 clf;
 hold on
 plot(flat_h_diff,flatbmlt,'k.');
@@ -25,14 +27,16 @@ plot([0 -10],[0 10],'r-','LineWidth',lw);
 plot([0 10],[0 20],'g-','LineWidth',lw);
 plot([0 -10],[0 20],'g-','LineWidth',lw);
 xlim([-10 10]);
-ylim([-5 75]);
-fs = 14;
+ylim([-2 60]);
+fs = 18;
 xlabel('thickening from artificial ice diffusion (m/a)','FontSize',fs);
 ylabel('basal melt rate (m/a)','FontSize',fs);
 
+if (false)
 figure(2);
 hold on;
 plot(flatuflxconv,flat_h_diff,'k.');
 plot([-10 10],[-10 10],'r-','LineWidth',lw);
 plot([10 -10],[-10 10],'r-','LineWidth',lw);
 hold off;
+end

@@ -1,7 +1,7 @@
 function [spec,norm2] = plot_spectral_evolution(dice,fig_dir)
 
 [m,n,k] = size(dice.thk);
-fs = 14;
+fs = 16;
 
 meanthk = repmat(mean(dice.thk,1),[m,1,1]);
 dev_thk = dice.thk-meanthk;
@@ -37,6 +37,9 @@ for t=1:length(times)
 %  subplot(2,length(times),t+length(times));
 
 %subplot(1,2,2);
+fig1 = figure(1);
+clf;
+set(fig1,'Position',[1 1 800 600]);
 
 z = spec(1:kmax,:,times(t)).* conj(spec(1:kmax,:,times(t)));
 z = log(max(z,1.0));

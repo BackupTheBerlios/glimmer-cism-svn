@@ -1,5 +1,7 @@
 function [data] = nc_plume_read(nc_filename,istart,timestride,iend)
 
+    has_bmelt_avg = false;
+
     nc = netcdf.open(nc_filename, 'NC_NOWRITE');
     
     su_id = netcdf.inqVarID(nc, 'su');
@@ -8,6 +10,12 @@ function [data] = nc_plume_read(nc_filename,istart,timestride,iend)
     v_id = netcdf.inqVarID(nc, 'v');
     time_id = netcdf.inqVarID(nc, 'time');
     bmelt_id = netcdf.inqVarID(nc, 'bmelt');
+
+    if (nc_has_var(nc_filename,'bmelt_avg'))
+       bmelt_avg_id = netcdf.inqVarID(nc, 'bmelt_avg');
+       has_bmelt_avg = true;
+    end
+
     bpos_id = netcdf.inqVarID(nc, 'bpos');    
     pdep_id = netcdf.inqVarID(nc, 'pdep');    
     train_id = netcdf.inqVarID(nc, 'train');
@@ -56,7 +64,10 @@ function [data] = nc_plume_read(nc_filename,istart,timestride,iend)
     temp = netcdf.getVar(nc, temp_id, [0 0 istart],[m n n_timeslices],[1 1 timestride]);
     salt = netcdf.getVar(nc, salt_id, [0 0 istart],[m n n_timeslices],[1 1 timestride]);
     rhop = netcdf.getVar(nc, rhop_id, [0 0 istart],[m n n_timeslices],[1 1 timestride]);
-    
+     
+if (has_bmelt_avg)
+    bmelt_avg = netcdf.getVar(nc, bmelt_avg_id, [0 0 istart],[m n n_timeslices],[1 1 timestride]);
+end
     netcdf.close(nc);
 
     waterdepth = max(max(bpos(:,:,1)));
@@ -73,6 +84,13 @@ function [data] = nc_plume_read(nc_filename,istart,timestride,iend)
     data.bpos = f(bpos);
     data.pdep = f(pdep);
     data.bmelt = f(bmelt);
+if(has_bmelt_avg)
+  data.bmelt_avg = f(bmelt_avg);
+data.has_bmelt_avg = true;
+ else
+   data.has_bmelt_avg = false;
+end
+    
     data.train = f(train);
     data.entr = f(entr);
     data.su = f(su);

@@ -1,8 +1,8 @@
 trim_edge = @(M) M(4:end-3,4:end-3,:);
-fs = 14;
+fs = 16;
 fs_label = 16;
-label_x = -2.5;
-label_y = 21;
+label_x = 2.5;
+label_y = 17.5;
 
 selectset = @(M) M(2:79,2:80);
 
@@ -14,7 +14,8 @@ x = res.x;
 y = res.y; 
 [y,x] = meshgrid(y,x);
 
-figure(1);
+fig1 = figure(1);
+set(fig1,'Position',[1 1 800 600]);
 clf;
 ncontours = 20;
 cmax = 1.5e-3;
@@ -31,14 +32,14 @@ subplot(2,3,3);
 contourf(subset(x),subset(y), ...
 	 subset(res.u_diff),ncontours,'EdgeColor','None');colorbar;
 caxis([-cmax cmax]);
-title('diffusion term','FontSize',fs)
+title('diffusion','FontSize',fs)
 set(gca,'FontSize',fs);
 text(label_x,label_y,'c','color','k','FontSize',fs_label);
 
 subplot(2,3,2);
 contourf(subset(x),subset(y), ...
 	 -subset(res.cor_x),ncontours,'EdgeColor','None');colorbar;
-title('coriolis acceleration','FontSize',fs);
+title('coriolis','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'b','color','k','FontSize',fs_label);
@@ -47,7 +48,7 @@ subplot(2,3,4);
 contourf(subset(x),subset(y), ...
 	 subset(res.isopyc_grad_x),ncontours,...
 	 'EdgeColor','None');colorbar;
-title('interface flattening term','FontSize',fs);
+title('interface flattening','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'d','color','k','FontSize',fs_label);
@@ -59,24 +60,22 @@ contourf(subset(x),subset(y), ...
 %contourf(subset(x),subset(y), ...
 %	 subset(sqrt(res.u_adv_derv.^2+res.v_adv_derv.^2)), ...
 %	 'EdgeColor','None');colorbar;
-title('density gradient term','FontSize',fs);
+title('density gradient','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'e','color','k','FontSize',fs_label);
 
 subplot(2,3,6);
-%contourf(subset(x),subset(y), ...
-%	 subset(res.drag_x),'EdgeColor','None');colorbar;
-%title('Drag term','FontSize',fs);
 contourf(subset(x),subset(y), ...
 	 subset(res.u_trans_detrain),ncontours,'EdgeColor','None');colorbar;
-title('detrainment term','FontSize',fs);
+title('detrainment','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'f','color','k','FontSize',fs_label);
 
 %%%%%%%% same thing for y direction
-figure(2);
+fig2 = figure(2);
+set(fig2,'Position',[1 1 800 600]);
 clf;
 ncontours = 20;
 cmax = 1.25e-3;
@@ -95,15 +94,14 @@ contourf(subset(x),subset(y), ...
 	 subset(res.v_diff),ncontours,'EdgeColor','None');colorbar;
 caxis([-cmax cmax]);
 title('total transport diffusion','FontSize',fs)
-title('diffusion term','FontSize',fs)
+title('diffusion','FontSize',fs)
 set(gca,'FontSize',fs);
 text(label_x,label_y,'c','color','k','FontSize',fs_label);
 
 subplot(2,3,2);
 contourf(subset(x),subset(y), ...
 	 -subset(res.cor_y),ncontours,'EdgeColor','None');colorbar;
-title('coriolis accel','FontSize',fs);
-title('coriolis acceleration','FontSize',fs);
+title('coriolis','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'b','color','k','FontSize',fs_label);
@@ -112,8 +110,7 @@ subplot(2,3,4);
 contourf(subset(x),subset(y), ...
 	 subset(res.isopyc_grad_y),ncontours,...
 	 'EdgeColor','None');colorbar;
-title('isopycnal flattening','FontSize',fs);
-title('interface flattening term','FontSize',fs);
+title('interface flattening','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'d','color','k','FontSize',fs_label);
@@ -122,8 +119,7 @@ subplot(2,3,5);
 contourf(subset(x),subset(y), ...
 	 subset(res.den_grad_y),ncontours, ...
 	 'EdgeColor','None');colorbar;
-title('Density gradient accel.','FontSize',fs);
-title('density gradient term','FontSize',fs);
+title('density gradient','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'e','color','k','FontSize',fs_label);
@@ -135,9 +131,7 @@ contourf(subset(x),subset(y), ...
 	 subset(res.v_trans_detrain+0.0*res.isopyc_grad_y+ ...
              0.0*res.v_diff-0.0*res.cor_y+0.0*res.drag_y), ...
 	 ncontours,'EdgeColor','None');colorbar;
-%title('Detrainment term','FontSize',fs);
-%title('Drag term','FontSize',fs);
-title('detrainment term','FontSize',fs);
+title('detrainment','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'f','color','k','FontSize',fs_label);
@@ -146,7 +140,8 @@ text(label_x,label_y,'f','color','k','FontSize',fs_label);
 %  More scatter plots showing balances in x and y direction
 %%%%%%%%%%%%%%%
 
-figure(4);
+fig4 = figure(4);
+set(fig4,'Position',[1 1 800 600]);
 clf;
 
 subplot(2,2,1);

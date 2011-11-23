@@ -27,7 +27,7 @@ function [data] = nc_ice_read(nc_filename, istart,timestride, iend)
         have_flux_conv = false;
     end
     
-    [tname,tlen] = netcdf.inqDim(nc,time_dim_id);    
+    [tname,tlen] = netcdf.inqDim(nc,time_dim_id);
     if (istart < 0)
       if (iend > 0) 
 	error('Does not make send to have istart < 0 and iend > 0');

@@ -1,6 +1,6 @@
 %trim_edge = @(M) M(4:end-3,4:end-3,:);
 
-fs = 14;
+fs = 16;
 
 selectset = @(M) M(1:76,1:155,:);
 selectset = @(M) M(2:79,2:80);
@@ -13,20 +13,21 @@ y = res.y;
 [y,x] = meshgrid(y,x);
 
 
-figure(1);
+fig1 = figure(1);
+set(fig1,'Position',[1 1 800 600]);
 clf;
 ncontours = 25;
 
 cmax = 4.0e-5;
 fs_label = 16;
-label_x = -2.5;
-label_y = 21;
+label_x = 2.5;
+label_y = 17.5;
 
 subplot(2,3,1);
 contourf(subset(x),subset(y), ...
          subset(res.su_adv_derv),ncontours,'EdgeColor','None');colorbar;
 caxis([-cmax cmax ]);
-title('x acceleration','FontSize',fs);
+title('inertial term','FontSize',fs);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'a','color','k','FontSize',fs_label);
 
@@ -34,14 +35,14 @@ subplot(2,3,3);
 contourf(subset(x),subset(y), ...
 	 subset(res.u_diff+res.u_diff2),ncontours,'EdgeColor','None');colorbar;
 caxis([-cmax cmax]);
-title('diffusion terms','FontSize',fs)
+title('diffusion','FontSize',fs)
 set(gca,'FontSize',fs);
 text(label_x,label_y,'c','color','k','FontSize',fs_label);
 
 subplot(2,3,2);
 contourf(subset(x),subset(y), ...
 	 subset(res.cor_x),ncontours,'EdgeColor','None');colorbar;
-title('coriolis acceleration','FontSize',fs);
+title('coriolis','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'b','color','k','FontSize',fs_label);
@@ -50,7 +51,7 @@ subplot(2,3,4);
 contourf(subset(x),subset(y), ...
 	 subset(res.isopyc_grad_x),ncontours,...
 	 'EdgeColor','None');colorbar;
-title('interface flattening term','FontSize',fs);
+title('interface flattening','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'d','color','k','FontSize',fs_label);
@@ -72,13 +73,14 @@ contourf(subset(x),subset(y), ...
 	 subset(res.u_drag), ... % res.u_boundary),
          ncontours,'EdgeColor','None');colorbar;
 title('boundary term','FontSize',fs);
-title('drag term','FontSize',fs);
+title('drag','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'f','color','k','FontSize',fs_label);
 
 %%%%%%%% same thing for y direction
-figure(2);
+fig2 = figure(2);
+set(fig2,'Position',[1 1 800 600]);
 clf;
 ncontours = 20;
 cmax = 1.0e-4;
@@ -88,14 +90,14 @@ subplot(2,3,1);
 contourf(subset(x),subset(y), ...
          subset(res.sv_adv_derv),ncontours,'EdgeColor','None');colorbar;
 caxis([-cmax cmax ]);
-title('y acceleration','FontSize',fs);
+title('inertial term','FontSize',fs);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'a','color','k','FontSize',fs_label);
 
 subplot(2,3,2);
 contourf(subset(x),subset(y), ...
 	 subset(res.cor_y),ncontours,'EdgeColor','None');colorbar;
-title('coriolis acceleration','FontSize',fs);
+title('coriolis','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'b','color','k','FontSize',fs_label);
@@ -104,7 +106,7 @@ subplot(2,3,3);
 contourf(subset(x),subset(y), ...
 	 subset(res.v_diff+res.v_diff2),ncontours,'EdgeColor','None');colorbar;
 caxis([-cmax cmax]);
-title('diffusion terms','FontSize',fs)
+title('diffusion','FontSize',fs)
 set(gca,'FontSize',fs);
 text(label_x,label_y,'c','color','k','FontSize',fs_label);
 
@@ -112,7 +114,7 @@ subplot(2,3,4);
 contourf(subset(x),subset(y), ...
 	 subset(res.isopyc_grad_y),ncontours,...
 	 'EdgeColor','None');colorbar;
-title('interface flattening term','FontSize',fs);
+title('interface flattening','FontSize',fs);
 caxis([-cmax cmax]);
 set(gca,'FontSize',fs);
 text(label_x,label_y,'d','color','k','FontSize',fs_label);
@@ -131,7 +133,7 @@ contourf(subset(x),subset(y), ...
 	 subset(res.v_drag), ... %_den_grad_y),ncontours,... %res.bpos-800.0),ncontours, ...
          ncontours,'EdgeColor','None');colorbar;
 title('density gradient term','FontSize',fs);
-title('drag term','FontSize',fs);
+title('drag','FontSize',fs);
 %title('ice basal surface (m)','FontSize',fs);
 %caxis([-600 0]);
 caxis([-cmax cmax]);

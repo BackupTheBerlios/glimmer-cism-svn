@@ -1,4 +1,4 @@
-function [melt,in_flux,out_flux,total_acab,unsteady] = mass_balance(dice)
+function [melt,in_flux,out_flux,total_acab,unsteady] = mass_balance(dice,dplume)
 
 [m,n,k] = size(dice.bmlt);
 
@@ -8,7 +8,11 @@ j_inflow = 1;
 
 dx = dice.xstag(2)-dice.xstag(1);
 dy = dice.ystag(2)-dice.ystag(1);
-dt = dice.time(end)-dice.time(end-1);
+if (length(dice.time) < 2) 
+  error('need at least two times to determine dt'); %dt = 0.1;
+else
+  dt = dice.time(end)-dice.time(end-1);
+end
 
 width = dice.xstag(end)-dice.xstag(1);
 len = dice.ystag(end)-dice.ystag(1);
@@ -27,7 +31,17 @@ acab = -1.0;
 total_acab = acab*width*len;
 
 melt = sum(sum(dice.bmlt(:,:,tslice).*grad_norm))*dx*dy;
-melt = sum(sum(dice.bmlt(:,:,tslice)))*dx*dy;
+
+if(dplume.has_bmelt_avg)
+  melt = sum(sum(dplume.bmelt_avg(:,:,tslice)))*dx*dy;
+    if (mean(mean(dplume.bmelt_avg(:,:,tslice))) > 1000.0)
+      %must be a badly scaled case so fix it
+	 melt = melt/(3600.0*24.0*365.25);
+    end
+else
+  melt = sum(sum(dice.bmlt(:,:,tslice)))*dx*dy;
+end
+
 
 %in_flux = sum(0.25*(dice.vvelmean(1:end-1,j_inflow,tslice)+ ...
 %                     dice.vvelmean(2:end  ,j_inflow,tslice)+ ...

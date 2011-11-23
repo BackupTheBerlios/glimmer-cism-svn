@@ -1,39 +1,50 @@
 
-fig1 = figure(1);
-clf;
+%fig1 = figure(1);
+%clf;
 
-fs = 14;
-hold on
-contourf(x/1000.0,y/1000.0,grad',40,'EdgeColor','None');
-colorbar('FontSize',fs);
-set(gca,'FontSize',fs2);
-quiver(x(1:stride:end)/1000,y(1:stride:end)/1000,...
-      su(1:stride:end,1:stride:end)',...
-      sv(1:stride:end,1:stride:end)',...
-     scale,'w','LineWidth',lw);
-colormap jet;
-xlabel('Across shelf distance (km)','FontSize',fs);
-ylabel('Along shelf distance (km)','FontSize',fs);
-title('Ocean Velocities with contourfs of ice draft gradient','FontSize',fs);
-hold off
-fname = strcat([fig_dir,'/plume_grad']);
-print('-depsc',fname);
+%fs = 14;
+%hold on
+%contourf(x/1000.0,y/1000.0,grad',40,'EdgeColor','None');
+%colorbar('FontSize',fs);
+%set(gca,'FontSize',fs2);
+%quiver(x(1:stride:end)/1000,y(1:stride:end)/1000,...
+%      su(1:stride:end,1:stride:end)',...
+%      sv(1:stride:end,1:stride:end)',...
+%     scale,'w','LineWidth',lw);
+%colormap jet;
+%xlabel('Across shelf distance (km)','FontSize',fs);
+%ylabel('Along shelf distance (km)','FontSize',fs);
+%title('Ocean Velocities with contourfs of ice draft gradient','FontSize',fs);
+%hold off
+%fname = strcat([fig_dir,'/plume_grad']);
+%print('-depsc',fname);
 
 figure(1);
 clf;
 set(fig1,'Position',[1 1 solo_fig_x_size solo_fig_y_size])
-
+%set(fig1,'Position',[1 1 800 600])
 hold on
-contourf(x/1000.0,y/1000.0,-draft',40,'EdgeColor','None');
+
+subset = @(M) M(1:40,1:40);
+[xsubset,ysubset] = meshgrid(x/1000,y/1000);
+xsubset = subset(xsubset);
+ysubset = subset(ysubset);
+
+su = subset(pad_edge(1,0,su(1:end-1,:)+su(2:end,:)));
+sv = subset(pad_edge(0,1,sv(:,1:end-1)+sv(:,2:end)));
+
+contourf(xsubset,ysubset,subset(-draft'),40,'EdgeColor','None');
 colorbar('FontSize',fs);
 set(gca,'FontSize',fs2);
-%caxis([000 650])
-scale=2.0;stride=2;
-i0 = 2;
-quiver(x(i0:stride:end)/1000,y(1:stride:end)/1000,...
-      su(i0:stride:end,1:stride:end)',...
-      sv(i0:stride:end,1:stride:end)',...
-      scale,'k','LineWidth',lw);
+
+%scale=2.0;stride=2;
+%i0 = 2;
+%quiver(x(i0:stride:end)/1000,y(1:stride:end)/1000,...
+%      su(i0:stride:end,1:stride:end)',...
+%      sv(i0:stride:end,1:stride:end)',...
+%      scale,'k','LineWidth',lw);
+quiver(xsubset,ysubset,su',sv', scale,'k','LineWidth',lw);
+
 colormap jet;
 xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
