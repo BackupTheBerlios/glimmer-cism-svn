@@ -296,7 +296,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 1000                  ! max no. of iterations
+  integer, parameter :: cmax = 300                  ! max no. of iterations
   integer :: counter, linit               ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -613,7 +613,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
 
 !    print *, 'L2 with/without ghost (k)= ', counter, &
 !              sqrt(DOT_PRODUCT(F,F)), L2norm
-    if (counter .le. 2) NL_target = NL_tol * L2norm
+!    if (counter .le. 2) NL_target = NL_tol * L2norm
+    if (counter .le. 2) NL_target = 1.0d-4 
 
 !==============================================================================
 ! RN_20100129: Option to load Trilinos matrix directly bypassing sparse_easy_solve
@@ -2372,16 +2373,16 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   ! "Time-step limits for stable solutions of the ice-sheet equation", Annals of
   ! Glaciology, 23, p.74-85)
   use parallel
-
+  
   implicit none
-
+  
   real (kind = dp), intent(in), dimension(:,:,:) :: vel
-  integer, intent(in) :: counter, pt, whichresid
-
+  integer, intent(in) :: counter, pt, whichresid 
+  
   real (kind = dp), intent(out) :: resid
-
+  
   real (kind = dp), dimension(size(vel,1),size(vel,2),size(vel,3)) :: mindcrshstr
-
+  
   real (kind = dp), parameter :: ssthres = 5.0_dp * pi / 6.0_dp, &
                                  critlimit = 10.0_dp / (scyr * vel0), &
                                  small = 1.0e-16_dp
@@ -2390,8 +2391,8 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   integer, dimension(2), save :: new = 1, old = 2
   !JEFF integer :: locat(3)
+  integer ew, ns, nr
 
-  integer :: nr
   integer, dimension(size(vel,1),size(vel,2),size(vel,3)) :: vel_ne_0
   real (kind = dp) :: sum_vel_ne_0
 
@@ -2403,23 +2404,39 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
 
   if (counter > 1) then
 
-    where (acos((corr(:,:,:,new(pt),pt) * corr(:,:,:,old(pt),pt)) / &
-          (abs(corr(:,:,:,new(pt),pt)) * abs(corr(:,:,:,old(pt),pt)) + small)) > &
-           ssthres .and. corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt) /= 0.0_dp )
-
+!    where (acos((corr(:,:,:,new(pt),pt) * corr(:,:,:,old(pt),pt)) / &
+!          (abs(corr(:,:,:,new(pt),pt)) * abs(corr(:,:,:,old(pt),pt)) + small)) > &
+!           ssthres .and. corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt) /= 0.0_dp )
+!
 !      mindcrshstr = usav(:,:,:,pt) + &
 !                    corr(:,:,:,new(pt),pt) * abs(corr(:,:,:,old(pt),pt)) / &
 !                    abs(corr(:,:,:,new(pt),pt) - corr(:,:,:,old(pt),pt))
+!
+!      mindcrshstr = vel; ! jfl uncomment this and comment out line above
+!                         ! to avoid the unstable manifold correction
+!
+!    elsewhere
+!
+!      mindcrshstr = vel;
+!
+!    end where
 
-      mindcrshstr = vel; ! jfl uncomment this and comment out line above 
-                         ! to avoid the unstable manifold correction
-
-    elsewhere
-
-      mindcrshstr = vel;
-
-    end where
-
+    ! JEFF Replace where clause with explicit, owned variables for each processor.
+    do ns = 1 + staggered_lhalo, size(vel, 3) - staggered_uhalo
+        do ew = 1 + staggered_lhalo, size(vel, 2) - staggered_uhalo
+            do nr = 1, size(vel, 1)
+                if (acos((corr(nr,ew,ns,new(pt),pt) * corr(nr,ew,ns,old(pt),pt)) / &
+                       (abs(corr(nr,ew,ns,new(pt),pt)) * abs(corr(nr,ew,ns,old(pt),pt)) + small)) > &
+                      ssthres .and. corr(nr,ew,ns,new(pt),pt) - corr(nr,ew,ns,old(pt),pt) /= 0.0_dp) then
+                    mindcrshstr(nr,ew,ns) = usav(nr,ew,ns,pt) + &
+                        corr(nr,ew,ns,new(pt),pt) * abs(corr(nr,ew,ns,old(pt),pt)) / &
+                            abs(corr(nr,ew,ns,new(pt),pt) - corr(nr,ew,ns,old(pt),pt))
+                else
+                    mindcrshstr(nr,ew,ns) = vel(nr,ew,ns)
+                endif
+            enddo
+        enddo
+    enddo
   else
 
     mindcrshstr = vel;
@@ -2427,59 +2444,96 @@ function mindcrshstr(pt,whichresid,vel,counter,resid)
   end if
 
   !*sfp* Old version
-  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
+  ! if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 1; new(pt) = 2; end if
 
   !*sfp* correction from Carl Gladdish
-  !if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
+  if (new(pt) == 1) then; old(pt) = 1; new(pt) = 2; else; old(pt) = 2; new(pt) = 1; end if
 
-!  select case (whichresid)
-!
-!  ! options for residual calculation method, as specified in configuration file
-!  ! (see additional notes in "higher-order options" section of documentation)
-!  ! case(0): use max of abs( vel_old - vel ) / vel )
-!  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels
-!  ! case(2): use mean of abs( vel_old - vel ) / vel )
-!
-!   case(0)
-!    resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
-!    resid = parallel_reduce_max(resid)
-!    !JEFF locat is only used in diagnostic print statement below.
-!    !locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
-!
-!   case(1)
-!    nr = size( vel, dim=1 ) ! number of grid points in vertical ...
-!    resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
-!                        MASK = vel .ne. 0.0_dp)
-!    resid = parallel_reduce_max(resid)
-!    !JEFF locat = maxloc( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
-!    !JEFF        MASK = vel .ne. 0.0_dp)
-!
-!   case(2)
-!    nr = size( vel, dim=1 )
-!    vel_ne_0 = 0
-!    where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
-!
-!    ! include basal velocities in resid. calculation when using MEAN
-!    ! JEFF Compute sums across nodes in order to compute mean.
-!    resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
-!            MASK = vel .ne. 0.0_dp)
-!    resid = parallel_reduce_sum(resid)
-!    sum_vel_ne_0 = sum( vel_ne_0 )
-!    sum_vel_ne_0 = parallel_reduce_sum(sum_vel_ne_0)
-!
-!    resid = resid / sum_vel_ne_0
-!
-!    ! ignore basal velocities in resid. calculation when using MEAN
-!    ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
-!    !           MASK = vel .ne. 0.0_dp) / sum( vel_ne_0(1:nr-1,:,:) )
-!
-!    ! NOTE that the location of the max residual is somewhat irrelevent here
-!    !      since we are using the mean resid for convergence testing
-!    ! locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
-!
-!  end select
-!
-!    usav(:,:,:,pt) = vel
+  resid = 0.0_dp
+
+  ! JEFF Temporary debugging.  In addition to L2 norm, compute the supnorm.
+    ! resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+    do ns = 1 + staggered_lhalo, size(vel, 3) - staggered_uhalo
+        do ew = 1 + staggered_lhalo, size(vel, 2) - staggered_uhalo
+            do nr = 1, size(vel, 1)
+                if (vel(nr,ew,ns) .ne. 0.0_dp) then
+                    resid = max(resid, abs(usav(nr,ew,ns,pt) - vel(nr,ew,ns)) / vel(nr,ew,ns))
+                endif
+            enddo
+    	enddo
+    enddo
+
+    resid = parallel_reduce_max(resid)
+
+  select case (whichresid)
+  ! options for residual calculation method, as specified in configuration file
+  ! (see additional notes in "higher-order options" section of documentation)
+  ! case(0): use max of abs( vel_old - vel ) / vel )
+  ! case(1): use max of abs( vel_old - vel ) / vel ) but ignore basal vels
+  ! case(2): use mean of abs( vel_old - vel ) / vel )
+
+   case(0)
+    ! resid = maxval( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+    do ns = 1 + staggered_lhalo, size(vel, 3) - staggered_uhalo
+        do ew = 1 + staggered_lhalo, size(vel, 2) - staggered_uhalo
+            do nr = 1, size(vel, 1)
+                if (vel(nr,ew,ns) .ne. 0.0_dp) then
+                    resid = max(resid, abs(usav(nr,ew,ns,pt) - vel(nr,ew,ns)) / vel(nr,ew,ns))
+                endif
+            enddo
+        enddo
+    enddo
+
+    resid = parallel_reduce_max(resid)
+    !JEFF locat is only used in diagnostic print statement below.
+    !locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+
+   case(1)
+    ! nr = size( vel, dim=1 ) ! number of grid points in vertical ...
+    ! resid = maxval( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ), MASK = vel .ne. 0.0_dp)
+    do ns = 1 + staggered_lhalo, size(vel, 3) - staggered_uhalo
+        do ew = 1 + staggered_lhalo, size(vel, 2) - staggered_uhalo
+            do nr = 1, size(vel, 1) - 1
+                if (vel(nr,ew,ns) .ne. 0.0_dp) then
+                    resid = max(resid, abs(usav(nr,ew,ns,pt) - vel(nr,ew,ns)) / vel(nr,ew,ns))
+                endif
+            enddo
+        enddo
+    enddo
+
+    resid = parallel_reduce_max(resid)
+    !JEFF locat = maxloc( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),  &
+    !JEFF        MASK = vel .ne. 0.0_dp)
+
+   case(2)
+    call not_parallel(__FILE__, __LINE__)
+    ! JEFF This has not been translated to parallel.
+    nr = size( vel, dim=1 )
+    vel_ne_0 = 0
+    where ( vel .ne. 0.0_dp ) vel_ne_0 = 1
+
+    ! include basal velocities in resid. calculation when using MEAN
+    ! JEFF Compute sums across nodes in order to compute mean.
+    resid = sum( abs((usav(:,:,:,pt) - vel ) / vel ), &
+            MASK = vel .ne. 0.0_dp)
+
+    resid = parallel_reduce_sum(resid)
+    sum_vel_ne_0 = sum( vel_ne_0 )
+    sum_vel_ne_0 = parallel_reduce_sum(sum_vel_ne_0)
+
+    resid = resid / sum_vel_ne_0
+
+    ! ignore basal velocities in resid. calculation when using MEAN
+    ! resid = sum( abs((usav(1:nr-1,:,:,pt) - vel(1:nr-1,:,:) ) / vel(1:nr-1,:,:) ),   &
+    !           MASK = vel .ne. 0.0_dp) / sum( vel_ne_0(1:nr-1,:,:) )
+
+    ! NOTE that the location of the max residual is somewhat irrelevent here
+    !      since we are using the mean resid for convergence testing
+    ! locat = maxloc( abs((usav(:,:,:,pt) - vel ) / vel ), MASK = vel .ne. 0.0_dp)
+
+  end select
+
+    usav(:,:,:,pt) = vel
 
     ! Additional debugging line, useful when trying to determine if convergence is being consistently
     ! help up by the residual at one or a few particular locations in the domain.
@@ -4700,8 +4754,6 @@ subroutine calcbetasquared (whichbabc,               &
       ! this is a check for NaNs, which indicate, and are replaced by no slip
       where ( betasquared /= betasquared )
         betasquared = 1.0d10
-! KJE Steve said change in order to more slip at edges
-!        betasquared = 1.0d4
       end where
 
   end select
