@@ -11,7 +11,7 @@
 #include "config.inc"
 
 !GlobalIDs are for distributed TRILINOS variable IDs
-#define globalIDs
+! #define globalIDs
 
 !***********************************************************************
 
@@ -789,6 +789,14 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   call parallel_halo(vvel)
   call parallel_halo(uflx)
   call parallel_halo(vflx)
+
+#ifdef JEFFTEST
+    !JEFF Debugging Output to see what differences in final vvel and tvel.
+    write(CurrTimeLoopStr, '(i3.3)') CurrTimeLoop
+    call distributed_print("uvel_post_ov"//CurrTimeLoopStr//"_tsk", uvel)
+
+    call distributed_print("vvel_post_ov"//CurrTimeLoopStr//"_tsk", vvel)
+#endif
 
   ! JEFF: Deallocate myIndices which is used to intialize Trilinos
   if (whatsparse == STANDALONE_TRILINOS_SOLVER) then
@@ -5309,6 +5317,7 @@ end subroutine putpcgc
 	  integer :: ew, ns, pointno
 	  integer :: glblID, upindx, slnindx
 
+          call GlobalIDsClear()  ! C++ function in trilinosPartition.cpp for hash map GlobalIDs.
 
       ! Step through mask, but exclude halo
 	  do ew = 1+staggered_lhalo,size(mask,1)-staggered_uhalo
@@ -5323,6 +5332,7 @@ end subroutine putpcgc
 	          do slnindx = (pointno - 1) * upstride + 1, pointno * upstride
 	              ! slnindx is offset into myIndices for current ice cell's layers. upindx is offset from current globalID.
   	              myIndices(slnindx) = glblID + upindx
+  	              call GlobalIDsAdd(glblID + upindx, slnindx)  ! C++ function for fast inverse GlobalIDs.
   	              upindx = upindx + 1
   	              ! write(*,*) "myIndices offset = ", slnindx
 	          end do
@@ -5350,17 +5360,26 @@ end subroutine putpcgc
 	  integer, intent(in) :: globalID
 
 	  integer :: distributed_globalID_to_localindex, lindex
+	  integer :: GlobalIDsGet ! C++ function with return value
 
 #ifdef globalIDs
       ! linear search from beginning of myIndices.
       ! Inefficient.  There could be some ordering of myIndices that would enable us to us a binary search.  Not certain at this time.
-	  do lindex = 1, size(myIndices)
-	     if ( myIndices(lindex) == globalID ) then
-	     	distributed_globalID_to_localindex = lindex
-	     	return
-	     endif
-	  end do
+      !JEFF    do lindex = 1, size(myIndices)
+      !JEFF	     if ( myIndices(lindex) == globalID ) then
+      !JEFF	     	distributed_globalID_to_localindex = lindex
+      !JEFF	     	return
+      !JEFF	     endif
+      !JEFF	  end do
 
+      ! Fast Inverse
+      lindex = GlobalIDsGet(globalID)  ! C++ hash table for fast inverse
+
+      if (lindex .ne. 0) then
+          ! match found
+          distributed_globalID_to_localindex = lindex
+          return
+      else
 	  ! If get to here, then no match found.  Return -1 to cause bounds check error.
 	  write(*,*) "Error in distributed_globalID_to_localindex().  GlobalID to match = ", globalID
 	  write(*,*) "MyIndices vector = "
@@ -5368,6 +5387,7 @@ end subroutine putpcgc
 
 	  distributed_globalID_to_localindex = -1
 	  return
+      endif
 #else
       distributed_globalID_to_localindex = globalID
       return

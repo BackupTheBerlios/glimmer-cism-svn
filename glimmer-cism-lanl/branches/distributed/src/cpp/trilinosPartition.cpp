@@ -11,8 +11,29 @@
 // Define global variables.
 static Teuchos::RCP<const Epetra_Map> partitionMap;
 
+// Jeff's Quick Hash Table GlobalIDs solution.  hash_map is defined in PGI at "include/CC/hash_map"
+#include <hash_map>
+//map #include <map>
+
+hash_map <int, int> IDs;
+// map <int, int> IDs;
 
 extern "C" {
+
+  void globalidsadd_(const int &key, const int &indx) {
+    IDs[key] = indx;
+  }
+
+  void globalidsclear_(void) {
+    IDs.clear();
+  }
+
+  int globalidsget_(const int &key) {
+    return IDs[key];
+  }
+// } // extern "C"
+
+// extern "C" {
 
   // doPartition and getPartition use Epetra to partition the global
   // problem in parallel. 

@@ -6,19 +6,20 @@ TrilinosMatrix_Interface::TrilinosMatrix_Interface
   (const Teuchos::RCP<const Epetra_Map>& rowMap,
    int bandwidth, const Epetra_Comm& comm)
   : rowMap_(rowMap), bandwidth_(bandwidth), matrixOrder_(-1), comm_(comm) {
+  extern bool returnGlobalVec;  // Defined in trilinosLinearSolver.cpp
   
   matrixOrder_ = rowMap->NumGlobalElements();
 
   operator_ = Teuchos::rcp(new Epetra_CrsMatrix(Copy, *rowMap, bandwidth) );
   isFillCompleted_ = false;
 
-  // create map of full vector
-/*
-  fullMap_ =  Teuchos::rcp(new Epetra_LocalMap(matrixOrder_, 1, comm));
+  if (returnGlobalVec) { // Have to spread full vector for non-globalIDs and parallel_single mode
+      // create map of full vector
+      fullMap_ =  Teuchos::rcp(new Epetra_LocalMap(matrixOrder_, 1, comm));
 
-  import_r2f = Teuchos::rcp(new Epetra_Import(*fullMap_, *rowMap_));
-  import_f2r = Teuchos::rcp(new Epetra_Import(*rowMap_, *fullMap_));
-*/
+      import_r2f = Teuchos::rcp(new Epetra_Import(*fullMap_, *rowMap_));
+      import_f2r = Teuchos::rcp(new Epetra_Import(*rowMap_, *fullMap_));
+  }
 }
 
 // Destructor
