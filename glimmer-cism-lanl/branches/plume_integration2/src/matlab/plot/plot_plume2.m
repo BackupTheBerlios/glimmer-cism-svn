@@ -86,11 +86,11 @@ switch3 = false;
 
 switch4 = false;
 
-if (true) 
+if (false) 
   plot_solo_panels;
 end
 
-if (false)
+if (true)
 plot_3_panel_ice_geometry;
 end
 
@@ -102,7 +102,7 @@ if (false)
 plot_draft_and_plumevel;
 end
 
-if (true)
+if (false)
 plot_6_panel_plume;
 end
 
