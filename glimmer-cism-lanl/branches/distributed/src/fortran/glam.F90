@@ -54,8 +54,10 @@ module glam
         call geometry_derivs(model)
         call geometry_derivs_unstag(model)
 
-        print *, ' '
-        print *, 'time = ', model%numerics%time
+        if (main_task) then
+            print *, ' '
+            print *, 'time = ', model%numerics%time
+        endif
 
         ! Compute higher-order ice velocities
 
