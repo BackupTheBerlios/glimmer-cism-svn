@@ -17,7 +17,13 @@ function [data] = nc_ice_read(nc_filename, istart,timestride, iend)
     level_id =netcdf.inqVarID(nc,'level');
     time_dim_id = netcdf.inqDimID(nc,'time');
     time_var_id = netcdf.inqVarID(nc,'time');
+
+    try
     H_diff_id = netcdf.inqVarID(nc,'H_diff_t');
+        have_H_diff = true;
+    catch
+        have_H_diff = false;
+    end
 
     try
         uflx_conv_id = netcdf.inqVarID(nc,'uflx_conv');
@@ -74,7 +80,10 @@ function [data] = nc_ice_read(nc_filename, istart,timestride, iend)
     
     data.thk = fgrid(netcdf.getVar(nc, thk_id,[0 0 istart],[m1 n1 n_timeslices],[1 1 timestride]));
     data.thk_t = fgrid(netcdf.getVar(nc,thk_t_id,[0 0 istart],[m1 n1 n_timeslices],[1 1 timestride]));
+
+if (have_H_diff)
     data.H_diff_t = fgrid(netcdf.getVar(nc,H_diff_id,[0 0 istart],[m1 n1 n_timeslices],[1 1 timestride]));
+end
 
     data.bmlt = fgrid(netcdf.getVar(nc,bmlt_id,[0 0 istart],[m1 n1 n_timeslices],[1 1 timestride]));
     data.lsurf = fgrid(netcdf.getVar(nc,lsurf_id,[0 0 istart],[m1 n1 n_timeslices],[1 1 timestride]));

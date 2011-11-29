@@ -4,15 +4,20 @@ recalculate = true;
 recalculate = false;
 
 if (recalculate)
-
+  clear all;
 jobs = getenv('GC_JOBS');
 
-baseName = 'oct30_perturb_usq.8_no_tangle';
+baseName = 'oct30_perturb_usq.9';
 
 usq_amp25_ks = [0,1,2,3,4,5,6,7,...
 		  8,9,10,11,12,13,14,15];
 usq_amp50_ks = [0,1,2,3,4,5, ...
 		  6,7,8,9,10,11,12,13,14,15];
+
+%usq_amp25_ks = [1,2,3,4,5,6,7,...
+%		 8,9,10,11,12,13,14,15];
+%usq_amp50_ks = [2, ...
+%		  6,7,8,9,10,11,12,13,14,15];
 
 usq_amp25_jobs = cell(length(usq_amp25_ks),1);
 usq_amp50_jobs = cell(length(usq_amp50_ks),1);
@@ -34,9 +39,13 @@ iend = -1;
 stride = 1;
 dice = nc_ice_read(f_ice,  istart,stride,iend);
 dplume = nc_plume_read(f_ocean, istart,stride,iend);
-[melt,f_in,f_out,acab,unsteady] = mass_balance(dice,dplume);
+
+[melt,melt_applied,f_in,f_out,acab,unsteady] = mass_balance(dice,dplume,-1);
+
 m_25(i) = melt;
+ma_25(i) = melt_applied;
 u_25(i) = unsteady;
+
 end
 
 for i=1:length(usq_amp50_ks)
@@ -49,8 +58,10 @@ iend = -1;
 stride = 1;
 dice = nc_ice_read(f_ice,  istart,stride,iend);
 dplume = nc_plume_read(f_ocean, istart,stride,iend);
-[melt,f_in,f_out,acab,unsteady] = mass_balance(dice,dplume);
+[melt,melt_applied,f_in,f_out,acab,unsteady] = mass_balance(dice,dplume,-1);
+
 m_50(i) = melt;
+ma_50(i) = melt_applied;
 u_50(i) = unsteady;
 end
 
@@ -62,12 +73,15 @@ ms = 15.0;
 fs = 18;
 fs = 18;
 
-ax1Color = 'b';
-ax2Color = 'r';
-amp25Mark = '.';
+ax1Color = 'r';
+ax2Color = 'k';
+amp25Mark = '-';
 amp50Mark = 'x';
 
-hl1 = line(usq_amp25_ks,100*m_25/f_in);
+
+hl1 = line(usq_amp25_ks(1:5),100*m_25(1:5)/f_in);
+hl1a = line(usq_amp25_ks,100*ma_25/f_in);
+
 ax1 = gca;
 
 
@@ -84,19 +98,26 @@ hl2 = line(usq_amp25_ks,100*u_25/f_in);
 
 set(ax1,'XColor','k','Ycolor',ax1Color);
 set(ax2,'XColor','k','Ycolor',ax2Color);
-
-set(hl1,'MarkerSize',ms,'LineStyle',amp25Mark,'Color',ax1Color);
-set(hl2,'MarkerSize',ms,'LineStyle',amp25Mark,'Color',ax2Color);
+lw = 2.0;
+set(hl1,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','b');
+set(hl1a,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','r');
+set(hl2,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color',ax2Color);
 
 set(ax2,'Ydir','reverse');
-set(ax2,'ylim',[-80,10]);
-set(ax1,'ylim',[50,120]);
+set(ax2,'ylim',[-25,2]);
+set(ax2,'ytick',-6:2:2);
+set(ax1,'ylim',[55,120]);
+set(ax1,'ytick',70:10:120);
 set(ax1,'xlim',[-1 16]);
 set(ax2,'xlim',[-1 16]);
 
 axes(ax1);
-hl3 = line(usq_amp50_ks,100*m_50/f_in);
-  set(hl3,'MarkerSize',ms,'LineStyle',amp50Mark,'Color',ax1Color);
+hl3 = line(usq_amp50_ks(1:5),100*m_50(1:5)/f_in);
+hl3a = line(usq_amp50_ks,100*ma_50/f_in);
+
+set(hl3,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','b');
+set(hl3a,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','r');
+
 axes(ax2);
 hl4 = line(usq_amp50_ks,100*u_50/f_in);
 set(hl4,'MarkerSize',ms,'LineStyle',amp50Mark,'Color',ax2Color);
@@ -112,7 +133,10 @@ set(get(ax1,'xlabel'),'FontSize',fs);
 
 hold off
 
-legend([hl1,hl2,hl3,hl4],'25 m - integrated melt rate',...
-                         '25 m - unsteadiness',...
-                         '50 m - integrated melt rate',...
-                         '50 m - unsteadiness');
+legend([hl1,hl1a,hl2,hl3,hl3a,hl4], ...
+       '25 m - m''',...
+       '25 m - \gamma m''',...
+        '25 m - unsteadiness',...
+        '50 m - m''',...
+       '50 m - \gamma m''', ...
+       '50 m - unsteadiness');

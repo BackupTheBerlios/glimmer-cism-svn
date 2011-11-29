@@ -35,7 +35,7 @@ subplot(1,3,2);
 hold on
 plot(flattforcing,flat_ocean_transient.bmlt,c_transient);
 
-subplot(1,3,3);
+subplot(1,3,2);
 hold on
 plot(flat_ocean_transient.train,flat_ocean_transient.bmlt,c_transient);
 
@@ -84,7 +84,7 @@ if (not(doTransient))
   set(figure(100),'Position',[1 1 scatter_xsize scatter_ysize]);
 end
 
-subplot(1,3,1);
+subplot(1,2,1);
 plot(flat_ocean.speed,flat_ocean.bmlt,c_steady);
 title(strcat(['correlation = ', sprintf('%4.3f',speed_cor)]),'FontSize',fs,'Color',c1);
 set(gca,'FontSize',fs);
@@ -93,7 +93,7 @@ ylabel('melt rate (m/a)','FontSize',fs);
 text(0.025,77,'a','color','k','FontSize',fs_label);
 hold off
 
-subplot(1,3,2);
+subplot(1,2,2);
 plot(flattforcing,flat_ocean.bmlt,c_steady);
 title(strcat(['correlation = ', sprintf('%4.3f',temp_cor)]),'FontSize',fs,'Color',c2);
 set(gca,'FontSize',fs);
@@ -102,20 +102,20 @@ ylabel('melt rate (m/a)','FontSize',fs);
 text(0.2,77,'b','color','k','FontSize',fs_label);
 hold off
 
-subplot(1,3,3);
-plot(flat_ocean.train,flat_ocean.bmlt,c_steady);
-%plot(abs(flat_ocean.sv),flat_ocean_transient.bmlt,c_steady);
+%subplot(1,3,3);
+%plot(flat_ocean.train,flat_ocean.bmlt,c_steady);
+%%plot(abs(flat_ocean.sv),flat_ocean_transient.bmlt,c_steady);
 
-title(strcat(['correlation = ', sprintf('%4.3f',train_cor)]),'FontSize',fs,'Color',c2);
-set(gca,'FontSize',fs);
-xlabel('entrainment (km/a)','FontSize',fs);
-xlim([-500 100]);
-%xlim([0 0.4]);
-ylabel('melt rate (m/a)','FontSize',fs);
-text(-450,77,'c','color','k','FontSize',fs_label);
-hold off
+%title(strcat(['correlation = ', sprintf('%4.3f',train_cor)]),'FontSize',fs,'Color',c2);
+%set(gca,'FontSize',fs);
+%xlabel('entrainment (km/a)','FontSize',fs);
+%xlim([-500 100]);
+%%xlim([0 0.4]);
+%ylabel('melt rate (m/a)','FontSize',fs);
+%text(-450,77,'c','color','k','FontSize',fs_label);
+%hold off
 
-print('-depsc',strcat([fig_dir,'/plume_scatter']));
+%print('-depsc',strcat([fig_dir,'/plume_scatter']));
 
 figure(101);
 if (not(doTransient))
@@ -132,7 +132,7 @@ ylabel('melt rate (m/a)','FontSize',fs);
 text(0.025,77,'a','color','k','FontSize',fs_label);
 hold off
 
-subplot(1,3,2);
+subplot(1,3,3);
 set(gca,'FontSize',fs);
 if(not(doTransient))
   hold on;
@@ -143,18 +143,18 @@ plot(0:0.5:75,0:0.5:75,c5,'linewidth',2.0);
 title(strcat(['correlation = ', sprintf('%4.3f',yadv_cor)]),'FontSize',fs,'Color',c1);
 xlabel('v_0 H_y (m/a)','FontSize',fs);
 ylabel('melt rate (m/a)','FontSize',fs);
-text(2,77,'b','color','k','FontSize',fs_label);
+text(2,77,'c','color','k','FontSize',fs_label);
 hold off
 
 
-subplot(1,3,3);
+subplot(1,3,2);
 plot(-flat_ocean.draft,flat_ocean.bmlt,c_steady);
 title(strcat(['correlation = ', sprintf('%4.3f',draft_cor)]),'FontSize',fs,'Color',c2);
 set(gca,'FontSize',fs);
 xlabel('ice draft (m)','FontSize',fs);
 ylabel('melt rate (m/a)','FontSize',fs);
 xlim([0 600]);hold off
-text(30,77,'c','color','k','FontSize',fs_label);
+text(30,77,'b','color','k','FontSize',fs_label);
 
 print('-depsc',strcat([fig_dir,'/ice_scatter']));
 
