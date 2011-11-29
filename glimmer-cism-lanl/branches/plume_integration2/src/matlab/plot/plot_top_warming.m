@@ -43,15 +43,15 @@ lsurf3 = dice3.lsurf(:,:,end);
 lsurf4 = dice4.lsurf(:,:,end);
 lsurf5 = dice5.lsurf(:,:,end);
 
-[m,in,out,acab,unsteady] = mass_balance(dice1,dplume1);
+[m,ma,in,out,acab,unsteady] = mass_balance(dice1,dplume1,-1);
 m_control = m/in
-[m,in,out,acab,unsteady] = mass_balance(dice2,dplume2);
+[m,ma,in,out,acab,unsteady] = mass_balance(dice2,dplume2,-1);
 m2 = m/in - m_control
-[m,in,out,acab,unsteady] = mass_balance(dice3,dplume3);
+  [m,ma,in,out,acab,unsteady] = mass_balance(dice3,dplume3,-1);
 m3 = m/in - m_control
-[m,in,out,acab,unsteady] = mass_balance(dice4,dplume4);
+  [m,ma,in,out,acab,unsteady] = mass_balance(dice4,dplume4,-1);
 m4 = m/in - m_control
-[m,in,out,acab,unsteady] = mass_balance(dice5,dplume5);
+  [m,ma,in,out,acab,unsteady] = mass_balance(dice5,dplume5,-1);
 m5 = m/in - m_control
 
 
@@ -78,8 +78,8 @@ plot(subset_fun(flatten_field(lsurf_control)), ...
 title(strcat(['total melt change = ',sprintf('%+2.1f',100*m3),' percent of influx']),'FontSize',fs);
 
 set(gca,'FontSize',fs);
-plot([-425 -425],[y0 0],'k--');
-text(-415,-75,'0.3 ^\circ C bottom warming\newline upper limit','FontSize',fs);
+%plot([-425 -425],[y0 0],'k--');
+%text(-415,-75,'0.3 ^\circ C bottom warming\newline upper limit','FontSize',fs);
 text(-575,50,'a.','FontSize',fs_label);
 
 xlabel(xtext,'FontSize',fs);
@@ -94,8 +94,8 @@ plot([y0 0],[y0 0],'k-','LineWidth',2.5);
 plot(subset_fun(flatten_field(lsurf_control)), ...
      subset_fun(flatten_field(lsurf2)),'r.');
 
-plot([-150 -150],[y0 0],'k--');
-text(-250,-350,'0.3 ^\circ C upper warming \newline lower limit','FontSize',fs);
+%plot([-150 -150],[y0 0],'k--');
+%text(-250,-350,'0.3 ^\circ C upper warming \newline lower limit','FontSize',fs);
 text(-575,50,'b.','FontSize',fs_label);
 set(gca,'FontSize',fs);
 xlabel(xtext,'FontSize',fs);
@@ -110,8 +110,8 @@ plot([y0 0],[y0 0],'k-','LineWidth',2.5);
 plot(subset_fun(flatten_field(lsurf_control)), ...
      subset_fun(flatten_field(lsurf4)),'b.');
 set(gca,'FontSize',fs);
-plot([-425 -425],[y0 0],'k--');
-text(-475,-100,'0.3 ^\circ C bottom cooling\newline upper limit','FontSize',fs);
+%plot([-425 -425],[y0 0],'k--');
+%text(-475,-100,'0.3 ^\circ C bottom cooling\newline upper limit','FontSize',fs);
 text(-575,50,'d.','FontSize',fs_label);
 xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
@@ -127,8 +127,8 @@ plot(subset_fun(flatten_field(lsurf_control)), ...
      subset_fun(flatten_field(lsurf5)),'b.');
 set(gca,'FontSize',fs);
 
-plot([-425 -425],[y0 0],'k--');
-text(-415,-100,'0.1 ^\circ C bottom cooling \newline upper limit','FontSize',fs);
+%plot([-425 -425],[y0 0],'k--');
+%text(-415,-100,'0.1 ^\circ C bottom cooling \newline upper limit','FontSize',fs);
 text(-575,50,'c.','FontSize',fs_label);
 xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)

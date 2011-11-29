@@ -1,7 +1,7 @@
 %clear all;
 
 recalculate = true;
-recalculate = false;
+%recalculate = false;
 
 if (recalculate)
   clear all;
