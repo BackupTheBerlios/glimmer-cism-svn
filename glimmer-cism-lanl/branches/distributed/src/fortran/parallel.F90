@@ -1186,7 +1186,7 @@ contains
     else
        allocate(bounds(1,1))
     end if
-    call fc_gather(mybounds,2,mpi_integer,bounds,2,mpi_integer,main_rank,comm)
+    call fc_gather_int(mybounds,2,mpi_integer,bounds,2,mpi_integer,main_rank,comm)
     if (main_task) then
        do i = 1,tasks
           if (bounds(1,i) .ne. -1) then
