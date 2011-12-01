@@ -296,7 +296,7 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
   real (kind = dp), save, dimension(2) :: resid     ! vector for storing u resid and v resid 
   real (kind = dp) :: plastic_resid_norm = 0.0d0    ! norm of residual used in Newton-based plastic bed iteration
 
-  integer, parameter :: cmax = 300                  ! max no. of iterations
+  integer, parameter :: cmax = 100                  ! max no. of iterations
   integer :: counter, linit               ! iteation counter 
   character(len=100) :: message                     ! error message
 
@@ -1206,14 +1206,53 @@ end if
 ! Update solution vectors (x^k = x^k-1 + dx) and 3D fields 
 !------------------------------------------------------------------------
       xk_1 = xk_1 + dx(1:2*pcgsize(1))
+
 ! WATCHOUT FOR PERIODIC BC      
+
   end do
 
 ! (need to update these values from fptr%uvel,vvel,stagthck etc)
   call solver_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, vvel, uvel, ghostbvel, pcgsize(1) )
   call ghost_postprocess_jfnk( ewn, nsn, upn, uindx, xk_1, ughost, vghost, pcgsize(1) )
 
-  print*,"Solution vector norm after JFNK = " ,sqrt(DOT_PRODUCT(xk_1,xk_1))
+    ! call fraction of assembly routines, passing current vel estimates (w/o manifold
+    ! correction!) to calculate consistent basal tractions
+    call findcoefstr(ewn,  nsn,   upn,            &
+                     dew,  dns,   sigma,          &
+                     2,           efvs,           &
+                     vvel,        uvel,           &
+                     thck,        dusrfdns,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, btraction,             &
+                     k, 1 )
+   call findcoefstr(ewn,  nsn,   upn,             &
+                     dew,  dns,   sigma,          &
+                     1,           efvs,           &
+                     uvel,        vvel,           &
+                     thck,        dusrfdew,       &
+                     dusrfdew,    dthckdew,       &
+                     d2usrfdew2,  d2thckdew2,     &
+                     dusrfdns,    dthckdns,       &
+                     d2usrfdns2,  d2thckdns2,     &
+                     d2usrfdewdns,d2thckdewdns,   &
+                     dlsrfdew,    dlsrfdns,       &
+                     stagthck,    whichbabc,      &
+                     uindx,       umask,          &
+                     lsrf,        topg,           &
+                     minTauf,     flwa,           &
+                     beta, btraction,             &
+                     k, 1 )
+
+!  print*,"Solution vector norm after JFNK = " ,sqrt(DOT_PRODUCT(xk_1,xk_1))
 
   do ns = 1+staggered_lhalo,size(umask,2)-staggered_uhalo
       do ew = 1+staggered_lhalo,size(umask,1)-staggered_uhalo
