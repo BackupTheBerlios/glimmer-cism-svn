@@ -8,7 +8,7 @@ jobs = getenv('GC_JOBS');
 jname = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_4';
 %jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
 %jname = 'central_paper';
-jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
+%jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
 
 f_ice = strcat([jobs,'/',jname,'/',jname,'.out.nc']);
 f_ocean = strcat([jobs,'/',jname,'/plume.',jname,'.out.nc']);
@@ -50,11 +50,11 @@ fig_dir = '/home/cvg222/paper_work/nov_21_figs/';
 
 % plot keel crossing
 times = [1];
-%plot_keel_crossing(dice_avg,dplume_avg,times,fig_dir);
+plot_keel_crossing(dice_avg,dplume_avg,times,fig_dir);
 
 %plot_draft_sections(dice_avg,2+[1,5,21,41,81,141],fig_dir);
 
-plot_plume2(dplume_avg,dice_avg,-1,fig_dir);
+%plot_plume2(dplume_avg,dice_avg,-1,fig_dir);
 
 %plot_spectral_evolution(dice_avg,fig_dir);
 
