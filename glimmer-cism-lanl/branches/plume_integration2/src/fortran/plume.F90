@@ -2169,22 +2169,22 @@ contains
                    !      using a truncated cosine series
 	           !      doesn't seem to work well.  
                    !    Going back to a much gentler x-variation
-		  !         sgd(i,k) = sgd(i,k)*(  1.d0  \
-          	  !           - 0.5d0*cos(  & 
-                  !             2.d0*pi*1.d0*sgd_flux_k* &
-                  !             real(i-infloa-1)/real(infloe-1-infloa-1) &
-                  !       ))
-	 	    if ( ((i .ge. 12   ) .and. (i .le. 19   )) .or. &
-	                 ((i .ge. 12+20) .and. (i .le. 19+20)) .or. &
-	                 ((i .ge. 12+40) .and. (i .le. 19+40)) .or. &
-	                 ((i .ge. 12+60) .and. (i .le. 19+60))   ) then
-			sgd(i,k) = sgd_flux*(1.0d9)* &
-                                   (1.d0/(365.25d0*3600.d0*24.d0)) / &
-                                   (sum(dy(knfloa+1:knfloe-1)) * &
-                                   4*sum(dx(12:19)))
-		    else
-	                sgd(i,k) = 0.d0
-	            end if
+		        sgd(i,k) = sgd(i,k)*(  1.d0  \
+          	             - 1.0d0*cos(  & 
+                               2.d0*pi*1.d0*sgd_flux_k* &
+                               real(i-infloa-1)/real(infloe-1-infloa-1) &
+                         ))
+!	 	    if ( ((i .ge. 12   ) .and. (i .le. 19   )) .or. &
+!	                 ((i .ge. 12+20) .and. (i .le. 19+20)) .or. &
+!	                 ((i .ge. 12+40) .and. (i .le. 19+40)) .or. &
+!	                 ((i .ge. 12+60) .and. (i .le. 19+60))   ) then
+!			sgd(i,k) = sgd_flux*(1.0d9)* &
+!                                   (1.d0/(365.25d0*3600.d0*24.d0)) / &
+!                                   (sum(dy(knfloa+1:knfloe-1)) * &
+!                                   4*sum(dx(12:19)))
+!		    else
+!	                sgd(i,k) = 0.d0
+!	            end if
 
 	        end if 
 
