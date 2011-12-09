@@ -80,7 +80,8 @@ def main(new_tstep, jnames):
                 tstep = None
 
             if (tstep):
-                stride = int(math.floor(new_tstep/tstep))
+                stride = int(math.floor(1.01*new_tstep/tstep))
+                print('old: %s new: %s stride: %s' % (tstep,new_tstep,stride))
                 tindex = find_last_time(icename)
                 if (tindex < 0):
                     print ('Found negative final time in %s' % icename)
@@ -100,7 +101,9 @@ def main(new_tstep, jnames):
                 
             if (tstep):
                 num_plume = find_num_time_slices(plumename)
-                stride = int(math.floor(new_tstep/tstep))
+                stride = int(math.floor(1.01*new_tstep/tstep))
+                print('old: %s new: %s stride: %s' % (tstep,new_tstep,stride))
+
                 if (stride > 1):
                     filter_file(plumename,stride,num_plume,filtered_plumename)
             else:
