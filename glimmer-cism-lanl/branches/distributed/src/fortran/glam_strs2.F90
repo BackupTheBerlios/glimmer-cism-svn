@@ -443,8 +443,8 @@ subroutine glam_velo_fordsiapstr(ewn,      nsn,    upn,  &
      print *, ' '
      print *, 'Running Payne/Price higher-order dynamics solver'
      print *, ' '
-     print *, 'iter #     uvel resid         vvel resid       target resid'
-  !  print *, 'iter #     resid (L2 norm)       target resid'
+!     print *, 'iter #     uvel resid         vvel resid       target resid'
+    print *, 'iter #     resid (L2 norm)       target resid'
      print *, ' '
   endif
 
@@ -2860,7 +2860,7 @@ subroutine findcoefstr(ewn,  nsn,   upn,            &
                sum( flwa(:,ew+1,ns+1), 1, flwa(1,ew+1,ns+1)*vis0_glam < 1.0d-10 )/real(upn) ) / &
                ( sum( flwa(:,ew,ns)/flwa(:,ew,ns), 1, flwa(1,ew,ns)*vis0_glam < 1.0d-10 )/real(upn) + &
                sum( flwa(:,ew,ns+1)/flwa(:,ew,ns+1), 1, flwa(1,ew,ns+1)*vis0_glam < 1.0d-10 )/real(upn) + &
-               sum( flwa(:,ew+1,ns)/flwa(:,ew+1,ns), 1, flwa(1,ew+1,ns)*vis0 < 1.0d-10 )/real(upn) + &
+               sum( flwa(:,ew+1,ns)/flwa(:,ew+1,ns), 1, flwa(1,ew+1,ns)*vis0_glam < 1.0d-10 )/real(upn) + &
                sum( flwa(:,ew+1,ns+1)/flwa(:,ew+1,ns+1), 1, flwa(1,ew+1,ns+1)*vis0_glam < 1.0d-10 )/real(upn) )
 
 	!JEFFLOC.  Is loc(1) used as an ID or an index?
