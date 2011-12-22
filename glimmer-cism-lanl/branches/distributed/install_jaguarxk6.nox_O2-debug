@@ -1,0 +1,40 @@
+# install script for Jaguar systems using full debug mode
+# before running:
+#  (a) add 3 lines to /src/fortran/SLAP_library/Makefile.am to prevent SLAP library from being built 
+#   with full debug mode:
+#        (1) F77=ftn -O2 (2) FC= ftn -O2 (3) F90= ftn -O2
+#  (b) comment out Coyote LIBS and uncomment out Jaguar LIBS in configure.in (search for 'Jaguar')
+#  (c) in src/fortran/ cp parallel_[mpi,single,slap].F90 parallel.F90 to grab type of parallelization you want
+#      this is an intermediate solution to accommodate all the different development options
+#      mpi option: under construction and allows full decomposed code
+#      single option: run with aprun -n1 executable *.config to get parallel trilinos only (which_ho_sparse=3)
+#      slap option: run code as originally designed, where only slap solver works (which_ho_sparse=1)
+#
+#
+# AGS: Extra stuff for NOX nonlinear solver. This is
+# experimental code right now.
+# (1) point to trilinos path below instead of usual one
+# (2) cp configure.in.nox to configure.in to get correct 
+#     list of trilinos libraries
+# (3) cp src/cpp/Makefile.am.nox to Makefile.am 
+# (4) Edit  src/fortran/glam_strs2.F90 and uncomment
+#     the ~7 lines (926-932) with    noxinit, noxsolve, ...
+# Then Compile.
+# (5) Copy src/cpp/input.xml to your run directory.
+#
+#
+
+./configure \
+FC="ftn -Minform=inform -Mbounds -g -Mchkptr" \
+F77="ftn -Minform=inform -Mbounds -g -Mchkptr" \
+CC="cc -Minform=inform -Mbounds -g" \
+CXX="CC -Minform=inform -Mbounds -g  --diag_suppress 554,111,611" \
+CPPFLAGS="-DHAVE_MPI -DMPICH_IGNORE_CXX_SEEK -DglobalIDs"  \
+CFLAGS="-tp bulldozer-64,istanbul-64 " \
+FCFLAGS="-tp bulldozer-64,istanbul-64 " \
+NETCDF_LIBS="-lnetcdff -lnetcdf" \
+LIBS="-lhdf5_hl -lhdf5 -lz " \
+--host=x86_64 \
+--with-netcdf=$CRAY_NETCDF_DIR \
+--with-trilinos=/ccs/proj/cli054/trilinos-10.8.4-interlagos/NOX_BUILD-FAST \
+--with-lapack=-lsci_pgi --with-blas=-lsci_pgi
