@@ -2,7 +2,7 @@
 %%% script to carry out some work for plume paper   %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-clear all;
+%clear all;
 
 jobs = getenv('GC_JOBS');
 jname = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_4';
@@ -37,8 +37,8 @@ dplume_avg = nc_plume_avg(dplume);
 dice_avg = nc_ice_avg(dice);
 
 %[flat_ocean_transient,flat_ice_transient] = flatten_gc( dplume, dice, 1:length(dice.time) );
-[flat_ocean,flat_ice] = flatten_gc( dplume_avg, dice_avg,  ...
-				    length(dice_avg.time):length(dice_avg.time) );
+%[flat_ocean,flat_ice] = flatten_gc( dplume_avg, dice_avg,  ...
+%				    length(dice_avg.time):length(dice_avg.time) );
 
 %load '/home/cvg222/paper_work/mat_files/nov_15_work_dat.mat';
 %save '/home/cvg222/paper_work/mat_files/nov_20_work_dat.mat';
@@ -49,8 +49,8 @@ fig_dir = '/home/cvg222/paper_work/nov_21_figs/';
 %plot_amb_water_column(ts,ss,zs,fig_dir);
 
 % plot keel crossing
-times = [1];
-plot_keel_crossing(dice_avg,dplume_avg,times,fig_dir);
+%times = [1];
+%plot_keel_crossing(dice_avg,dplume_avg,times,fig_dir);
 
 %plot_draft_sections(dice_avg,2+[1,5,21,41,81,141],fig_dir);
 
@@ -70,9 +70,17 @@ plot_keel_crossing(dice_avg,dplume_avg,times,fig_dir);
 %plot_momentum_bal2;
 
 
-
 %plot_temp_salt_depths;
-%plot_plume_sections;
+
+%plot_plume_section;
+%fs = 16;
+%text(20.1,-570,'y=1 km','FontSize',fs);
+%text(20.1,-510,'y=3 km','FontSize',fs);
+%text(20.1,-430,'y=5 km','FontSize',fs);
+%text(20.1,-360,'y=7 km','FontSize',fs);
+%text(20.1,-290,'y=9 km','FontSize',fs);
+%text(20.0,-110,'y=40 km','FontSize',fs);%
+
 %plot_lower_surf;
 
 %plume_res = plume_dep_bal(dplume_avg);

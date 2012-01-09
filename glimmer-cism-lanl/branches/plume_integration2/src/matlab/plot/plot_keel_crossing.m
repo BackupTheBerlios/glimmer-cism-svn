@@ -33,8 +33,8 @@ set(fig1,'Position',[1 1 keelsize_x keelsize_y]);
 %plot([0 0], [ymin ymax],'k')
 %xlim([xmin xmax]);
 %ylim([ymin ymax]);
-%xlabel('cross-shelf draft gradient','FontSize',fs);
-%ylabel('cross-shelf plume transport (m^2/s)','FontSize',fs);
+%xlabel('draft gradient','FontSize',fs);
+%ylabel('cross-shelf transport (m^2/s)','FontSize',fs);
 %title('Transport in channel crests','fontsize',fs)
 %set(gca,'FontSize',fs);
 
@@ -54,7 +54,7 @@ set(gca,'FontSize',fs);
 
 
 ylim([-0.6 1.75]);
-ylabel('cross-shelf plume transport (m^2/s)','FontSize',fs);
+ylabel('cross-shelf transport (m^2/s)','FontSize',fs);
 
 
 end 

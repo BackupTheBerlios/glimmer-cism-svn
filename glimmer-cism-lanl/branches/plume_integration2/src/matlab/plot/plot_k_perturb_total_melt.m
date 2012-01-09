@@ -73,7 +73,7 @@ ms = 15.0;
 fs = 18;
 fs = 18;
 
-ax1Color = 'r';
+ax1Color = 'b';
 ax2Color = 'k';
 amp25Mark = '-';
 amp50Mark = 'x';
@@ -99,8 +99,8 @@ hl2 = line(usq_amp25_ks,100*u_25/f_in);
 set(ax1,'XColor','k','Ycolor',ax1Color);
 set(ax2,'XColor','k','Ycolor',ax2Color);
 lw = 2.0;
-set(hl1,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','b');
-set(hl1a,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','r');
+set(hl1,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','r');
+set(hl1a,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','b');
 set(hl2,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color',ax2Color);
 
 set(ax2,'Ydir','reverse');
@@ -115,8 +115,8 @@ axes(ax1);
 hl3 = line(usq_amp50_ks(1:5),100*m_50(1:5)/f_in);
 hl3a = line(usq_amp50_ks,100*ma_50/f_in);
 
-set(hl3,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','b');
-set(hl3a,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','r');
+set(hl3,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','r');
+set(hl3a,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','b');
 
 axes(ax2);
 hl4 = line(usq_amp50_ks,100*u_50/f_in);
