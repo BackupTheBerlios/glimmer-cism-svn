@@ -668,6 +668,13 @@ subroutine findefvsstr(ewn,  nsn, upn,       &
                          sum(dthckdns(ew-1:ew,ns-1:ns)))
 
             ! "effstr" = eff. strain rate squared
+	    ! ***cvg ugradew has units of  1/tim0 = vel0/len0 = 1/(400*scyr) 
+	    !        and effstrminsq = (1e-20 * tim0)^2
+	    !   multiplying through by (1/tim0)^2 therefore makes the RHS
+	    !   have units of s^-2, so effstrminsq/tim0^2 = (1e-20)^2 has units of 
+	    !   s^-2.  Therefore the "minimum" value of epsilon_dot_ij is 1e-20 s^-1.
+
+
             effstr = ugradew**2 + vgradns**2 + ugradew*vgradns + &
                          0.25_dp * (vgradew + ugradns)**2 + &
 !                         f1 * (ugradup**2 + vgradup**2)              ! make line ACTIVE for "capping" version (see note below)   
