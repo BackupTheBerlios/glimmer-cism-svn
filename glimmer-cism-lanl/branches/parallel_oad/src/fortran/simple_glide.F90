@@ -44,6 +44,14 @@
 #include "config.inc"
 #endif
 
+subroutine set_ctrl(model)
+  use glide
+  use glide_dummy_ctrl
+  type(glide_global_type) :: model        ! model instance
+  ! stub for automatic differentiation
+  print *,"INDEPENDENT input", model%tempwk%inittemp(1,1,1), " perturbation:", inCtrl/model%tempwk%inittemp(1,1,1)
+  model%tempwk%inittemp(1,1,1)=model%tempwk%inittemp(1,1,1)+inCtrl
+end subroutine 
 
 subroutine numericalCore(model, climate)
   use glimmer_global, only:rk, dp
@@ -63,6 +71,8 @@ subroutine numericalCore(model, climate)
   call simple_massbalance(climate,model,time)
   call simple_surftemp(climate,model,time)
   call spinup_lithot(model)
+
+  call set_ctrl(model)
 
   tstep_count = 0
 
@@ -89,26 +99,18 @@ subroutine numericalCore(model, climate)
 
 end subroutine
 
-subroutine set_ctrl(inittemp,inCtrl)
-  use glimmer_global, only:dp
-  REAL(dp), DIMENSION(:, :, :) :: inittemp
-  REAL(dp) inCtrl
-  ! stub for automatic differentiation
-  inittemp(1,1,1)=inittemp(1,1,1)+inCtrl
-end subroutine 
-
-subroutine numericalCoreWithModelInit(model, climate, config, inCtrl, outCtrl)
+subroutine numericalCoreWithModelInit(model, climate, config)
   use glide
   use simple_forcing
   use glimmer_config
   use glide_diagnostics 
-
+  use glide_dummy_ctrl
+  
   implicit none
 
   type(glide_global_type)      :: model 
   type(ConfigSection), pointer :: config
   type(simple_climate)         :: climate 
-  real(dp) inCtrl, outCtrl
 
   interface 
      subroutine numericalCore(model, climate)
@@ -118,13 +120,6 @@ subroutine numericalCoreWithModelInit(model, climate, config, inCtrl, outCtrl)
        type(simple_climate) :: climate 
      end subroutine numericalCore
   end interface
-  interface
-     subroutine set_ctrl(inittemp,inCtrl)
-       use glimmer_global, only:dp
-       REAL(dp), DIMENSION(:, :, :) :: inittemp
-       REAL(dp) inCtrl
-     end subroutine set_ctrl
-  end interface
 
   call glide_config(model,config)
   call simple_initialise(climate,config)
@@ -132,7 +127,6 @@ subroutine numericalCoreWithModelInit(model, climate, config, inCtrl, outCtrl)
   call CheckSections(config)
   ! fill dimension variables
   call glide_nc_fillall(model)
-  call set_ctrl(model%tempwk%inittemp,inCtrl)
   call numericalCore(model, climate)
   outCtrl=tot_energy
 end subroutine
@@ -149,18 +143,18 @@ program simple_glide
   use glimmer_writestats_module
 
   use glide_diagnostics
+  use glide_dummy_ctrl
 
   implicit none
  
   interface 
-     subroutine numericalCoreWithModelInit(model, climate, config, inCtrl, outCtrl)
+     subroutine numericalCoreWithModelInit(model, climate, config)
        use glide
        use simple_forcing
        use glimmer_config
        type(glide_global_type)      :: model 
        type(ConfigSection), pointer :: config
        type(simple_climate)         :: climate 
-       real(dp) inCtrl, outCtrl
      end subroutine
   end interface
 
@@ -182,7 +176,6 @@ program simple_glide
   type(ConfigSection), pointer :: config  ! configuration stuff
   real(kind=dp) t1,t2
   integer clock,clock_rate,ret
-  real(dp) inCtrl, outCtrl
 
   ! start gptl
 #ifdef GPTL
@@ -234,7 +227,7 @@ program simple_glide
 
   ! initialise GLIDE
   inCtrl=0.0D0
-  call numericalCoreWithModelInit(model, climate,config,inCtrl,outCtrl)
+  call numericalCoreWithModelInit(model, climate,config)
   print *,"DEPENDENT output", outCtrl
   call system_clock(clock,clock_rate)
   t2 = real(clock,kind=dp)/real(clock_rate,kind=dp)
