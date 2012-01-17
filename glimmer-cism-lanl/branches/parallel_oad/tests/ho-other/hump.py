@@ -71,7 +71,7 @@ topg = numpy.zeros([1,ny,nx],dtype='float32')
 artm = numpy.zeros([1,ny,nx],dtype='float32')
 bheatflx = numpy.zeros([1,ny,nx],dtype='float32')
 
-temp = numpy.zeros([nz,ny,nx],dtype='float32')
+temp = numpy.zeros([1,nz,ny,nx],dtype='float32')
 temp[:] = -25.0
 
 # Calculate the thickness of the (ellipsoidal) hump of ice
