@@ -74,6 +74,7 @@ libglimmer_a_SOURCES = glimmer_vers.F90 glimmer_global.F90 glimmer_commandline.F
                        glide_lithot3d.F90 glide_lithot1d.F90 glide_profile.F90\
                        glide_diagnostics.F90 glissade_temp.F90 \
                        glide_thckmask.F90 glide_grids.F90 \
+                       glide_dummy_ctrl.F90 \
                        glide.F90 
 
 
