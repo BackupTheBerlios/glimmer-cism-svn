@@ -89,16 +89,26 @@ subroutine numericalCore(model, climate)
 
 end subroutine
 
-subroutine numericalCoreWithModelInit(model, climate, config)
+subroutine set_ctrl(inittemp,inCtrl)
+  use glimmer_global, only:dp
+  REAL(dp), DIMENSION(:, :, :) :: inittemp
+  REAL(dp) inCtrl
+  ! stub for automatic differentiation
+  inittemp(1,1,1)=inittemp(1,1,1)+inCtrl
+end subroutine 
+
+subroutine numericalCoreWithModelInit(model, climate, config, inCtrl, outCtrl)
   use glide
   use simple_forcing
   use glimmer_config
+  use glide_diagnostics 
 
   implicit none
 
   type(glide_global_type)      :: model 
   type(ConfigSection), pointer :: config
   type(simple_climate)         :: climate 
+  real(dp) inCtrl, outCtrl
 
   interface 
      subroutine numericalCore(model, climate)
@@ -108,6 +118,13 @@ subroutine numericalCoreWithModelInit(model, climate, config)
        type(simple_climate) :: climate 
      end subroutine numericalCore
   end interface
+  interface
+     subroutine set_ctrl(inittemp,inCtrl)
+       use glimmer_global, only:dp
+       REAL(dp), DIMENSION(:, :, :) :: inittemp
+       REAL(dp) inCtrl
+     end subroutine set_ctrl
+  end interface
 
   call glide_config(model,config)
   call simple_initialise(climate,config)
@@ -115,7 +132,9 @@ subroutine numericalCoreWithModelInit(model, climate, config)
   call CheckSections(config)
   ! fill dimension variables
   call glide_nc_fillall(model)
+  call set_ctrl(model%tempwk%inittemp,inCtrl)
   call numericalCore(model, climate)
+  outCtrl=tot_energy
 end subroutine
 
 program simple_glide
@@ -134,13 +153,14 @@ program simple_glide
   implicit none
  
   interface 
-     subroutine numericalCoreWithModelInit(model, climate, config)
+     subroutine numericalCoreWithModelInit(model, climate, config, inCtrl, outCtrl)
        use glide
        use simple_forcing
        use glimmer_config
        type(glide_global_type)      :: model 
        type(ConfigSection), pointer :: config
        type(simple_climate)         :: climate 
+       real(dp) inCtrl, outCtrl
      end subroutine
   end interface
 
@@ -162,6 +182,7 @@ program simple_glide
   type(ConfigSection), pointer :: config  ! configuration stuff
   real(kind=dp) t1,t2
   integer clock,clock_rate,ret
+  real(dp) inCtrl, outCtrl
 
   ! start gptl
 #ifdef GPTL
@@ -212,7 +233,9 @@ program simple_glide
   t1 = real(clock,kind=dp)/real(clock_rate,kind=dp)
 
   ! initialise GLIDE
-  call numericalCoreWithModelInit(model, climate,config)
+  inCtrl=0.0D0
+  call numericalCoreWithModelInit(model, climate,config,inCtrl,outCtrl)
+  print *,"DEPENDENT output", outCtrl
   call system_clock(clock,clock_rate)
   t2 = real(clock,kind=dp)/real(clock_rate,kind=dp)
   call glimmer_writestats(commandline_resultsname,commandline_configname,t2-t1)
