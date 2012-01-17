@@ -43,6 +43,9 @@
 module glide_diagnostics
   !*FD subroutines for computing various useful diagnostics
   ! Author: William Lipscomb, LANL 
+    use glimmer_global, only:dp
+    real(dp) ::          &
+         tot_energy          ! total ice energy (J)
  
 contains
 
@@ -63,7 +66,6 @@ contains
     real(dp) ::          &
          tot_area,       &    ! total ice area (km^2)
          tot_volume,     &    ! total ice volume (km^3)
-         tot_energy,     &    ! total ice energy (J)
          max_thck,       &    ! max ice thickness (m)
          min_temp,       &    ! min ice temperature (deg C)
          mean_thck,      &    ! mean ice thickness (m)
