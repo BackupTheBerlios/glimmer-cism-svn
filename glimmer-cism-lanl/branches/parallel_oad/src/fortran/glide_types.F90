@@ -1083,7 +1083,9 @@ contains
 !      columns (0, ewn+1, nsn+1) in the horizontal are not needed.
     if (model%options%whichtemp == TEMP_REMAP_ADV) then
        allocate(model%temper%temp(0:upn,1:ewn,1:nsn))
-       call coordsystem_allocate(model%general%ice_grid, upn-1, model%temper%flwa)
+        !MJH needed for io
+        allocate(model%temper%tempstagbc(0:upn,1:ewn,1:nsn)); model%temper%tempstagbc = 0.0       
+        call coordsystem_allocate(model%general%ice_grid, upn-1, model%temper%flwa)
     else
        allocate(model%temper%temp(upn,0:ewn+1,0:nsn+1))
        call coordsystem_allocate(model%general%ice_grid, upn, model%temper%flwa)
