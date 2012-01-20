@@ -75,13 +75,14 @@ contains
     use glimmer_physcon, only : rhoi, shci, coni, scyr, grav, gn, lhci, rhow
     use glimmer_paramets, only : tim0, thk0, len0, vis0, vel0, tau0_glam
     use glimmer_global, only : dp 
+    use glide_temp_utils, only : calcflwa
     use glimmer_log
 
     implicit none
     type(glide_global_type),intent(inout) :: model       !*FD Ice model parameters.
 
     integer, parameter :: p1 = gn + 1  
-    integer up
+    integer up, ew, ns
     real(dp) :: estimate
 
 !whl - Note vertical dimensions here.  Dissipation is computed for each of (upn-1) layers.
@@ -169,6 +170,38 @@ contains
        case(1)
           
     end select
+
+       !MJH: Initialize ice temperature.============
+      !This block of code is identical to that in glide_init_temp
+      if (model%temper%temp(1,1,1) .lt. -273.15) then
+          ! temp array still has initialized values - no values have been read in. 
+          ! Initialize ice temperature to air temperature (for each column). 
+          do ns = 1,model%general%nsn
+             do ew = 1,model%general%ewn
+                model%temper%temp(:,ew,ns) = dmin1(0.0d0,dble(model%climate%artm(ew,ns)))
+             end do
+          end do
+      else
+          ! Values have been read in - do nothing
+      endif
+
+      ! MJH: Calculate initial value of flwa
+      ! If flwa is loaded (e.g. hotstart), use the flwa field in the input file instead
+      ! Note: Implementing flwa initialization in this way, I don't think hotstart=1 does anything. 
+!      if (model%options%hotstart .ne. 1) then
+       if (model%temper%flwa(1,1,1) .lt. 0.0) then
+        call write_log("No initial flwa supplied - calculating initial flwa.")
+        ! Calculate Glenn's A --------------------------------------------------------   
+        call calcflwa(model%numerics%sigma,        &
+                      model%numerics%thklim,       &
+                      model%temper%flwa,           &
+                      model%temper%temp(:,1:model%general%ewn,1:model%general%nsn), &
+                      model%geometry%thck,         &
+                      model%paramets%flow_factor,  &
+                      model%paramets%default_flwa, &
+                      model%options%whichflwa)
+       endif
+!       endif
   
   end subroutine glissade_init_temp
 

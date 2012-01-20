@@ -291,37 +291,33 @@ contains
     ! (whichevol = 3 or 4)
     model%geometry%age(:,:,:) = 0._dp
  
-    if (model%options%hotstart.ne.1) then
-
-       ! initialise Glen's flow parameter A using an isothermal temperature distribution
-       ! (setting column to surface air temperature)
-
-       if (model%options%whichtemp == TEMP_REMAP_ADV) then
-
-          do k = 1, model%general%upn-1
-             do loopify1=lbound(model%temper%temp,2),ubound(model%temper%temp,2)
-                do loopify2=lbound(model%temper%temp,3),ubound(model%temper%temp,3)
-                   model%temper%temp(k,loopify1,loopify2) &
-                   = min(0.0d0,dble(model%climate%artm(loopify1,loopify2)))
-                end do
-             end do
-          end do
-
-          call calcflwa(model%numerics%sigma,        &
-                        model%numerics%thklim,       &
-                        model%temper%flwa,           &
-                        model%temper%temp(:,1:model%general%ewn,1:model%general%nsn), &
-                        model%geometry%thck,         &
-                        model%paramets%flow_factor,  &
-                        model%paramets%default_flwa, &
-                        model%options%whichflwa)
-
-       else
-#ifndef DISABLE_EVOL
-          call glide_temp_driver(model,0)
-#endif
-       endif
-    end if
+ !MJH moved flwa init to glide_init_temp/glissade_init_temp
+!    if (model%options%hotstart.ne.1) then
+!
+!          do k = 1, model%general%upn-1
+!             do loopify1=lbound(model%temper%temp,2),ubound(model%temper%temp,2)
+!                do loopify2=lbound(model%temper%temp,3),ubound(model%temper%temp,3)
+!                   model%temper%temp(k,loopify1,loopify2) &
+!                   = min(0.0d0,dble(model%climate%artm(loopify1,loopify2)))
+!                end do
+!             end do
+!          end do
+!
+!          call calcflwa(model%numerics%sigma,        &
+!                        model%numerics%thklim,       &
+!                        model%temper%flwa,           &
+!                        model%temper%temp(:,1:model%general%ewn,1:model%general%nsn), &
+!                        model%geometry%thck,         &
+!                        model%paramets%flow_factor,  &
+!                        model%paramets%default_flwa, &
+!                        model%options%whichflwa)
+!
+!       else
+!#ifndef DISABLE_EVOL
+!          call glide_temp_driver(model,0)
+!#endif
+!       endif
+!    end if
 
     ! calculate mask
     call glide_set_mask(model%numerics, model%geometry%thck, model%geometry%topg, &
