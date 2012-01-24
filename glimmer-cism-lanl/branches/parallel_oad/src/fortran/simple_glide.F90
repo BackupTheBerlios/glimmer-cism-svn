@@ -44,15 +44,6 @@
 #include "config.inc"
 #endif
 
-subroutine set_ctrl(model)
-  use glide
-  use glide_dummy_ctrl
-  type(glide_global_type) :: model        ! model instance
-  ! stub for automatic differentiation
-  print *,"INDEPENDENT input", model%tempwk%inittemp(1,1,1), " perturbation:", inCtrl/model%tempwk%inittemp(1,1,1)
-  model%tempwk%inittemp(1,1,1)=model%tempwk%inittemp(1,1,1)+inCtrl
-end subroutine 
-
 subroutine numericalCore(model, climate)
   use glimmer_global, only:rk, dp
   use glide
@@ -71,8 +62,6 @@ subroutine numericalCore(model, climate)
   call simple_massbalance(climate,model,time)
   call simple_surftemp(climate,model,time)
   call spinup_lithot(model)
-
-  call set_ctrl(model)
 
   tstep_count = 0
 
