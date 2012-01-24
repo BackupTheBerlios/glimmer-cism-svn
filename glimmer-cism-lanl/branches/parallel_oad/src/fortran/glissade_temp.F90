@@ -77,6 +77,7 @@ contains
     use glimmer_global, only : dp 
     use glide_temp_utils, only : calcflwa
     use glimmer_log
+    use glide_dummy_ctrl
 
     implicit none
     type(glide_global_type),intent(inout) :: model       !*FD Ice model parameters.
@@ -184,6 +185,8 @@ contains
       else
           ! Values have been read in - do nothing
       endif
+      
+      call set_ctrl(model)
 
       ! MJH: Calculate initial value of flwa
       ! If flwa is loaded (e.g. hotstart), use the flwa field in the input file instead
