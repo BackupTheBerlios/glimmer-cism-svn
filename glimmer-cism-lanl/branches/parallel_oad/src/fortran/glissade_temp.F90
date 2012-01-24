@@ -179,7 +179,9 @@ contains
           ! Initialize ice temperature to air temperature (for each column). 
           do ns = 1,model%general%nsn
              do ew = 1,model%general%ewn
-                model%temper%temp(:,ew,ns) = dmin1(0.0d0,dble(model%climate%artm(ew,ns)))
+                do up = 0, model%general%upn
+                   model%temper%temp(up,ew,ns) = min(0.0d0,dble(model%climate%artm(ew,ns)))
+                end do
              end do
           end do
       else
