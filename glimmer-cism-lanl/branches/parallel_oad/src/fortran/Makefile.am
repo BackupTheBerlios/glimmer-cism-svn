@@ -217,4 +217,4 @@ glimmer_vers.F90:	glimmer_vers.F90.in
 f90_dep.mak:	$(ALL_SRC) $(BUILT_SOURCES) glimmer_vers.F90
 		$(PYTHON) $(top_srcdir)/src/python/f90_dependencies.py -o $@ $^
 
--include f90_dep.mak
+include f90_dep.mak
