@@ -73,9 +73,11 @@ def search_file(name):
                 result['includes'].append(include)
             continue
         # finding module statement
-        pos = string.find(l,'end module ')
+        pos = string.find(l,'end module')
         if pos is not -1:
-            pos = pos + len('end module ')
+            pos = pos + len('end module')
+            if (string.strip(l[pos:])==''):
+                raise Exception("expecting \"end module <module name>\"\nbut cannot extract module name from file "+name+" at the following line:\n"+l)
             result['modname'].append(string.strip(l[pos:]))
             continue
         if string.find(l,'end program') is not -1:
@@ -159,47 +161,58 @@ if __name__ == '__main__':
         # print usage and exit
         usage()
         sys.exit(2)
-   
-    if len(args) < 2:
-        # print usage and exit
-        usage()
-        sys.exit(2)
 
-    dot = 0
-    mod = 0
-    outfile = sys.stdout
-    process = []
-    special = {}
-    for o,a in opts:
-        if o in ('-h', '--help'):
+    try: 
+        if len(args) < 2:
+            print usage and exit
             usage()
-            sys.exit(0)
-        if o in ('-d','--dot'):
-            dot = 1
-        if o in ('-m', '--mod'):
-            mod = 1
-        if o in ('-p', '--process'):
-            process.append(a)
-        if o in ('-o', '--output'):
-            outfile = open(a,'w')
+            sys.exit(2)
 
-    f90files = []
-    modnames = {}
-    modrnames = {}
-    for arg in args:
-        r = search_file(arg)
-        f90files.append(r)
-        for m in r['modname']:
-            if m not in modnames.keys():
-                modnames[m] = r['name']
-                modrnames[m] = r['realname']
+        dot = 0
+        mod = 0
+        outfile = sys.stdout
+        process = []
+        special = {}
+        for o,a in opts:
+            if o in ('-h', '--help'):
+                usage()
+                sys.exit(0)
+            if o in ('-d','--dot'):
+                dot = 1
+            if o in ('-m', '--mod'):
+                mod = 1
+            if o in ('-p', '--process'):
+                process.append(a)
+            if o in ('-o', '--output'):
+                outfile = open(a,'w')
 
-    if dot is 1:
-        if len(process)>0:
-            reduce(process,f90files,modrnames)
-            mod = 0
-        print_dot(outfile,f90files,modnames,mod)
-    else:
-        print_makefile(outfile,f90files,modrnames)
+        f90files = []
+        modnames = {}
+        modrnames = {}
+        for arg in args:
+            r = search_file(arg)
+            f90files.append(r)
+            for m in r['modname']:
+                if m not in modnames.keys():
+                    modnames[m] = r['name']
+                    modrnames[m] = r['realname']
 
-    outfile.close()
+        if dot is 1:
+            if len(process)>0:
+                reduce(process,f90files,modrnames)
+                mod = 0
+            print_dot(outfile,f90files,modnames,mod)
+        else:
+            print_makefile(outfile,f90files,modrnames)
+
+        outfile.close()
+    except Exception, e:
+        sys.stderr.write("ERROR "+str(e))
+        try: 
+            if (os.path.exists(outfile.name)):
+                if not outfile.closed:
+                    outfile.close()
+                os.remove(outfile.name)
+        except:
+            pass
+        sys.exit(2)
