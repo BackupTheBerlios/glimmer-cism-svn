@@ -23,7 +23,7 @@ function [data] = nc_plume_read(nc_filename,istart,timestride,iend)
     temp_id = netcdf.inqVarID(nc,'temp');
     salt_id = netcdf.inqVarID(nc,'salt');
     rhop_id = netcdf.inqVarID(nc,'rhop');
-    
+    grav_speed_id = netcdf.inqVarID(nc,'gwave_speed');
     x_id = netcdf.inqVarID(nc, 'x');
     y_id = netcdf.inqVarID(nc, 'y');
 
@@ -105,5 +105,23 @@ end
     data.ambdepth = data.draft - data.pdep;
     [X,Y] = meshgrid(data.x,data.y);
     [data.gradx,data.grady,data.grad] = local_grad(X',Y',data.bpos);
+    
+dx = data.x(2)-data.x(1);
+dy = data.y(2)-data.y(1);
+
+uy = (data.su(1:(end-2)  ,3:end    ,:) + ...
+      data.su(2:end-1    ,3:end    ,:) - ...
+      data.su(1:(end-2)  ,1:(end-2),:) - ...
+      data.su(2:end-1    ,1:(end-2),:))/(2*dy);
+
+vx = (data.sv(3:end    ,1:(end-2)  ,:)+ ...
+      data.sv(3:end    ,2:end-1    ,:)- ...
+      data.sv(1:(end-2),1:(end-2)  ,:)- ...
+      data.sv(1:(end-2),2:end-1    ,:))/(2*dx);
+  
+data.vorticity = zeros(size(data.bpos,1),size(data.bpos,2),size(data.bpos,3));
+size(vx)
+size(uy)
+data.vorticity(2:end-1,2:end-1,:) = vx - uy;
 
 end

@@ -1,5 +1,6 @@
 load piecewise_amb;
 
+figure(1);
 clf;
 tstride = 2;
 sstride = 4;
@@ -23,6 +24,7 @@ ax1 = axes('XAxisLocation','top',...
            'FontSize',fs);
        
 h1 = line(temp,-tdepth,'Color',tempclr,'Linestyle',tempstyle,'linewidth',1.0);
+h11 =line([-1 -0.1],[0 -800],'Color','r');
 %ax1 = gca;
 %set(ax1,'XAxisLocation','top')
 %set(ax1,'XColor',tempclr,'YColor','k','FontSize',fs);
