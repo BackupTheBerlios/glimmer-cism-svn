@@ -1,7 +1,7 @@
 
 %fig1 = figure(1);
 %clf;
-
+fs2 = 16;
 %fs = 14;
 %hold on
 %contourf(x/1000.0,y/1000.0,grad',40,'EdgeColor','None');
@@ -25,25 +25,33 @@ set(fig1,'Position',[1 1 solo_fig_x_size solo_fig_y_size])
 %set(fig1,'Position',[1 1 800 600])
 hold on
 
-subset = @(M) M(1:40,1:40);
+subset = @(M) M(1:40,1:80);
+subset = @(M) M(1:80,1:40);
+%subset = @(M) M;
+subset_trans = @(M) subset(M');
+
 [xsubset,ysubset] = meshgrid(x/1000,y/1000);
 xsubset = subset(xsubset);
 ysubset = subset(ysubset);
-
-su = subset(pad_edge(1,0,su(1:end-1,:)+su(2:end,:)));
-sv = subset(pad_edge(0,1,sv(:,1:end-1)+sv(:,2:end)));
+su = subset_trans(pad_edge(1,0,su(1:end-1,:)+su(2:end,:)));
+sv = subset_trans(pad_edge(0,1,sv(:,1:end-1)+sv(:,2:end)));
 
 contourf(xsubset,ysubset,subset(-draft'),40,'EdgeColor','None');
 colorbar('FontSize',fs);
 set(gca,'FontSize',fs2);
 
-%scale=2.0;stride=2;
-%i0 = 2;
+scale=1.5;stride=2;
+i0 = 1;
+j0 = 2;
+lw = 1.75;
 %quiver(x(i0:stride:end)/1000,y(1:stride:end)/1000,...
 %      su(i0:stride:end,1:stride:end)',...
 %      sv(i0:stride:end,1:stride:end)',...
 %      scale,'k','LineWidth',lw);
-quiver(xsubset,ysubset,su',sv', scale,'k','LineWidth',lw);
+quiver(xsubset(j0:stride:end,i0:stride:end), ...
+       ysubset(j0:stride:end,i0:stride:end), ...
+       su(j0:stride:end,i0:stride:end), ...
+       sv(j0:stride:end,i0:stride:end), scale,'k','LineWidth',lw);
 
 colormap jet;
 xlabel('Across shelf distance (km)','FontSize',fs);
@@ -51,14 +59,15 @@ ylabel('Along shelf distance (km)','FontSize',fs);
 caxis([0 600]);
 title('Contours of Ice Draft (m) with plume velocities','FontSize',fs);
 hold off
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_draft_vel']));
-
 pause;
+
 figure(1);
 set(fig1,'Position',[1 1 solo_fig_x_size solo_fig_y_size])
 clf;
 hold on
-contourf(x/1000.0,y/1000.0,-draft',40,'EdgeColor','None');colorbar('FontSize',fs);
+contourf(x/1000.0,y/1000.0,-draft',30,'EdgeColor','None');colorbar('FontSize',fs);
 set(gca,'FontSize',fs2);
 %caxis([000 650])
 %quiver(x(1:stride:end)/1000,y(1:stride:end)/1000,...
@@ -68,9 +77,10 @@ set(gca,'FontSize',fs2);
 colormap jet;
 xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
-%caxis([0 800]);
+caxis([0 800]);
 title('Contours of Ice Draft (m)','FontSize',fs);
 hold off
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_draft']));
 
 
@@ -89,6 +99,7 @@ xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Basal Melt Rate (m/year)','FontSize',fs);
 hold off
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_meltrate']));
 
 
@@ -106,6 +117,7 @@ xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Entrainment/Detrainment Rate (1000m/year)','FontSize',fs);
 hold off
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_train']));
 
 
@@ -124,6 +136,7 @@ xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Plume Temperature (C)','FontSize',fs);
 hold off
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_temp']));
 
 
@@ -140,6 +153,7 @@ xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Plume Salinity (psu)','FontSize',fs);
 hold off
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_salt']));
 
 
@@ -155,6 +169,7 @@ xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Thermal Forcing (C)','FontSize',fs);
 hold off
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_T_forcing']));
 
 
@@ -168,6 +183,7 @@ caxis([min(min(channel_amp)) max(max(channel_amp))]);
 xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('Channel depth (m)','FontSize',fs);
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_channels']));
 
 if (false)
@@ -185,6 +201,7 @@ xlabel('Across shelf distance (km)','FontSize',fs)
 ylabel('Along shelf distance (km)','FontSize',fs);
 colorbar('FontSize',fs);
 title('Thickness tendency due to ice divergence','FontSize',fs);    
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_ice_div']));
 hold off
 end
@@ -209,6 +226,7 @@ contour(dice.Xgrid(:,j_start:j_stop)/1000.0, ...
         20,'w');
 caxis([min(min(-dice.flux_div(:,j_start:j_stop,timeslice))) ...
        max(max(-dice.flux_div(:,j_start:j_stop,timeslice)))]);
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_flux_div']));
 hold off
 end
@@ -231,6 +249,7 @@ title('Thickness time tendency due to ice advection term u\cdot \nabla H','FontS
 %        dice.thk(:,j_start:j_stop,timeslice), ...
 %        20,'w');
 caxis([0 80]);
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_ice_adv']));
 hold off
 
@@ -251,6 +270,7 @@ title('Thickness time tendency due to ice advection term v_0*H_y','FontSize',fs)
 %        dice.thk(:,j_start:j_stop,timeslice), ...
 %        20,'w');
 caxis([0 80]);
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_y_adv']));
 hold off
 
@@ -273,6 +293,7 @@ title('Ice deformation influence on H (m/year)','FontSize',fs);
 %        dice.thk(:,j_start:j_stop,timeslice), ...
 %        20,'w');
 %caxis([0 40]);
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_ice_def']));
 hold off
 
@@ -290,6 +311,7 @@ xlabel('Across shelf distance (km)','FontSize',fs)
 ylabel('Along shelf distance (km)','FontSize',fs);
 title('H_t/H','FontSize',fs);    
 %caxis([-0.1 0.1]);
+set(gcf,'PaperPositionMode','auto');
 print('-depsc',strcat([fig_dir,'/plume_thk_t']));
 hold off
 end

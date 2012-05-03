@@ -7,6 +7,7 @@ j1name = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_4';
 j2name = 'oct30_perturb_usq.8_top_-1.55';
 j3name = 'oct30_perturb_usq.8_bottom_0.4';
 j4name = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
+j4name = 'oct30_perturb_usq_bottom_-0.2';
 j5name = 'no_tangle_oct30_perturb_usq_bottom_0.0';
 
 
@@ -44,15 +45,15 @@ lsurf4 = dice4.lsurf(:,:,end);
 lsurf5 = dice5.lsurf(:,:,end);
 
 [m,ma,in,out,acab,unsteady] = mass_balance(dice1,dplume1,-1);
-m_control = m/in
+m_control = m/in;
 [m,ma,in,out,acab,unsteady] = mass_balance(dice2,dplume2,-1);
-m2 = m/in - m_control
+m2 = m/in - m_control;
   [m,ma,in,out,acab,unsteady] = mass_balance(dice3,dplume3,-1);
-m3 = m/in - m_control
+m3 = m/in - m_control;
   [m,ma,in,out,acab,unsteady] = mass_balance(dice4,dplume4,-1);
-m4 = m/in - m_control
+m4 = m/in - m_control;
   [m,ma,in,out,acab,unsteady] = mass_balance(dice5,dplume5,-1);
-m5 = m/in - m_control
+m5 = m/in - m_control;
 
 
 fig1 = figure(1);

@@ -36,7 +36,7 @@ function [data] = nc_ice_read(nc_filename, istart,timestride, iend)
     [tname,tlen] = netcdf.inqDim(nc,time_dim_id);
     if (istart < 0)
       if (iend > 0) 
-	error('Does not make send to have istart < 0 and iend > 0');
+	     error('Does not make send to have istart < 0 and iend > 0');
       end
       istart = tlen-2;
       stride = 1;
@@ -119,7 +119,7 @@ netcdf.close(nc);
           data.vvelmean(1:(end-1),1:(end-1),:)- ...
           data.vvelmean(2:end,    1:(end-1),:))/(2*dy);
 
-      size(data.uvelmean)
+      size(data.uvelmean);
 uy = (data.uvelmean(1:(end-1),2:end    ,:) + ...
       data.uvelmean(2:end    ,2:end    ,:) - ...
       data.uvelmean(1:(end-1),1:(end-1),:) - ...
@@ -136,10 +136,10 @@ vx = (data.vvelmean(2:end    ,1:(end-1),:)+ ...
                                            data.thk(2:(end-1),2:(end-1),:);
     
 data.vorticity = zeros(size(data.thk,1),size(data.thk,2),size(data.thk,3));
-size(uy)
-size(vx)
-size(data.vorticity)
-size(data.thk)
+size(uy);
+size(vx);
+size(data.vorticity);
+size(data.thk);
 data.vorticity = vx - uy;
 
     %data.flux_div = ...

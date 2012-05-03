@@ -1,4 +1,4 @@
-function [spec,norm2] = plot_spectral_evolution(dice,fig_dir)
+function [spec,norm2] = plot_spectral_evolution(dice,figfile,k_pert,amp)
 
 [m,n,k] = size(dice.thk);
 fs = 16;
@@ -46,16 +46,18 @@ z = log(max(z,1.0));
 contourf(ks(1:kmax),dice.ygrid/1000,z',40,'EdgeColor','None');
 colorbar;
 set(gca,'FontSize',fs);
-%caxis([-5 10]);
+caxis([0 10.5]);
 
 xlabel('Across shelf wavenumber (1/km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
-title('log(spectral density) for cross-shelf variations','FontSize',fs);
+title(sprintf('log(spectral density) of cross-shelf variations: k=%s amp=%s',...
+   k_pert,amp),'FontSize',fs);
 %title('spectral density of cross-shelf variations (m^2)','FontSize',fs);
 
 end
 
-print('-depsc',strcat([fig_dir,'/plume_spectral_plot']));
+set(gcf,'PaperPositionMode','auto');
+print('-depsc',figfile)
 
 end
 

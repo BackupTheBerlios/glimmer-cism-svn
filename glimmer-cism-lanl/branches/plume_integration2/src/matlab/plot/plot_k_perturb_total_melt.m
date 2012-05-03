@@ -78,17 +78,19 @@ ax2Color = 'k';
 amp25Mark = '-';
 amp50Mark = 'x';
 
-
-hl1 = line(usq_amp25_ks(1:5),100*m_25(1:5)/f_in);
-hl1a = line(usq_amp25_ks,100*ma_25/f_in);
+which_ks = 1:5;
+which_ks = 1:16;
+melt_color = 'b';
+hl1 = line(usq_amp25_ks(which_ks),100*m_25(which_ks)/f_in);
+%hl1a = line(usq_amp25_ks,100*ma_25/f_in);
 
 ax1 = gca;
 
 
 ax2 = axes('Position',get(ax1,'Position'),...
 	   'XAxisLocation','bottom',...
-           'YAxislocation','right',...
-            'Color','None',...
+       'YAxislocation','right',...
+       'Color','None',...
 	   'XColor','k','YColor',ax2Color);
 
 set(ax1,'FontSize',fs);
@@ -99,8 +101,8 @@ hl2 = line(usq_amp25_ks,100*u_25/f_in);
 set(ax1,'XColor','k','Ycolor',ax1Color);
 set(ax2,'XColor','k','Ycolor',ax2Color);
 lw = 2.0;
-set(hl1,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','r');
-set(hl1a,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','b');
+set(hl1,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color',melt_color);
+%set(hl1a,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color','b');
 set(hl2,'MarkerSize',ms,'LineStyle',amp25Mark,'LineWidth',lw,'Color',ax2Color);
 
 set(ax2,'Ydir','reverse');
@@ -112,11 +114,11 @@ set(ax1,'xlim',[-1 16]);
 set(ax2,'xlim',[-1 16]);
 
 axes(ax1);
-hl3 = line(usq_amp50_ks(1:5),100*m_50(1:5)/f_in);
-hl3a = line(usq_amp50_ks,100*ma_50/f_in);
+hl3 = line(usq_amp50_ks(which_ks),100*m_50(which_ks)/f_in);
+%hl3a = line(usq_amp50_ks,100*ma_50/f_in);
 
-set(hl3,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','r');
-set(hl3a,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','b');
+set(hl3,'MarkerSize',ms,'LineStyle',amp50Mark,'Color',melt_color);
+%set(hl3a,'MarkerSize',ms,'LineStyle',amp50Mark,'Color','b');
 
 axes(ax2);
 hl4 = line(usq_amp50_ks,100*u_50/f_in);
@@ -128,15 +130,14 @@ set(get(ax1,'ylabel'),'FontSize',fs);
 set(get(ax2,'ylabel'),'String','Volume rate of change (% of influx)');
 set(get(ax2,'ylabel'),'FontSize',fs);
 
-set(get(ax1,'xlabel'),'String','Cross-shelf perturbation wavenumber (1/km)');
+set(get(ax1,'xlabel'),'String','Cross-shelf perturbation wavenumber');
 set(get(ax1,'xlabel'),'FontSize',fs);
 
 hold off
 
-legend([hl1,hl1a,hl2,hl3,hl3a,hl4], ...
-       '25 m - m''',...
-       '25 m - \gamma m''',...
+%legend([hl1,hl1a,hl2,hl3,hl3a,hl4], ...
+legend([hl1,hl2,hl3,hl4], ...
+       '25 m - m''',... %       '25 m - \gamma m''',...
         '25 m - unsteadiness',...
-        '50 m - m''',...
-       '50 m - \gamma m''', ...
+        '50 m - m''',... %       '50 m - \gamma m''', ...
        '50 m - unsteadiness');

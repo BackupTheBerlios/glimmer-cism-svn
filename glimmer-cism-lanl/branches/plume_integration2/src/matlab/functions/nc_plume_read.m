@@ -120,8 +120,8 @@ vx = (data.sv(3:end    ,1:(end-2)  ,:)+ ...
       data.sv(1:(end-2),2:end-1    ,:))/(2*dx);
   
 data.vorticity = zeros(size(data.bpos,1),size(data.bpos,2),size(data.bpos,3));
-size(vx)
-size(uy)
+size(vx);
+size(uy);
 data.vorticity(2:end-1,2:end-1,:) = vx - uy;
 
 end

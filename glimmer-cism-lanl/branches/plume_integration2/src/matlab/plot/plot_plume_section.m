@@ -12,7 +12,7 @@ fs = 16;
 x = (dplume_avg.x - 1375)/1000.0;
 
 yslice0 = 1;
-yslices = [0,8,16,24,32,160]+yslice0;
+yslices = [0,8,16,24,32,14*4,40*4]+yslice0;
 
 hold on
 for i=1:length(yslices)
