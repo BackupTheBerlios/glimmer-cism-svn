@@ -24,14 +24,15 @@ f_1p5_ocean = strcat([jobs,'/',j_sgd_1p5,'/plume.',j_sgd_1p5,'.out.nc']);
 f_2p0_ice = strcat([jobs,'/',j_sgd_2p0,'/',j_sgd_2p0,'.out.nc']);
 f_2p0_ocean = strcat([jobs,'/',j_sgd_2p0,'/plume.',j_sgd_2p0,'.out.nc']);
 
-dice_control = nc_ice_read(f_control_ice,-1,1,-1);
+minslices = 2;
+dice_control = nc_ice_read(f_control_ice,-1,1,-1,minslices);
 dplume_control = nc_plume_read(f_control_ocean,-1,1,-1);
 
-dice_0p5 = nc_ice_read(f_0p5_ice,-1,1,-1);
-dice_1p0 = nc_ice_read(f_1p0_ice,-1,1,-1);
-dice_1p25 = nc_ice_read(f_1p25_ice,-1,1,-1);
-dice_1p5 = nc_ice_read(f_1p5_ice,-1,1,-1);
-dice_2p0 = nc_ice_read(f_2p0_ice,-1,1,-1);
+dice_0p5 = nc_ice_read(f_0p5_ice,-1,1,-1,minslices);
+dice_1p0 = nc_ice_read(f_1p0_ice,-1,1,-1,minslices);
+dice_1p25 = nc_ice_read(f_1p25_ice,-1,1,-1,minslices);
+dice_1p5 = nc_ice_read(f_1p5_ice,-1,1,-1,minslices);
+dice_2p0 = nc_ice_read(f_2p0_ice,-1,1,-1,minslices);
 
 
 dplume_0p5 = nc_plume_read(f_0p5_ocean,-1,1,-1);
@@ -48,17 +49,17 @@ lsurf_1p25 = dice_1p25.lsurf(:,:,end);
 lsurf_1p5 = dice_1p5.lsurf(:,:,end);
 lsurf_2p0 = dice_2p0.lsurf(:,:,end);
 
-[m,in,out,acab,unsteady] = mass_balance(dice_control,dplume_control);
+[m,in,out,acab,unsteady] = mass_balance(dice_control,dplume_control,-1);
 m_control = m/in
-[m,in,out,acab,unsteady] = mass_balance(dice_0p5,dplume_0p5);
+[m,in,out,acab,unsteady] = mass_balance(dice_0p5,dplume_0p5,-1);
 m_0p5 = m/in - m_control
-[m,in,out,acab,unsteady] = mass_balance(dice_1p0,dplume_1p0);
+[m,in,out,acab,unsteady] = mass_balance(dice_1p0,dplume_1p0,-1);
 m_1p0 = m/in - m_control;
-[m,in,out,acab,unsteady] = mass_balance(dice_1p25,dplume_1p25);
+[m,in,out,acab,unsteady] = mass_balance(dice_1p25,dplume_1p25,-1);
 m_1p25 = m/in - m_control;
-[m,in,out,acab,unsteady] = mass_balance(dice_1p5,dplume_1p5);
+[m,in,out,acab,unsteady] = mass_balance(dice_1p5,dplume_1p5,-1);
 m_1p5 = m/in - m_control;
-[m,in,out,acab,unsteady] = mass_balance(dice_2p0,dplume_2p0);
+[m,in,out,acab,unsteady] = mass_balance(dice_2p0,dplume_2p0,-1);
 m_2p0 = m/in - m_control;
 
 fig1 = figure(1);

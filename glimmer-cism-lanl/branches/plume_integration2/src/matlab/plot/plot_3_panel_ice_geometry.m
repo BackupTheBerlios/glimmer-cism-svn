@@ -40,19 +40,20 @@ hold on
 contourf(x/1000.0,y/1000.0,-draft',40,'EdgeColor','None') ;colorbar('FontSize',fs3);
 
 scale = 1.35;
-scale = 1.5;
+scale = 0;
 arrowcolor = 'k';
 stride = 3;
 arrow_start = 2;
-lw = 1.25;
+lw = 1;
+manual_scale = 5.0;
 quiver(x(arrow_start:stride:end)/1000,y(arrow_start:stride:end)/1000,...
-      su(arrow_start:stride:end,arrow_start:stride:end)',...
-      sv(arrow_start:stride:end,arrow_start:stride:end)',...
-      scale,arrowcolor,'LineWidth',lw,'ShowArrowHead','on');
-rectangle('Position',[15 36.5 4 2.5],'Facecolor','w');
-h = quiver(18.5,37,0,1,scale,arrowcolor,'LineWidth',lw);
+      manual_scale*su(arrow_start:stride:end,arrow_start:stride:end)',...
+      manual_scale*sv(arrow_start:stride:end,arrow_start:stride:end)',...
+      scale,arrowcolor,'LineWidth',lw,'ShowArrowHead','on','Autoscale','off');
+rectangle('Position',[13 36.5 6 2.5],'Facecolor','w');
+h = quiver(18.25,37,0,0.25*manual_scale,scale,arrowcolor,'LineWidth',lw,'Autoscale','off');
 adjust_quiver_arrowhead_size(h,4);
-text(15.5,37.5,'1 m/s');
+text(13.5,37.5,'25 cm/s');
 set(gca,'FontSize',fs3);
 xlabel('Across shelf distance (km)','FontSize',fs3);
 ylabel('Along shelf distance (km)','FontSize',fs3);

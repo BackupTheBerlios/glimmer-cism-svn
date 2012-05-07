@@ -7,11 +7,11 @@
 setenv('GC_JOBS','/archive/cvg222/gc_output/2011/paper_jobs/');
 
 jobs = getenv('GC_JOBS');
-jname = 'central_final_nov17';
+%jname = 'central_final_nov17';
 %jname = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_4';
 %jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
 %jname = 'central_paper';
-%jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
+jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
 
 f_ice = strcat([jobs,'/',jname,'/',jname,'.out.nc']);
 f_ocean = strcat([jobs,'/',jname,'/plume.',jname,'.out.nc']);
@@ -21,7 +21,8 @@ istart = -1;
 %iend = 90;
 iend = -1;
 stride = 1;
-dice = nc_ice_read(f_ice,istart,stride,iend);
+minslices = 1;
+dice = nc_ice_read(f_ice,istart,stride,iend,minslices);
 
 %istart = 15;
 istart = -1;

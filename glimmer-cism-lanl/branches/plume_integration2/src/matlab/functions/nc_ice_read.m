@@ -1,4 +1,4 @@
-function [data] = nc_ice_read(nc_filename, istart,timestride, iend)
+function [data] = nc_ice_read(nc_filename, istart,timestride, iend,minslices)
 
     nc = netcdf.open(nc_filename, 'NC_NOWRITE');
        
@@ -38,7 +38,7 @@ function [data] = nc_ice_read(nc_filename, istart,timestride, iend)
       if (iend > 0) 
 	     error('Does not make send to have istart < 0 and iend > 0');
       end
-      istart = tlen-2;
+      istart = tlen-minslices;
       stride = 1;
     end
     if (iend < 0)

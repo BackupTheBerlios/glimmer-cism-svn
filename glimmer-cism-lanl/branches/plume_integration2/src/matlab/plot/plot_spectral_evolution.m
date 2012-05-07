@@ -48,10 +48,11 @@ colorbar;
 set(gca,'FontSize',fs);
 caxis([0 10.5]);
 
-xlabel('Across shelf wavenumber (1/km)','FontSize',fs);
+xlabel('Across shelf wavenumber','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);
-title(sprintf('log(spectral density) of cross-shelf variations: k=%s amp=%s',...
-   k_pert,amp),'FontSize',fs);
+%title(sprintf('log(spectral density) of cross-shelf variations: k=%s amp=%s',...
+%   k_pert,amp),'FontSize',fs);
+title(sprintf('log(spectral density) of cross-shelf variations'),'FontSize',fs);
 %title('spectral density of cross-shelf variations (m^2)','FontSize',fs);
 
 end

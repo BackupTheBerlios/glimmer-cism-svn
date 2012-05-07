@@ -22,11 +22,11 @@ ytext = 21.5;
 istart = -1;
 iend = -1;
 stride = 1;
-
+minslices = 1;
 control_job = 'central_final_nov17';
 f_ice_control = strcat([jobs,'/',control_job,'/',control_job,'.out.nc']);
 f_ocean_control = strcat([jobs,'/',control_job,'/plume.',control_job,'.out.nc']);
-dice_control = nc_ice_read(f_ice_control,  istart,stride,iend);
+dice_control = nc_ice_read(f_ice_control,  istart,stride,iend,minslices);
 dplume_control = nc_plume_read(f_ocean_control, istart,stride,iend);
 
 lsurf_control = dice_control.lsurf(:,:,end);
@@ -63,13 +63,13 @@ for i=1:3
   f_ice_st1 = strcat([jobs,'/',cjst1,'/',cjst1,'.out.nc']);
   f_ocean_st1 = strcat([jobs,'/',cjst1,'/plume.',cjst1,'.out.nc']);
 
-pre_dice = nc_ice_read(pre_f_ice,  istart,stride,iend);
+pre_dice = nc_ice_read(pre_f_ice,  istart,stride,iend,minslices);
 pre_dplume = nc_plume_read(pre_f_ocean, istart,stride,iend);
-dice = nc_ice_read(f_ice,  istart,stride,iend);
+dice = nc_ice_read(f_ice,  istart,stride,iend,minslices);
 dplume = nc_plume_read(f_ocean, istart,stride,iend);
-dice_nh = nc_ice_read(f_ice_nh,  istart,stride,iend);
+dice_nh = nc_ice_read(f_ice_nh,  istart,stride,iend,minslices);
 dplume_nh = nc_plume_read(f_ocean_nh, istart,stride,iend);
-dice_st1 = nc_ice_read(f_ice_st1,  istart,stride,iend);
+dice_st1 = nc_ice_read(f_ice_st1,  istart,stride,iend,minslices);
 dplume_st1 = nc_plume_read(f_ocean_st1, istart,stride,iend);
 
 x = dice.xgrid/1000.0;
@@ -196,6 +196,7 @@ caxis([0 110]);
 %xlabel('Across shelf (km)','FontSize',fs);
 %ylabel('Along shelf (km)','FontSize',fs);
 set(gca,'FontSize',fs);
+%title('melt rates, pre-control','FontSize',fs);
 title('melt rates, pre-control','FontSize',fs);
 text(xtext,ytext,'a.','FontSize',fslabel);
 
