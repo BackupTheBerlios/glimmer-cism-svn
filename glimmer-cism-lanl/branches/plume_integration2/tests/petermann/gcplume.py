@@ -847,6 +847,9 @@ class RestartIceJob(_BaseJob):
         self._initJobInputNcFile = os.path.join(_initJobDir,
                                                os.path.basename(self._initJob.outputfile))
 
+        self.inputNcFile = os.path.join(_initJobDir,
+                                        os.path.basename(self.initJob.outputfile))
+
         # figure out new name for this job
         if (newName is None):
             if (len(_initJobName.split('_restart_')) > 1):
