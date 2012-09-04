@@ -82,9 +82,9 @@ flat_channel_amp = reshape(ch_amp, ...
 %plot(flat_channel_amp,flat_ice_def,'k.');
 %  pause;
 
-switch1 = true;
 switch1 = false;
-switch2 = true;
+switch1 = false;
+switch2 = false;
 switch2 = false;
 switch3= false;
 switch3 = false;
@@ -94,7 +94,7 @@ if (false)
   plot_solo_panels;
 end
 
-if (true)
+if (false)
 plot_3_panel_ice_geometry;
 end
 

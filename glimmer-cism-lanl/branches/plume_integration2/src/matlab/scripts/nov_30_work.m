@@ -20,11 +20,11 @@ f_ocean_vfast = pname(jvfast);
 f_ocean_slow = pname(jslow);
 f_ocean_mslow = pname(jmslow);
 
-dice = nc_ice_read(f_ice,-1,1,-1);
-dice_fast = nc_ice_read(f_ice_fast,-1,1,-1);
-dice_vfast = nc_ice_read(f_ice_vfast,-1,1,-1);
-dice_slow = nc_ice_read(f_ice_slow,-1,1,-1);
-dice_mslow = nc_ice_read(f_ice_mslow,-1,1,-1);
+dice =      nc_ice_read(f_ice,      -1,1,-1,2);
+dice_fast = nc_ice_read(f_ice_fast, -1,1,-1,2);
+dice_vfast =nc_ice_read(f_ice_vfast,-1,1,-1,2);
+dice_slow = nc_ice_read(f_ice_slow, -1,1,-1,2);
+dice_mslow =nc_ice_read(f_ice_mslow,-1,1,-1,2);
 
 dplume = nc_plume_read(f_ocean,-1,1,-1);
 dplume_fast = nc_plume_read(f_ocean_fast,-1,1,-1);

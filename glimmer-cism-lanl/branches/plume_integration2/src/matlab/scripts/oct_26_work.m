@@ -7,11 +7,11 @@
 setenv('GC_JOBS','/archive/cvg222/gc_output/2011/paper_jobs/');
 
 jobs = getenv('GC_JOBS');
-%jname = 'central_final_nov17';
+jname = 'central_final_nov17';
 %jname = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_4';
 %jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
 %jname = 'central_paper';
-jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
+%jname = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
 
 f_ice = strcat([jobs,'/',jname,'/',jname,'.out.nc']);
 f_ocean = strcat([jobs,'/',jname,'/plume.',jname,'.out.nc']);
@@ -48,7 +48,7 @@ dice_avg = nc_ice_avg(dice);
 %save '/home/cvg222/paper_work/mat_files/nov_20_work_dat.mat';
 %load '/home/cvg222/paper_work/mat_files/nov_20_work_dat.mat';
 
-fig_dir = '/home/cvg222/paper_work/apr_16_figs/';
+fig_dir = '/home/cvg222/paper_figs_sept_4_2012/';
 
 %plot_amb_water_column(ts,ss,zs,fig_dir);
 
