@@ -18,8 +18,8 @@ set(ax1(2),'ycolor','k')
 set(h1,'Linewidth',lw,'LineStyle','-','color','b');
 set(h2,'Linewidth',lw,'LineStyle','-','color','r');
 
-set(ax1(1),'xlim',[-2.2 0.5]);
-set(ax1(2),'xlim',[34.625 34.77]);
+set(ax1(1),'xlim',[-2.2 0.25]);
+set(ax1(2),'xlim',[34.65 34.77]);
 set(ax1(1),'XAxisLocation','Bottom');
 set(ax1(2),'XAxisLocation','Top');
 
@@ -32,14 +32,14 @@ set(ax1(2),'FontSize',fs);
 set(ax1(1),'YTick',0:100:max(zs));
 set(ax1(2),'YTick',0:100:max(zs));
 set(ax1(1),'XTick',-2:0.5:0.5);
-set(ax1(2),'XTick',34.6:0.02:34.8);
+set(ax1(2),'XTick',34.66:0.02:34.8);
 
 set(get(ax1(1),'Ylabel'),'String','Depth (m)','FontSize',fs)
 set(get(ax1(2),'Ylabel'),'String','Depth (m)','FontSize',fs)
 set(ax1(1),'Ydir','Reverse');
 set(ax1(2),'Ydir','Reverse');
 
-set(get(ax1(1),'Xlabel'),'String','Temperature (deg C)','FontSize',fs);
+set(get(ax1(1),'Xlabel'),'String','Temperature (\circC)','FontSize',fs);
 set(get(ax1(2),'Xlabel'),'String','Salinity (psu)','FontSize',fs);
 
 print ('-depsc',strcat([fig_dir,'/plume_amb_water_column']));

@@ -35,7 +35,7 @@ colormap jet;
 rectangle('Position',[15 36.5 4.5 2.5],'Facecolor','w');
 h = quiver(19,37,0,scale_vel*50,scale,'k','LineWidth',lw,'autoscale','off');
 adjust_quiver_arrowhead_size(h,4);
-text(15.5,37.5,'50 m/year','FontSize',12);
+text(15.5,37.5,'50 m a^{-1}','FontSize',12);
 
 xlabel('Across shelf distance (km)','FontSize',fs);
 ylabel('Along shelf distance (km)','FontSize',fs);

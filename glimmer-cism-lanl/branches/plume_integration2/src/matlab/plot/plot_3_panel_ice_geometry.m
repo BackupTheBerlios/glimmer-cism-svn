@@ -7,7 +7,7 @@ clf;
 fs3 = 16;
 fs_label = 18;
 
-set(fig1,'Position',[1 1 three_panel_fig_x_size three_panel_fig_y_size]);
+%set(fig1,'Position',[1 1 three_panel_fig_x_size three_panel_fig_y_size]);
 subplot(1,3,3);
 hold on
 contourf(x/1000.0,y/1000.0,channel_amp',40,'EdgeColor','None');colorbar('FontSize',fs3);
@@ -30,7 +30,7 @@ hold on
 contourf(x/1000.0,y/1000.0,bmelt',20,'EdgeColor','None') ;colorbar('FontSize',fs3);
 set(gca,'FontSize',fs3);
 xlabel('Across shelf distance (km)','FontSize',fs3);
-title('Basal Melt Rate (m/a)','FontSize',fs3);
+title('Basal Melt Rate (m a^{-1})','FontSize',fs3);
 text(-2,41,'b','color','k','FontSize',fs_label);
 hold off
 
@@ -53,7 +53,7 @@ quiver(x(arrow_start:stride:end)/1000,y(arrow_start:stride:end)/1000,...
 rectangle('Position',[13 36.5 6 2.5],'Facecolor','w');
 h = quiver(18.25,37,0,0.25*manual_scale,scale,arrowcolor,'LineWidth',lw,'Autoscale','off');
 adjust_quiver_arrowhead_size(h,4);
-text(13.5,37.5,'25 cm/s');
+text(13.5,37.5,'25 cm s^{-1}','FontSize',11);
 set(gca,'FontSize',fs3);
 xlabel('Across shelf distance (km)','FontSize',fs3);
 ylabel('Along shelf distance (km)','FontSize',fs3);

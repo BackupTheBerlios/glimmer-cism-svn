@@ -45,7 +45,7 @@ plot([xmin xmax], [0 0],'k')
 plot([0 0], [ymin ymax],'k')
 xlim([xmin xmax]);
 ylim([ymin ymax]);
-xlabel('cross-shelf draft gradient','FontSize',fs);
+xlabel('Cross-shelf draft gradient','FontSize',fs);
 %ylabel('cross-shelf plume transport (m^2/s)','FontSize',fs);
 %title('Transport over channel keels','fontsize',fs)
 set(gca,'FontSize',fs);
@@ -54,7 +54,7 @@ set(gca,'FontSize',fs);
 
 
 ylim([-0.6 1.75]);
-ylabel('cross-shelf transport (m^2/s)','FontSize',fs);
+ylabel('Cross-shelf transport (m^2 s^{-1})','FontSize',fs);
 
 
 end 

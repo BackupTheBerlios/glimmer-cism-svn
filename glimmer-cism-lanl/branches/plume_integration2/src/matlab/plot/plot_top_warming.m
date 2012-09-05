@@ -2,12 +2,22 @@ clear all
 
 jobs = getenv('GC_JOBS');
 
-j1name = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_4';
+%j1name = 'oct25_high_min_visc_smooth_5000.0_k12amp_25.0_restart_4';
 
+%control case
+j1name = 'central_final_nov17';
+
+% top perturbed by +0.3
 j2name = 'oct30_perturb_usq.8_top_-1.55';
+
+% sub-surface perturbed by +0.3
 j3name = 'oct30_perturb_usq.8_bottom_0.4';
-j4name = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
+
+% sub-surface perturbed by -0.3
+%j4name = 'no_tangle_oct30_perturb_usq_bottom_-0.2';
 j4name = 'oct30_perturb_usq_bottom_-0.2';
+
+% sub-surface perturbed by -0.1
 j5name = 'no_tangle_oct30_perturb_usq_bottom_0.0';
 
 
@@ -26,11 +36,11 @@ f4_ocean = strcat([jobs,'/',j4name,'/plume.',j4name,'.out.nc']);
 f5_ice = strcat([jobs,'/',j5name,'/',j5name,'.out.nc']);
 f5_ocean = strcat([jobs,'/',j5name,'/plume.',j5name,'.out.nc']);
 
-dice1 = nc_ice_read(f1_ice,-1,1,-1);
-dice2 = nc_ice_read(f2_ice,-1,1,-1);
-dice3 = nc_ice_read(f3_ice,-1,1,-1);
-dice4 = nc_ice_read(f4_ice,-1,1,-1);
-dice5 = nc_ice_read(f5_ice,-1,1,-1);
+dice1 = nc_ice_read(f1_ice,-1,1,-1,2);
+dice2 = nc_ice_read(f2_ice,-1,1,-1,2);
+dice3 = nc_ice_read(f3_ice,-1,1,-1,2);
+dice4 = nc_ice_read(f4_ice,-1,1,-1,2);
+dice5 = nc_ice_read(f5_ice,-1,1,-1,2);
 
 dplume1 = nc_plume_read(f1_ocean,-1,1,-1);
 dplume2 = nc_plume_read(f2_ocean,-1,1,-1);
@@ -67,8 +77,8 @@ N = length(flatten_field(lsurf_control));
 f = 0.5;
 subset_fun = random_subset_fun(f,N);
 subset_fun = @(v) v;
-ytext = 'perturbed ice draft (m)';
-xtext = 'original ice draft (m)';
+ytext = 'Perturbed ice draft (m)';
+xtext = 'Original ice draft (m)';
 
 subplot(2,2,1);
 hold on
@@ -80,7 +90,7 @@ title('0.3 \circC sub-surface warming','FontSize',fs);
 set(gca,'FontSize',fs);
 %plot([-425 -425],[y0 0],'k--');
 %text(-415,-75,'0.3 ^\circ C bottom warming\newline upper limit','FontSize',fs);
-text(-575,50,'a.','FontSize',fs_label);
+text(-575,50,'a','FontSize',fs_label);
 set(gca,'XTick',-400:200:0,'YTick',-400:200:0);
 xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
@@ -96,7 +106,7 @@ plot(subset_fun(flatten_field(lsurf_control)), ...
 title('0.3 \circC surface warming','FontSize',fs);
 %plot([-150 -150],[y0 0],'k--');
 %text(-250,-350,'0.3 ^\circ C upper warming \newline lower limit','FontSize',fs);
-text(-575,50,'b.','FontSize',fs_label);
+text(-575,50,'b','FontSize',fs_label);
 set(gca,'FontSize',fs);
 xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
@@ -114,7 +124,7 @@ set(gca,'FontSize',fs);
 %plot([-425 -425],[y0 0],'k--');
 %text(-475,-100,'0.3 ^\circ C bottom cooling\newline upper limit','FontSize',fs);
 text(-475,-25,'NB: Not steady','FontSize',fs);
-text(-575,50,'d.','FontSize',fs_label);
+text(-575,50,'d','FontSize',fs_label);
 xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
 xlim([y0 0]);
@@ -131,7 +141,7 @@ set(gca,'FontSize',fs);
 
 %plot([-425 -425],[y0 0],'k--');
 %text(-415,-100,'0.1 ^\circ C bottom cooling \newline upper limit','FontSize',fs);
-text(-575,50,'c.','FontSize',fs_label);
+text(-575,50,'c','FontSize',fs_label);
 xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
 xlim([y0 0]);

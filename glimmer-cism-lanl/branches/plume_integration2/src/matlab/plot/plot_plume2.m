@@ -78,23 +78,12 @@ ch_amp = channel_amp(:,j_start:j_stop);
 flat_ice_def = reshape(ice_def,[size(ice_def,1)*size(ice_def,2) 1]);
 flat_channel_amp = reshape(ch_amp, ...
                    [size(ch_amp,1)*size(ch_amp,2) 1]);
-%clf;
-%plot(flat_channel_amp,flat_ice_def,'k.');
-%  pause;
-
-switch1 = false;
-switch1 = false;
-switch2 = false;
-switch2 = false;
-switch3= false;
-switch3 = false;
-switch4 = false;
 
 if (false) 
   plot_solo_panels;
 end
 
-if (false)
+if (true)
 plot_3_panel_ice_geometry;
 end
 

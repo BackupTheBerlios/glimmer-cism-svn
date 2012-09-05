@@ -13,9 +13,9 @@ end
 
 fig3 = figure(3);
 clf;
-set(fig3,'Position',[1 1 1200 800]);
+set(fig3,'Position',[1 1 1000 700]);
 
-xtext = -5;
+xtext = -3.5;
 ytext = 21.5;
 
 
@@ -47,7 +47,7 @@ control_jobs_sgd_type1 = {'oct30_perturb_usq.12_sgd_flux_0.5',...
 			  'oct30_perturb_usq.12_sgd_flux_1.0',...
 			  'oct30_perturb_usq.12_sgd_flux_1.5'};
 
-for i=1:3
+for i=3:3
 
   pcj = precontrol_jobs{i}
   cj = control_jobs{i}
@@ -100,10 +100,10 @@ x = x;
 y = y(jstart:jfinal);
 
 discharges = {'0.5','1.0','1.5'};
-labels1 = {'a.','b.','c.'};
-labels2 = {'d.','e.','f.'};
-labels3 = {'g.','h.','i.'};
-labels4 = {'j.','k.','l.'};
+labels1 = {'a','b','c'};
+labels2 = {'d','e','f'};
+labels3 = {'g','h','i'};
+labels4 = {'j','k','l'};
 
 
 if (false)
@@ -197,8 +197,8 @@ caxis([0 110]);
 %ylabel('Along shelf (km)','FontSize',fs);
 set(gca,'FontSize',fs);
 %title('melt rates, pre-control','FontSize',fs);
-title('melt rates, pre-control','FontSize',fs);
-text(xtext,ytext,'a.','FontSize',fslabel);
+title('Melt rates, pre-control','FontSize',fs);
+text(xtext,ytext,'a','FontSize',fslabel);
 
 subplot(2,3,3);
 contourf(x,y,subset(bmlt)',ncontours,'EdgeColor','None');colorbar('FontSize',fs)
@@ -206,8 +206,8 @@ caxis([0 110]);
 %xlabel('Across shelf (km)','FontSize',fs);
 %ylabel('Along shelf (km)','FontSize',fs);
 set(gca,'FontSize',fs);
-title('melt rates, control','FontSize',fs);
-text(xtext,ytext,'c.','FontSize',fslabel);
+title('Melt rates, control','FontSize',fs);
+text(xtext,ytext,'c','FontSize',fslabel);
 
 %subplot(2,3,3);
 %contourf(x,y,subset(bmlt_nh)',ncontours,'EdgeColor','None');colorbar('FontSize',fs)
@@ -224,8 +224,8 @@ caxis([0 110]);
 %xlabel('Across shelf (km)','FontSize',fs);
 %ylabel('Along shelf (km)','FontSize',fs);
 set(gca,'FontSize',fs);
-title('melt rates, pre-control, jets','FontSize',fs);
-text(xtext,ytext,'b.','FontSize',fslabel);
+title('Melt rates, pre-control, jets','FontSize',fs);
+text(xtext,ytext,'b','FontSize',fslabel);
 
 subplot(2,3,4);
 contourf(x,y,subset(pre_thk)',ncontours,'EdgeColor','None');colorbar('FontSize',fs)
@@ -233,8 +233,8 @@ caxis([0 600]);
 %xlabel('Across shelf (km)','FontSize',fs);
 %ylabel('Along shelf (km)','FontSize',fs);
 set(gca,'FontSize',fs);
-title('ice thickness, pre-control','FontSize',fs);
-text(xtext,ytext,'d.','FontSize',fslabel);
+title('Ice thickness, pre-control','FontSize',fs);
+text(xtext,ytext,'d','FontSize',fslabel);
 
 subplot(2,3,6);
 contourf(x,y,subset(thk)',ncontours,'EdgeColor','None');colorbar('FontSize',fs)
@@ -242,8 +242,8 @@ caxis([0 600]);
 %xlabel('Across shelf (km)','FontSize',fs);
 %ylabel('Along shelf (km)','FontSize',fs);
 set(gca,'FontSize',fs);
-title('ice thickness, control','FontSize',fs);
-text(xtext,ytext,'f.','FontSize',fslabel);
+title('Ice thickness, control','FontSize',fs);
+text(xtext,ytext,'f','FontSize',fslabel);
 
 %subplot(2,3,6);
 %contourf(x,y,subset(thk_nh)',ncontours,'EdgeColor','None');colorbar('FontSize',fs)
@@ -260,6 +260,6 @@ caxis([0 600]);
 %xlabel('Across shelf (km)','FontSize',fs);
 %ylabel('Along shelf (km)','FontSize',fs);
 set(gca,'FontSize',fs);
-title('ice thickness, pre-control, jets','FontSize',fs);
-text(xtext,ytext,'e.','FontSize',fslabel);
+title('Ice thickness, pre-control, jets','FontSize',fs);
+text(xtext,ytext,'e','FontSize',fslabel);
 
