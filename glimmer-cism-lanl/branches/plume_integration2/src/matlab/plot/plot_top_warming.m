@@ -57,7 +57,7 @@ m5 = m/in - m_control;
 
 
 fig1 = figure(1);
-set(fig1,'Position',[1 1 1200 800]);
+%set(fig1,'Position',[1 1 1200 800]);
 fs = 16;
 fs_label=18;
 clf;
@@ -70,19 +70,18 @@ subset_fun = @(v) v;
 ytext = 'perturbed ice draft (m)';
 xtext = 'original ice draft (m)';
 
-
 subplot(2,2,1);
 hold on
 plot([y0 0],[y0 0],'k-','LineWidth',2.5);
 plot(subset_fun(flatten_field(lsurf_control)), ...
      subset_fun(flatten_field(lsurf3)),'r.');
 title(strcat(['total melt change = ',sprintf('%+2.1f',100*m3),' percent of influx']),'FontSize',fs);
-
+title('0.3 \circC sub-surface warming','FontSize',fs);
 set(gca,'FontSize',fs);
 %plot([-425 -425],[y0 0],'k--');
 %text(-415,-75,'0.3 ^\circ C bottom warming\newline upper limit','FontSize',fs);
 text(-575,50,'a.','FontSize',fs_label);
-
+set(gca,'XTick',-400:200:0,'YTick',-400:200:0);
 xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
 xlim([y0 0]);
@@ -94,7 +93,7 @@ hold on
 plot([y0 0],[y0 0],'k-','LineWidth',2.5);
 plot(subset_fun(flatten_field(lsurf_control)), ...
      subset_fun(flatten_field(lsurf2)),'r.');
-
+title('0.3 \circC surface warming','FontSize',fs);
 %plot([-150 -150],[y0 0],'k--');
 %text(-250,-350,'0.3 ^\circ C upper warming \newline lower limit','FontSize',fs);
 text(-575,50,'b.','FontSize',fs_label);
@@ -103,7 +102,8 @@ xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
 xlim([y0 0]);
 ylim([y0 0]);
-title(strcat(['total melt change = ',sprintf('%+2.1f',100*m2),' percent of influx']),'FontSize',fs);
+set(gca,'XTick',-400:200:0,'YTick',-400:200:0);
+%title(strcat(['total melt change = ',sprintf('%+2.1f',100*m2),' percent of influx']),'FontSize',fs);
 
 subplot(2,2,4);
 hold on
@@ -113,14 +113,15 @@ plot(subset_fun(flatten_field(lsurf_control)), ...
 set(gca,'FontSize',fs);
 %plot([-425 -425],[y0 0],'k--');
 %text(-475,-100,'0.3 ^\circ C bottom cooling\newline upper limit','FontSize',fs);
+text(-475,-25,'NB: Not steady','FontSize',fs);
 text(-575,50,'d.','FontSize',fs_label);
 xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
 xlim([y0 0]);
 ylim([y0 0]);
-
-title(strcat(['total melt change = ',sprintf('%+2.1f',100*m4),' percent of influx']),'FontSize',fs);
-
+set(gca,'XTick',-400:200:0,'YTick',-400:200:0);
+%title(strcat(['total melt change = ',sprintf('%+2.1f',100*m4),' percent of influx']),'FontSize',fs);
+title('0.3 \circC sub-surface cooling','FontSize',fs);
 subplot(2,2,3);
 hold on
 plot([y0 0],[y0 0],'k-','LineWidth',2.5);
@@ -135,6 +136,8 @@ xlabel(xtext,'FontSize',fs);
 ylabel(ytext,'FontSize',fs)
 xlim([y0 0]);
 ylim([y0 0]);
-title(strcat(['total melt change = ',sprintf('%+2.1f',100*m5),' percent of influx']),'FontSize',fs);
+set(gca,'XTick',-400:200:0,'YTick',-400:200:0);
+%title(strcat(['total melt change = ',sprintf('%+2.1f',100*m5),' percent of influx']),'FontSize',fs);
+title('0.1 \circC sub-surface cooling','FontSize',fs);
 
 
