@@ -379,7 +379,7 @@ program shelf_driver
 		         (model%general%nsn*model%general%ewn))
      max_rel_thk_change =  maxval(abs(model%geometry%thck_t))
 
-     is_steady =  not(firstIteration) .and. check_for_steady .and. &
+     is_steady =  (.not. firstIteration) .and. check_for_steady .and. &
 	  ( max_rel_thk_change <      thk_steady_tol) .and. &
           (mean_rel_thk_change < mean_thk_steady_tol)
 
