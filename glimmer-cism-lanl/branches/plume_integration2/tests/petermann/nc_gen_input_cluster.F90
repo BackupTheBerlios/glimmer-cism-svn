@@ -815,7 +815,6 @@ contains
     allocate(rand_row(nx-2*zero_buf))
 
     !now populate the dimension variables
-
     xs = (/ ( (real(i-w_marg)-0.5d0)*hx,i=1,nx ) /)
     ys = (/ ( (real(j-s_marg)-0.5d0)*hy,j=1,ny ) /)
     level = (/ ( real(i)/real((n_level-1)), i=0,(n_level-1) ) /)
@@ -845,7 +844,7 @@ contains
     kinbcmask = 0
 !    kinbcmask(:,(ny-kinbcw):(ny-1)) = 1 !north edge
     kinbcmask(:,1:kinbcw) = 1 !south edge
-    if (noslip) then	
+    if (noslip) then		    
        kinbcmask(1:(1+zero_buf),:) = 1
        kinbcmask((nx-1-zero_buf):(nx-1),:) = 1
     end if
@@ -856,7 +855,7 @@ contains
     if (noslip) then
        !vvelhom(2:(nx-2),(ny-kinbcw):ny,:) = upstream_vel
        !vvelhom(:,(ny-kinbcw):(ny-1),:) = upstream_vel
-       vvelhom(1+zero_buf:(nx-1-zero_buf),1:kinbcw,:) = upstream_vel
+       vvelhom(:,1:kinbcw,:) = upstream_vel
     else
        !vvelhom(:,ny-kinbcw:ny-1,:) = upstream_vel
 !       vvelhom(:,1:kinbcw,:) = upstream_vel
