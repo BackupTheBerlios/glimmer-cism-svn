@@ -1,7 +1,7 @@
 
 
 
-recalculate = false;
+recalculate = true;
 doFigure1 = false;
 doFigure2 = true;
 doFigure3 = false;
@@ -19,14 +19,18 @@ f2_ice = strcat([jobs,'/',j1name,'/','usq.9.no_homotopy.out.nc']);
 f2_ocean = strcat([jobs,'/',j1name,'/plume.usq.9.no_homotopy.out.nc']);
 
 f1_ice
-dice1 = nc_ice_read(f1_ice,0,1,675);
+%dice1 = nc_ice_read(f1_ice,0,1,675);
+dice1 = nc_ice_read(f1_ice,0,1,168);
 f2_ice
-dice2 = nc_ice_read(f2_ice,0,1,19);
+%dice2 = nc_ice_read(f2_ice,0,1,19);
+dice2 = nc_ice_read(f2_ice,0,1,18);
 
 f1_ocean
-dplume1 = nc_plume_read(f1_ocean,0,1,675);
+%dplume1 = nc_plume_read(f1_ocean,0,1,675);
+dplume1 = nc_plume_read(f1_ocean,0,1,168);
 f2_ocean
-dplume2 = nc_plume_read(f2_ocean,0,1,19);
+%dplume2 = nc_plume_read(f2_ocean,0,1,19);
+dplume2 = nc_plume_read(f2_ocean,0,1,18);
 
 m_control = 0.789;
 [m,m_applied,in,out,acab,unsteady] = mass_balance(dice1,dplume1,-1);
@@ -90,7 +94,7 @@ colorbar('FontSize',fs);
 caxis([-550 0]);
 end
 
-if (false)
+if (true)
 [melt,applied_melt,influx,outflux,total_acab,dvdt] = mass_balance(dice1,dplume1,2:length(dplume1.time));
 [melt2,applied_melt2,influx2,outflux2,total_acab2,dvdt2] = mass_balance(dice2,dplume2,2:length(dplume2.time));
 end
